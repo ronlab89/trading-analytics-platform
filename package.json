@@ -1,0 +1,17 @@
+{
+  "name": "trading-analytics-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Trading Analytics Platform — portfolio project (full-stack app + public demo)",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "typecheck": "tsc --build --pretty"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
