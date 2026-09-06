@@ -39,3 +39,6 @@ docker/       # Local infrastructure (PostgreSQL, etc.)
 
 See `docs/00-overview.md` for the full project overview and `docs/15-implementation-plan.md`
 for the implementation roadmap.
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the branching model, commit conventions,
+and pull request workflow used in this repository.
