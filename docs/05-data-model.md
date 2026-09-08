@@ -1129,11 +1129,14 @@ Examples:
 
 # 39. Monetary Precision
 
-Financial values must not rely on unsafe floating-point assumptions for authoritative calculations.
+Financial values must not rely on unsafe floating-point assumptions for
+authoritative calculations.
 
-The implementation should use an appropriate representation for monetary and decimal values.
-
-The final strategy will be defined in the architecture and implementation specifications.
+**Decision:** the domain layer represents monetary and precision-
+sensitive values using `decimal.js` (see `04-tech-stack.md` §28.1),
+wrapped in a `Money` value object that pairs a decimal amount with a
+currency code. Primitive `number` remains acceptable only for values
+that do not participate in authoritative financial calculations.
 
 ---
 

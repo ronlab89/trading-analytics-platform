@@ -599,6 +599,36 @@ Repositories isolate Prisma from the application layer.
 
 ---
 
+# 28.1 Decimal Precision
+
+## decimal.js
+
+`decimal.js` is the approved library for arbitrary-precision decimal
+arithmetic across the monorepo.
+
+### Reason
+
+- `05-data-model.md` §39 requires an explicit strategy to avoid unsafe
+  floating-point behavior for authoritative monetary calculations.
+- Prisma's `Decimal` type (used for PostgreSQL `Decimal` columns) is
+  implemented on top of `decimal.js` internally. Standardizing on the
+  same library across `packages/domain` and the persistence layer
+  avoids unnecessary conversion friction between two different decimal
+  representations (NFR-070).
+- Zero recurring cost, no vendor lock-in, actively maintained,
+  TypeScript-friendly (ships its own types).
+
+### Usage
+
+`decimal.js` must be used wherever a numeric value represents money or
+requires precision beyond what IEEE 754 floats can safely guarantee
+(prices, quantities used in financial calculations, portfolio metrics).
+
+It must not be used for values with no precision requirement (IDs,
+counts of unrelated things, UI-only display values).
+
+---
+
 # 29. Database Architecture
 
 ```text

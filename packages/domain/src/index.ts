@@ -13,3 +13,4 @@ export * from "./entities/market-event";
 export * from "./entities/historical-price";
 export * from "./entities/decision";
 export * from "./entities/decision-event";
+export * from "./value-objects/money";
