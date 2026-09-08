@@ -117,3 +117,36 @@ export const MarketDataSource = {
 } as const;
 
 export type MarketDataSource = (typeof MarketDataSource)[keyof typeof MarketDataSource];
+
+/**
+ * Decision direction.
+ * §11 — explicit list defined in the data model.
+ */
+export const DecisionDirection = {
+  LONG: "LONG",
+  SHORT: "SHORT",
+  NEUTRAL: "NEUTRAL",
+} as const;
+
+export type DecisionDirection = (typeof DecisionDirection)[keyof typeof DecisionDirection];
+
+/**
+ * Decision event type.
+ * §12 — "Initial examples" list, explicitly noted as extensible.
+ * This enum captures the initial catalog; new values may be added
+ * later without breaking existing events (they remain string-based
+ * at the wire level).
+ */
+export const DecisionEventType = {
+  DECISION_CREATED: "DECISION_CREATED",
+  THESIS_RECORDED: "THESIS_RECORDED",
+  POSITION_OPENED: "POSITION_OPENED",
+  PRICE_UPDATE: "PRICE_UPDATE",
+  RISK_CHANGED: "RISK_CHANGED",
+  TARGET_REACHED: "TARGET_REACHED",
+  POSITION_ADJUSTED: "POSITION_ADJUSTED",
+  POSITION_CLOSED: "POSITION_CLOSED",
+  NOTE_ADDED: "NOTE_ADDED",
+} as const;
+
+export type DecisionEventType = (typeof DecisionEventType)[keyof typeof DecisionEventType];

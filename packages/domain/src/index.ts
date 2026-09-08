@@ -11,3 +11,5 @@ export * from "./entities/user-preference";
 export * from "./entities/market-price";
 export * from "./entities/market-event";
 export * from "./entities/historical-price";
+export * from "./entities/decision";
+export * from "./entities/decision-event";
