@@ -8,3 +8,6 @@ export * from "./entities/watchlist-item";
 export * from "./entities/alert";
 export * from "./entities/notification";
 export * from "./entities/user-preference";
+export * from "./entities/market-price";
+export * from "./entities/market-event";
+export * from "./entities/historical-price";

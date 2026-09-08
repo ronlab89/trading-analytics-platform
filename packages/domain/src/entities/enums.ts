@@ -104,3 +104,16 @@ export const NotificationSeverity = {
 } as const;
 
 export type NotificationSeverity = (typeof NotificationSeverity)[keyof typeof NotificationSeverity];
+
+/**
+ * Market data source.
+ * §18 — "The demo uses: MOCK." Distinguishes simulated data from a
+ * real external provider, supporting the infrastructure substitution
+ * principle (06-architecture.md).
+ */
+export const MarketDataSource = {
+  MOCK: "MOCK",
+  EXTERNAL: "EXTERNAL",
+} as const;
+
+export type MarketDataSource = (typeof MarketDataSource)[keyof typeof MarketDataSource];
