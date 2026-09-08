@@ -49,3 +49,32 @@ export const PortfolioStatus = {
 } as const;
 
 export type PortfolioStatus = (typeof PortfolioStatus)[keyof typeof PortfolioStatus];
+
+/**
+ * Transaction type.
+ * §9 — "Future types may include DIVIDEND, FEE, DEPOSIT, WITHDRAWAL,
+ * TRANSFER. These should only be introduced when the business model
+ * requires them." Initial scope: BUY, SELL.
+ */
+export const TransactionType = {
+  BUY: "BUY",
+  SELL: "SELL",
+} as const;
+
+export type TransactionType = (typeof TransactionType)[keyof typeof TransactionType];
+
+/**
+ * Transaction lifecycle status.
+ * §10 — "Not every transaction implementation must persist every
+ * intermediate state. The UI must nevertheless be able to represent
+ * meaningful processing states."
+ */
+export const TransactionStatus = {
+  DRAFT: "DRAFT",
+  VALIDATING: "VALIDATING",
+  PROCESSING: "PROCESSING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+} as const;
+
+export type TransactionStatus = (typeof TransactionStatus)[keyof typeof TransactionStatus];
