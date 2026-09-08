@@ -78,3 +78,29 @@ export const TransactionStatus = {
 } as const;
 
 export type TransactionStatus = (typeof TransactionStatus)[keyof typeof TransactionStatus];
+
+/**
+ * Alert type.
+ * §22 — explicit list defined in the data model.
+ */
+export const AlertType = {
+  PRICE: "PRICE",
+  PORTFOLIO_CHANGE: "PORTFOLIO_CHANGE",
+  ALLOCATION: "ALLOCATION",
+  VOLATILITY: "VOLATILITY",
+} as const;
+
+export type AlertType = (typeof AlertType)[keyof typeof AlertType];
+
+/**
+ * Notification severity.
+ * §21 — explicit list defined in the data model.
+ */
+export const NotificationSeverity = {
+  INFO: "INFO",
+  SUCCESS: "SUCCESS",
+  WARNING: "WARNING",
+  ERROR: "ERROR",
+} as const;
+
+export type NotificationSeverity = (typeof NotificationSeverity)[keyof typeof NotificationSeverity];

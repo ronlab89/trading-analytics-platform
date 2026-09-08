@@ -4,3 +4,7 @@ export * from "./entities/asset";
 export * from "./entities/portfolio";
 export * from "./entities/transaction";
 export * from "./entities/position";
+export * from "./entities/watchlist-item";
+export * from "./entities/alert";
+export * from "./entities/notification";
+export * from "./entities/user-preference";
