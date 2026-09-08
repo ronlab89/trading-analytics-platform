@@ -37,3 +37,15 @@ export const AssetStatus = {
 } as const;
 
 export type AssetStatus = (typeof AssetStatus)[keyof typeof AssetStatus];
+
+/**
+ * Portfolio status.
+ * §6 — "Archived portfolios should remain available for historical
+ * analysis where appropriate."
+ */
+export const PortfolioStatus = {
+  ACTIVE: "ACTIVE",
+  ARCHIVED: "ARCHIVED",
+} as const;
+
+export type PortfolioStatus = (typeof PortfolioStatus)[keyof typeof PortfolioStatus];
