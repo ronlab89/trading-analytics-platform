@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Money } from "../value-objects/money";
 import { DecisionDirection } from "./enums";
 import { InvalidDecisionError, validateNewDecision } from "./decision";
 
@@ -6,14 +7,24 @@ const baseInput = {
   portfolioId: "portfolio_001",
   assetId: "asset_001",
   title: "Breakout setup",
-  thesis: "Price structure suggests continuation above resistance.",
+  thesis: "Price structure suggests a continuation above resistance.",
   direction: DecisionDirection.LONG,
+  entryPrice: Money.of(180, "USD"),
+  targetPrice: Money.of(195, "USD"),
+  stopPrice: Money.of(174, "USD"),
 };
 
 describe("validateNewDecision", () => {
   it("should accept a valid decision input", () => {
     expect(() => {
       validateNewDecision(baseInput);
+    }).not.toThrow();
+  });
+
+  it("should accept a decision with no price fields at all", () => {
+    const { ...rest } = baseInput;
+    expect(() => {
+      validateNewDecision(rest);
     }).not.toThrow();
   });
 
@@ -51,15 +62,61 @@ describe("validateNewDecision", () => {
     }).toThrow(InvalidDecisionError);
   });
 
-  it("should reject a zero entry price when provided", () => {
+  it("should reject a zero entry price", () => {
     expect(() => {
-      validateNewDecision({ ...baseInput, entryPrice: 0 });
+      validateNewDecision({ ...baseInput, entryPrice: Money.zero("USD") });
     }).toThrow(InvalidDecisionError);
   });
 
-  it("should accept a decision without an entry price", () => {
+  it("should reject a negative target price", () => {
     expect(() => {
-      validateNewDecision(baseInput);
+      validateNewDecision({
+        ...baseInput,
+        targetPrice: Money.of(-1, "USD"),
+      });
+    }).toThrow(InvalidDecisionError);
+  });
+
+  it("should reject a zero stop price", () => {
+    expect(() => {
+      validateNewDecision({ ...baseInput, stopPrice: Money.zero("USD") });
+    }).toThrow(InvalidDecisionError);
+  });
+
+  it("should accept a decision with only a target price set", () => {
+    const { ...rest } = baseInput;
+    expect(() => {
+      validateNewDecision(rest);
+    }).not.toThrow();
+  });
+
+  it("should reject mismatched currencies between entry and target price", () => {
+    expect(() => {
+      validateNewDecision({
+        ...baseInput,
+        targetPrice: Money.of(195, "EUR"),
+      });
+    }).toThrow(InvalidDecisionError);
+  });
+
+  it("should reject mismatched currencies between target and stop price", () => {
+    const { ...rest } = baseInput;
+    expect(() => {
+      validateNewDecision({
+        ...rest,
+        stopPrice: Money.of(174, "EUR"),
+      });
+    }).toThrow(InvalidDecisionError);
+  });
+
+  it("should accept a SHORT decision", () => {
+    expect(() => {
+      validateNewDecision({
+        ...baseInput,
+        direction: DecisionDirection.SHORT,
+        targetPrice: Money.of(165, "USD"),
+        stopPrice: Money.of(186, "USD"),
+      });
     }).not.toThrow();
   });
 });

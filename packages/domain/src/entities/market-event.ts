@@ -1,3 +1,5 @@
+import type { Money } from "../value-objects/money";
+
 /**
  * MarketEvent entity.
  * Source: docs/05-data-model.md §19
@@ -5,11 +7,17 @@
  * Represents a price update event. `sequence` supports deterministic
  * ordering so stale events can be detected and ignored, per §44
  * ("Event Ordering") and 07-realtime-spec.md.
+ *
+ * `price` is `Money` (see §39, "Monetary Precision" and
+ * 04-tech-stack.md §28.1), for consistency with `MarketPrice` and
+ * `Position` — a market event's price ultimately feeds authoritative
+ * position/portfolio calculations, so it is not exempt from the same
+ * precision requirement (resolves open item 7.1 in PROGRESS.md).
  */
 export interface MarketEvent {
   readonly id: string;
   readonly assetId: string;
-  readonly price: number;
+  readonly price: Money;
   readonly timestamp: Date;
   readonly sequence: number;
 }
@@ -28,7 +36,7 @@ export function validateNewMarketEvent(input: CreateMarketEventInput): void {
     throw new InvalidMarketEventError("A market event must reference an asset.");
   }
 
-  if (input.price <= 0) {
+  if (!input.price.isPositive()) {
     throw new InvalidMarketEventError("Price must be greater than zero.");
   }
 

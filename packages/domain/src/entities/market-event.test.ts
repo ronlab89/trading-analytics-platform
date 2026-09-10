@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Money } from "../value-objects/money";
 import {
   InvalidMarketEventError,
   isStaleMarketEvent,
@@ -7,7 +8,7 @@ import {
 
 const baseInput = {
   assetId: "asset_001",
-  price: 184.22,
+  price: Money.of(184.22, "USD"),
   sequence: 1201,
 };
 
@@ -26,7 +27,13 @@ describe("validateNewMarketEvent", () => {
 
   it("should reject a zero price", () => {
     expect(() => {
-      validateNewMarketEvent({ ...baseInput, price: 0 });
+      validateNewMarketEvent({ ...baseInput, price: Money.zero("USD") });
+    }).toThrow(InvalidMarketEventError);
+  });
+
+  it("should reject a negative price", () => {
+    expect(() => {
+      validateNewMarketEvent({ ...baseInput, price: Money.of(-1, "USD") });
     }).toThrow(InvalidMarketEventError);
   });
 
