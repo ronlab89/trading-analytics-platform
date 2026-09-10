@@ -100,6 +100,10 @@ export class Money {
     return this.amount.isNegative();
   }
 
+  isPositive(): boolean {
+    return this.amount.isPositive() && !this.amount.isZero();
+  }
+
   isZero(): boolean {
     return this.amount.isZero();
   }

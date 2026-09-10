@@ -97,6 +97,14 @@ describe("Money comparisons", () => {
       CurrencyMismatchError,
     );
   });
+
+  it("should detect a positive amount", () => {
+    expect(Money.of(1, "USD").isPositive()).toBe(true);
+  });
+
+  it("should not consider zero as positive", () => {
+    expect(Money.of(0, "USD").isPositive()).toBe(false);
+  });
 });
 
 describe("Money formatting", () => {

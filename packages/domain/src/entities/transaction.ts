@@ -1,5 +1,6 @@
-import { TransactionType } from "./enums";
+import type { Money } from "../value-objects/money";
 import type { TransactionStatus } from "./enums";
+import { TransactionType } from "./enums";
 
 /**
  * Transaction entity.
@@ -9,11 +10,13 @@ import type { TransactionStatus } from "./enums";
  * Portfolio and Asset only through their IDs, keeping entities decoupled
  * (NFR-011, Domain Isolation).
  *
- * Monetary fields (`quantity`, `price`, `fees`) use `number` at this stage.
- * The final safe-precision representation (e.g. decimal string, integer
- * minor units) is an implementation decision deferred to persistence/API
- * work, per §39 ("Monetary Precision") — introducing it now would be
- * premature for a pure type + invariant definition (NFR-070).
+ * `price` and `fees` are `Money` (see §39, "Monetary Precision" and
+ * 04-tech-stack.md §28.1). `quantity` remains a plain `number` — it is
+ * a count of asset units, not a currency amount, so it is not subject
+ * to the same precision-loss risk that motivated the `Money` type.
+ *
+ * There is no standalone `currency` field: the transaction's currency
+ * is carried by `price.currency` (and `fees.currency`, which must match).
  */
 export interface Transaction {
   readonly id: string;
@@ -21,9 +24,8 @@ export interface Transaction {
   readonly assetId: string;
   readonly type: TransactionType;
   readonly quantity: number;
-  readonly price: number;
-  readonly fees: number;
-  readonly currency: string;
+  readonly price: Money;
+  readonly fees: Money;
   readonly status: TransactionStatus;
   readonly executedAt: Date;
   readonly createdAt: Date;
@@ -31,7 +33,7 @@ export interface Transaction {
 
 export type CreateTransactionInput = Pick<
   Transaction,
-  "portfolioId" | "assetId" | "type" | "quantity" | "price" | "currency"
+  "portfolioId" | "assetId" | "type" | "quantity" | "price"
 > &
   Partial<Pick<Transaction, "fees" | "executedAt">>;
 
@@ -63,16 +65,18 @@ export function validateNewTransaction(input: CreateTransactionInput): void {
     throw new InvalidTransactionError("Quantity must be greater than zero.");
   }
 
-  if (input.price <= 0) {
+  if (!input.price.isPositive()) {
     throw new InvalidTransactionError("Price must be greater than zero.");
   }
 
-  if (input.fees !== undefined && input.fees < 0) {
-    throw new InvalidTransactionError("Fees cannot be negative.");
-  }
+  if (input.fees !== undefined) {
+    if (input.fees.isNegative()) {
+      throw new InvalidTransactionError("Fees cannot be negative.");
+    }
 
-  if (!input.currency || input.currency.trim().length === 0) {
-    throw new InvalidTransactionError("Currency is required.");
+    if (input.fees.currency !== input.price.currency) {
+      throw new InvalidTransactionError("Fees currency must match the transaction price currency.");
+    }
   }
 
   if (input.executedAt !== undefined && input.executedAt > new Date()) {

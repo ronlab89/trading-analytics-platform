@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Money } from "../value-objects/money";
 import { TransactionType } from "./enums";
 import { InvalidTransactionError, validateNewTransaction } from "./transaction";
 
@@ -7,8 +8,7 @@ const baseInput = {
   assetId: "asset_001",
   type: TransactionType.BUY,
   quantity: 10,
-  price: 150,
-  currency: "USD",
+  price: Money.of(150, "USD"),
 };
 
 describe("validateNewTransaction", () => {
@@ -54,25 +54,31 @@ describe("validateNewTransaction", () => {
 
   it("should reject a zero price", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, price: 0 });
+      validateNewTransaction({ ...baseInput, price: Money.zero("USD") });
     }).toThrow(InvalidTransactionError);
   });
 
   it("should reject negative fees", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, fees: -1 });
+      validateNewTransaction({
+        ...baseInput,
+        fees: Money.of(-1, "USD"),
+      });
     }).toThrow(InvalidTransactionError);
   });
 
   it("should accept zero fees", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, fees: 0 });
+      validateNewTransaction({ ...baseInput, fees: Money.zero("USD") });
     }).not.toThrow();
   });
 
-  it("should reject a missing currency", () => {
+  it("should reject fees in a different currency than price", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, currency: "" });
+      validateNewTransaction({
+        ...baseInput,
+        fees: Money.of(1, "EUR"),
+      });
     }).toThrow(InvalidTransactionError);
   });
 
