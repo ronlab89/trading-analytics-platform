@@ -150,3 +150,15 @@ export const DecisionEventType = {
 } as const;
 
 export type DecisionEventType = (typeof DecisionEventType)[keyof typeof DecisionEventType];
+
+/**
+ * Scenario status.
+ * §14 — explicit list defined in the data model.
+ */
+export const ScenarioStatus = {
+  DRAFT: "DRAFT",
+  SAVED: "SAVED",
+  ARCHIVED: "ARCHIVED",
+} as const;
+
+export type ScenarioStatus = (typeof ScenarioStatus)[keyof typeof ScenarioStatus];
