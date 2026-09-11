@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: trading-analytics-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-trading_analytics_dev}
+      POSTGRES_USER: ${DATABASE_USER:-trading_user}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-trading_dev_password}
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DATABASE_USER:-trading_user} -d ${DATABASE_NAME:-trading_analytics_dev}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    name: trading-analytics-postgres-data
