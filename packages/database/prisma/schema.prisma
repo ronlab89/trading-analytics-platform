@@ -45,6 +45,23 @@ enum AssetStatus {
   @@map("asset_status")
 }
 
+enum TransactionType {
+  BUY
+  SELL
+
+  @@map("transaction_type")
+}
+
+enum TransactionStatus {
+  DRAFT
+  VALIDATING
+  PROCESSING
+  COMPLETED
+  FAILED
+
+  @@map("transaction_status")
+}
+
 // ─────────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────────
@@ -74,7 +91,9 @@ model Portfolio {
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  positions    Position[]
 
   @@index([userId])
   @@map("portfolios")
@@ -91,5 +110,60 @@ model Asset {
   status    AssetStatus @default(ACTIVE)
   metadata  Json?
 
+  transactions Transaction[]
+  positions    Position[]
+
   @@map("assets")
+}
+
+// See 05-data-model.md §9-10
+// Money amounts (price, fees) use Decimal(18, 8): 8 decimal places covers
+// crypto-level precision (1 satoshi = 0.00000001 BTC) while 18 total digits
+// comfortably covers fiat amounts. See 04-tech-stack.md §28.1 and
+// 05-data-model.md §39 for the domain-level Money/decimal.js decision this
+// mirrors. `currency` is a single ISO code shared by `price` and `fees`,
+// consistent with the domain's Money value object (amount + currency).
+model Transaction {
+  id          String            @id @default(cuid())
+  portfolioId String            @map("portfolio_id")
+  assetId     String            @map("asset_id")
+  type        TransactionType
+  status      TransactionStatus @default(DRAFT)
+  quantity    Decimal           @db.Decimal(18, 8)
+  price       Decimal           @db.Decimal(18, 8)
+  fees        Decimal           @default(0) @db.Decimal(18, 8)
+  currency    String
+  executedAt  DateTime          @map("executed_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  asset     Asset     @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([portfolioId])
+  @@index([assetId])
+  @@map("transactions")
+}
+
+// See 05-data-model.md §8
+// Position is conceptually derived from Transaction + market price
+// (05-data-model.md §31 "Source of Truth Rules"), but is persisted here as
+// its own table for read performance rather than recalculated on every
+// read. Application/domain services remain responsible for keeping it in
+// sync — this table is a materialized projection, not an independent
+// source of truth.
+model Position {
+  id                String   @id @default(cuid())
+  portfolioId       String   @map("portfolio_id")
+  assetId           String   @map("asset_id")
+  quantity          Decimal  @db.Decimal(18, 8)
+  averageEntryPrice Decimal  @map("average_entry_price") @db.Decimal(18, 8)
+  currentPrice      Decimal  @map("current_price") @db.Decimal(18, 8)
+  openedAt          DateTime @map("opened_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  asset     Asset     @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([portfolioId, assetId])
+  @@map("positions")
 }
