@@ -62,6 +62,47 @@ enum TransactionStatus {
   @@map("transaction_status")
 }
 
+enum DecisionDirection {
+  LONG
+  SHORT
+  NEUTRAL
+
+  @@map("decision_direction")
+}
+
+enum ScenarioStatus {
+  DRAFT
+  SAVED
+  ARCHIVED
+
+  @@map("scenario_status")
+}
+
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+
+  @@map("notification_severity")
+}
+
+enum AlertType {
+  PRICE
+  PORTFOLIO_CHANGE
+  ALLOCATION
+  VOLATILITY
+
+  @@map("alert_type")
+}
+
+enum MarketPriceSource {
+  MOCK
+  EXTERNAL
+
+  @@map("market_price_source")
+}
+
 // ─────────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────────
@@ -75,7 +116,11 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  portfolios Portfolio[]
+  portfolios     Portfolio[]
+  watchlistItems WatchlistItem[]
+  alerts         Alert[]
+  notifications  Notification[]
+  preference     UserPreference?
 
   @@map("users")
 }
@@ -94,6 +139,9 @@ model Portfolio {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   positions    Position[]
+  decisions    Decision[]
+  scenarios    Scenario[]
+  alerts       Alert[]
 
   @@index([userId])
   @@map("portfolios")
@@ -110,8 +158,14 @@ model Asset {
   status    AssetStatus @default(ACTIVE)
   metadata  Json?
 
-  transactions Transaction[]
-  positions    Position[]
+  transactions     Transaction[]
+  positions        Position[]
+  decisions        Decision[]
+  watchlistItems   WatchlistItem[]
+  alerts           Alert[]
+  marketPrice      MarketPrice?
+  marketEvents     MarketEvent[]
+  historicalPrices HistoricalPrice[]
 
   @@map("assets")
 }
@@ -166,4 +220,206 @@ model Position {
 
   @@unique([portfolioId, assetId])
   @@map("positions")
+}
+
+// See 05-data-model.md §11-12
+// riskLevel and outcome stay as plain strings (not enums), matching the
+// domain-layer decision recorded in PROGRESS.md: the SDD does not close
+// these to a fixed list, so we don't fabricate one at the schema level
+// either. entryPrice/targetPrice/stopPrice are optional (nullable) Decimal
+// fields to mirror the domain's Money-retrofitted, nullable fields.
+model Decision {
+  id          String            @id @default(cuid())
+  portfolioId String            @map("portfolio_id")
+  assetId     String            @map("asset_id")
+  title       String
+  thesis      String
+  direction   DecisionDirection
+  entryPrice  Decimal?          @map("entry_price") @db.Decimal(18, 8)
+  targetPrice Decimal?          @map("target_price") @db.Decimal(18, 8)
+  stopPrice   Decimal?          @map("stop_price") @db.Decimal(18, 8)
+  currency    String?
+  riskLevel   String            @map("risk_level")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  closedAt    DateTime?         @map("closed_at")
+  outcome     String?
+  notes       String?
+
+  portfolio Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  asset     Asset           @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  events    DecisionEvent[]
+
+  @@index([portfolioId])
+  @@index([assetId])
+  @@map("decisions")
+}
+
+// See 05-data-model.md §12
+// `type` stays a plain string (the SDD's event type list is explicitly
+// described as "examples", not a closed enum, and is expected to grow).
+// `payload` is Json because its shape varies per event type — see the
+// tabla-vs-json discussion in this step: a relational table per event
+// type would add complexity without a real query requirement today.
+model DecisionEvent {
+  id         String   @id @default(cuid())
+  decisionId String   @map("decision_id")
+  timestamp  DateTime
+  type       String
+  payload    Json
+
+  decision Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([decisionId])
+  @@map("decision_events")
+}
+
+// See 05-data-model.md §14-15
+// `changes` is Json for the same reason as DecisionEvent.payload: the SDD
+// (§15) explicitly leaves the persistence shape of scenario variable
+// changes open, and the domain layer already treats it as a plain
+// ScenarioChange[] rather than a relational entity (see PROGRESS.md).
+model Scenario {
+  id             String         @id @default(cuid())
+  portfolioId    String         @map("portfolio_id")
+  name           String
+  description    String?
+  baseSnapshotId String?        @map("base_snapshot_id")
+  status         ScenarioStatus @default(DRAFT)
+  changes        Json           @default("[]")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@map("scenarios")
+}
+
+// See 05-data-model.md §17
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  assetId   String   @map("asset_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assetId])
+  @@map("watchlist_items")
+}
+
+// See 05-data-model.md §22
+// `condition` stays a plain string per the same "SDD leaves it open"
+// principle applied elsewhere. `threshold` stays a plain Float, not
+// Decimal/Money — mirrors the domain decision that not all alert types
+// represent a currency amount (e.g. VOLATILITY, ALLOCATION thresholds).
+model Alert {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  assetId     String?   @map("asset_id")
+  portfolioId String?   @map("portfolio_id")
+  type        AlertType
+  condition   String
+  threshold   Float
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset     Asset?     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  portfolio Portfolio? @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("alerts")
+}
+
+// See 05-data-model.md §21
+// `type` stays a plain string for the same open-list reason as elsewhere.
+model Notification {
+  id        String               @id @default(cuid())
+  userId    String               @map("user_id")
+  type      String
+  title     String
+  message   String
+  severity  NotificationSeverity @default(INFO)
+  readAt    DateTime?            @map("read_at")
+  createdAt DateTime             @default(now()) @map("created_at")
+  metadata  Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+// See 05-data-model.md §23
+// One-to-one with User (userId is both PK and FK) — a user has exactly one
+// preferences row, created lazily on first write rather than at signup.
+model UserPreference {
+  userId                   String   @id @map("user_id")
+  theme                    String   @default("system")
+  language                 String   @default("en")
+  defaultPortfolioId       String?  @map("default_portfolio_id")
+  reducedMotion            Boolean  @default(false) @map("reduced_motion")
+  notificationPreferences  Json?    @map("notification_preferences")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+// See 05-data-model.md §18
+// One row per asset holding its current known price — overwritten on each
+// update (this is *current* state, not history; see HistoricalPrice for
+// the time series). assetId is the PK since there is exactly one "current
+// price" row per asset.
+model MarketPrice {
+  assetId        String            @id @map("asset_id")
+  price          Decimal           @db.Decimal(18, 8)
+  previousPrice  Decimal           @map("previous_price") @db.Decimal(18, 8)
+  change         Decimal           @db.Decimal(18, 8)
+  changePercent  Float             @map("change_percent")
+  timestamp      DateTime
+  source         MarketPriceSource @default(MOCK)
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("market_prices")
+}
+
+// See 05-data-model.md §19
+// `sequence` supports the ordering/stale-event-rejection rules defined in
+// 07-realtime-spec.md §24 (incomingSequence > lastProcessedSequence).
+model MarketEvent {
+  id        String   @id @default(cuid())
+  assetId   String   @map("asset_id")
+  price     Decimal  @db.Decimal(18, 8)
+  currency  String
+  timestamp DateTime
+  sequence  BigInt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, sequence])
+  @@map("market_events")
+}
+
+// See 05-data-model.md §20
+// Composite primary key (assetId, timestamp): one OHLC candle per asset
+// per timestamp/interval — prevents duplicate candles for the same bar.
+model HistoricalPrice {
+  assetId   String   @map("asset_id")
+  timestamp DateTime
+  open      Decimal  @db.Decimal(18, 8)
+  high      Decimal  @db.Decimal(18, 8)
+  low       Decimal  @db.Decimal(18, 8)
+  close     Decimal  @db.Decimal(18, 8)
+  volume    Decimal  @db.Decimal(24, 8)
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([assetId, timestamp])
+  @@map("historical_prices")
 }
