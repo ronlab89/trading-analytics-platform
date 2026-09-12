@@ -8,13 +8,19 @@
   "scripts": {
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
-    "db:studio": "dotenv -e ../../.env -- prisma studio"
+    "db:studio": "dotenv -e ../../.env -- prisma studio",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "@prisma/client": "^6.0.0"
+    "@prisma/client": "^6.0.0",
+    "@trading/domain": "workspace:*"
   },
   "devDependencies": {
     "dotenv-cli": "^11.0.0",
-    "prisma": "^6.0.0"
+    "prisma": "^6.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   }
 }
