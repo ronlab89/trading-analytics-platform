@@ -96,11 +96,25 @@ enum AlertType {
   @@map("alert_type")
 }
 
-enum MarketPriceSource {
+enum MarketDataSource {
   MOCK
   EXTERNAL
 
-  @@map("market_price_source")
+  @@map("market_data_source")
+}
+
+enum DecisionEventType {
+  DECISION_CREATED
+  THESIS_RECORDED
+  POSITION_OPENED
+  PRICE_UPDATE
+  RISK_CHANGED
+  TARGET_REACHED
+  POSITION_ADJUSTED
+  POSITION_CLOSED
+  NOTE_ADDED
+
+  @@map("decision_event_type")
 }
 
 // ─────────────────────────────────────────────
@@ -148,15 +162,21 @@ model Portfolio {
 }
 
 // See 05-data-model.md §7
+// `exchange` and `metadata` are required (not nullable) to match the
+// domain-layer Asset entity (packages/domain/src/entities/asset.ts),
+// which defines both as non-optional. Prisma's initial schema had these
+// as optional by default assumption; aligned here so the future
+// Prisma-backed AssetRepository cannot return a shape that violates the
+// domain type at compile time.
 model Asset {
   id        String      @id @default(cuid())
   symbol    String      @unique
   name      String
   assetType AssetType   @map("asset_type")
   currency  String
-  exchange  String?
+  exchange  String
   status    AssetStatus @default(ACTIVE)
-  metadata  Json?
+  metadata  Json        @default("{}")
 
   transactions     Transaction[]
   positions        Position[]
@@ -223,11 +243,14 @@ model Position {
 }
 
 // See 05-data-model.md §11-12
-// riskLevel and outcome stay as plain strings (not enums), matching the
-// domain-layer decision recorded in PROGRESS.md: the SDD does not close
-// these to a fixed list, so we don't fabricate one at the schema level
-// either. entryPrice/targetPrice/stopPrice are optional (nullable) Decimal
-// fields to mirror the domain's Money-retrofitted, nullable fields.
+// `outcome` stays a plain string (not an enum) — the SDD does not close
+// it to a fixed list. `riskLevel` is a nullable plain string for the same
+// reason, matching the domain entity exactly (packages/domain/src/
+// entities/decision.ts: `riskLevel: string | null`, optional on create).
+// This corrects an earlier mismatch (Phase 2 Step 9) where riskLevel had
+// been made required in this schema despite being optional in the domain
+// entity created in Phase 1 — infrastructure aligned to the domain, not
+// the other way around, same principle applied to Asset in Step 6.
 model Decision {
   id          String            @id @default(cuid())
   portfolioId String            @map("portfolio_id")
@@ -239,7 +262,7 @@ model Decision {
   targetPrice Decimal?          @map("target_price") @db.Decimal(18, 8)
   stopPrice   Decimal?          @map("stop_price") @db.Decimal(18, 8)
   currency    String?
-  riskLevel   String            @map("risk_level")
+  riskLevel   String?           @map("risk_level")
   createdAt   DateTime          @default(now()) @map("created_at")
   closedAt    DateTime?         @map("closed_at")
   outcome     String?
@@ -255,16 +278,23 @@ model Decision {
 }
 
 // See 05-data-model.md §12
-// `type` stays a plain string (the SDD's event type list is explicitly
-// described as "examples", not a closed enum, and is expected to grow).
-// `payload` is Json because its shape varies per event type — see the
-// tabla-vs-json discussion in this step: a relational table per event
-// type would add complexity without a real query requirement today.
+// `type` is a Prisma enum backed by DecisionEventType, matching the
+// domain entity exactly (packages/domain/src/entities/decision-event.ts
+// uses the closed DecisionEventType enum, not a free string). This
+// corrects an earlier mismatch (Phase 2 Step 9) where `type` had been
+// left as a free string on the assumption that the SDD's "initial
+// examples" framing meant an open list — the domain layer (Phase 1,
+// already implemented and tested) settled this as a closed enum, which
+// is the actual source of truth here, not a fresh reading of the SDD.
+// `payload` remains Json: its shape varies per event type, and modeling
+// that relationally would require either a table per event type or a
+// wide nullable-column table, neither of which solves a real query need
+// today (03-non-functional-requirements.md NFR-070).
 model DecisionEvent {
-  id         String   @id @default(cuid())
-  decisionId String   @map("decision_id")
+  id         String            @id @default(cuid())
+  decisionId String            @map("decision_id")
   timestamp  DateTime
-  type       String
+  type       DecisionEventType
   payload    Json
 
   decision Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
@@ -356,13 +386,18 @@ model Notification {
 // See 05-data-model.md §23
 // One-to-one with User (userId is both PK and FK) — a user has exactly one
 // preferences row, created lazily on first write rather than at signup.
+// `notificationPreferences` is required (not nullable), matching the
+// domain entity exactly (packages/domain/src/entities/user-preference.ts
+// defines it as `Readonly<Record<string, unknown>>`, non-nullable) —
+// same infrastructure-aligned-to-domain correction applied to Asset
+// (Step 6) and Decision (Step 9).
 model UserPreference {
   userId                   String   @id @map("user_id")
   theme                    String   @default("system")
   language                 String   @default("en")
   defaultPortfolioId       String?  @map("default_portfolio_id")
   reducedMotion            Boolean  @default(false) @map("reduced_motion")
-  notificationPreferences  Json?    @map("notification_preferences")
+  notificationPreferences  Json     @default("{}") @map("notification_preferences")
   updatedAt                DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -382,7 +417,7 @@ model MarketPrice {
   change         Decimal           @db.Decimal(18, 8)
   changePercent  Float             @map("change_percent")
   timestamp      DateTime
-  source         MarketPriceSource @default(MOCK)
+  source         MarketDataSource @default(MOCK)
 
   asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
