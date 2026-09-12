@@ -1,0 +1,95 @@
+// Trading Analytics Platform — Prisma Schema
+// Phase 2, Step 2: initial slice (User, Portfolio, Asset only).
+// Remaining entities from 05-data-model.md are added in subsequent steps.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("user_role")
+}
+
+enum PortfolioStatus {
+  ACTIVE
+  ARCHIVED
+
+  @@map("portfolio_status")
+}
+
+enum AssetType {
+  STOCK
+  ETF
+  CRYPTO
+  FOREX
+
+  @@map("asset_type")
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("asset_status")
+}
+
+// ─────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────
+
+// See 05-data-model.md §5
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  displayName String   @map("display_name")
+  role        UserRole @default(USER)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  portfolios Portfolio[]
+
+  @@map("users")
+}
+
+// See 05-data-model.md §6
+model Portfolio {
+  id           String          @id @default(cuid())
+  userId       String          @map("user_id")
+  name         String
+  description  String?
+  baseCurrency String          @map("base_currency")
+  status       PortfolioStatus @default(ACTIVE)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("portfolios")
+}
+
+// See 05-data-model.md §7
+model Asset {
+  id        String      @id @default(cuid())
+  symbol    String      @unique
+  name      String
+  assetType AssetType   @map("asset_type")
+  currency  String
+  exchange  String?
+  status    AssetStatus @default(ACTIVE)
+  metadata  Json?
+
+  @@map("assets")
+}
