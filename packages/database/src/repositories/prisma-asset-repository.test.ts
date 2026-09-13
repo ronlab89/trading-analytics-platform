@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { PrismaAssetRepository } from "../prisma-asset-repository";
-import { prisma } from "../../client";
+import { PrismaAssetRepository } from "./prisma-asset-repository";
+import { prisma } from "../client";
 
 /**
  * Integration test for `PrismaAssetRepository`.
