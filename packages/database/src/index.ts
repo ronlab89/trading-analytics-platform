@@ -4,3 +4,6 @@ export { PrismaUserRepository } from "./repositories/prisma-user-repository.js";
 export { PrismaAssetRepository } from "./repositories/prisma-asset-repository.js";
 export { PrismaTransactionRepository } from "./repositories/prisma-transaction-repository.js";
 export { PrismaPositionRepository } from "./repositories/prisma-position-repository.js";
+export { PrismaDecisionRepository } from "./repositories/prisma-decision-repository.js";
+export { PrismaDecisionEventRepository } from "./repositories/prisma-decision-event-repository.js";
+export { PrismaScenarioRepository } from "./repositories/prisma-scenario-repository.js";
