@@ -7,3 +7,7 @@ export { PrismaPositionRepository } from "./repositories/prisma-position-reposit
 export { PrismaDecisionRepository } from "./repositories/prisma-decision-repository.js";
 export { PrismaDecisionEventRepository } from "./repositories/prisma-decision-event-repository.js";
 export { PrismaScenarioRepository } from "./repositories/prisma-scenario-repository.js";
+export { PrismaWatchlistItemRepository } from "./repositories/prisma-watchlist-item-repository.js";
+export { PrismaAlertRepository } from "./repositories/prisma-alert-repository.js";
+export { PrismaNotificationRepository } from "./repositories/prisma-notification-repository.js";
+export { PrismaUserPreferenceRepository } from "./repositories/prisma-user-preference-repository.js";
