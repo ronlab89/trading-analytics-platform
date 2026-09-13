@@ -220,17 +220,18 @@ model Transaction {
 }
 
 // See 05-data-model.md §8
-// Position is conceptually derived from Transaction + market price
-// (05-data-model.md §31 "Source of Truth Rules"), but is persisted here as
-// its own table for read performance rather than recalculated on every
-// read. Application/domain services remain responsible for keeping it in
-// sync — this table is a materialized projection, not an independent
-// source of truth.
+// `currency` added after the initial Step 3a slice (Phase 2 Step 5,
+// PositionRepository implementation): the domain entity requires both
+// averageEntryPrice and currentPrice to be Money (with currency), and
+// validates they match — the original schema had no column to persist
+// that currency at all. Mirrors the same shared-currency pattern already
+// used by Transaction.
 model Position {
   id                String   @id @default(cuid())
   portfolioId       String   @map("portfolio_id")
   assetId           String   @map("asset_id")
   quantity          Decimal  @db.Decimal(18, 8)
+  currency          String
   averageEntryPrice Decimal  @map("average_entry_price") @db.Decimal(18, 8)
   currentPrice      Decimal  @map("current_price") @db.Decimal(18, 8)
   openedAt          DateTime @map("opened_at")

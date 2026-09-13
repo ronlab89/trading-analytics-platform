@@ -3,3 +3,4 @@ export { PrismaPortfolioRepository } from "./repositories/prisma-portfolio-repos
 export { PrismaUserRepository } from "./repositories/prisma-user-repository.js";
 export { PrismaAssetRepository } from "./repositories/prisma-asset-repository.js";
 export { PrismaTransactionRepository } from "./repositories/prisma-transaction-repository.js";
+export { PrismaPositionRepository } from "./repositories/prisma-position-repository.js";
