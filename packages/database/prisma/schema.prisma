@@ -408,13 +408,14 @@ model UserPreference {
 }
 
 // See 05-data-model.md §18
-// One row per asset holding its current known price — overwritten on each
-// update (this is *current* state, not history; see HistoricalPrice for
-// the time series). assetId is the PK since there is exactly one "current
-// price" row per asset.
+// `currency` added for the same reason as Position (Phase 2 Step 5,
+// PositionRepository/MarketPriceRepository implementation): the domain
+// entity requires price/previousPrice/change to be Money with a shared
+// currency, and the original schema had no column to persist it.
 model MarketPrice {
   assetId        String            @id @map("asset_id")
   price          Decimal           @db.Decimal(18, 8)
+  currency       String
   previousPrice  Decimal           @map("previous_price") @db.Decimal(18, 8)
   change         Decimal           @db.Decimal(18, 8)
   changePercent  Float             @map("change_percent")
@@ -444,11 +445,13 @@ model MarketEvent {
 }
 
 // See 05-data-model.md §20
-// Composite primary key (assetId, timestamp): one OHLC candle per asset
-// per timestamp/interval — prevents duplicate candles for the same bar.
+// `currency` added for the same reason as Position and MarketPrice: the
+// domain entity requires open/high/low/close to be Money with a shared
+// currency, and the original schema had no column to persist it.
 model HistoricalPrice {
   assetId   String   @map("asset_id")
   timestamp DateTime
+  currency  String
   open      Decimal  @db.Decimal(18, 8)
   high      Decimal  @db.Decimal(18, 8)
   low       Decimal  @db.Decimal(18, 8)

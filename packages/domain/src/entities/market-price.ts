@@ -37,7 +37,7 @@ export interface MarketPrice {
 
 export type CreateMarketPriceInput = Pick<
   MarketPrice,
-  "assetId" | "price" | "previousPrice" | "change" | "changePercent" | "source"
+  "assetId" | "price" | "previousPrice" | "change" | "changePercent" | "source" | "timestamp"
 >;
 
 export class InvalidMarketPriceError extends Error {

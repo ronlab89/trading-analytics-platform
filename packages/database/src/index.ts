@@ -11,3 +11,6 @@ export { PrismaWatchlistItemRepository } from "./repositories/prisma-watchlist-i
 export { PrismaAlertRepository } from "./repositories/prisma-alert-repository.js";
 export { PrismaNotificationRepository } from "./repositories/prisma-notification-repository.js";
 export { PrismaUserPreferenceRepository } from "./repositories/prisma-user-preference-repository.js";
+export { PrismaMarketEventRepository } from "./repositories/prisma-market-event-repository.js";
+export { PrismaMarketPriceRepository } from "./repositories/prisma-market-price-repository.js";
+export { PrismaHistoricalPriceRepository } from "./repositories/prisma-historical-price-repository.js";
