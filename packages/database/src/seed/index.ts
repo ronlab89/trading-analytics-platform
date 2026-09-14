@@ -1,5 +1,7 @@
 import { wipeDatabase } from "./wipe.js";
 import { createEmptySeedContext } from "./context.js";
+import { seedUsersAndPortfolios } from "./steps/seed-users-and-portfolios.js";
+import { seedAssets } from "./steps/seed-assets.js";
 
 /**
  * Entry point for the DB seed workflow (Phase 2, Step 6).
@@ -15,15 +17,16 @@ export async function seedDatabase(): Promise<void> {
   console.log("[seed] wiping existing data...");
   await wipeDatabase();
 
-  const context = createEmptySeedContext();
+  let context = createEmptySeedContext();
 
-  // Step 6.2+: seed steps will be chained here, e.g.
-  // context = await seedUsersAndPortfolios(context);
-  // context = await seedAssets(context);
+  context = await seedUsersAndPortfolios(context);
+  context = await seedAssets(context);
+
+  // Step 6.3+: remaining seed steps will be chained here, e.g.
   // context = await seedPositionsAndTransactions(context);
-  // context = await seedDecisionsScenariosAlerts(context);
+  // context = await seedDecisionsScenariosAlertsNotifications(context);
   // context = await seedHistoricalPrices(context);
 
-  console.log("[seed] done (no data steps implemented yet — Step 6.1 scaffolding only).");
+  console.log("[seed] done.");
   console.log("[seed] context:", context);
 }
