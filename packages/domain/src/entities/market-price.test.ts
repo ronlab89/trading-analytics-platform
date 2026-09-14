@@ -9,6 +9,7 @@ const baseInput = {
   previousPrice: Money.of(181.4, "USD"),
   change: Money.of(2.82, "USD"),
   changePercent: 1.55,
+  timestamp: new Date("2026-08-29T14:30:00Z"),
   source: MarketDataSource.MOCK,
 };
 
