@@ -3,7 +3,7 @@ import { PrismaUserRepository } from "../../repositories/prisma-user-repository.
 import { PrismaPortfolioRepository } from "../../repositories/prisma-portfolio-repository.js";
 import { SEED_USER } from "../data/user.js";
 import { SEED_PORTFOLIOS } from "../data/portfolios.js";
-import type { SeedContext } from "../context.js";
+import type { SeedContext, SeedPortfolioRef } from "../context.js";
 
 const userRepository = new PrismaUserRepository();
 const portfolioRepository = new PrismaPortfolioRepository();
@@ -18,7 +18,7 @@ export async function seedUsersAndPortfolios(context: SeedContext): Promise<Seed
   validateNewUser(SEED_USER);
   const user = await userRepository.create(SEED_USER);
 
-  const portfolioIds: string[] = [];
+  const portfolios: SeedPortfolioRef[] = [];
 
   for (const blueprint of SEED_PORTFOLIOS) {
     const input = {
@@ -30,12 +30,12 @@ export async function seedUsersAndPortfolios(context: SeedContext): Promise<Seed
 
     validateNewPortfolio(input);
     const portfolio = await portfolioRepository.create(input);
-    portfolioIds.push(portfolio.id);
+    portfolios.push({ id: portfolio.id, name: portfolio.name });
   }
 
   return {
     ...context,
     userId: user.id,
-    portfolioIds,
+    portfolios,
   };
 }

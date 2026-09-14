@@ -1,7 +1,7 @@
 import { validateNewAsset } from "@trading/domain";
 import { PrismaAssetRepository } from "../../repositories/prisma-asset-repository.js";
 import { SEED_ASSETS } from "../data/assets.js";
-import type { SeedContext } from "../context.js";
+import type { SeedContext, SeedAssetRef } from "../context.js";
 
 const assetRepository = new PrismaAssetRepository();
 
@@ -12,16 +12,16 @@ const assetRepository = new PrismaAssetRepository();
 export async function seedAssets(context: SeedContext): Promise<SeedContext> {
   console.log("[seed] seeding assets...");
 
-  const assetIds: string[] = [];
+  const assets: SeedAssetRef[] = [];
 
   for (const input of SEED_ASSETS) {
     validateNewAsset(input);
     const asset = await assetRepository.create(input);
-    assetIds.push(asset.id);
+    assets.push({ id: asset.id, symbol: asset.symbol });
   }
 
   return {
     ...context,
-    assetIds,
+    assets,
   };
 }
