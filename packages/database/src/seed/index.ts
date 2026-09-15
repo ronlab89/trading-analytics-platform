@@ -3,6 +3,10 @@ import { createEmptySeedContext } from "./context.js";
 import { seedUsersAndPortfolios } from "./steps/seed-users-and-portfolios.js";
 import { seedAssets } from "./steps/seed-assets.js";
 import { seedPositionsAndTransactions } from "./steps/seed-positions-and-transactions.js";
+import { seedDecisions } from "./steps/seed-decisions.js";
+import { seedScenarios } from "./steps/seed-scenarios.js";
+import { seedAlerts } from "./steps/seed-alerts.js";
+import { seedNotifications } from "./steps/seed-notifications.js";
 
 /**
  * Entry point for the DB seed workflow (Phase 2, Step 6).
@@ -23,9 +27,12 @@ export async function seedDatabase(): Promise<void> {
   context = await seedUsersAndPortfolios(context);
   context = await seedAssets(context);
   context = await seedPositionsAndTransactions(context);
+  context = await seedDecisions(context);
+  context = await seedScenarios(context);
+  context = await seedAlerts(context);
+  context = await seedNotifications(context);
 
-  // Step 6.4+: remaining seed steps will be chained here, e.g.
-  // context = await seedDecisionsScenariosAlertsNotifications(context);
+  // Step 6.5: remaining seed step will be chained here:
   // context = await seedHistoricalPrices(context);
 
   console.log("[seed] done.");

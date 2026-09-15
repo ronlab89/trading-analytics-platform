@@ -2,26 +2,11 @@ import { validateNewTransaction, validateNewPosition } from "@trading/domain";
 import { PrismaTransactionRepository } from "../../repositories/prisma-transaction-repository.js";
 import { PrismaPositionRepository } from "../../repositories/prisma-position-repository.js";
 import { SEED_POSITIONS } from "../data/positions-and-transactions.js";
+import { resolvePortfolioId, resolveAssetId } from "../resolve.js";
 import type { SeedContext } from "../context.js";
 
 const transactionRepository = new PrismaTransactionRepository();
 const positionRepository = new PrismaPositionRepository();
-
-function resolvePortfolioId(context: SeedContext, name: string): string {
-  const portfolio = context.portfolios.find((p) => p.name === name);
-  if (!portfolio) {
-    throw new Error(`[seed] no seeded portfolio found with name "${name}".`);
-  }
-  return portfolio.id;
-}
-
-function resolveAssetId(context: SeedContext, symbol: string): string {
-  const asset = context.assets.find((a) => a.symbol === symbol);
-  if (!asset) {
-    throw new Error(`[seed] no seeded asset found with symbol "${symbol}".`);
-  }
-  return asset.id;
-}
 
 /**
  * Seeds transactions (as completed historical facts) and the resulting
