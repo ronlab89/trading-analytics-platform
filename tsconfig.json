@@ -6,9 +6,8 @@
   },
   "files": [],
   "references": [
-    {
-      "path": "./packages/domain"
-    },
-    { "path": "./packages/database" }
+    { "path": "./packages/domain" },
+    { "path": "./packages/database" },
+    { "path": "./apps/api" }
   ]
 }
