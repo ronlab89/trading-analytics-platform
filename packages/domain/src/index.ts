@@ -1,5 +1,6 @@
 export * from "./entities/enums";
 export * from "./entities/user";
+export * from "./entities/credential";
 export * from "./entities/asset";
 export * from "./entities/portfolio";
 export * from "./entities/transaction";
@@ -25,6 +26,7 @@ export * from "./calculations/volatility";
 export * from "./calculations/portfolio-pulse";
 export type { PortfolioRepository } from "./repositories/portfolio-repository";
 export type { UserRepository } from "./repositories/user-repository";
+export type { CredentialRepository } from "./repositories/credential-repository";
 export type { AssetRepository } from "./repositories/asset-repository";
 export type { TransactionRepository } from "./repositories/transaction-repository";
 export type { PositionRepository } from "./repositories/position-repository";
