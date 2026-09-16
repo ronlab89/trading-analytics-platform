@@ -136,8 +136,25 @@ model User {
   alerts         Alert[]
   notifications  Notification[]
   preference     UserPreference?
+  credential     Credential?
 
   @@map("users")
+}
+
+// See packages/domain/src/entities/credential.ts
+// Deliberately separate from User (one-to-one, userId as PK) — mirrors
+// the UserPreference pattern below. Password/credential handling lives
+// in its own capability rather than on the User model itself (see
+// user-repository.ts's documented boundary in packages/domain).
+model Credential {
+  userId       String   @id @map("user_id")
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credentials")
 }
 
 // See 05-data-model.md §6

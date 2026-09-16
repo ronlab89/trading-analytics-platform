@@ -4,7 +4,7 @@ import { prisma } from "../client.js";
  * Deletes all seed-managed data, in strict reverse-FK-dependency order.
  *
  * Order derived from packages/database/prisma/schema.prisma (Phase 2 Step 6.1):
- *   User        -> Portfolio, WatchlistItem, Alert, Notification, UserPreference
+ *   User        -> Portfolio, WatchlistItem, Alert, Notification, UserPreference, Credential
  *   Portfolio   -> Transaction, Position, Decision, Scenario, Alert
  *   Asset       -> Transaction, Position, Decision, WatchlistItem, Alert,
  *                  MarketPrice, MarketEvent, HistoricalPrice
@@ -22,6 +22,7 @@ export async function wipeDatabase(): Promise<void> {
   await prisma.watchlistItem.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.userPreference.deleteMany();
+  await prisma.credential.deleteMany();
   await prisma.alert.deleteMany();
   await prisma.scenario.deleteMany();
   await prisma.transaction.deleteMany();

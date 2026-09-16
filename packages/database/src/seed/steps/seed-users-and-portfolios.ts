@@ -1,11 +1,14 @@
-import { validateNewUser, validateNewPortfolio } from "@trading/domain";
+import { validateNewUser, validateNewPortfolio, validateNewCredential } from "@trading/domain";
 import { PrismaUserRepository } from "../../repositories/prisma-user-repository.js";
+import { PrismaCredentialRepository } from "../../repositories/prisma-credential-repository.js";
 import { PrismaPortfolioRepository } from "../../repositories/prisma-portfolio-repository.js";
 import { SEED_USER } from "../data/user.js";
+import { SEED_PASSWORD_HASH } from "../data/credential.js";
 import { SEED_PORTFOLIOS } from "../data/portfolios.js";
 import type { SeedContext, SeedPortfolioRef } from "../context.js";
 
 const userRepository = new PrismaUserRepository();
+const credentialRepository = new PrismaCredentialRepository();
 const portfolioRepository = new PrismaPortfolioRepository();
 
 /**
@@ -17,6 +20,10 @@ export async function seedUsersAndPortfolios(context: SeedContext): Promise<Seed
 
   validateNewUser(SEED_USER);
   const user = await userRepository.create(SEED_USER);
+
+  const credentialInput = { userId: user.id, passwordHash: SEED_PASSWORD_HASH };
+  validateNewCredential(credentialInput);
+  await credentialRepository.create(credentialInput);
 
   const portfolios: SeedPortfolioRef[] = [];
 
