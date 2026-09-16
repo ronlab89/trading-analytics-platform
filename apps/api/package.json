@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@trading/database": "workspace:*",
     "express": "^5.2.1"
   },
   "devDependencies": {

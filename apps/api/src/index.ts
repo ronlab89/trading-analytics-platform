@@ -2,6 +2,7 @@ import express from "express";
 import { requestId } from "./middleware/request-id.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { AppError } from "./errors/app-error.js";
+import { healthRouter } from "./routes/health.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -14,6 +15,8 @@ app.use(express.json());
 app.get("/", (_req, res) => {
   res.json({ service: "trading-api", status: "ok" });
 });
+
+app.use(healthRouter);
 
 // Explicit 404 for any unmatched route — routed through AppError so it
 // travels the same normalized error path as every other failure.
