@@ -11,11 +11,30 @@ interface ErrorResponseBody {
 }
 
 /**
+ * Matches the naming convention used by every domain invariant error
+ * across `@trading/domain` (e.g. InvalidPortfolioError,
+ * InvalidTransactionError, InvalidPositionError, ...).
+ *
+ * Deliberately duck-typed on `err.name` rather than importing a shared
+ * base class from `@trading/domain` — this keeps the error-handling
+ * middleware infrastructure-agnostic and avoids introducing a new
+ * cross-package coupling for a single normalization concern (NFR-070).
+ * The convention already holds consistently for every entity today; if
+ * that ever changes, a shared `DomainValidationError` base class would
+ * be the natural next step.
+ */
+const DOMAIN_VALIDATION_ERROR_NAME = /^Invalid.+Error$/;
+
+function isDomainValidationError(err: unknown): err is Error {
+  return err instanceof Error && DOMAIN_VALIDATION_ERROR_NAME.test(err.name);
+}
+
+/**
  * Central error-handling middleware. Must be registered last, after all
- * routes. Normalizes both known AppErrors and unexpected exceptions into
- * the response shape defined in 07-api-spec.md §5, and never leaks stack
- * traces, internal messages, or dependency details to the client
- * (09-security-spec.md §28).
+ * routes. Normalizes AppErrors, domain invariant errors, and unexpected
+ * exceptions into the response shape defined in 07-api-spec.md §5, and
+ * never leaks stack traces, internal messages, or dependency details to
+ * the client (09-security-spec.md §28).
  *
  * Express requires exactly 4 parameters for a handler to be recognized
  * as an error-handling middleware — do not remove unused `_next`.
@@ -33,6 +52,21 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       },
     };
     res.status(err.statusCode).json(body);
+    return;
+  }
+
+  // Domain invariant violation (e.g. InvalidPortfolioError). These
+  // represent malformed input caught at the domain boundary, not
+  // unexpected failures — they always normalize to 400 VALIDATION_ERROR.
+  if (isDomainValidationError(err)) {
+    const body: ErrorResponseBody = {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: err.message,
+        requestId,
+      },
+    };
+    res.status(400).json(body);
     return;
   }
 
