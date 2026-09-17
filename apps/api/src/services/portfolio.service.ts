@@ -1,6 +1,7 @@
 import { PrismaPortfolioRepository } from "@trading/database";
 import type { Portfolio } from "@trading/database/generated/client/client";
 import { validateNewPortfolio } from "../../../../packages/domain/src";
+import { AppError } from "../errors/app-error";
 
 const portfolioRepository = new PrismaPortfolioRepository();
 
@@ -46,4 +47,66 @@ export async function createPortfolio(
   validateNewPortfolio(createInput);
 
   return portfolioRepository.create(createInput);
+}
+
+/**
+ * Returns a single portfolio, scoped to its owner.
+ * Source: 07-api-spec.md §10 (Get Portfolio).
+ *
+ * Deliberately returns 404 NOT_FOUND both when the portfolio does not
+ * exist and when it belongs to a different user, rather than 403
+ * Forbidden. This avoids confirming the existence of another user's
+ * resource to an unauthorized caller — the same anti-enumeration
+ * principle already applied to login (09-security-spec.md §51, §14-15
+ * Resource Ownership / IDOR Protection).
+ */
+export async function getPortfolioById(userId: string, portfolioId: string): Promise<Portfolio> {
+  const portfolio = await portfolioRepository.getById(portfolioId);
+
+  if (portfolio?.userId !== userId) {
+    throw new AppError("NOT_FOUND", "The requested resource could not be found.", 404);
+  }
+
+  return portfolio;
+}
+
+export interface UpdatePortfolioRequest {
+  name?: string;
+  description?: string;
+}
+
+/**
+ * Updates a portfolio's mutable metadata (name/description only).
+ * Source: 07-api-spec.md §10 (Update Portfolio), FR-010.
+ *
+ * `baseCurrency` is intentionally not accepted here — it is immutable
+ * after creation (05-data-model.md §43, Historical Integrity: changing
+ * it would silently invalidate historical valuations for portfolios
+ * that already have transactions).
+ *
+ * Reuses `getPortfolioById` for the ownership check, so an update
+ * attempt against a portfolio the caller does not own resolves to the
+ * same 404 as a genuinely missing portfolio, before any write is
+ * attempted.
+ */
+export async function updatePortfolio(
+  userId: string,
+  portfolioId: string,
+  input: UpdatePortfolioRequest,
+): Promise<Portfolio> {
+  await getPortfolioById(userId, portfolioId);
+
+  // Rebuilt via conditional spread rather than forwarding `input`
+  // directly: under `exactOptionalPropertyTypes: true`, TypeScript
+  // cannot reliably verify that the independently-declared
+  // `UpdatePortfolioRequest` interface structurally matches the
+  // repository's `Partial<Pick<Portfolio, ...>>` parameter type, even
+  // though both only ever describe "optional, no explicit undefined".
+  // Building a fresh object literal here sidesteps that mismatch.
+  const updateInput: Partial<Pick<Portfolio, "name" | "description">> = {
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.description !== undefined ? { description: input.description } : {}),
+  };
+
+  return portfolioRepository.update(portfolioId, updateInput);
 }
