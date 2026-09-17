@@ -6,18 +6,24 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
     "build": "tsc --build",
-    "start": "node dist/index.js",
+    "start": "dotenv -e ../../.env -- node dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@trading/database": "workspace:*",
-    "express": "^5.2.1"
+    "bcryptjs": "^3.0.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.20.2",
+    "dotenv-cli": "^11.0.0",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3"
   }
