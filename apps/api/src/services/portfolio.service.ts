@@ -1,5 +1,5 @@
 import { PrismaPortfolioRepository } from "@trading/database";
-import type { Portfolio } from "@trading/database/generated/client/client";
+import { PortfolioStatus, type Portfolio } from "@trading/database/generated/client/client";
 import { validateNewPortfolio } from "../../../../packages/domain/src";
 import { AppError } from "../errors/app-error";
 
@@ -109,4 +109,45 @@ export async function updatePortfolio(
   };
 
   return portfolioRepository.update(portfolioId, updateInput);
+}
+
+export interface ArchivePortfolioResult {
+  portfolio: Portfolio;
+  alreadyArchived: boolean;
+}
+
+/**
+ * Archives a portfolio (soft status transition, not deletion).
+ * Source: 07-api-spec.md §10 (Archive Portfolio), FR-011.
+ *
+ * Archiving is modeled as a status change rather than a distinct
+ * domain operation or destructive delete, per 05-data-model.md §6 and
+ * the repository contract's own guidance (portfolio-repository.ts,
+ * `update` doc comment: "application services should prefer
+ * update(id, { status: 'ARCHIVED' })").
+ *
+ * Idempotent by design: archiving an already-archived portfolio is not
+ * treated as an error (no 409 Conflict) — there is no meaningful
+ * failure here, and forcing the client to special-case it would add
+ * friction without benefit. Instead, `alreadyArchived` is returned so
+ * the caller (typically the frontend) can choose the right feedback
+ * message ("Portfolio archived" vs "This portfolio was already
+ * archived") without the backend inventing an error code for a
+ * non-error condition.
+ */
+export async function archivePortfolio(
+  userId: string,
+  portfolioId: string,
+): Promise<ArchivePortfolioResult> {
+  const existing = await getPortfolioById(userId, portfolioId);
+
+  if (existing.status === PortfolioStatus.ARCHIVED) {
+    return { portfolio: existing, alreadyArchived: true };
+  }
+
+  const portfolio = await portfolioRepository.update(portfolioId, {
+    status: PortfolioStatus.ARCHIVED,
+  });
+
+  return { portfolio, alreadyArchived: false };
 }

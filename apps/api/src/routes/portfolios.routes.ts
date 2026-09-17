@@ -6,6 +6,7 @@ import {
   updatePortfolioRequestSchema,
 } from "../schemas/portfolio.schema.js";
 import {
+  archivePortfolio,
   createPortfolio,
   getPortfolioById,
   listPortfolios,
@@ -127,3 +128,28 @@ portfoliosRouter.patch("/api/v1/portfolios/:portfolioId", authenticate, async (r
     next(error);
   }
 });
+
+/**
+ * POST /api/v1/portfolios/:portfolioId/archive
+ * Source: 07-api-spec.md §10 (Archive Portfolio), FR-011.
+ *
+ * Idempotent: always returns 200, never 409. `meta.alreadyArchived`
+ * tells the caller whether this call actually changed anything, so the
+ * frontend can show the appropriate feedback (see portfolio.service.ts
+ * for the full rationale).
+ */
+portfoliosRouter.post(
+  "/api/v1/portfolios/:portfolioId/archive",
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const { portfolio, alreadyArchived } = await archivePortfolio(
+        req.auth.userId,
+        req.params.portfolioId as string,
+      );
+      res.json({ data: portfolio, meta: { alreadyArchived } });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
