@@ -7,13 +7,15 @@ import { env } from "../config/env.js";
 const userRepository = new PrismaUserRepository();
 const credentialRepository = new PrismaCredentialRepository();
 
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  displayName: string;
+  role: string;
+}
+
 export interface LoginResult {
-  user: {
-    id: string;
-    email: string;
-    displayName: string;
-    role: string;
-  };
+  user: AuthenticatedUser;
   token: string;
 }
 
@@ -58,5 +60,29 @@ export async function login(email: string, password: string): Promise<LoginResul
       role: user.role,
     },
     token,
+  };
+}
+
+/**
+ * Resolves the current authenticated user's fresh data from the database
+ * given a userId already verified by the `authenticate` middleware.
+ *
+ * Refetches rather than trusting the JWT payload alone, so a role change
+ * (or account removal) made after the token was issued is reflected
+ * immediately — the JWT only proves identity, the database remains the
+ * authorization source of truth (09-security-spec.md §11).
+ */
+export async function getCurrentUser(userId: string): Promise<AuthenticatedUser> {
+  const user = await userRepository.getById(userId);
+
+  if (!user) {
+    throw new AppError("UNAUTHORIZED", "Authentication required.", 401);
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    role: user.role,
   };
 }

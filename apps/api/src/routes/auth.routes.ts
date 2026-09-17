@@ -1,7 +1,8 @@
 import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { loginRequestSchema } from "../schemas/auth.schema.js";
-import { login } from "../services/auth.service.js";
+import { login, getCurrentUser } from "../services/auth.service.js";
+import { authenticate } from "../middleware/authenticate.js";
 import { AppError } from "../errors/app-error.js";
 
 export const authRouter: ExpressRouter = Router();
@@ -27,6 +28,15 @@ authRouter.post("/api/v1/auth/login", async (req, res, next) => {
   try {
     const result = await login(parsed.data.email, parsed.data.password);
     res.json({ data: { user: result.user, session: { token: result.token } } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRouter.get("/api/v1/auth/me", authenticate, async (req, res, next) => {
+  try {
+    const user = await getCurrentUser(req.auth.userId);
+    res.json({ data: { user } });
   } catch (error) {
     next(error);
   }
