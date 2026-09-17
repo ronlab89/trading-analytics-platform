@@ -1,6 +1,9 @@
 import { PrismaPortfolioRepository } from "@trading/database";
-import { PortfolioStatus, type Portfolio } from "@trading/database/generated/client/client";
-import { validateNewPortfolio } from "../../../../packages/domain/src";
+import {
+  PortfolioStatus,
+  validateNewPortfolio,
+  type Portfolio,
+} from "../../../../packages/domain/src";
 import { AppError } from "../errors/app-error";
 
 const portfolioRepository = new PrismaPortfolioRepository();
