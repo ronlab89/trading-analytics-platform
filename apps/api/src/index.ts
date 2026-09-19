@@ -1,5 +1,6 @@
 import express from "express";
 import { requestId } from "./middleware/request-id.js";
+import { generalApiRateLimiter } from "./middleware/rate-limit.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { AppError } from "./errors/app-error.js";
 import { healthRouter } from "./routes/health.js";
@@ -17,6 +18,7 @@ app.disable("x-powered-by");
 const port = process.env.PORT ? Number(process.env.PORT) : 7001;
 
 app.use(requestId);
+app.use(generalApiRateLimiter);
 app.use(express.json());
 
 app.get("/", (_req, res) => {
