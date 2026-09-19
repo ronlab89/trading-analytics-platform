@@ -11,9 +11,17 @@ interface ErrorResponseBody {
 }
 
 /**
- * Matches the naming convention used by every domain invariant error
- * across `@trading/domain` (e.g. InvalidPortfolioError,
- * InvalidTransactionError, InvalidPositionError, ...).
+ * Matches the naming convention used by domain-boundary errors across
+ * `@trading/domain`:
+ *   - Invalid*Error (e.g. InvalidPortfolioError, InvalidTransactionError,
+ *     InvalidPositionError, ...) — structural/shape invariant violations.
+ *   - Insufficient*Error (e.g. InsufficientPositionQuantityError) —
+ *     business-rule violations that are still caused by malformed
+ *     client input (e.g. selling more than is held), not server-side
+ *     failures.
+ *
+ * Both categories represent "the request was invalid", so both
+ * normalize to 400 VALIDATION_ERROR.
  *
  * Deliberately duck-typed on `err.name` rather than importing a shared
  * base class from `@trading/domain` — this keeps the error-handling
@@ -23,7 +31,7 @@ interface ErrorResponseBody {
  * that ever changes, a shared `DomainValidationError` base class would
  * be the natural next step.
  */
-const DOMAIN_VALIDATION_ERROR_NAME = /^Invalid.+Error$/;
+const DOMAIN_VALIDATION_ERROR_NAME = /^(Invalid|Insufficient).+Error$/;
 
 function isDomainValidationError(err: unknown): err is Error {
   return err instanceof Error && DOMAIN_VALIDATION_ERROR_NAME.test(err.name);
