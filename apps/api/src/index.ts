@@ -9,6 +9,7 @@ import { positionsRouter } from "./routes/positions.routes.js";
 import { transactionsRouter } from "./routes/transactions.routes.js";
 import { assetsRouter } from "./routes/assets.routes.js";
 import { analyticsRouter } from "./routes/analytics.routes.js";
+import { overviewRouter } from "./routes/overview.routes.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -29,6 +30,7 @@ app.use(positionsRouter);
 app.use(transactionsRouter);
 app.use(assetsRouter);
 app.use(analyticsRouter);
+app.use(overviewRouter);
 
 // Explicit 404 for any unmatched route — routed through AppError so it
 // travels the same normalized error path as every other failure.
