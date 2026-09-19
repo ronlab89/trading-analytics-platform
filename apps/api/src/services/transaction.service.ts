@@ -10,8 +10,11 @@ import {
   TransactionStatus,
   validateNewTransaction,
   type Money,
+  type Page,
+  type PageRequest,
   type Position,
   type Transaction,
+  type TransactionListFilter,
   type TransactionType,
 } from "@trading/domain";
 
@@ -19,15 +22,8 @@ const transactionRepository = new PrismaTransactionRepository();
 const assetRepository = new PrismaAssetRepository();
 const unitOfWork = new PrismaUnitOfWork();
 
-export interface TransactionFilter {
-  assetId?: string;
-  type?: TransactionType;
-  dateFrom?: Date;
-  dateTo?: Date;
-}
-
 /**
- * Returns transactions for a portfolio, optionally filtered.
+ * Returns one page of a portfolio's transactions, optionally filtered.
  * Source: FR-014 (List), FR-015 (Search), FR-016 (Filter).
  *
  * Ownership enforced by requiring the portfolio to belong to the
@@ -36,11 +32,12 @@ export interface TransactionFilter {
 export async function listTransactions(
   userId: string,
   portfolioId: string,
-  filter?: TransactionFilter,
-): Promise<Transaction[]> {
+  filter: TransactionListFilter,
+  page: PageRequest,
+): Promise<Page<Transaction>> {
   await getPortfolioById(userId, portfolioId);
 
-  return transactionRepository.listByPortfolioId(portfolioId, filter);
+  return transactionRepository.listByPortfolioId(portfolioId, filter, page);
 }
 
 /**

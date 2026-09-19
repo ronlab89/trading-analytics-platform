@@ -11,6 +11,7 @@ import {
   listTransactions,
 } from "../services/transaction.service.js";
 import { AppError } from "../errors/app-error.js";
+import { buildPaginationMeta } from "../schemas/pagination.schema.js";
 import { Money } from "@trading/domain";
 
 export const transactionsRouter: ExpressRouter = Router();
@@ -40,10 +41,10 @@ transactionsRouter.get(
       return;
     }
 
-    const { assetId, type, dateFrom, dateTo } = parsedQuery.data;
+    const { assetId, type, dateFrom, dateTo, page, pageSize } = parsedQuery.data;
 
     try {
-      const transactions = await listTransactions(
+      const result = await listTransactions(
         req.auth.userId,
         req.params.portfolioId as string,
         {
@@ -52,8 +53,9 @@ transactionsRouter.get(
           ...(dateFrom !== undefined ? { dateFrom } : {}),
           ...(dateTo !== undefined ? { dateTo } : {}),
         },
+        { page, pageSize },
       );
-      res.json({ data: transactions });
+      res.json({ data: result.items, meta: buildPaginationMeta(page, pageSize, result.total) });
     } catch (error) {
       next(error);
     }

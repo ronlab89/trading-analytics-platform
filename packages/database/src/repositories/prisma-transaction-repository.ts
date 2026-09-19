@@ -1,9 +1,11 @@
 import type {
   CreateTransactionInput,
+  Page,
+  PageRequest,
   Transaction,
+  TransactionListFilter,
   TransactionRepository,
   TransactionStatus,
-  TransactionType,
 } from "@trading/domain";
 import type { Prisma } from "../../generated/client/index.js";
 import { prisma, type DatabaseClient } from "../client.js";
@@ -28,13 +30,14 @@ export class PrismaTransactionRepository implements TransactionRepository {
 
   async listByPortfolioId(
     portfolioId: string,
-    filter?: { assetId?: string; type?: TransactionType; dateFrom?: Date; dateTo?: Date },
-  ): Promise<Transaction[]> {
+    filter: TransactionListFilter,
+    { page, pageSize }: PageRequest,
+  ): Promise<Page<Transaction>> {
     const where: Prisma.TransactionWhereInput = {
       portfolioId,
-      ...(filter?.assetId !== undefined ? { assetId: filter.assetId } : {}),
-      ...(filter?.type !== undefined ? { type: filter.type } : {}),
-      ...(filter?.dateFrom !== undefined || filter?.dateTo !== undefined
+      ...(filter.assetId !== undefined ? { assetId: filter.assetId } : {}),
+      ...(filter.type !== undefined ? { type: filter.type } : {}),
+      ...(filter.dateFrom !== undefined || filter.dateTo !== undefined
         ? {
             executedAt: {
               ...(filter.dateFrom !== undefined ? { gte: filter.dateFrom } : {}),
@@ -44,8 +47,17 @@ export class PrismaTransactionRepository implements TransactionRepository {
         : {}),
     };
 
-    const rows = await this.db.transaction.findMany({ where, orderBy: { executedAt: "desc" } });
-    return rows.map(toDomainTransaction);
+    const [rows, total] = await Promise.all([
+      this.db.transaction.findMany({
+        where,
+        orderBy: [{ executedAt: "desc" }, { id: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.db.transaction.count({ where }),
+    ]);
+
+    return { items: rows.map(toDomainTransaction), total };
   }
 
   async getById(id: string): Promise<Transaction | null> {

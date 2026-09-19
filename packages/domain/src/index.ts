@@ -30,7 +30,10 @@ export type { UserRepository } from "./repositories/user-repository";
 export type { CredentialRepository } from "./repositories/credential-repository";
 export type { AssetRepository, AssetListFilter } from "./repositories/asset-repository";
 export type { Page, PageRequest } from "./repositories/pagination";
-export type { TransactionRepository } from "./repositories/transaction-repository";
+export type {
+  TransactionRepository,
+  TransactionListFilter,
+} from "./repositories/transaction-repository";
 export type { PositionRepository } from "./repositories/position-repository";
 export type { DecisionRepository } from "./repositories/decision-repository";
 export type { DecisionEventRepository } from "./repositories/decision-event-repository";
