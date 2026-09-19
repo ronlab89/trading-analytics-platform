@@ -1,9 +1,5 @@
 import { PrismaPositionRepository } from "@trading/database";
-import {
-  calculatePositionMetrics,
-  type Position,
-  type PositionMetrics,
-} from "../../../../packages/domain/src";
+import { calculatePositionMetrics, type Position, type PositionMetrics } from "@trading/domain";
 import { getPortfolioById } from "./portfolio.service";
 import { AppError } from "../errors/app-error";
 

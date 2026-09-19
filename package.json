@@ -10,6 +10,7 @@
   },
   "packageManager": "pnpm@12.3.4",
   "scripts": {
+    "build": "pnpm -r build",
     "typecheck": "tsc --build --pretty",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

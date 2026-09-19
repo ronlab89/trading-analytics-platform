@@ -1,4 +1,5 @@
 export { prisma } from "./client.js";
+export { PrismaUnitOfWork } from "./prisma-unit-of-work.js";
 export { PrismaPortfolioRepository } from "./repositories/prisma-portfolio-repository.js";
 export { PrismaUserRepository } from "./repositories/prisma-user-repository.js";
 export { PrismaCredentialRepository } from "./repositories/prisma-credential-repository.js";

@@ -1,7 +1,7 @@
 import {
   PrismaTransactionRepository,
-  PrismaPositionRepository,
   PrismaAssetRepository,
+  PrismaUnitOfWork,
 } from "@trading/database";
 import { AppError } from "../errors/app-error.js";
 import { getPortfolioById } from "./portfolio.service.js";
@@ -13,11 +13,11 @@ import {
   type Position,
   type Transaction,
   type TransactionType,
-} from "../../../../packages/domain/src/index.js";
+} from "@trading/domain";
 
 const transactionRepository = new PrismaTransactionRepository();
-const positionRepository = new PrismaPositionRepository();
 const assetRepository = new PrismaAssetRepository();
+const unitOfWork = new PrismaUnitOfWork();
 
 export interface TransactionFilter {
   assetId?: string;
@@ -111,14 +111,9 @@ export interface CreateTransactionResult {
  *   6. Mark the transaction COMPLETED once the position has been
  *      synchronized.
  *
- * Steps 4-6 are not wrapped in a single database transaction yet — see
- * NFR-074 (Atomic Business Operations). This is a known, deliberate gap
- * to flag in PROGRESS.md rather than an oversight: a failure between
- * persisting the transaction and updating the position could leave the
- * transaction record in DRAFT with no corresponding position change.
- * Wrapping this in an actual DB transaction (Prisma's `$transaction`)
- * is the natural follow-up once this endpoint is otherwise verified
- * end-to-end.
+ * Steps 4-6 run inside a single Unit of Work (FR-074, NFR-015): if the
+ * position recalculation or the status update fails, the transaction
+ * record is rolled back too, so no orphaned DRAFT transaction remains.
  */
 export async function createTransaction(
   userId: string,
@@ -144,36 +139,35 @@ export async function createTransaction(
 
   validateNewTransaction(createInput);
 
-  const transaction = await transactionRepository.create(createInput);
+  return unitOfWork.run(async ({ transactions, positions }) => {
+    const transaction = await transactions.create(createInput);
 
-  const existingPosition = await positionRepository.getByPortfolioAndAsset(
-    portfolioId,
-    input.assetId,
-  );
-  const recalculated = calculatePositionAfterTransaction(existingPosition, createInput);
+    const existingPosition = await positions.getByPortfolioAndAsset(portfolioId, input.assetId);
+    const recalculated = calculatePositionAfterTransaction(existingPosition, createInput);
 
-  let position: Position | null;
+    let position: Position | null;
 
-  if (recalculated === null) {
-    // SELL exactly closed the position.
-    if (existingPosition) {
-      await positionRepository.deleteByPortfolioAndAsset(portfolioId, input.assetId);
+    if (recalculated === null) {
+      // SELL exactly closed the position.
+      if (existingPosition) {
+        await positions.deleteByPortfolioAndAsset(portfolioId, input.assetId);
+      }
+      position = null;
+    } else {
+      position = await positions.upsert({
+        portfolioId,
+        assetId: input.assetId,
+        quantity: recalculated.quantity,
+        averageEntryPrice: recalculated.averageEntryPrice,
+        currentPrice: recalculated.currentPrice,
+      });
     }
-    position = null;
-  } else {
-    position = await positionRepository.upsert({
-      portfolioId,
-      assetId: input.assetId,
-      quantity: recalculated.quantity,
-      averageEntryPrice: recalculated.averageEntryPrice,
-      currentPrice: recalculated.currentPrice,
-    });
-  }
 
-  const completedTransaction = await transactionRepository.updateStatus(
-    transaction.id,
-    TransactionStatus.COMPLETED,
-  );
+    const completedTransaction = await transactions.updateStatus(
+      transaction.id,
+      TransactionStatus.COMPLETED,
+    );
 
-  return { transaction: completedTransaction, position };
+    return { transaction: completedTransaction, position };
+  });
 }

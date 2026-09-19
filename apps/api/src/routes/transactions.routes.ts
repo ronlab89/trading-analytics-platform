@@ -11,7 +11,7 @@ import {
   listTransactions,
 } from "../services/transaction.service.js";
 import { AppError } from "../errors/app-error.js";
-import { Money } from "../../../../packages/domain/src/index.js";
+import { Money } from "@trading/domain";
 
 export const transactionsRouter: ExpressRouter = Router();
 

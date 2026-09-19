@@ -6,7 +6,7 @@ import type {
   TransactionType,
 } from "@trading/domain";
 import type { Prisma } from "../../generated/client/index.js";
-import { prisma } from "../client.js";
+import { prisma, type DatabaseClient } from "../client.js";
 import { toDomainTransaction, toPrismaCreateInput } from "../mappers/transaction-mapper.js";
 
 /**
@@ -15,8 +15,17 @@ import { toDomainTransaction, toPrismaCreateInput } from "../mappers/transaction
  * transaction-repository.ts (domain) for why this contract has no
  * generic `update()`/`delete()` — a transaction is a historical fact
  * once recorded; only its processing status may change.
+ *
+ * Accepts an optional client so it can join a Unit of Work
+ * (see prisma-unit-of-work.ts); defaults to the shared client.
  */
 export class PrismaTransactionRepository implements TransactionRepository {
+  private readonly db: DatabaseClient;
+
+  constructor(db: DatabaseClient = prisma) {
+    this.db = db;
+  }
+
   async listByPortfolioId(
     portfolioId: string,
     filter?: { assetId?: string; type?: TransactionType; dateFrom?: Date; dateTo?: Date },
@@ -35,22 +44,22 @@ export class PrismaTransactionRepository implements TransactionRepository {
         : {}),
     };
 
-    const rows = await prisma.transaction.findMany({ where, orderBy: { executedAt: "desc" } });
+    const rows = await this.db.transaction.findMany({ where, orderBy: { executedAt: "desc" } });
     return rows.map(toDomainTransaction);
   }
 
   async getById(id: string): Promise<Transaction | null> {
-    const row = await prisma.transaction.findUnique({ where: { id } });
+    const row = await this.db.transaction.findUnique({ where: { id } });
     return row ? toDomainTransaction(row) : null;
   }
 
   async create(input: CreateTransactionInput): Promise<Transaction> {
-    const row = await prisma.transaction.create({ data: toPrismaCreateInput(input) });
+    const row = await this.db.transaction.create({ data: toPrismaCreateInput(input) });
     return toDomainTransaction(row);
   }
 
   async updateStatus(id: string, status: TransactionStatus): Promise<Transaction> {
-    const row = await prisma.transaction.update({ where: { id }, data: { status } });
+    const row = await this.db.transaction.update({ where: { id }, data: { status } });
     return toDomainTransaction(row);
   }
 }

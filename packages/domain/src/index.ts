@@ -41,3 +41,4 @@ export type { UserPreferenceRepository } from "./repositories/user-preference-re
 export type { MarketPriceRepository } from "./repositories/market-price-repository";
 export type { MarketEventRepository } from "./repositories/market-event-repository";
 export type { HistoricalPriceRepository } from "./repositories/historical-price-repository";
+export type { UnitOfWork, TransactionalRepositories } from "./repositories/unit-of-work";
