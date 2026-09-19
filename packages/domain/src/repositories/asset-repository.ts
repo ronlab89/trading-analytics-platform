@@ -45,6 +45,15 @@ export interface AssetRepository {
   getById(id: string): Promise<Asset | null>;
 
   /**
+   * Returns the assets matching the given ids in a single query.
+   * Ids that do not exist are simply absent from the result (no error),
+   * and the order of the result is not guaranteed. Exists so callers
+   * that need to enrich many positions/transactions with asset data
+   * avoid an N+1 of `getById` calls.
+   */
+  getByIds(ids: readonly string[]): Promise<Asset[]>;
+
+  /**
    * Returns a single asset by symbol, or null if it does not exist.
    * Symbols are unique (see schema.prisma `@unique` constraint), so this
    * is a legitimate direct lookup, not just a filtered list() call.

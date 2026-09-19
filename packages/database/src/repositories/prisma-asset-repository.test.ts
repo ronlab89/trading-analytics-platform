@@ -134,6 +134,28 @@ describe("PrismaAssetRepository", () => {
     expect(noMatch.total).toBe(0);
   });
 
+  it("retrieves several assets by ids in one call and ignores unknown ids", async () => {
+    const a = await repository.create({
+      symbol: uniqueSymbol("IDA"),
+      name: "Ids A",
+      assetType: "STOCK",
+      currency: "USD",
+      exchange: "MOCK",
+    });
+    const b = await repository.create({
+      symbol: uniqueSymbol("IDB"),
+      name: "Ids B",
+      assetType: "STOCK",
+      currency: "USD",
+      exchange: "MOCK",
+    });
+    createdAssetIds.push(a.id, b.id);
+
+    const found = await repository.getByIds([a.id, b.id, "nonexistent-id"]);
+    expect(found.map((asset) => asset.id).sort()).toEqual([a.id, b.id].sort());
+    expect(await repository.getByIds([])).toEqual([]);
+  });
+
   it("updates mutable fields, including metadata and status", async () => {
     const created = await repository.create({
       symbol: uniqueSymbol("SOL"),

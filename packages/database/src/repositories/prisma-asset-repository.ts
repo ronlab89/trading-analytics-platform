@@ -55,6 +55,14 @@ export class PrismaAssetRepository implements AssetRepository {
     return row ? toDomainAsset(row) : null;
   }
 
+  async getByIds(ids: readonly string[]): Promise<Asset[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await prisma.asset.findMany({ where: { id: { in: [...ids] } } });
+    return rows.map(toDomainAsset);
+  }
+
   async getBySymbol(symbol: string): Promise<Asset | null> {
     const row = await prisma.asset.findUnique({ where: { symbol } });
     return row ? toDomainAsset(row) : null;
