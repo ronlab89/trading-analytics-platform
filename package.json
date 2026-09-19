@@ -11,6 +11,7 @@
   "packageManager": "pnpm@12.3.4",
   "scripts": {
     "build": "pnpm -r build",
+    "test": "pnpm -r test",
     "typecheck": "tsc --build --pretty",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
