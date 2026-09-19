@@ -79,13 +79,59 @@ describe("PrismaAssetRepository", () => {
     });
     createdAssetIds.push(created.id);
 
-    const byType = await repository.list({ assetType: "ETF" });
-    expect(byType.some((a) => a.id === created.id)).toBe(true);
-    expect(byType.every((a) => a.assetType === "ETF")).toBe(true);
+    const byType = await repository.list({ assetType: "ETF" }, { page: 1, pageSize: 100 });
+    expect(byType.items.some((a) => a.id === created.id)).toBe(true);
+    expect(byType.items.every((a) => a.assetType === "ETF")).toBe(true);
 
-    const bySearch = await repository.list({ search: symbol });
-    expect(bySearch).toHaveLength(1);
-    expect(bySearch[0]?.id).toBe(created.id);
+    const bySearch = await repository.list({ search: symbol }, { page: 1, pageSize: 100 });
+    expect(bySearch.total).toBe(1);
+    expect(bySearch.items[0]?.id).toBe(created.id);
+  });
+
+  it("paginates deterministically ordered by symbol and reports the total", async () => {
+    const prefix = uniqueSymbol("PGN");
+    for (const suffix of ["A", "B", "C"]) {
+      const created = await repository.create({
+        symbol: `${prefix}-${suffix}`,
+        name: `Pagination ${suffix}`,
+        assetType: "STOCK",
+        currency: "USD",
+        exchange: "MOCK",
+      });
+      createdAssetIds.push(created.id);
+    }
+
+    const first = await repository.list({ search: prefix }, { page: 1, pageSize: 2 });
+    const second = await repository.list({ search: prefix }, { page: 2, pageSize: 2 });
+
+    expect(first.total).toBe(3);
+    expect(first.items.map((a) => a.symbol)).toEqual([`${prefix}-A`, `${prefix}-B`]);
+    expect(second.total).toBe(3);
+    expect(second.items.map((a) => a.symbol)).toEqual([`${prefix}-C`]);
+  });
+
+  it("filters by exchange, currency and status", async () => {
+    const exchange = `EX-${crypto.randomUUID().slice(0, 8)}`;
+    const created = await repository.create({
+      symbol: uniqueSymbol("FLT"),
+      name: "Filter Target",
+      assetType: "FOREX",
+      currency: "EUR",
+      exchange,
+    });
+    createdAssetIds.push(created.id);
+
+    const match = await repository.list(
+      { exchange, currency: "EUR", status: "ACTIVE" },
+      { page: 1, pageSize: 10 },
+    );
+    expect(match.total).toBe(1);
+
+    const noMatch = await repository.list(
+      { exchange, status: "INACTIVE" },
+      { page: 1, pageSize: 10 },
+    );
+    expect(noMatch.total).toBe(0);
   });
 
   it("updates mutable fields, including metadata and status", async () => {

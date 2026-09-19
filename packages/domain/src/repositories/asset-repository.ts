@@ -1,5 +1,23 @@
 import type { Asset, CreateAssetInput } from "../entities/asset";
-import type { AssetType } from "../entities/enums";
+import type { AssetStatus, AssetType } from "../entities/enums";
+import type { Page, PageRequest } from "./pagination";
+
+/**
+ * Filters supported when listing assets.
+ * Source: 07-api-spec.md §17 (List Assets filters), FR-019/FR-020.
+ *
+ * Plain optional fields rather than a generic query-builder object,
+ * keeping the contract explicit about what filtering the domain
+ * actually needs today (NFR-070). `search` matches symbol or name,
+ * case-insensitively; every other field is an exact match.
+ */
+export interface AssetListFilter {
+  search?: string;
+  assetType?: AssetType;
+  exchange?: string;
+  currency?: string;
+  status?: AssetStatus;
+}
 
 /**
  * Asset repository contract.
@@ -11,15 +29,15 @@ import type { AssetType } from "../entities/enums";
  */
 export interface AssetRepository {
   /**
-   * Returns assets, optionally filtered.
-   * Source: FR-019 (List Assets), FR-020 (Asset Search).
+   * Returns one page of assets matching the filter.
+   * Source: FR-019 (List Assets), FR-020 (Asset Search),
+   * 07-api-spec.md §17 and §40.
    *
-   * Search/filter parameters are plain optional fields rather than a
-   * generic query-builder object, keeping the contract explicit about
-   * what filtering the domain actually needs today (03-non-functional
-   * -requirements.md NFR-070, avoid artificial complexity).
+   * Results are ordered by symbol ascending so pagination is stable
+   * (symbols are unique): the same page request always returns the
+   * same slice unless the underlying data changed.
    */
-  list(filter?: { search?: string; assetType?: AssetType }): Promise<Asset[]>;
+  list(filter: AssetListFilter, page: PageRequest): Promise<Page<Asset>>;
 
   /**
    * Returns a single asset by id, or null if it does not exist.
