@@ -9,7 +9,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default [
   {
-    ignores: ["**/dist/**", "**/build/**", "**/coverage/**", "**/node_modules/**"],
+    ignores: [
+      "**/dist/**",
+      "**/build/**",
+      "**/coverage/**",
+      "**/node_modules/**",
+      "**/generated/**",
+    ],
   },
 
   js.configs.recommended,

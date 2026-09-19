@@ -96,6 +96,27 @@ export class Money {
     return new Money(this.amount.times(factor), this.currency);
   }
 
+  /**
+   * Divides this Money by a plain scalar divisor (e.g. a quantity).
+   * The divisor is not itself a Money — it has no currency. Symmetric
+   * with `multiply()`.
+   *
+   * Added to support weighted-average-cost calculations (see
+   * calculations/position-recalculation.ts) without reaching outside
+   * this value object for decimal arithmetic. Throws `InvalidMoneyError`
+   * on division by zero rather than propagating decimal.js's own error,
+   * consistent with how invalid input is surfaced elsewhere in Money.
+   */
+  divide(divisor: number | string): Money {
+    const divisorDecimal = new Decimal(divisor);
+
+    if (divisorDecimal.isZero()) {
+      throw new InvalidMoneyError("Cannot divide a monetary amount by zero.");
+    }
+
+    return new Money(this.amount.dividedBy(divisorDecimal), this.currency);
+  }
+
   isNegative(): boolean {
     return this.amount.isNegative();
   }

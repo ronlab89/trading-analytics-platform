@@ -1,0 +1,482 @@
+// Trading Analytics Platform — Prisma Schema
+// Phase 2, Step 2: initial slice (User, Portfolio, Asset only).
+// Remaining entities from 05-data-model.md are added in subsequent steps.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("user_role")
+}
+
+enum PortfolioStatus {
+  ACTIVE
+  ARCHIVED
+
+  @@map("portfolio_status")
+}
+
+enum AssetType {
+  STOCK
+  ETF
+  CRYPTO
+  FOREX
+
+  @@map("asset_type")
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("asset_status")
+}
+
+enum TransactionType {
+  BUY
+  SELL
+
+  @@map("transaction_type")
+}
+
+enum TransactionStatus {
+  DRAFT
+  VALIDATING
+  PROCESSING
+  COMPLETED
+  FAILED
+
+  @@map("transaction_status")
+}
+
+enum DecisionDirection {
+  LONG
+  SHORT
+  NEUTRAL
+
+  @@map("decision_direction")
+}
+
+enum ScenarioStatus {
+  DRAFT
+  SAVED
+  ARCHIVED
+
+  @@map("scenario_status")
+}
+
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+
+  @@map("notification_severity")
+}
+
+enum AlertType {
+  PRICE
+  PORTFOLIO_CHANGE
+  ALLOCATION
+  VOLATILITY
+
+  @@map("alert_type")
+}
+
+enum MarketDataSource {
+  MOCK
+  EXTERNAL
+
+  @@map("market_data_source")
+}
+
+enum DecisionEventType {
+  DECISION_CREATED
+  THESIS_RECORDED
+  POSITION_OPENED
+  PRICE_UPDATE
+  RISK_CHANGED
+  TARGET_REACHED
+  POSITION_ADJUSTED
+  POSITION_CLOSED
+  NOTE_ADDED
+
+  @@map("decision_event_type")
+}
+
+// ─────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────
+
+// See 05-data-model.md §5
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  displayName String   @map("display_name")
+  role        UserRole @default(USER)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  portfolios     Portfolio[]
+  watchlistItems WatchlistItem[]
+  alerts         Alert[]
+  notifications  Notification[]
+  preference     UserPreference?
+  credential     Credential?
+
+  @@map("users")
+}
+
+// See packages/domain/src/entities/credential.ts
+// Deliberately separate from User (one-to-one, userId as PK) — mirrors
+// the UserPreference pattern below. Password/credential handling lives
+// in its own capability rather than on the User model itself (see
+// user-repository.ts's documented boundary in packages/domain).
+model Credential {
+  userId       String   @id @map("user_id")
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credentials")
+}
+
+// See 05-data-model.md §6
+model Portfolio {
+  id           String          @id @default(cuid())
+  userId       String          @map("user_id")
+  name         String
+  description  String?
+  baseCurrency String          @map("base_currency")
+  status       PortfolioStatus @default(ACTIVE)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  positions    Position[]
+  decisions    Decision[]
+  scenarios    Scenario[]
+  alerts       Alert[]
+
+  @@index([userId])
+  @@map("portfolios")
+}
+
+// See 05-data-model.md §7
+// `exchange` and `metadata` are required (not nullable) to match the
+// domain-layer Asset entity (packages/domain/src/entities/asset.ts),
+// which defines both as non-optional. Prisma's initial schema had these
+// as optional by default assumption; aligned here so the future
+// Prisma-backed AssetRepository cannot return a shape that violates the
+// domain type at compile time.
+model Asset {
+  id        String      @id @default(cuid())
+  symbol    String      @unique
+  name      String
+  assetType AssetType   @map("asset_type")
+  currency  String
+  exchange  String
+  status    AssetStatus @default(ACTIVE)
+  metadata  Json        @default("{}")
+
+  transactions     Transaction[]
+  positions        Position[]
+  decisions        Decision[]
+  watchlistItems   WatchlistItem[]
+  alerts           Alert[]
+  marketPrice      MarketPrice?
+  marketEvents     MarketEvent[]
+  historicalPrices HistoricalPrice[]
+
+  @@map("assets")
+}
+
+// See 05-data-model.md §9-10
+// Money amounts (price, fees) use Decimal(18, 8): 8 decimal places covers
+// crypto-level precision (1 satoshi = 0.00000001 BTC) while 18 total digits
+// comfortably covers fiat amounts. See 04-tech-stack.md §28.1 and
+// 05-data-model.md §39 for the domain-level Money/decimal.js decision this
+// mirrors. `currency` is a single ISO code shared by `price` and `fees`,
+// consistent with the domain's Money value object (amount + currency).
+model Transaction {
+  id          String            @id @default(cuid())
+  portfolioId String            @map("portfolio_id")
+  assetId     String            @map("asset_id")
+  type        TransactionType
+  status      TransactionStatus @default(DRAFT)
+  quantity    Decimal           @db.Decimal(18, 8)
+  price       Decimal           @db.Decimal(18, 8)
+  fees        Decimal           @default(0) @db.Decimal(18, 8)
+  currency    String
+  executedAt  DateTime          @map("executed_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  asset     Asset     @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([portfolioId])
+  @@index([assetId])
+  @@map("transactions")
+}
+
+// See 05-data-model.md §8
+// `currency` added after the initial Step 3a slice (Phase 2 Step 5,
+// PositionRepository implementation): the domain entity requires both
+// averageEntryPrice and currentPrice to be Money (with currency), and
+// validates they match — the original schema had no column to persist
+// that currency at all. Mirrors the same shared-currency pattern already
+// used by Transaction.
+model Position {
+  id                String   @id @default(cuid())
+  portfolioId       String   @map("portfolio_id")
+  assetId           String   @map("asset_id")
+  quantity          Decimal  @db.Decimal(18, 8)
+  currency          String
+  averageEntryPrice Decimal  @map("average_entry_price") @db.Decimal(18, 8)
+  currentPrice      Decimal  @map("current_price") @db.Decimal(18, 8)
+  openedAt          DateTime @map("opened_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  asset     Asset     @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([portfolioId, assetId])
+  @@map("positions")
+}
+
+// See 05-data-model.md §11-12
+// `outcome` stays a plain string (not an enum) — the SDD does not close
+// it to a fixed list. `riskLevel` is a nullable plain string for the same
+// reason, matching the domain entity exactly (packages/domain/src/
+// entities/decision.ts: `riskLevel: string | null`, optional on create).
+// This corrects an earlier mismatch (Phase 2 Step 9) where riskLevel had
+// been made required in this schema despite being optional in the domain
+// entity created in Phase 1 — infrastructure aligned to the domain, not
+// the other way around, same principle applied to Asset in Step 6.
+model Decision {
+  id          String            @id @default(cuid())
+  portfolioId String            @map("portfolio_id")
+  assetId     String            @map("asset_id")
+  title       String
+  thesis      String
+  direction   DecisionDirection
+  entryPrice  Decimal?          @map("entry_price") @db.Decimal(18, 8)
+  targetPrice Decimal?          @map("target_price") @db.Decimal(18, 8)
+  stopPrice   Decimal?          @map("stop_price") @db.Decimal(18, 8)
+  currency    String?
+  riskLevel   String?           @map("risk_level")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  closedAt    DateTime?         @map("closed_at")
+  outcome     String?
+  notes       String?
+
+  portfolio Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  asset     Asset           @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  events    DecisionEvent[]
+
+  @@index([portfolioId])
+  @@index([assetId])
+  @@map("decisions")
+}
+
+// See 05-data-model.md §12
+// `type` is a Prisma enum backed by DecisionEventType, matching the
+// domain entity exactly (packages/domain/src/entities/decision-event.ts
+// uses the closed DecisionEventType enum, not a free string). This
+// corrects an earlier mismatch (Phase 2 Step 9) where `type` had been
+// left as a free string on the assumption that the SDD's "initial
+// examples" framing meant an open list — the domain layer (Phase 1,
+// already implemented and tested) settled this as a closed enum, which
+// is the actual source of truth here, not a fresh reading of the SDD.
+// `payload` remains Json: its shape varies per event type, and modeling
+// that relationally would require either a table per event type or a
+// wide nullable-column table, neither of which solves a real query need
+// today (03-non-functional-requirements.md NFR-070).
+model DecisionEvent {
+  id         String            @id @default(cuid())
+  decisionId String            @map("decision_id")
+  timestamp  DateTime
+  type       DecisionEventType
+  payload    Json
+
+  decision Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([decisionId])
+  @@map("decision_events")
+}
+
+// See 05-data-model.md §14-15
+// `changes` is Json for the same reason as DecisionEvent.payload: the SDD
+// (§15) explicitly leaves the persistence shape of scenario variable
+// changes open, and the domain layer already treats it as a plain
+// ScenarioChange[] rather than a relational entity (see PROGRESS.md).
+model Scenario {
+  id             String         @id @default(cuid())
+  portfolioId    String         @map("portfolio_id")
+  name           String
+  description    String?
+  baseSnapshotId String?        @map("base_snapshot_id")
+  status         ScenarioStatus @default(DRAFT)
+  changes        Json           @default("[]")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@map("scenarios")
+}
+
+// See 05-data-model.md §17
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  assetId   String   @map("asset_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assetId])
+  @@map("watchlist_items")
+}
+
+// See 05-data-model.md §22
+// `condition` stays a plain string per the same "SDD leaves it open"
+// principle applied elsewhere. `threshold` stays a plain Float, not
+// Decimal/Money — mirrors the domain decision that not all alert types
+// represent a currency amount (e.g. VOLATILITY, ALLOCATION thresholds).
+model Alert {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  assetId     String?   @map("asset_id")
+  portfolioId String?   @map("portfolio_id")
+  type        AlertType
+  condition   String
+  threshold   Float
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset     Asset?     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  portfolio Portfolio? @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("alerts")
+}
+
+// See 05-data-model.md §21
+// `type` stays a plain string for the same open-list reason as elsewhere.
+model Notification {
+  id        String               @id @default(cuid())
+  userId    String               @map("user_id")
+  type      String
+  title     String
+  message   String
+  severity  NotificationSeverity @default(INFO)
+  readAt    DateTime?            @map("read_at")
+  createdAt DateTime             @default(now()) @map("created_at")
+  metadata  Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+// See 05-data-model.md §23
+// One-to-one with User (userId is both PK and FK) — a user has exactly one
+// preferences row, created lazily on first write rather than at signup.
+// `notificationPreferences` is required (not nullable), matching the
+// domain entity exactly (packages/domain/src/entities/user-preference.ts
+// defines it as `Readonly<Record<string, unknown>>`, non-nullable) —
+// same infrastructure-aligned-to-domain correction applied to Asset
+// (Step 6) and Decision (Step 9).
+model UserPreference {
+  userId                   String   @id @map("user_id")
+  theme                    String   @default("system")
+  language                 String   @default("en")
+  defaultPortfolioId       String?  @map("default_portfolio_id")
+  reducedMotion            Boolean  @default(false) @map("reduced_motion")
+  notificationPreferences  Json     @default("{}") @map("notification_preferences")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+// See 05-data-model.md §18
+// `currency` added for the same reason as Position (Phase 2 Step 5,
+// PositionRepository/MarketPriceRepository implementation): the domain
+// entity requires price/previousPrice/change to be Money with a shared
+// currency, and the original schema had no column to persist it.
+model MarketPrice {
+  assetId        String            @id @map("asset_id")
+  price          Decimal           @db.Decimal(18, 8)
+  currency       String
+  previousPrice  Decimal           @map("previous_price") @db.Decimal(18, 8)
+  change         Decimal           @db.Decimal(18, 8)
+  changePercent  Float             @map("change_percent")
+  timestamp      DateTime
+  source         MarketDataSource @default(MOCK)
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("market_prices")
+}
+
+// See 05-data-model.md §19
+// `sequence` supports the ordering/stale-event-rejection rules defined in
+// 07-realtime-spec.md §24 (incomingSequence > lastProcessedSequence).
+model MarketEvent {
+  id        String   @id @default(cuid())
+  assetId   String   @map("asset_id")
+  price     Decimal  @db.Decimal(18, 8)
+  currency  String
+  timestamp DateTime
+  sequence  BigInt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, sequence])
+  @@map("market_events")
+}
+
+// See 05-data-model.md §20
+// `currency` added for the same reason as Position and MarketPrice: the
+// domain entity requires open/high/low/close to be Money with a shared
+// currency, and the original schema had no column to persist it.
+model HistoricalPrice {
+  assetId   String   @map("asset_id")
+  timestamp DateTime
+  currency  String
+  open      Decimal  @db.Decimal(18, 8)
+  high      Decimal  @db.Decimal(18, 8)
+  low       Decimal  @db.Decimal(18, 8)
+  close     Decimal  @db.Decimal(18, 8)
+  volume    Decimal  @db.Decimal(24, 8)
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([assetId, timestamp])
+  @@map("historical_prices")
+}
