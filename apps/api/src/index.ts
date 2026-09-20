@@ -18,7 +18,11 @@ import { overviewRouter } from "./routes/overview.routes.js";
 const app = express();
 app.disable("x-powered-by");
 
-const port = process.env.PORT ? Number(process.env.PORT) : 7001;
+const port = env.PORT;
+
+// Explicit body-size ceiling (09-security-spec.md §27). 100kb matches the
+// Express default but is stated here so it is a deliberate, visible limit.
+const JSON_BODY_LIMIT = "100kb";
 
 // Security headers first, before anything else touches the request.
 app.use(helmet());
@@ -30,14 +34,20 @@ app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGIN }));
 
 app.use(requestId);
+
+// Health endpoints are registered before the rate limiter on purpose:
+// orchestrators and uptime monitors poll them frequently and must never
+// receive a 429 (14-deployment-spec.md §50-51). They are cheap and
+// expose no user data.
+app.use(healthRouter);
+
 app.use(generalApiRateLimiter);
-app.use(express.json());
+app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
 app.get("/", (_req, res) => {
   res.json({ service: "trading-api", status: "ok" });
 });
 
-app.use(healthRouter);
 app.use(authRouter);
 app.use(portfoliosRouter);
 app.use(positionsRouter);
