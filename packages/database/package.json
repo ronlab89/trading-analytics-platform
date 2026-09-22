@@ -9,12 +9,13 @@
     "build": "tsc --build",
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:test:migrate": "dotenv -e ../../.env.test.local -- prisma migrate deploy",
     "db:reset": "dotenv -e ../../.env -- prisma migrate reset",
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:studio": "dotenv -e ../../.env -- prisma studio",
     "typecheck": "tsc --noEmit",
-    "test": "dotenv -e ../../.env -- vitest run",
-    "test:watch": "dotenv -e ../../.env -- vitest"
+    "test": "dotenv -e ../../.env.test.local -- vitest run",
+    "test:watch": "dotenv -e ../../.env.test.local -- vitest"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
