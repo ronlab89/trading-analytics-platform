@@ -1,6 +1,7 @@
 import rateLimit from "express-rate-limit";
 import type { Request, Response } from "express";
 import type { AppErrorCode } from "../errors/app-error.js";
+import { env } from "../config/env.js";
 
 interface RateLimitErrorBody {
   error: {
@@ -30,6 +31,17 @@ function rateLimitHandler(message: string) {
 }
 
 /**
+ * Rate limiting is disabled under NODE_ENV=test: integration tests run
+ * many requests (including repeated logins across independent test
+ * cases) against a single in-process app instance sharing one IP-based
+ * counter, which would make unrelated tests fail once a threshold is
+ * crossed. The middleware's own behavior (429 + response shape) is
+ * verified separately by a dedicated unit test that exercises it in
+ * isolation (see rate-limit.test.ts), not by the full integration suite.
+ */
+const skipInTest = (): boolean => env.NODE_ENV === "test";
+
+/**
  * Applied globally to every request (see index.ts). A generous ceiling
  * meant to absorb abusive/bot traffic and protect server + database
  * resources, not to constrain normal API usage.
@@ -45,6 +57,7 @@ export const generalApiRateLimiter = rateLimit({
   limit: 300,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: skipInTest,
   handler: rateLimitHandler("Too many requests. Please try again later."),
 });
 
@@ -61,5 +74,6 @@ export const loginRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: skipInTest,
   handler: rateLimitHandler("Too many login attempts. Please try again later."),
 });
