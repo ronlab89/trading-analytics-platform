@@ -997,23 +997,28 @@
   .user-menu { position: relative; }
   .avatar-trigger.active { border-left-color: transparent; } /* avatar shouldn't show the section accent bar */
 
-  .user-dropdown {
+  /* Shared popover base — reused by .user-dropdown and .notif-dropdown */
+  .dropdown-panel {
     position: absolute;
-    left: calc(100% + 8px);
-    bottom: 0;
-    width: 220px;
+    width: 240px;
     background: var(--surface-2);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
     box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
-    padding: var(--space-2);
     z-index: 50;
     animation: dropdown-in 0.15s var(--easing);
   }
-  .user-dropdown[hidden] { display: none; }
+  .dropdown-panel[hidden] { display: none; }
   @keyframes dropdown-in {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  .user-dropdown {
+    left: calc(100% + 8px);
+    bottom: 0;
+    width: 220px;
+    padding: var(--space-2);
   }
 
   .user-dropdown-header {
@@ -1046,6 +1051,70 @@
   .user-dropdown-item:hover { background: var(--surface-3); }
   .user-dropdown-item--danger { color: var(--loss); }
   .user-dropdown-item--danger svg { color: var(--loss); }
+
+  /* ============================================
+     11. NOTIFICATIONS — bell trigger + panel (top bar)
+     Reuses .dropdown-panel (popover shell) and .timeline-row (list item).
+     ============================================ */
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    position: relative;
+    transition: background var(--duration-fast) var(--easing), color var(--duration-fast) var(--easing);
+  }
+  .icon-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  .notif-menu { position: relative; }
+
+  .notif-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: var(--loss);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .notif-badge[hidden] { display: none; }
+
+  .notif-dropdown {
+    top: calc(100% + 8px);
+    right: 0;
+    padding: var(--space-2) var(--space-4) var(--space-2);
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
+  .dropdown-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) 0;
+    margin-bottom: var(--space-1);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .notif-item.is-unread .timeline-title { font-weight: 600; color: var(--text-primary); }
 </style>
 </head>
 <body>
