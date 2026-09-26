@@ -700,6 +700,271 @@
     .create-form-grid { grid-template-columns: 1fr; }
     .filter-bar { width: 100%; }
   }
+
+  /* ============================================
+     8. LOGIN GATE — pre-shell auth screen
+     Single-use (only #login-gate consumes this), but kept in its
+     own numbered section so it's easy to find/remove later.
+     ============================================ */
+  .login-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background:
+      radial-gradient(600px circle at 50% 0%, rgba(77, 143, 239, 0.10), transparent 60%),
+      var(--surface-0);
+  }
+  .login-gate[hidden] { display: none; }
+
+  .login-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8) var(--space-6);
+    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.45);
+    animation: login-card-in 0.3s var(--easing);
+  }
+  @keyframes login-card-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .login-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+  }
+  .login-logo {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: var(--surface-0);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+  }
+  .login-brand-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .login-heading { margin-bottom: var(--space-6); }
+  .login-heading h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+  }
+  .login-heading p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .login-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .login-field label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+  }
+  .login-field input {
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    width: 100%;
+    transition: border-color var(--duration-fast) var(--easing), box-shadow var(--duration-fast) var(--easing);
+  }
+  .login-field input::placeholder { color: var(--text-tertiary); }
+  .login-field input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(77, 143, 239, 0.15);
+  }
+  .login-field.has-error input {
+    border-color: var(--loss);
+  }
+  .login-field.has-error input:focus {
+    box-shadow: 0 0 0 3px rgba(242, 85, 90, 0.15);
+  }
+  .login-field-error {
+    font-size: 12px;
+    color: var(--loss);
+    min-height: 0;
+  }
+  .login-field-error:empty { display: none; }
+
+  .login-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+  }
+  .login-banner[hidden] { display: none; }
+  .login-banner svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+  .login-banner--error {
+    background: rgba(242, 85, 90, 0.10);
+    border: 1px solid rgba(242, 85, 90, 0.3);
+    color: var(--loss);
+  }
+
+  .btn-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    height: 42px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background: var(--accent);
+    color: #0a0e14;
+    transition: background var(--duration-fast) var(--easing), border-color var(--duration-fast) var(--easing), opacity var(--duration-fast) var(--easing);
+  }
+  .btn-login:hover { background: var(--accent-hover); }
+  .btn-login:disabled { opacity: 0.7; cursor: not-allowed; }
+  .btn-login--demo {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+  }
+  .btn-login--demo:hover { border-color: var(--border-strong); background: var(--surface-2); }
+
+  .btn-login-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(10, 14, 20, 0.3);
+    border-top-color: #0a0e14;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  .btn-login--demo .btn-login-spinner {
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--text-primary);
+  }
+  .btn-login-spinner[hidden] { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .login-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: var(--space-6) 0;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .login-divider::before, .login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-subtle);
+  }
+
+  .login-footnote {
+    margin: var(--space-6) 0 0 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  /* ============================================
+     9. TOAST SYSTEM (reusable across all views)
+     Trigger from any view via the shared #toast-container.
+     Variants: --success / --error / --warning / --info
+     ============================================ */
+  .toast-container {
+    position: fixed;
+    top: var(--space-4);
+    right: var(--space-4);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: 360px;
+    pointer-events: none;
+  }
+  .toast {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.4);
+    font-size: 13px;
+    pointer-events: auto;
+    animation: toast-in 0.2s var(--easing);
+  }
+  .toast.is-leaving { animation: toast-out 0.15s var(--easing) forwards; }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateX(16px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes toast-out {
+    to { opacity: 0; transform: translateX(16px); }
+  }
+  .toast svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+  .toast-body { flex: 1; }
+  .toast-title { font-weight: 600; margin-bottom: 2px; }
+  .toast-message { color: var(--text-secondary); }
+  .toast-close {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .toast-close:hover { color: var(--text-primary); }
+  .toast--success { border-left-color: var(--profit); }
+  .toast--success svg { color: var(--profit); }
+  .toast--error { border-left-color: var(--loss); }
+  .toast--error svg { color: var(--loss); }
+  .toast--warning { border-left-color: var(--warning); }
+  .toast--warning svg { color: var(--warning); }
+  .toast--info { border-left-color: var(--info); }
+  .toast--info svg { color: var(--info); }
+
+  @media (max-width: 560px) {
+    .toast-container { left: var(--space-4); right: var(--space-4); max-width: none; }
+    .login-card { padding: var(--space-6) var(--space-4); }
+  }
 </style>
 </head>
 <body>
