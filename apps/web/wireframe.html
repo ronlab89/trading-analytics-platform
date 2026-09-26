@@ -1244,7 +1244,37 @@
               <thead>
                 <tr><th>Name</th><th>Base Currency</th><th>Status</th></tr>
               </thead>
-              <tbody id="portfolios-table-body"></tbody>
+              <tbody id="portfolios-table-body" class="is-clickable-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- PORTFOLIO DETAIL VIEW (reached by clicking a row in Portfolios) ---------- -->
+    <section class="view" id="view-portfolio-detail" hidden>
+      <button class="pane-debug-link" id="portfolio-detail-back" data-view="portfolios" style="margin-bottom: var(--space-3)">&larr; Back to Portfolios</button>
+      <div class="view-header">
+        <h1 id="portfolio-detail-name">Portfolio</h1>
+        <p>Positions currently held in this portfolio.</p>
+      </div>
+      <div class="pane">
+        <div class="pane-header"><h2>Positions</h2><button class="pane-debug-link" id="simulate-positions-error">Simulate error</button></div>
+        <div class="pane-body" style="padding:0">
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th class="numeric">Quantity</th>
+                  <th class="numeric">Avg Entry Price</th>
+                  <th class="numeric">Current Price</th>
+                  <th class="numeric">Current Value</th>
+                  <th class="numeric">Unrealized P/L</th>
+                  <th class="numeric">% Allocation</th>
+                </tr>
+              </thead>
+              <tbody id="positions-table-body"></tbody>
             </table>
           </div>
         </div>
