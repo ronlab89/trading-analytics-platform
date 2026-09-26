@@ -16,8 +16,12 @@ interface RateLimitErrorBody {
  * used everywhere else in the API (error-handler.ts /
  * 07-api-spec.md §5-6), instead of express-rate-limit's default plain
  * text body. `RATE_LIMITED` is already part of AppErrorCode.
+ *
+ * Exported so rate-limit.test.ts can reuse it to build an isolated
+ * limiter with a tiny threshold, instead of duplicating the response
+ * shape or depending on the real (test-skipped) exported limiters.
  */
-function rateLimitHandler(message: string) {
+export function rateLimitHandler(message: string) {
   return (req: Request, res: Response): void => {
     const body: RateLimitErrorBody = {
       error: {
