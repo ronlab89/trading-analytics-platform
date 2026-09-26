@@ -13,6 +13,7 @@ import { portfoliosRouter } from "./routes/portfolios.routes.js";
 import { positionsRouter } from "./routes/positions.routes.js";
 import { transactionsRouter } from "./routes/transactions.routes.js";
 import { assetsRouter } from "./routes/assets.routes.js";
+import { marketRouter } from "./routes/market.routes.js";
 import { analyticsRouter } from "./routes/analytics.routes.js";
 import { overviewRouter } from "./routes/overview.routes.js";
 
@@ -65,6 +66,7 @@ export function createApp(): Express {
   app.use(positionsRouter);
   app.use(transactionsRouter);
   app.use(assetsRouter);
+  app.use(marketRouter);
   app.use(analyticsRouter);
   app.use(overviewRouter);
 
