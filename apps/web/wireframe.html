@@ -1824,6 +1824,93 @@
     ],
   };
 
+  const mockPositionsByPortfolio = {
+    port_1: [
+      { assetId: 'AAPL', quantity: 18, avgEntryPrice: { amount: '176.50', currency: 'USD' }, currentPrice: { amount: '182.30', currency: 'USD' }, currentValue: { amount: '3281.40', currency: 'USD' }, unrealizedPL: { amount: '104.40', currency: 'USD' }, allocationPercent: 34 },
+      { assetId: 'MSFT', quantity: 12, avgEntryPrice: { amount: '398.40', currency: 'USD' }, currentPrice: { amount: '410.10', currency: 'USD' }, currentValue: { amount: '4921.20', currency: 'USD' }, unrealizedPL: { amount: '140.40', currency: 'USD' }, allocationPercent: 22 },
+      { assetId: 'NVDA', quantity: 20, avgEntryPrice: { amount: '128.55', currency: 'USD' }, currentPrice: { amount: '119.80', currency: 'USD' }, currentValue: { amount: '2396.00', currency: 'USD' }, unrealizedPL: { amount: '-175.00', currency: 'USD' }, allocationPercent: 18 },
+    ],
+    port_2: [
+      { assetId: 'KO', quantity: 40, avgEntryPrice: { amount: '58.10', currency: 'USD' }, currentPrice: { amount: '61.75', currency: 'USD' }, currentValue: { amount: '2470.00', currency: 'USD' }, unrealizedPL: { amount: '146.00', currency: 'USD' }, allocationPercent: 45 },
+      { assetId: 'JNJ', quantity: 15, avgEntryPrice: { amount: '152.30', currency: 'USD' }, currentPrice: { amount: '149.90', currency: 'USD' }, currentValue: { amount: '2248.50', currency: 'USD' }, unrealizedPL: { amount: '-36.00', currency: 'USD' }, allocationPercent: 41 },
+    ],
+    port_3: [],
+  };
+
+  let currentPortfolioDetailId = null;
+
+  function renderPortfolios(response) {
+    const tbody = document.getElementById('portfolios-table-body');
+    if (response.data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state"><strong>No portfolios yet</strong><p>Create your first portfolio to start tracking positions.</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = response.data.map(p => `
+      <tr data-portfolio-id="${p.id}">
+        <td>${p.name}</td>
+        <td class="numeric">${p.baseCurrency}</td>
+        <td><span class="badge badge--${p.status.toLowerCase()}">${p.status}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('toggle-portfolio-form').addEventListener('click', () => {
+    document.getElementById('portfolio-form').classList.add('open');
+  });
+  document.getElementById('cancel-portfolio-form').addEventListener('click', () => {
+    document.getElementById('portfolio-form').classList.remove('open');
+  });
+
+  // ============================================
+  // RENDER — Portfolio detail (Positions)
+  // ============================================
+  function renderPositions(portfolioId) {
+    const tbody = document.getElementById('positions-table-body');
+    const rows = mockPositionsByPortfolio[portfolioId] || [];
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><strong>No open positions</strong><p>Transactions for this portfolio will show up here as positions.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(pos => {
+      const plUp = Number(pos.unrealizedPL.amount) >= 0;
+      return `
+        <tr>
+          <td>${pos.assetId}</td>
+          <td class="numeric">${pos.quantity}</td>
+          <td class="numeric">${formatMoney(pos.avgEntryPrice)}</td>
+          <td class="numeric">${formatMoney(pos.currentPrice)}</td>
+          <td class="numeric">${formatMoney(pos.currentValue)}</td>
+          <td class="numeric ${plUp ? 'value-positive' : 'value-negative'}">${plUp ? '+' : ''}${formatMoney(pos.unrealizedPL)}</td>
+          <td class="numeric">${pos.allocationPercent}%</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function openPortfolioDetail(portfolioId) {
+    const portfolio = mockPortfolios.data.find(p => p.id === portfolioId);
+    currentPortfolioDetailId = portfolioId;
+
+    document.querySelectorAll('.view').forEach(v => v.hidden = true);
+    document.getElementById('view-portfolio-detail').hidden = false;
+    document.getElementById('portfolio-detail-name').textContent = portfolio ? portfolio.name : 'Portfolio';
+    document.getElementById('active-view-label').textContent = portfolio ? portfolio.name : 'Portfolio';
+
+    // This is a sub-view of Portfolios, so the sidebar keeps that icon highlighted.
+    document.querySelectorAll('.activity-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-view="portfolios"]').classList.add('active');
+
+    renderTableSkeleton(document.getElementById('positions-table-body'), 7);
+    setTimeout(() => renderPositions(portfolioId), 500);
+  }
+
+  document.getElementById('portfolios-table-body').addEventListener('click', (e) => {
+    const row = e.target.closest('tr[data-portfolio-id]');
+    if (row) openPortfolioDetail(row.dataset.portfolioId);
+  });
+
   const mockTransactions = {
     data: [
       { id: 'txn_1', assetId: 'AAPL', type: 'BUY', quantity: 10, price: { amount: '180.20', currency: 'USD' }, executedAt: '2026-09-15T14:30:00Z' },
@@ -1838,31 +1925,6 @@
   function formatDate(iso) {
     return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
-
-  // ============================================
-  // RENDER — Portfolios
-  // ============================================
-  function renderPortfolios(response) {
-    const tbody = document.getElementById('portfolios-table-body');
-    if (response.data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state"><strong>No portfolios yet</strong><p>Create your first portfolio to start tracking positions.</p></div></td></tr>`;
-      return;
-    }
-    tbody.innerHTML = response.data.map(p => `
-      <tr>
-        <td>${p.name}</td>
-        <td class="numeric">${p.baseCurrency}</td>
-        <td><span class="badge badge--${p.status.toLowerCase()}">${p.status}</span></td>
-      </tr>
-    `).join('');
-  }
-
-  document.getElementById('toggle-portfolio-form').addEventListener('click', () => {
-    document.getElementById('portfolio-form').classList.add('open');
-  });
-  document.getElementById('cancel-portfolio-form').addEventListener('click', () => {
-    document.getElementById('portfolio-form').classList.remove('open');
-  });
 
   // ============================================
   // RENDER — Transactions (con filtros locales)
@@ -1921,6 +1983,9 @@
 
   wireErrorSimulation('simulate-portfolios-error', document.getElementById('portfolios-table-body'), true,
     'Unable to load portfolios.', () => renderPortfolios(mockPortfolios));
+
+  wireErrorSimulation('simulate-positions-error', document.getElementById('positions-table-body'), true,
+    'Unable to load positions.', () => renderPositions(currentPortfolioDetailId));
 
   renderTableSkeleton(document.getElementById('transactions-table-body'), 5);
   setTimeout(() => renderTransactions(mockTransactions), 500);
