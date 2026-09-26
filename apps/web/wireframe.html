@@ -1262,6 +1262,131 @@
 
 <script>
   // ============================================
+  // TOAST SYSTEM — reusable helper, callable from any view
+  // Usage: showToast('success' | 'error' | 'warning' | 'info', title, message)
+  // ============================================
+  const toastIcons = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  };
+
+  function showToast(type, title, message, duration = 4000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+    toast.innerHTML = `
+      ${toastIcons[type] || toastIcons.info}
+      <div class="toast-body">
+        <div class="toast-title">${title}</div>
+        ${message ? `<div class="toast-message">${message}</div>` : ''}
+      </div>
+      <button class="toast-close" aria-label="Dismiss">&times;</button>
+    `;
+    container.appendChild(toast);
+
+    const dismiss = () => {
+      toast.classList.add('is-leaving');
+      toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    };
+    toast.querySelector('.toast-close').addEventListener('click', dismiss);
+    if (duration) setTimeout(dismiss, duration);
+  }
+
+  // ============================================
+  // LOGIN GATE — mock auth: validation, loading state, demo entry
+  // ============================================
+  const loginGate = document.getElementById('login-gate');
+  const appShell = document.getElementById('app-shell');
+  const loginForm = document.getElementById('login-form');
+  const loginEmail = document.getElementById('login-email');
+  const loginPassword = document.getElementById('login-password');
+  const loginSubmit = document.getElementById('login-submit');
+  const loginDemo = document.getElementById('login-demo');
+  const loginFormError = document.getElementById('login-form-error');
+  const loginFormErrorText = document.getElementById('login-form-error-text');
+
+  function setFieldError(inputId, errorId, message) {
+    document.getElementById(inputId).closest('.login-field').classList.toggle('has-error', Boolean(message));
+    document.getElementById(errorId).textContent = message || '';
+  }
+
+  function validateLoginForm() {
+    let isValid = true;
+    const emailValue = loginEmail.value.trim();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailValue) {
+      setFieldError('login-email', 'login-email-error', 'Email is required.');
+      isValid = false;
+    } else if (!emailPattern.test(emailValue)) {
+      setFieldError('login-email', 'login-email-error', 'Enter a valid email address.');
+      isValid = false;
+    } else {
+      setFieldError('login-email', 'login-email-error', '');
+    }
+
+    if (!loginPassword.value) {
+      setFieldError('login-password', 'login-password-error', 'Password is required.');
+      isValid = false;
+    } else {
+      setFieldError('login-password', 'login-password-error', '');
+    }
+
+    return isValid;
+  }
+
+  function setButtonLoading(button, isLoading) {
+    button.disabled = isLoading;
+    button.querySelector('.btn-login-label').hidden = isLoading;
+    button.querySelector('.btn-login-spinner').hidden = !isLoading;
+  }
+
+  function enterApp() {
+    loginGate.hidden = true;
+    appShell.hidden = false;
+  }
+
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    loginFormError.hidden = true;
+
+    if (!validateLoginForm()) return;
+
+    setButtonLoading(loginSubmit, true);
+
+    setTimeout(() => {
+      setButtonLoading(loginSubmit, false);
+
+      // Mock rule: this address always fails, to demo the invalid-credentials state.
+      const isInvalidDemoAttempt = loginEmail.value.trim().toLowerCase() === 'wrong@example.com';
+
+      if (isInvalidDemoAttempt) {
+        loginFormErrorText.textContent = 'Invalid email or password.';
+        loginFormError.hidden = false;
+        showToast('error', 'Sign in failed', 'Check your credentials and try again.');
+        return;
+      }
+
+      showToast('success', 'Welcome back', 'You have signed in successfully.');
+      enterApp();
+    }, 900);
+  });
+
+  loginDemo.addEventListener('click', () => {
+    setButtonLoading(loginDemo, true);
+    setTimeout(() => {
+      setButtonLoading(loginDemo, false);
+      showToast('info', 'Demo mode', 'You are viewing Trading Analytics with mock data.');
+      enterApp();
+    }, 600);
+  });
+
+  loginEmail.addEventListener('input', () => setFieldError('login-email', 'login-email-error', ''));
+  loginPassword.addEventListener('input', () => setFieldError('login-password', 'login-password-error', ''));
+
+  // ============================================
   // MOCK DATA — misma forma que apps/api devuelve
   // ============================================
   const mockOverview = {
