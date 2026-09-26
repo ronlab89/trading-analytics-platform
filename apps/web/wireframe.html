@@ -108,8 +108,9 @@
     flex-direction: column;
     align-items: center;
     padding-top: var(--space-4);
+    padding-bottom: var(--space-2);
     gap: var(--space-2);
-    overflow: hidden;
+    overflow: visible;
   }
   .activity-item {
     width: 40px;
@@ -1629,7 +1630,7 @@
   // ============================================
   const viewLabels = {
     dashboard: 'Dashboard', portfolios: 'Portfolios', transactions: 'Transactions',
-    analytics: 'Analytics', activity: 'Activity',
+    analytics: 'Analytics', activity: 'Activity', settings: 'Settings', profile: 'Profile',
   };
 
   function navigateTo(viewId) {
@@ -1640,8 +1641,48 @@
     document.getElementById('active-view-label').textContent = viewLabels[viewId];
   }
 
-  document.querySelectorAll('.activity-item').forEach(btn => {
-    btn.addEventListener('click', () => navigateTo(btn.dataset.view));
+  // Any element carrying data-view navigates — sidebar icons, dropdown items,
+  // and inline links like "Go to Settings" on the Profile view all use this.
+  document.querySelectorAll('[data-view]').forEach(el => {
+    el.addEventListener('click', () => {
+      userDropdown.hidden = true;
+      navigateTo(el.dataset.view);
+    });
+  });
+
+  // ============================================
+  // USER MENU — avatar dropdown + logout
+  // ============================================
+  const userDropdown = document.getElementById('user-dropdown');
+  const avatarTrigger = document.getElementById('user-avatar-trigger');
+
+  avatarTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    userDropdown.hidden = !userDropdown.hidden;
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!userDropdown.hidden && !e.target.closest('.user-menu')) {
+      userDropdown.hidden = true;
+    }
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    userDropdown.hidden = true;
+    appShell.hidden = true;
+    loginGate.hidden = false;
+    loginForm.reset();
+    setFieldError('login-email', 'login-email-error', '');
+    setFieldError('login-password', 'login-password-error', '');
+    loginFormError.hidden = true;
+    showToast('info', 'Logged out', 'You have been signed out.');
+  });
+
+  // ============================================
+  // SETTINGS — mock save
+  // ============================================
+  document.getElementById('settings-save').addEventListener('click', () => {
+    showToast('success', 'Settings saved', 'Your changes have been saved.');
   });
 
   // ============================================
