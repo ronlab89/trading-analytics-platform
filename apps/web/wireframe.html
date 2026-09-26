@@ -704,7 +704,65 @@
 </head>
 <body>
 
-<div class="app-shell">
+<!-- ============================================
+     LOGIN GATE — pre-shell auth screen (§55, §65)
+     Shown by default; hides on successful login / "Enter Demo".
+     ============================================ -->
+<div class="login-gate" id="login-gate">
+  <div class="login-card">
+
+    <div class="login-brand">
+      <span class="login-logo">TA</span>
+      <span class="login-brand-name">Trading Analytics</span>
+    </div>
+
+    <div class="login-heading">
+      <h1>Welcome back</h1>
+      <p>Sign in to access your portfolios</p>
+    </div>
+
+    <form class="login-form" id="login-form" novalidate>
+
+      <div class="login-field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" name="email" placeholder="you@example.com" autocomplete="email" />
+        <span class="login-field-error" id="login-email-error"></span>
+      </div>
+
+      <div class="login-field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" name="password" placeholder="••••••••" autocomplete="current-password" />
+        <span class="login-field-error" id="login-password-error"></span>
+      </div>
+
+      <div class="login-banner login-banner--error" id="login-form-error" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="login-form-error-text">Invalid email or password.</span>
+      </div>
+
+      <button type="submit" class="btn-login" id="login-submit">
+        <span class="btn-login-label">Sign in</span>
+        <span class="btn-login-spinner" hidden></span>
+      </button>
+
+    </form>
+
+    <div class="login-divider"><span>or</span></div>
+
+    <button type="button" class="btn-login btn-login--demo" id="login-demo">
+      <span class="btn-login-label">Enter Demo</span>
+      <span class="btn-login-spinner" hidden></span>
+    </button>
+
+    <p class="login-footnote">Demo mode uses mock data — no real account required.</p>
+
+  </div>
+</div>
+
+<!-- Toast container (global, reused across app) -->
+<div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<div class="app-shell" id="app-shell" hidden>
 
   <!-- ============================================
        ACTIVITY BAR
