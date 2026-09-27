@@ -1115,6 +1115,33 @@
   }
 
   .notif-item.is-unread .timeline-title { font-weight: 600; color: var(--text-primary); }
+
+  /* ============================================
+     12. TABS — reusable segmented view switcher
+     Used by Markets (Watchlist / All Assets); safe to reuse in any
+     other view that needs to split content without a new nav item.
+     ============================================ */
+  .tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: var(--space-4);
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: var(--space-3) var(--space-2);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color var(--duration-fast) var(--easing), border-color var(--duration-fast) var(--easing);
+  }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel[hidden] { display: none; }
 </style>
 </head>
 <body>
