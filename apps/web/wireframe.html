@@ -1929,7 +1929,7 @@
   const viewLabels = {
     dashboard: 'Dashboard', portfolios: 'Portfolios', transactions: 'Transactions',
     analytics: 'Analytics', activity: 'Activity', settings: 'Settings', profile: 'Profile',
-    markets: 'Markets',
+    markets: 'Markets', 'decision-center': 'Decision Center',
   };
 
   function navigateTo(viewId) {
@@ -2144,15 +2144,24 @@
   document.getElementById('assets-search').addEventListener('input', renderAssets);
   document.getElementById('assets-type-filter').addEventListener('change', renderAssets);
 
-  document.querySelectorAll('#markets-tabs .tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#markets-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelectorAll('#view-markets .tab-panel').forEach(p => {
-        p.hidden = p.dataset.tabPanel !== btn.dataset.tab;
+  // Generic tabs wiring — reused by Markets (Watchlist/All Assets) and
+  // Decision Center (Replay/Scenario Lab). Add more views by calling wireTabs().
+  function wireTabs(tabsId, viewId) {
+    const tabsEl = document.getElementById(tabsId);
+    const viewEl = document.getElementById(viewId);
+    tabsEl.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabsEl.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        viewEl.querySelectorAll('.tab-panel').forEach(p => {
+          p.hidden = p.dataset.tabPanel !== btn.dataset.tab;
+        });
       });
     });
-  });
+  }
+
+  wireTabs('markets-tabs', 'view-markets');
+  wireTabs('decision-tabs', 'view-decision-center');
 
   renderTableSkeleton(document.getElementById('watchlist-table-body'), 5);
   renderTableSkeleton(document.getElementById('assets-table-body'), 5);
@@ -2165,6 +2174,110 @@
     'Unable to load watchlist.', renderWatchlist);
   wireErrorSimulation('simulate-assets-error', document.getElementById('assets-table-body'), true,
     'Unable to load assets.', renderAssets);
+
+  // ============================================
+  // DECISION CENTER — Replay
+  // ============================================
+  const mockReplaySnapshots = [
+    { date: 'Aug 24', totalValue: { amount: '118200.00', currency: 'USD' }, returnPercent: 9.8, riskLevel: 'LOW' },
+    { date: 'Aug 29', totalValue: { amount: '120100.00', currency: 'USD' }, returnPercent: 11.2, riskLevel: 'LOW' },
+    { date: 'Sep 3', totalValue: { amount: '119400.00', currency: 'USD' }, returnPercent: 10.5, riskLevel: 'MODERATE' },
+    { date: 'Sep 8', totalValue: { amount: '122800.00', currency: 'USD' }, returnPercent: 13.7, riskLevel: 'MODERATE' },
+    { date: 'Sep 13', totalValue: { amount: '121600.00', currency: 'USD' }, returnPercent: 12.4, riskLevel: 'MODERATE' },
+    { date: 'Sep 18', totalValue: { amount: '124300.00', currency: 'USD' }, returnPercent: 15.1, riskLevel: 'MODERATE' },
+    { date: 'Sep 22', totalValue: { amount: '125430.00', currency: 'USD' }, returnPercent: 17.0, riskLevel: 'MODERATE' },
+  ];
+
+  function renderReplayMetrics(index) {
+    const snap = mockReplaySnapshots[index];
+    document.getElementById('replay-date-label').textContent = snap.date;
+
+    const container = document.getElementById('replay-metrics');
+    const returnUp = snap.returnPercent >= 0;
+    container.innerHTML = `
+      <div class="pane pane--metric pane--accent-neutral">
+        <div class="pane-header"><h2>Portfolio Value</h2></div>
+        <div class="pane-body"><span class="metric-value">${formatMoney(snap.totalValue)}</span></div>
+      </div>
+      <div class="pane pane--metric pane--accent-${returnUp ? 'profit' : 'loss'}">
+        <div class="pane-header"><h2>Total Return</h2></div>
+        <div class="pane-body"><span class="metric-delta ${returnUp ? 'up' : 'down'}">${arrowIcon(returnUp)} ${formatPercent(snap.returnPercent)}</span></div>
+      </div>
+      <div class="pane pane--metric pane--accent-warning">
+        <div class="pane-header"><h2>Risk Level</h2></div>
+        <div class="pane-body"><span class="metric-value" style="font-size:20px">${snap.riskLevel}</span></div>
+      </div>
+    `;
+  }
+
+  const replaySlider = document.getElementById('replay-slider');
+  replaySlider.max = mockReplaySnapshots.length - 1;
+  replaySlider.addEventListener('input', () => renderReplayMetrics(Number(replaySlider.value)));
+
+  let replayInterval = null;
+  const replayPlayBtn = document.getElementById('replay-play-btn');
+  replayPlayBtn.addEventListener('click', () => {
+    if (replayInterval) {
+      clearInterval(replayInterval);
+      replayInterval = null;
+      replayPlayBtn.innerHTML = '&#9654; Play';
+      return;
+    }
+    replayPlayBtn.innerHTML = '&#10074;&#10074; Pause';
+    replayInterval = setInterval(() => {
+      let next = Number(replaySlider.value) + 1;
+      if (next > Number(replaySlider.max)) next = 0;
+      replaySlider.value = next;
+      renderReplayMetrics(next);
+    }, 900);
+  });
+
+  renderReplayMetrics(mockReplaySnapshots.length - 1);
+
+  // ============================================
+  // DECISION CENTER — Scenario Lab
+  // ============================================
+  const mockScenarios = {
+    market_crash: { label: 'Market crash (-15%)', valueImpactPercent: -15, description: 'Simulates a broad market downturn applied evenly across your equity positions.' },
+    market_rally: { label: 'Market rally (+10%)', valueImpactPercent: 10, description: 'Simulates a broad market upswing applied evenly across your equity positions.' },
+    rebalance_5050: { label: 'Rebalance to 50/50 equity/cash', valueImpactPercent: -2.4, description: 'Simulates moving half your equity exposure into cash, reducing volatility.' },
+  };
+
+  document.getElementById('run-scenario-btn').addEventListener('click', () => {
+    const btn = document.getElementById('run-scenario-btn');
+    const scenario = mockScenarios[document.getElementById('scenario-select').value];
+    const resultPane = document.getElementById('scenario-result-pane');
+    const resultBody = document.getElementById('scenario-result-body');
+
+    setButtonLoading(btn, true);
+    resultPane.hidden = true;
+
+    setTimeout(() => {
+      setButtonLoading(btn, false);
+
+      const currentValue = 125430.25;
+      const projectedValue = currentValue * (1 + scenario.valueImpactPercent / 100);
+      const impactUp = scenario.valueImpactPercent >= 0;
+
+      resultBody.innerHTML = `
+        <p style="margin:0 0 var(--space-4) 0; color:var(--text-secondary); font-size:13px">${scenario.description}</p>
+        <div class="activity-row">
+          <span class="activity-desc">Current portfolio value</span>
+          <span class="activity-time">${formatMoney({ amount: currentValue.toFixed(2), currency: 'USD' })}</span>
+        </div>
+        <div class="activity-row">
+          <span class="activity-desc">Projected portfolio value</span>
+          <span class="activity-time ${impactUp ? 'value-positive' : 'value-negative'}">${formatMoney({ amount: projectedValue.toFixed(2), currency: 'USD' })}</span>
+        </div>
+        <div class="activity-row">
+          <span class="activity-desc">Estimated impact</span>
+          <span class="activity-time ${impactUp ? 'value-positive' : 'value-negative'}">${impactUp ? '+' : ''}${scenario.valueImpactPercent.toFixed(1)}%</span>
+        </div>
+      `;
+      resultPane.hidden = false;
+      showToast(impactUp ? 'success' : 'warning', 'Simulation complete', `${scenario.label} projected.`);
+    }, 900);
+  });
 
   // ============================================
   // RENDER — Dashboard
