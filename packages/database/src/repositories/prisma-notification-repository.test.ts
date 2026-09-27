@@ -84,6 +84,19 @@ describe("PrismaNotificationRepository", () => {
     expect(marked.readAt?.toISOString()).toBe(readAt.toISOString());
   });
 
+  it("returns a notification by id, or null if it does not exist", async () => {
+    const created = await repository.create({
+      userId,
+      type: "test.getbyid",
+      title: "Get by id",
+      message: "Find me.",
+      severity: "INFO",
+    });
+
+    expect((await repository.getById(created.id))?.id).toBe(created.id);
+    expect(await repository.getById("00000000-0000-0000-0000-000000000000")).toBeNull();
+  });
+
   it("marks all unread notifications for a user as read", async () => {
     await repository.create({
       userId,

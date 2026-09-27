@@ -18,6 +18,11 @@ export class PrismaNotificationRepository implements NotificationRepository {
     return rows.map(toDomainNotification);
   }
 
+  async getById(id: string): Promise<Notification | null> {
+    const row = await prisma.notification.findUnique({ where: { id } });
+    return row ? toDomainNotification(row) : null;
+  }
+
   async create(input: CreateNotificationInput): Promise<Notification> {
     const row = await prisma.notification.create({ data: toPrismaCreateInput(input) });
     return toDomainNotification(row);
