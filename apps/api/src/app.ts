@@ -17,6 +17,7 @@ import { marketRouter } from "./routes/market.routes.js";
 import { analyticsRouter } from "./routes/analytics.routes.js";
 import { overviewRouter } from "./routes/overview.routes.js";
 import { watchlistRouter } from "./routes/watchlist.routes.js";
+import { alertsRouter } from "./routes/alerts.routes.js";
 
 // Explicit body-size ceiling (09-security-spec.md §27). 100kb matches the
 // Express default but is stated here so it is a deliberate, visible limit.
@@ -71,6 +72,7 @@ export function createApp(): Express {
   app.use(analyticsRouter);
   app.use(overviewRouter);
   app.use(watchlistRouter);
+  app.use(alertsRouter);
 
   // Explicit 404 for any unmatched route — routed through AppError so
   // it travels the same normalized error path as every other failure.
