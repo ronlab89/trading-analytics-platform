@@ -1,7 +1,9 @@
 # Trading Analytics Platform — Progress
 
-**Last updated:** end of Phase 3 hardening (Steps A + B) + start of decision point before Step C (Market Data)
-**Branch:** `feat/api-foundation` (created from `feat/database-infrastructure`, which was closed via PR covering Phases 2-3 base work)
+**Last updated:** end of Step C (Market Data: MarketPrice/HistoricalPrice
+endpoints + dailyChange/pulse in Overview)
+**Branch:** `feat/api-foundation` (created from `feat/database-infrastructure`,
+which was closed via PR covering Phases 2-3 base work)
 
 ---
 
@@ -13,29 +15,27 @@ Per `15-implementation-plan.md`:
 - **Phase 1 — Product/Domain Foundation:** ✅ Complete
 - **Phase 2 — Database and Infrastructure:** ✅ Complete
 - **Phase 3 — Backend/API Foundation:** ✅ Complete, including a hardening
-  extension beyond the original plan scope (see §3 below)
+  extension and a Market Data extension beyond the original plan scope
+  (see §3 below)
 - **Phase 4 — Authentication/RBAC:** ⏸ Partially done. JWT login +
   `authenticate` middleware exist and are tested. **RBAC (`requireRole`
   middleware) and a registration endpoint are deliberately deferred** —
   no route currently needs role-based restriction, and users are seeded
   directly (no self-registration flow exists yet).
 
-**We are between Phase 3 and Phase 4/5**, extending the API surface with
-capabilities the original phase list under-specified (Assets, Analytics,
-Overview) and hardening what already existed, before deciding the next
-block of work.
+**We are between Phase 3 and Phase 4/5**, having extended the API
+surface with capabilities the original phase list under-specified
+(Assets, Analytics, Overview, Market Data) and hardened what already
+existed, before deciding the next block of work.
 
-**Next planned step ("Step C"):** Market data — seed `MarketPrice` and
-`HistoricalPrice`, then add price/batch/history endpoints
-(`07-api-spec.md` §17-19). This unlocks `dailyChange`, `performance`,
-drawdown/volatility inputs, and `pulse` in the portfolio overview, all
-of which are currently *deliberately omitted* rather than fabricated
-(per `15-implementation-plan.md` §3: "Do not invent performance,
-business, or user metrics").
+**Next planned block ("Step D"):** small CRUD resources — Watchlist,
+Alerts, Notifications, User Preferences. Same established pattern
+(routes → controllers → services → repositories), all repository
+implementations already exist, no new architectural decisions expected.
 
-**Explicitly NOT started yet** (schema exists in Prisma, no API):
-Decisions (with replay), Scenarios, Watchlist, Alerts, Notifications,
-User Preferences.
+**Explicitly NOT started yet** (schema + repositories exist in
+`packages/database`, no API): Decisions (with replay), Scenarios,
+Watchlist, Alerts, Notifications, User Preferences.
 
 ---
 
@@ -58,16 +58,32 @@ docs/                   SDD documents (00-15) + this file
   Position, Transaction, Decision, DecisionEvent, Scenario,
   WatchlistItem, Alert, Notification, UserPreference, MarketEvent,
   MarketPrice, HistoricalPrice (all have entity files + tests; only
-  User/Credential/Portfolio/Asset/Position/Transaction currently have
-  repository implementations and API routes wired up).
-- `Money` value object (decimal.js-backed), with `divide()` added this
-  session.
-- Calculations: `calculatePositionAfterTransaction` (weighted-average
-  cost, `InsufficientPositionQuantityError` on oversell),
-  `calculatePortfolioMetrics`, `calculatePositionMetrics`,
-  `calculateAllocation`, `calculateAttribution`, `calculateDrawdown`,
-  `calculateVolatility`, `calculatePortfolioPulse`,
-  `calculateScenarioImpact`. All pure, all unit-tested.
+  User/Credential/Portfolio/Asset/Position/Transaction/MarketPrice/
+  HistoricalPrice currently have API routes wired up — Watchlist/Alert/
+  Notification/UserPreference/Decision/DecisionEvent/Scenario have
+  repository implementations but no API yet, see §1).
+- `Money` value object (decimal.js-backed): `add`, `subtract`,
+  `multiply`, `divide`, `isZero`/`isPositive`/`isNegative`, `equals`,
+  `greaterThan`/`lessThan`, `toNumber`/`toString`/`toFixed`.
+- Calculations, all pure and unit-tested:
+  - `calculatePositionAfterTransaction` (weighted-average cost,
+    `InsufficientPositionQuantityError` on oversell)
+  - `calculatePortfolioMetrics`, `calculatePositionMetrics`
+  - `calculateAllocation`, `calculateAttribution`
+  - `calculateDrawdown`, `calculateVolatility` — **asset-level only**
+    (documented scope limitation: true portfolio-level drawdown/
+    volatility needs a reconstructed portfolio value time series from
+    Transaction[], which does not exist yet)
+  - `calculatePortfolioDailyChange` (new, Step C) — portfolio-level,
+    value-weighted daily change from `MarketPrice` data (distinct from
+    the asset-level drawdown/volatility above: this one genuinely
+    aggregates across positions, since `MarketPrice` already carries
+    the "since last tick" comparison per asset)
+  - `calculatePortfolioPulse` — combines the above; volatility/drawdown
+    are optional inputs supplied by the caller (classified `"UNKNOWN"`
+    when absent) since the calculation module itself has no opinion on
+    which asset's data to use
+  - `calculateScenarioImpact`
 - Repository contracts (interfaces only): one per entity, plus:
   - `pagination.ts` — shared `Page<T>` / `PageRequest` primitives, used
     by Asset and Transaction listings (and anything paginated going
@@ -80,17 +96,29 @@ docs/                   SDD documents (00-15) + this file
 - PostgreSQL via Docker Compose (`docker-compose.yml`), Prisma schema
   with the full `05-data-model.md` entity set already modeled
   (migrations applied for all of it, even though several entities have
-  no repository/API yet).
-- Prisma repository implementations exist for: User, Credential,
-  Portfolio, Asset, Position, Transaction, Decision, DecisionEvent,
-  Scenario, WatchlistItem, Alert, Notification, UserPreference,
-  MarketEvent, MarketPrice, HistoricalPrice (all exported from
-  `packages/database/src/index.ts` — repository classes exist ahead of
-  their corresponding API routes for several entities; this is schema
-  scaffolding, not unused code to clean up).
+  no API yet).
+- Prisma repository implementations exist for every entity in the data
+  model, all exported from `packages/database/src/index.ts`.
 - `PrismaUnitOfWork` implements `UnitOfWork` using Prisma's interactive
   `$transaction`; wraps `PrismaTransactionRepository` and
   `PrismaPositionRepository` bound to the transactional client.
+- **Seed data** (`packages/database/src/seed/`), run via
+  `db:seed`, step-based (`seed/steps/*.ts`, orchestrated by
+  `seed/index.ts`):
+  - Users/portfolios, assets, positions/transactions, decisions,
+    scenarios, alerts, notifications — pre-existing.
+  - **`seedHistoricalPrices`** (pre-existing, corrects a wrong note in
+    an earlier version of this file that said this wasn't started
+    yet): 7 assets × **90 daily candles each** (widened from 30 in Step
+    C), deterministic generator (`seed/data/historical-prices.ts`),
+    each series' final close is consistent with that asset's seeded
+    `Position.currentPrice`.
+  - **`seedMarketPrices`** (new, Step C): one current-price snapshot
+    per asset, derived from the *same* generated candle series'
+    last two closes (not re-queried from the DB — regenerated in
+    memory from the same deterministic blueprint, guaranteeing no
+    drift between the two seed steps). `timestamp` is the seed run
+    time, not a historical date.
 - **Two separate databases, by design:**
   - `trading_analytics_dev` — development data, used by `pnpm dev`,
     manual Postman testing, and the seed script. Config: `.env`.
@@ -156,28 +184,37 @@ malformed payload) — never reveals which one applies.
 | Positions | `GET /api/v1/portfolios/:id/positions`, `GET .../positions/:positionId` | Read-only — positions are a derived projection of transactions, no write endpoints by design. |
 | Transactions | `GET/POST /api/v1/portfolios/:id/transactions` (paginated, filterable), `GET .../transactions/:transactionId` | Creation is **synchronous** (not the async job/jobId flow in `07-api-spec.md` §14 — deferred to Phase 10, Background Operations). Wrapped in `PrismaUnitOfWork`: transaction record + position recalculation + status update commit or roll back together. |
 | Assets | `GET /api/v1/assets` (paginated, filters: search/assetType/exchange/currency/status), `GET /api/v1/assets/:assetId` | Global reference data, no ownership. `getByIds()` added for batch enrichment (avoids N+1 when building overview/analytics). |
+| Market Data (new, Step C) | `GET /api/v1/assets/:assetId/price`, `GET /api/v1/market/prices?assetIds=...` (batch, up to 50, never 404s — unknown ids just absent), `GET /api/v1/assets/:assetId/history?from=&to=&interval=` | `/price` distinguishes "asset doesn't exist" from "asset exists, no price yet" (both 404, different message — no anti-enumeration concern, assets are public reference data). `interval` currently only accepts `"1d"` (400 for anything else) — only daily candles exist; **user has confirmed weekly/monthly aggregation is a planned future addition**, not needed now. |
 | Analytics | `GET /api/v1/portfolios/:id/analytics/allocation?groupBy=asset\|assetType\|currency`, `GET .../analytics/attribution` | `sector` grouping and attribution `from/to/groupBy` from the spec are deferred — no data exists yet to support them meaningfully. |
-| Overview | `GET /api/v1/portfolios/:id/overview` | Purpose-built read model: portfolio + summary + positions (with per-position `allocationPercent`) + allocation + attribction + last 5 transactions. **Deliberately omits** `pulse`, `performance`, `dailyChange` — no historical price data exists yet (see Step C below). |
+| Overview | `GET /api/v1/portfolios/:id/overview` | Purpose-built read model: portfolio + summary + positions (each with `allocationPercent` **and now `dailyChange`**, Step C) + allocation + attribution + last 5 transactions + **`dailyChange`** (portfolio-level) + **`pulse`** (Step C). `performance` (FR-025/026, historical performance by period) remains the one deliberately omitted field — it needs a portfolio value time series reconstructed from Transaction[], a distinct piece of design not yet built. |
 | Health | `GET /health`, `GET /health/ready` | Registered before rate limiting. |
 
 **Cross-cutting decisions worth remembering:**
 - Cross-user resource access is always 404, never 403 (anti-enumeration,
   `09-security-spec.md` §14-15, §51). Applied consistently across
   portfolios, positions, transactions.
-- `Page<T>`/`PageRequest` pattern (from `packages/domain`) is now the
+- `Page<T>`/`PageRequest` pattern (from `packages/domain`) is the
   standard for every list endpoint that needs pagination — established
   first for Assets, then reused for Transactions. Response shape:
   `{ data: T[], meta: { page, pageSize, total, totalPages } }`.
 - No fabricated metrics anywhere. Where a calculation needs data that
-  doesn't exist yet (historical prices), the corresponding field is
-  simply absent from the response rather than estimated or hardcoded.
+  doesn't exist yet, the corresponding field is either absent, or (for
+  Pulse's optional dimensions) explicitly classified `"UNKNOWN"` rather
+  than estimated or hardcoded.
+- **"Insufficient data" vs. "valid empty state" is a recurring, deliberate
+  distinction** across domain calculations: an empty portfolio (zero
+  positions) always returns a valid zeroed result; a portfolio *with*
+  positions but missing the specific data a calculation needs (e.g. no
+  `MarketPrice` yet) throws `InsufficientDataError`, which the calling
+  service catches and turns into `null`/`"UNKNOWN"` rather than a 500.
 
 ---
 
-## 3. Hardening Done This Session (Steps A + B, beyond original phase scope)
+## 3. Hardening & Extensions Done This Session (beyond original phase scope)
 
 After Phase 3's core endpoints were built, a self-review pass surfaced
-technical debt and gaps. Two class of fixes were done, in order:
+technical debt and gaps, closed in order (§3.1-3.4), followed by the
+Market Data extension (§3.5).
 
 ### 3.1 Known-debt closure (pre-Step A)
 
@@ -283,8 +320,86 @@ rationale). `packages/database`'s `test`/`test:watch` scripts now load
   `rateLimitHandler` (now exported from `rate-limit.ts` specifically
   for this reuse) to verify the 429 response shape independently.
 
-**Result:** 22 tests across 6 files (`app.test.ts` was folded into the
-same run), all passing at last verification.
+**Result at the time:** 22 tests across 6 files, all passing.
+
+### 3.5 Step C — Market Data (this session's final block)
+
+**Correction to an earlier version of this file:** `HistoricalPrice`
+seeding was **already implemented** before this session (it was
+mistakenly listed as "not started" previously) — only `MarketPrice`
+seeding and all price/history API endpoints were actually missing.
+
+**C.1 — MarketPrice + price/history endpoints:**
+- Widened seeded history from 30 to 90 daily candles per asset
+  (`seed/data/historical-prices.ts`), user-confirmed.
+- New `seed/steps/seed-market-prices.ts`: derives each asset's current
+  `MarketPrice` from the last two candles of its *own* deterministic
+  series (regenerated in memory, not re-queried from the DB — zero
+  drift risk between the two seed steps). Registered in `seed/index.ts`
+  right after `seedHistoricalPrices`.
+- New `schemas/market.schema.ts`: `batchPricesQuerySchema` (CSV →
+  array, 1-50 ids), `assetHistoryQuerySchema` (`from`/`to` with a
+  `refine` ensuring `from <= to`, `interval` restricted to the literal
+  `"1d"` — user confirmed this is fine for now, with weekly/monthly
+  aggregation planned as a distinct future addition once actually
+  needed, not before).
+- New `services/market.service.ts`: `getAssetPrice` (two distinct 404
+  messages: asset missing vs. asset exists but no price yet),
+  `getBatchPrices` (never 404s, same "missing means absent" contract
+  as `Asset.getByIds`), `getAssetHistory`.
+- Extended `controllers/assets.controller.ts` + `routes/assets.routes.ts`
+  with `/price` and `/history` handlers/routes.
+- New `controllers/market.controller.ts` + `routes/market.routes.ts`
+  for the batch endpoint (`/market/prices` isn't nested under
+  `/assets`, so it got its own router), registered in `app.ts`.
+
+**C.2 — Overview extended with `dailyChange` and `pulse`:**
+- New domain calculation `calculations/portfolio-daily-change.ts`
+  (`calculatePortfolioDailyChange`), unit-tested (5 cases: empty
+  portfolio, correct value-weighting across positions of very
+  different size/percent-move, partial exclusion when some assets lack
+  price data, `InsufficientDataError` when *no* asset has price data,
+  degenerate zero-previous-value case). Exported from
+  `packages/domain/src/index.ts`.
+  - Deliberately uses `MarketPrice.previousPrice`/`.change` (the "since
+    last tick" comparison), not `HistoricalPrice` — a different, later
+    concept already used by drawdown/volatility.
+  - Same "insufficient data vs. valid empty state" distinction as the
+    rest of the domain layer (see §2.4 cross-cutting notes).
+- `overview.service.ts` extended:
+  - Per position: new `dailyChange: { changeValue, changePercent } | null`
+    field — `changePercent` reuses `MarketPrice.changePercent` directly
+    (no recomputation), `changeValue` is `change × quantity`. `null`
+    when the asset has no current `MarketPrice` yet.
+  - Portfolio-level: new `dailyChange: PortfolioDailyChange | null`
+    field, via `calculatePortfolioDailyChange`. `null` only when
+    positions exist but none have price data; empty portfolio still
+    returns a zeroed (non-null) result.
+  - New `pulse: PortfolioPulse` field (always present). Internal
+    `getPulseInputs()` helper identifies the largest-weight position
+    (same concentration-driven proxy the "concentration" pulse
+    dimension itself already uses), fetches its full historical price
+    series (wide `from`/`to` window — `new Date(0)` to `new Date()` —
+    specifically so this doesn't depend on the seeded dates lining up
+    with the real wall-clock date the server runs on), and computes
+    volatility/drawdown for that one asset, degrading each to
+    `undefined` (→ Pulse's `"UNKNOWN"`) individually on
+    `InsufficientDataError` rather than failing the whole request.
+  - Hit and fixed one `exactOptionalPropertyTypes: true` TS error along
+    the way: an optional property (`{ volatility?: X }`) cannot be
+    assigned an explicit `undefined` under this tsconfig setting — had
+    to build the returned object with conditional spreads
+    (`...(x !== undefined ? { x } : {})`) instead of `{ volatility,
+    drawdown }` directly. Worth remembering as a recurring gotcha in
+    this codebase for any future optional-field construction.
+  - `performance` by period (FR-025/026) remains explicitly deferred —
+    user confirmed treating it as a distinct future step, not part of
+    Step C.
+
+**Verification:** typecheck, lint, and all existing test suites passed
+after both C.1 and C.2 (no new automated tests were added for the
+overview wiring itself — the underlying calculations are unit-tested;
+manual Postman verification confirmed response shape/values).
 
 ---
 
@@ -310,6 +425,11 @@ pnpm --filter @trading/database db:seed
 pnpm --filter @trading/database db:test:migrate   # test database
 ```
 
+**Note:** if resuming after this session, re-run `db:seed` against the
+dev database at least once — Step C widened the historical price
+series from 30 to 90 days and added `MarketPrice` rows that didn't
+exist before.
+
 ---
 
 ## 5. Last Commits (this session, chronological)
@@ -326,47 +446,46 @@ fix(api): map body parser errors to 400/413 and unify port configuration
 test(database): run tests against a separate test database
 test(api): extract createApp for testability and wire up vitest/supertest
 test(api): add integration test suite for auth, portfolios, transactions and middleware
+docs(progress): update progress after phase 3 hardening and analytics endpoints
+feat(api): add market price/history endpoints and extend overview with dailyChange and pulse
 ```
 
-(Exact wording/order of the last two may differ slightly from what you
-actually typed — confirm against `git log` if precision matters.)
+(Exact wording/order of commits, and whether the last one was split
+into two, may differ slightly from what was actually typed — confirm
+against `git log` if precision matters.)
 
 A PR was opened and merged earlier in this session for the base Phase
 2-3 work (portfolios/positions/transactions CRUD, database
 infrastructure) from `feat/database-infrastructure` into `main`,
-**before** the hardening and Assets/Analytics/Overview work described
-in this document — that work all lives on `feat/api-foundation`, not
-yet merged.
+**before** the hardening and Assets/Analytics/Overview/Market Data work
+described in this document — that work all lives on `feat/api-foundation`,
+not yet merged.
 
 ---
 
-## 6. Immediate Next Step: Step C — Market Data
+## 6. Immediate Next Step: Step D — Small CRUD Resources
 
-**Not started yet.** Plan (to be confirmed in detail when the step
-actually begins, this is a placeholder so the next session isn't
-starting from zero context):
+**Not started yet.** Candidates, in the order proposed (not yet
+confirmed by the user for this specific ordering — confirm at the
+start of the next session): **Watchlist, Alerts, Notifications, User
+Preferences.**
 
-1. Seed `MarketPrice` (current price snapshot per asset) and
-   `HistoricalPrice` (OHLCV-style historical series) — realistic,
-   internally consistent with the existing Position/Transaction seed
-   data (`05-data-model.md` §33-37: seed data must support all UI
-   states and be relationally consistent, not just present).
-2. Add endpoints per `07-api-spec.md` §17-19:
-   - `GET /api/v1/assets/:assetId/price`
-   - `GET /api/v1/market/prices?assetIds=...` (batch)
-   - `GET /api/v1/assets/:assetId/history?from=&to=&interval=`
-3. Once historical data exists, extend (not replace) the Overview
-   response and Analytics with `dailyChange`, `performance`, drawdown,
-   volatility, and `pulse` — these were explicitly left out until now
-   specifically because there was no real data to derive them from.
+Why these are next: all four already have domain entities, validation
+functions, and Prisma repository implementations (see §2.2/§2.3) — no
+new architectural decisions are expected, this block is applying the
+already-established routes → controllers → services pattern to
+straightforward CRUD resources, similar in shape to Positions/Assets
+rather than to the more involved Transactions/Overview work.
 
-**Decisions still open for Step C** (need user input before/at start):
-- Exact shape/granularity of seeded historical data (how many days,
-  what interval).
-- Whether historical price generation reuses any logic from the
-  not-yet-built Demo Mode market simulator (`12-demo-mode-spec.md`), or
-  is a simpler one-off seed script for now, with the real simulator
-  built later in Phase 11.
+After Step D, remaining before Phase 4/5:
+- **Decisions** (with replay) and **Scenarios** — larger, more novel
+  pieces (Decision Replay's chronological event projection, Scenario's
+  isolated-baseline calculation) that deserve their own planning
+  conversation rather than being bundled into "small CRUD."
+- **RBAC + user registration** (Phase 4 proper).
+- **`performance` by period** (FR-025/026) — needs a transaction-aware
+  portfolio value time series, flagged in §2.4/§3.5 as intentionally
+  deferred rather than fabricated.
 
 ---
 
@@ -404,6 +523,17 @@ starting from zero context):
   pattern rather than literal text. Low severity (no injection risk,
   Prisma parameterizes the query; worst case is a slightly wrong
   match), but not yet verified or fixed.
+- **`interval` on `/assets/:assetId/history` only supports `"1d"`.**
+  User has explicitly confirmed this is fine for now and that
+  weekly/monthly aggregation (a real rollup of existing daily candles,
+  not fabricated data) is a planned future addition — not urgent, not
+  forgotten.
+- **No dedicated integration test for the Overview endpoint's new
+  `dailyChange`/`pulse` fields** (Step C) — only manually verified via
+  Postman. The underlying domain calculations are unit-tested; the
+  wiring itself (which market prices/historical candles get fetched
+  and passed through) is not covered by an automated HTTP-level test.
+  Consider adding one if this area sees further changes.
 
 ---
 
@@ -422,5 +552,6 @@ starting from zero context):
    pnpm --filter @trading/database test
    pnpm --filter @trading/api test
    ```
-4. Proceed with Step C (Market Data) as described in §6, starting with
-   the open decisions listed there.
+4. Re-seed the dev database if it wasn't done at the end of the last
+   session (see §4 note): `pnpm --filter @trading/database db:seed`.
+5. Confirm the Step D resource order (§6) with the user, then proceed.
