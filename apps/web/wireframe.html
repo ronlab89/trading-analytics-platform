@@ -1981,6 +1981,7 @@
     el.addEventListener('click', () => {
       userDropdown.hidden = true;
       notifDropdown.hidden = true;
+      demoDropdown.hidden = true;
       navigateTo(el.dataset.view);
     });
   });
@@ -1994,6 +1995,7 @@
   avatarTrigger.addEventListener('click', (e) => {
     e.stopPropagation();
     notifDropdown.hidden = true;
+    demoDropdown.hidden = true;
     userDropdown.hidden = !userDropdown.hidden;
   });
 
@@ -2068,6 +2070,7 @@
   notifTrigger.addEventListener('click', (e) => {
     e.stopPropagation();
     userDropdown.hidden = true;
+    demoDropdown.hidden = true;
     notifDropdown.hidden = !notifDropdown.hidden;
   });
 
@@ -2209,6 +2212,82 @@
     'Unable to load watchlist.', renderWatchlist);
   wireErrorSimulation('simulate-assets-error', document.getElementById('assets-table-body'), true,
     'Unable to load assets.', renderAssets);
+
+  // ============================================
+  // DEMO CONTROLS — connection sim, push notification, reset data
+  // ============================================
+  const demoTrigger = document.getElementById('demo-trigger');
+  const demoDropdown = document.getElementById('demo-dropdown');
+
+  demoTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    userDropdown.hidden = true;
+    notifDropdown.hidden = true;
+    demoDropdown.hidden = !demoDropdown.hidden;
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!demoDropdown.hidden && !e.target.closest('.demo-menu')) {
+      demoDropdown.hidden = true;
+    }
+  });
+
+  document.getElementById('demo-toggle-connection').addEventListener('click', () => {
+    demoDropdown.hidden = true;
+    const indicator = document.getElementById('realtime-indicator');
+    const label = document.getElementById('realtime-label');
+    const lastSync = document.getElementById('last-sync');
+
+    showToast('info', 'Simulating connection issue', 'Watch the status bar for the next few seconds.');
+    indicator.dataset.state = 'connecting';
+    label.textContent = 'Reconnecting';
+    lastSync.textContent = 'Syncing…';
+
+    setTimeout(() => {
+      indicator.dataset.state = 'offline';
+      label.textContent = 'Offline';
+      lastSync.textContent = 'Last synced 12s ago';
+    }, 1500);
+
+    setTimeout(() => {
+      indicator.dataset.state = 'live';
+      label.textContent = 'Live';
+      lastSync.textContent = 'Synced just now';
+      showToast('success', 'Reconnected', 'Realtime updates are flowing again.');
+    }, 3500);
+  });
+
+  document.getElementById('demo-push-notification').addEventListener('click', () => {
+    demoDropdown.hidden = true;
+    mockNotifications.unshift({
+      id: 'n' + Date.now(),
+      severity: 'info',
+      title: 'This is a test notification',
+      time: 'just now',
+      read: false,
+    });
+    renderNotifications();
+    showToast('info', 'Test notification sent', 'Check the bell icon in the top bar.');
+  });
+
+  document.getElementById('demo-reset-data').addEventListener('click', () => {
+    demoDropdown.hidden = true;
+
+    watchlistSymbols = new Set(['AAPL', 'NVDA', 'SPY']);
+    renderWatchlist();
+    renderAssets();
+
+    mockNotifications.length = 0;
+    mockNotifications.push(
+      { id: 'n1', severity: 'warning', title: 'Risk threshold exceeded on Growth Portfolio', time: '2 days ago', read: false },
+      { id: 'n2', severity: 'success', title: 'Sold 5 MSFT @ $410.10', time: '3 days ago', read: false },
+      { id: 'n3', severity: 'info', title: 'New asset added to watchlist: NVDA', time: '1 week ago', read: false },
+      { id: 'n4', severity: 'critical', title: 'Realtime connection lost for 4 minutes', time: '5 days ago', read: true },
+    );
+    renderNotifications();
+
+    showToast('success', 'Demo data reset', 'Watchlist and notifications are back to their defaults.');
+  });
 
   // ============================================
   // DECISION CENTER — Replay
