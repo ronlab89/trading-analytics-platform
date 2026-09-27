@@ -382,8 +382,13 @@
     padding: 8px 14px;
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
-    transition: background var(--duration-fast) var(--easing), border-color var(--duration-fast) var(--easing);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    transition: background var(--duration-fast) var(--easing), border-color var(--duration-fast) var(--easing), opacity var(--duration-fast) var(--easing);
   }
+  .btn:disabled { opacity: 0.7; cursor: not-allowed; }
   .btn--primary { background: var(--accent); color: #0a0e14; }
   .btn--primary:hover { background: var(--accent-hover); }
   .btn--secondary { background: var(--surface-2); color: var(--text-primary); border-color: var(--border-subtle); }
@@ -864,7 +869,7 @@
   }
   .btn-login--demo:hover { border-color: var(--border-strong); background: var(--surface-2); }
 
-  .btn-login-spinner {
+  .btn-spinner {
     width: 16px;
     height: 16px;
     border: 2px solid rgba(10, 14, 20, 0.3);
@@ -872,11 +877,11 @@
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
   }
-  .btn-login--demo .btn-login-spinner {
+  .btn-login--demo .btn-spinner {
     border: 2px solid var(--border-strong);
     border-top-color: var(--text-primary);
   }
-  .btn-login-spinner[hidden] { display: none; }
+  .btn-spinner[hidden] { display: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .login-divider {
@@ -1142,6 +1147,51 @@
   .tab-btn:hover { color: var(--text-primary); }
   .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-panel[hidden] { display: none; }
+
+  /* ============================================
+     13. DECISION CENTER — Replay scrubber
+     Scenario Lab reuses .pane/.form-group/.btn (no new components needed).
+     ============================================ */
+  .replay-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .replay-controls input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--surface-3);
+    border-radius: 2px;
+    outline: none;
+  }
+  .replay-controls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--surface-0);
+    box-shadow: 0 0 0 1px var(--border-strong);
+    cursor: pointer;
+  }
+  .replay-controls input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--surface-0);
+    cursor: pointer;
+  }
+  .replay-date {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    min-width: 56px;
+    text-align: right;
+  }
 </style>
 </head>
 <body>
@@ -1183,8 +1233,8 @@
       </div>
 
       <button type="submit" class="btn-login" id="login-submit">
-        <span class="btn-login-label">Sign in</span>
-        <span class="btn-login-spinner" hidden></span>
+        <span class="btn-label">Sign in</span>
+        <span class="btn-spinner" hidden></span>
       </button>
 
     </form>
@@ -1192,8 +1242,8 @@
     <div class="login-divider"><span>or</span></div>
 
     <button type="button" class="btn-login btn-login--demo" id="login-demo">
-      <span class="btn-login-label">Enter Demo</span>
-      <span class="btn-login-spinner" hidden></span>
+      <span class="btn-label">Enter Demo</span>
+      <span class="btn-spinner" hidden></span>
     </button>
 
     <p class="login-footnote">Demo mode uses mock data — no real account required.</p>
@@ -1586,7 +1636,8 @@
             </div>
             <div class="create-form-actions">
               <button class="btn btn--primary" id="run-scenario-btn">
-                <span id="run-scenario-label">Run simulation</span>
+                <span class="btn-label">Run simulation</span>
+                <span class="btn-spinner" hidden></span>
               </button>
             </div>
           </div>
@@ -1777,8 +1828,8 @@
 
   function setButtonLoading(button, isLoading) {
     button.disabled = isLoading;
-    button.querySelector('.btn-login-label').hidden = isLoading;
-    button.querySelector('.btn-login-spinner').hidden = !isLoading;
+    button.querySelector('.btn-label').hidden = isLoading;
+    button.querySelector('.btn-spinner').hidden = !isLoading;
   }
 
   function enterApp() {
