@@ -64,4 +64,15 @@ describe("PrismaWatchlistItemRepository", () => {
     const items = await repository.listByUserId(userId);
     expect(items.some((i) => i.assetId === assetId)).toBe(false);
   });
+
+  it("returns a watchlist item by user and asset, or null if absent", async () => {
+    expect(await repository.getByUserAndAsset(userId, assetId)).toBeNull();
+
+    await repository.create({ userId, assetId });
+    const found = await repository.getByUserAndAsset(userId, assetId);
+    expect(found?.userId).toBe(userId);
+    expect(found?.assetId).toBe(assetId);
+
+    await repository.deleteByUserAndAsset(userId, assetId);
+  });
 });
