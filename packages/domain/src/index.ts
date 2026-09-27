@@ -18,6 +18,7 @@ export * from "./entities/scenario";
 export * from "./value-objects/money";
 export * from "./calculations/position-metrics";
 export * from "./calculations/portfolio-metrics";
+export * from "./calculations/portfolio-daily-change";
 export * from "./calculations/allocation";
 export * from "./calculations/attribution";
 export * from "./calculations/drawdown";
