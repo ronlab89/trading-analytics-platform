@@ -600,11 +600,11 @@ Remaining before Phase 4/5:
   wiring itself (which market prices/historical candles get fetched
   and passed through) is not covered by an automated HTTP-level test.
   Consider adding one if this area sees further changes.
-- **`07-api-spec.md` not yet updated for Step D divergences:** §28
-  (notifications: real filter is `unreadOnly`, no `type`/pagination)
-  and §29 (`GET` returns `data: null` when no preferences saved). The
-  implementation is the intended behavior; the spec should be synced
-  (rule: never diverge silently from the SDD).
+- ~~`07-api-spec.md` not yet updated for Step D divergences~~ — done:
+  §26-29 now carry "Implementation note (Step D)" callouts documenting
+  the real `unreadOnly` filter, no `type`/pagination on notifications,
+  `GET /preferences` returning `data: null`, and the alert/watchlist
+  ownership and error-code behavior.
 - **Notifications have no producer yet:** the API can list and mark
   them, but nothing creates them at runtime (only the seed does). The
   producers (transaction completed, alert triggered, job events) belong

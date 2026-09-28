@@ -883,6 +883,15 @@ DELETE /api/v1/watchlist/:assetId
 
 Duplicate additions should return a conflict or equivalent idempotent response.
 
+**Implementation note (Step D):** duplicate additions return `400
+VALIDATION_ERROR` (the repository's `@@unique([userId, assetId])`
+constraint surfaces as the domain's `InvalidWatchlistItemError`, mapped
+by the generic `Invalid*Error → 400` handler), not `409 CONFLICT` as
+"conflict" above might suggest. Removing a nonexistent entry returns
+`404 NOT_FOUND`. Adding a nonexistent `assetId` returns `404 NOT_FOUND`.
+Watchlist uniqueness is per user, not global — two different users may
+watch the same asset.
+
 ---
 
 # 27. Alerts API
@@ -929,6 +938,17 @@ PATCH /api/v1/alerts/:alertId
 DELETE /api/v1/alerts/:alertId
 ```
 
+**Implementation note (Step D):** an alert must reference an asset, a
+portfolio, or both — enforced both by the request schema and by the
+domain's `validateNewAlert`. If `portfolioId` is given, it must belong
+to the caller (`404 NOT_FOUND` otherwise). Update only accepts
+`condition`/`threshold`/`enabled`; the target (`assetId`/`portfolioId`/
+`type`) is immutable after creation — changing what an alert monitors
+is a new alert. `GET /api/v1/alerts/:alertId` (not listed above) also
+exists, following the same get-by-id shape used by Positions/
+Transactions. Nothing evaluates alert conditions against live prices
+yet — that lands with the realtime/market-simulation work (FR-053).
+
 ---
 
 # 28. Notifications API
@@ -942,11 +962,21 @@ GET /api/v1/notifications
 Parameters:
 
 ```text id="v8x5p1"
-read
-type
-page
-pageSize
+unreadOnly
 ```
+
+**Implementation note (Step D):** the parameters above are the
+original design intent; the shipped filter is `unreadOnly` (boolean),
+matching exactly what `NotificationRepository.listByUserId` supports.
+`read`/`type`/`page`/`pageSize` are not implemented — a two-way `read`
+filter, filtering by `type`, and pagination are all deferred until a
+concrete need appears (03-non-functional-requirements.md NFR-070:
+complexity proportional to an actual requirement, not anticipated
+usage). There is no `POST /api/v1/notifications` — notifications are
+produced by system events (transaction completed, alert triggered,
+job events), not created directly by API callers; that production path
+is not implemented yet either (belongs with Realtime/Background
+Operations, Phases 9-10 of `15-implementation-plan.md`).
 
 ---
 
@@ -991,6 +1021,20 @@ Example:
   "reducedMotion": false
 }
 ```
+
+**Implementation note (Step D):** preferences are a per-user singleton
+row, created lazily on the first `PATCH` (an atomic upsert, not a
+separate create step). `GET` for a user who has never saved
+preferences returns `200` with `data: null`, not `404` — absence of
+saved preferences is a valid state (same principle as the null
+`dailyChange` in the portfolio overview), and a read must not have the
+side effect of creating a row. `PATCH` requires at least one field.
+`defaultPortfolioId` may be set to `null` to clear it, or to a
+portfolio id the caller owns (`404 NOT_FOUND` if it belongs to someone
+else). Omitted fields on the very first `PATCH` fall back to the
+column defaults declared in `schema.prisma` (`theme="system"`,
+`language="en"`, `reducedMotion=false`, `notificationPreferences={}`),
+kept there as the single source of truth rather than duplicated here.
 
 ---
 
