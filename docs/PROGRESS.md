@@ -1,7 +1,7 @@
 # Trading Analytics Platform — Progress
 
-**Last updated:** end of Step C (Market Data: MarketPrice/HistoricalPrice
-endpoints + dailyChange/pulse in Overview)
+**Last updated:** end of Step D (Watchlist, Alerts, Notifications, User
+Preferences endpoints + integration tests)
 **Branch:** `feat/api-foundation` (created from `feat/database-infrastructure`,
 which was closed via PR covering Phases 2-3 base work)
 
@@ -28,14 +28,12 @@ surface with capabilities the original phase list under-specified
 (Assets, Analytics, Overview, Market Data) and hardened what already
 existed, before deciding the next block of work.
 
-**Next planned block ("Step D"):** small CRUD resources — Watchlist,
-Alerts, Notifications, User Preferences. Same established pattern
-(routes → controllers → services → repositories), all repository
-implementations already exist, no new architectural decisions expected.
+**Step D (small CRUD resources) is complete:** Watchlist, Alerts,
+Notifications, User Preferences, each with endpoints and HTTP-level
+integration tests (see §3.6).
 
 **Explicitly NOT started yet** (schema + repositories exist in
-`packages/database`, no API): Decisions (with replay), Scenarios,
-Watchlist, Alerts, Notifications, User Preferences.
+`packages/database`, no API): Decisions (with replay) and Scenarios.
 
 ---
 
@@ -59,9 +57,9 @@ docs/                   SDD documents (00-15) + this file
   WatchlistItem, Alert, Notification, UserPreference, MarketEvent,
   MarketPrice, HistoricalPrice (all have entity files + tests; only
   User/Credential/Portfolio/Asset/Position/Transaction/MarketPrice/
-  HistoricalPrice currently have API routes wired up — Watchlist/Alert/
-  Notification/UserPreference/Decision/DecisionEvent/Scenario have
-  repository implementations but no API yet, see §1).
+  HistoricalPrice/WatchlistItem/Alert/Notification/UserPreference
+  currently have API routes wired up — Decision/DecisionEvent/Scenario
+  have repository implementations but no API yet, see §1).
 - `Money` value object (decimal.js-backed): `add`, `subtract`,
   `multiply`, `divide`, `isZero`/`isPositive`/`isNegative`, `equals`,
   `greaterThan`/`lessThan`, `toNumber`/`toString`/`toFixed`.
@@ -188,11 +186,16 @@ malformed payload) — never reveals which one applies.
 | Analytics | `GET /api/v1/portfolios/:id/analytics/allocation?groupBy=asset\|assetType\|currency`, `GET .../analytics/attribution` | `sector` grouping and attribution `from/to/groupBy` from the spec are deferred — no data exists yet to support them meaningfully. |
 | Overview | `GET /api/v1/portfolios/:id/overview` | Purpose-built read model: portfolio + summary + positions (each with `allocationPercent` **and now `dailyChange`**, Step C) + allocation + attribution + last 5 transactions + **`dailyChange`** (portfolio-level) + **`pulse`** (Step C). `performance` (FR-025/026, historical performance by period) remains the one deliberately omitted field — it needs a portfolio value time series reconstructed from Transaction[], a distinct piece of design not yet built. |
 | Health | `GET /health`, `GET /health/ready` | Registered before rate limiting. |
+| Watchlist (Step D) | `GET/POST /api/v1/watchlist`, `DELETE /api/v1/watchlist/:assetId` | User-scoped (no portfolio in the path). Add validates the asset exists (404) and relies on the repo's unique constraint for duplicates (400 `VALIDATION_ERROR`). Remove checks existence first via the new `getByUserAndAsset` (404 instead of a raw Prisma P2025 → 500). |
+| Alerts (Step D) | `GET/POST /api/v1/alerts`, `GET/PATCH/DELETE /api/v1/alerts/:alertId` | Create verifies a referenced `portfolioId` belongs to the caller and a referenced `assetId` exists; at-least-one-target rule enforced by both the Zod schema and `validateNewAlert`. PATCH edits only `condition`/`threshold`/`enabled` (what an alert monitors is immutable — a different target is a new alert). |
+| Notifications (Step D) | `GET /api/v1/notifications?unreadOnly=`, `POST /api/v1/notifications/:id/read`, `POST /api/v1/notifications/read-all` | No create endpoint by design (notifications come from system events). Mark-read checks ownership via the new `getById` first (`markAsRead` takes a bare id). See §3.6 for the deliberate divergence from `07-api-spec.md` §28. |
+| Preferences (Step D) | `GET/PATCH /api/v1/preferences` | One row per user, created lazily. `GET` with no saved row → `200` with `data: null` (not 404, and a read never writes). `PATCH` is an atomic upsert; `defaultPortfolioId` must belong to the caller (404 otherwise), `null` clears it. |
 
 **Cross-cutting decisions worth remembering:**
 - Cross-user resource access is always 404, never 403 (anti-enumeration,
   `09-security-spec.md` §14-15, §51). Applied consistently across
-  portfolios, positions, transactions.
+  portfolios, positions, transactions, alerts, notifications (and the
+  `defaultPortfolioId` preference).
 - `Page<T>`/`PageRequest` pattern (from `packages/domain`) is the
   standard for every list endpoint that needs pagination — established
   first for Assets, then reused for Transactions. Response shape:
@@ -401,6 +404,57 @@ after both C.1 and C.2 (no new automated tests were added for the
 overview wiring itself — the underlying calculations are unit-tested;
 manual Postman verification confirmed response shape/values).
 
+### 3.6 Step D — Watchlist, Alerts, Notifications, User Preferences
+
+All four followed the established routes → controllers → services →
+repositories pattern (`schemas/*.schema.ts` for Zod, `services/*` for
+ownership + orchestration). The domain/database layers needed only
+small, deliberate changes:
+
+- **Watchlist:** added `getByUserAndAsset(userId, assetId)` to the
+  `WatchlistItemRepository` contract + Prisma implementation (+ test).
+  Chosen over an in-memory scan of `listByUserId` because it uses the
+  existing `userId_assetId` unique index and mirrors the "get, check,
+  then act" shape of the other services.
+- **Notifications:** added `getById(id)` to the contract + Prisma
+  implementation (+ test), needed to verify ownership before
+  `markAsRead(id, ...)`, which takes no `userId`.
+- **User Preferences:** `PrismaUserPreferenceRepository.update` changed
+  from `prisma.userPreference.update` (threw P2025 → 500 when no row
+  existed) to an atomic `upsert`. The domain contract already allowed
+  this ("created lazily on first write"). Column defaults
+  (`theme="system"`, `language="en"`, `reducedMotion=false`,
+  `notificationPreferences={}`) stay solely in `schema.prisma` — not
+  duplicated in TypeScript. Test added for the first-write path.
+- **Alerts:** no domain/database changes needed.
+
+**Deliberate divergences from the SDD (to reflect back into it):**
+- `07-api-spec.md` §28 lists `read`/`type`/`page`/`pageSize` filters for
+  notifications. `NotificationRepository.listByUserId` only supports
+  `unreadOnly` and does not paginate, so the API exposes exactly
+  `unreadOnly` rather than advertising filters it cannot honor.
+  `type` filtering and pagination are deferred until there is a
+  concrete need (NFR-070).
+- `GET /api/v1/preferences` returns `{ data: null }` for a user with no
+  saved preferences (absence is a valid state, same principle as the
+  null `dailyChange` in Overview). `07-api-spec.md` §29 does not
+  specify this case.
+
+**Integration tests (4 new files in `apps/api/src/routes/`):**
+`watchlist.routes.test.ts`, `alerts.routes.test.ts`,
+`notifications.routes.test.ts`, `preferences.routes.test.ts`. Each
+covers 401 without token on every endpoint (`it.each`), 404 (never
+403) on cross-user access with the target left untouched, field-level
+400 validation, and the happy paths. New shared helpers:
+`test-utils/auth.ts` (`tokenFor(userId, role?)` — signs a JWT like
+`auth.service.ts`, so tests can act as a user without HTTP login) and
+`createTestNotification` in `test-utils/fixtures.ts` (notifications
+have no create endpoint, so tests seed them via Prisma). Existing
+tests (`portfolios`/`transactions`) still inline their own token
+signing; migrating them to `tokenFor` is optional cleanup.
+
+**Verification:** typecheck, lint and the full test suites passed.
+
 ---
 
 ## 4. Environment Files Reference
@@ -448,6 +502,24 @@ test(api): extract createApp for testability and wire up vitest/supertest
 test(api): add integration test suite for auth, portfolios, transactions and middleware
 docs(progress): update progress after phase 3 hardening and analytics endpoints
 feat(api): add market price/history endpoints and extend overview with dailyChange and pulse
+feat(domain): add getByUserAndAsset to watchlist item repository contract
+feat(database): implement getByUserAndAsset in prisma watchlist repository
+test(database): cover getByUserAndAsset in watchlist repository tests
+feat(api): add watchlist endpoints (list, add, remove)
+feat(api): add alerts endpoints (list, get, create, update, delete)
+feat(domain): add getById to notification repository contract
+feat(database): implement getById in prisma notification repository
+test(database): cover getById in notification repository tests
+feat(api): add notifications endpoints (list, mark read, mark all read)
+fix(database): make user preference update an atomic upsert
+test(database): cover first-write upsert in user preference repository tests
+feat(api): add user preferences endpoints (get, update)
+test(api): add shared token helper and notification fixture for integration tests
+test(api): add watchlist integration tests
+test(api): add alerts integration tests
+test(api): add notifications integration tests
+test(api): add user preferences integration tests
+docs(progress): update progress after step d
 ```
 
 (Exact wording/order of commits, and whether the last one was split
@@ -463,21 +535,15 @@ not yet merged.
 
 ---
 
-## 6. Immediate Next Step: Step D — Small CRUD Resources
+## 6. Immediate Next Step: to be chosen (Step D is closed)
 
-**Not started yet.** Candidates, in the order proposed (not yet
-confirmed by the user for this specific ordering — confirm at the
-start of the next session): **Watchlist, Alerts, Notifications, User
-Preferences.**
+No next block has been confirmed by the user yet — **ask at the start of
+the next session.** Candidates, all listed under "remaining before
+Phase 4/5" below. Before Decisions/Scenarios, the user may also want
+to merge `feat/api-foundation` into `main` (a large amount of work now
+lives on that branch, see §5).
 
-Why these are next: all four already have domain entities, validation
-functions, and Prisma repository implementations (see §2.2/§2.3) — no
-new architectural decisions are expected, this block is applying the
-already-established routes → controllers → services pattern to
-straightforward CRUD resources, similar in shape to Positions/Assets
-rather than to the more involved Transactions/Overview work.
-
-After Step D, remaining before Phase 4/5:
+Remaining before Phase 4/5:
 - **Decisions** (with replay) and **Scenarios** — larger, more novel
   pieces (Decision Replay's chronological event projection, Scenario's
   isolated-baseline calculation) that deserve their own planning
@@ -534,6 +600,20 @@ After Step D, remaining before Phase 4/5:
   wiring itself (which market prices/historical candles get fetched
   and passed through) is not covered by an automated HTTP-level test.
   Consider adding one if this area sees further changes.
+- **`07-api-spec.md` not yet updated for Step D divergences:** §28
+  (notifications: real filter is `unreadOnly`, no `type`/pagination)
+  and §29 (`GET` returns `data: null` when no preferences saved). The
+  implementation is the intended behavior; the spec should be synced
+  (rule: never diverge silently from the SDD).
+- **Notifications have no producer yet:** the API can list and mark
+  them, but nothing creates them at runtime (only the seed does). The
+  producers (transaction completed, alert triggered, job events) belong
+  with Realtime/Background Operations (Phases 9-10).
+- **Alerts are configuration only:** nothing evaluates alert
+  conditions against market prices yet (FR-053 evaluation is part of
+  the realtime/market-simulation work, not CRUD).
+- **`tokenFor` migration (optional):** `portfolios`/`transactions`
+  tests still sign JWTs inline; could adopt `test-utils/auth.ts`.
 
 ---
 
@@ -554,4 +634,4 @@ After Step D, remaining before Phase 4/5:
    ```
 4. Re-seed the dev database if it wasn't done at the end of the last
    session (see §4 note): `pnpm --filter @trading/database db:seed`.
-5. Confirm the Step D resource order (§6) with the user, then proceed.
+5. Ask the user which block comes next (§6), then proceed.
