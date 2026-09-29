@@ -30,6 +30,7 @@ export async function seedDecisions(context: SeedContext): Promise<SeedContext> 
       targetPrice: blueprint.targetPrice,
       stopPrice: blueprint.stopPrice,
       riskLevel: blueprint.riskLevel,
+      createdAt: blueprint.createdAt,
       ...(blueprint.notes !== undefined ? { notes: blueprint.notes } : {}),
     };
 
@@ -40,6 +41,7 @@ export async function seedDecisions(context: SeedContext): Promise<SeedContext> 
       const eventInput = {
         decisionId: decision.id,
         type: event.type,
+        timestamp: event.timestamp,
         ...(event.payload !== undefined ? { payload: event.payload } : {}),
       };
 

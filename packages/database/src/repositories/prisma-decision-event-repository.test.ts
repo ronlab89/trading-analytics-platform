@@ -69,6 +69,50 @@ describe("PrismaDecisionEventRepository", () => {
     expect(event.payload).toEqual({});
   });
 
+  it("persists an explicit timestamp instead of assigning now()", async () => {
+    const timestamp = new Date("2026-06-01T14:30:00.000Z");
+
+    const event = await repository.create({ decisionId, type: "POSITION_OPENED", timestamp });
+
+    expect(event.timestamp.toISOString()).toBe(timestamp.toISOString());
+  });
+
+  it("orders events by their real timestamp, not by insertion order", async () => {
+    const ordering = await prisma.decision.create({
+      data: {
+        portfolioId,
+        assetId,
+        title: "Ordering decision",
+        thesis: "Events inserted out of chronological order.",
+        direction: "LONG",
+      },
+    });
+
+    await repository.create({
+      decisionId: ordering.id,
+      type: "TARGET_REACHED",
+      timestamp: new Date("2026-08-15T16:00:00.000Z"),
+    });
+    await repository.create({
+      decisionId: ordering.id,
+      type: "DECISION_CREATED",
+      timestamp: new Date("2026-06-01T14:00:00.000Z"),
+    });
+    await repository.create({
+      decisionId: ordering.id,
+      type: "PRICE_UPDATE",
+      timestamp: new Date("2026-07-10T12:00:00.000Z"),
+    });
+
+    const events = await repository.listByDecisionId(ordering.id);
+
+    expect(events.map((e) => e.type)).toEqual([
+      "DECISION_CREATED",
+      "PRICE_UPDATE",
+      "TARGET_REACHED",
+    ]);
+  });
+
   it("lists events for a decision in chronological order", async () => {
     await repository.create({ decisionId, type: "POSITION_OPENED", payload: { step: 1 } });
     await repository.create({ decisionId, type: "PRICE_UPDATE", payload: { step: 2 } });

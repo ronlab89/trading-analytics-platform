@@ -19,8 +19,15 @@ export interface DecisionEvent {
   readonly payload: Readonly<Record<string, unknown>>;
 }
 
+/**
+ * `timestamp` is optional and defaults to "now" when omitted. Callers
+ * recording historical activity (seed data, imports, demo scenarios)
+ * pass the real event time so Decision Replay has a meaningful
+ * timeline (05-data-model.md §12, §40). Events remain immutable once
+ * created.
+ */
 export type CreateDecisionEventInput = Pick<DecisionEvent, "decisionId" | "type"> &
-  Partial<Pick<DecisionEvent, "payload">>;
+  Partial<Pick<DecisionEvent, "payload" | "timestamp">>;
 
 export class InvalidDecisionEventError extends Error {
   constructor(message: string) {
@@ -36,5 +43,9 @@ export function validateNewDecisionEvent(input: CreateDecisionEventInput): void 
 
   if (!Object.values(DecisionEventType).includes(input.type)) {
     throw new InvalidDecisionEventError(`Unsupported decision event type: ${input.type}`);
+  }
+
+  if (input.timestamp !== undefined && Number.isNaN(input.timestamp.getTime())) {
+    throw new InvalidDecisionEventError("Decision event timestamp must be a valid date.");
   }
 }

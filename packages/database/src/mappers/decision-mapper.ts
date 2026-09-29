@@ -77,5 +77,8 @@ export function toPrismaCreateInput(input: CreateDecisionInput) {
     ...(sharedCurrency !== undefined ? { currency: sharedCurrency } : {}),
     ...(input.riskLevel !== undefined ? { riskLevel: input.riskLevel } : {}),
     ...(input.notes !== undefined ? { notes: input.notes } : {}),
+    // Omitted => the schema's @default(now()) applies. Provided => the
+    // caller is recording historical activity with its real creation time.
+    ...(input.createdAt !== undefined ? { createdAt: input.createdAt } : {}),
   };
 }

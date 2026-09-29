@@ -20,6 +20,18 @@ describe("validateNewDecisionEvent", () => {
     }).toThrow(InvalidDecisionEventError);
   });
 
+  it("should accept a valid historical timestamp", () => {
+    expect(() => {
+      validateNewDecisionEvent({ ...baseInput, timestamp: new Date("2026-06-01T14:30:00Z") });
+    }).not.toThrow();
+  });
+
+  it("should reject an invalid timestamp", () => {
+    expect(() => {
+      validateNewDecisionEvent({ ...baseInput, timestamp: new Date("not-a-date") });
+    }).toThrow(InvalidDecisionEventError);
+  });
+
   it("should reject an unsupported event type", () => {
     expect(() => {
       validateNewDecisionEvent({
