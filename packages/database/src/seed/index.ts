@@ -8,6 +8,7 @@ import { seedScenarios } from "./steps/seed-scenarios.js";
 import { seedAlerts } from "./steps/seed-alerts.js";
 import { seedNotifications } from "./steps/seed-notifications.js";
 import { seedHistoricalPrices } from "./steps/seed-historical-prices.js";
+import { seedMarketPrices } from "./steps/seed-market-prices.js";
 
 /**
  * Entry point for the DB seed workflow (Phase 2, Step 6).
@@ -33,6 +34,7 @@ export async function seedDatabase(): Promise<void> {
   context = await seedAlerts(context);
   context = await seedNotifications(context);
   context = await seedHistoricalPrices(context);
+  context = await seedMarketPrices(context);
 
   console.log("[seed] done.");
   console.log("[seed] context:", context);

@@ -18,6 +18,7 @@ export * from "./entities/scenario";
 export * from "./value-objects/money";
 export * from "./calculations/position-metrics";
 export * from "./calculations/portfolio-metrics";
+export * from "./calculations/portfolio-daily-change";
 export * from "./calculations/allocation";
 export * from "./calculations/attribution";
 export * from "./calculations/drawdown";
@@ -28,8 +29,12 @@ export * from "./calculations/position-recalculation";
 export type { PortfolioRepository } from "./repositories/portfolio-repository";
 export type { UserRepository } from "./repositories/user-repository";
 export type { CredentialRepository } from "./repositories/credential-repository";
-export type { AssetRepository } from "./repositories/asset-repository";
-export type { TransactionRepository } from "./repositories/transaction-repository";
+export type { AssetRepository, AssetListFilter } from "./repositories/asset-repository";
+export type { Page, PageRequest } from "./repositories/pagination";
+export type {
+  TransactionRepository,
+  TransactionListFilter,
+} from "./repositories/transaction-repository";
 export type { PositionRepository } from "./repositories/position-repository";
 export type { DecisionRepository } from "./repositories/decision-repository";
 export type { DecisionEventRepository } from "./repositories/decision-event-repository";
@@ -41,3 +46,4 @@ export type { UserPreferenceRepository } from "./repositories/user-preference-re
 export type { MarketPriceRepository } from "./repositories/market-price-repository";
 export type { MarketEventRepository } from "./repositories/market-event-repository";
 export type { HistoricalPriceRepository } from "./repositories/historical-price-repository";
+export type { UnitOfWork, TransactionalRepositories } from "./repositories/unit-of-work";

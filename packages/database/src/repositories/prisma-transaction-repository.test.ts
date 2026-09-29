@@ -112,14 +112,55 @@ describe("PrismaTransactionRepository", () => {
       executedAt: new Date("2026-02-01T00:00:00.000Z"),
     });
 
-    const results = await repository.listByPortfolioId(portfolioId, {
-      type: "BUY",
-      dateFrom: new Date("2026-02-01T00:00:00.000Z"),
-      dateTo: new Date("2026-02-28T00:00:00.000Z"),
+    const results = await repository.listByPortfolioId(
+      portfolioId,
+      {
+        type: "BUY",
+        dateFrom: new Date("2026-02-01T00:00:00.000Z"),
+        dateTo: new Date("2026-02-28T00:00:00.000Z"),
+      },
+      { page: 1, pageSize: 100 },
+    );
+
+    expect(results.items.some((t) => t.id === buy.id)).toBe(true);
+    expect(results.items.every((t) => t.type === "BUY")).toBe(true);
+  });
+
+  it("paginates newest-first with a stable order and reports the total", async () => {
+    const dates = ["2027-03-01", "2027-03-02", "2027-03-03"];
+    for (const date of dates) {
+      await repository.create({
+        portfolioId,
+        assetId,
+        type: "BUY",
+        quantity: 1,
+        price: Money.of("10", "USD"),
+        executedAt: new Date(`${date}T00:00:00.000Z`),
+      });
+    }
+
+    // Date range isolates this test's rows from other tests' transactions.
+    const filter = {
+      dateFrom: new Date("2027-03-01T00:00:00.000Z"),
+      dateTo: new Date("2027-03-31T00:00:00.000Z"),
+    };
+    const first = await repository.listByPortfolioId(portfolioId, filter, {
+      page: 1,
+      pageSize: 2,
+    });
+    const second = await repository.listByPortfolioId(portfolioId, filter, {
+      page: 2,
+      pageSize: 2,
     });
 
-    expect(results.some((t) => t.id === buy.id)).toBe(true);
-    expect(results.every((t) => t.type === "BUY")).toBe(true);
+    expect(first.total).toBe(3);
+    expect(first.items.map((t) => t.executedAt.toISOString().slice(0, 10))).toEqual([
+      "2027-03-03",
+      "2027-03-02",
+    ]);
+    expect(second.items.map((t) => t.executedAt.toISOString().slice(0, 10))).toEqual([
+      "2027-03-01",
+    ]);
   });
 
   it("returns null when a transaction does not exist", async () => {

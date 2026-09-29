@@ -53,4 +53,28 @@ describe("PrismaUserPreferenceRepository", () => {
     // language must remain untouched by a partial update
     expect(updated.language).toBe("en");
   });
+
+  it("creates preferences on first update when none exist yet (upsert), using schema defaults", async () => {
+    const freshUser = await prisma.user.create({
+      data: {
+        email: `preference-upsert-test-${crypto.randomUUID()}@example.com`,
+        displayName: "Preference Upsert Test User",
+      },
+    });
+
+    try {
+      expect(await repository.getByUserId(freshUser.id)).toBeNull();
+
+      const created = await repository.update(freshUser.id, { reducedMotion: true });
+
+      expect(created.userId).toBe(freshUser.id);
+      expect(created.reducedMotion).toBe(true);
+      // Omitted fields fall back to the column defaults in schema.prisma.
+      expect(created.theme).toBe("system");
+      expect(created.language).toBe("en");
+      expect(created.notificationPreferences).toEqual({});
+    } finally {
+      await prisma.user.delete({ where: { id: freshUser.id } });
+    }
+  });
 });

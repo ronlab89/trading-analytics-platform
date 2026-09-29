@@ -1,5 +1,17 @@
 import type { CreateTransactionInput, Transaction } from "../entities/transaction";
 import type { TransactionStatus, TransactionType } from "../entities/enums";
+import type { Page, PageRequest } from "./pagination";
+
+/**
+ * Filters supported when listing a portfolio's transactions.
+ * Source: 07-api-spec.md §13 (List Transactions filters), FR-015/FR-016.
+ */
+export interface TransactionListFilter {
+  assetId?: string;
+  type?: TransactionType;
+  dateFrom?: Date;
+  dateTo?: Date;
+}
 
 /**
  * Transaction repository contract.
@@ -18,18 +30,19 @@ import type { TransactionStatus, TransactionType } from "../entities/enums";
  */
 export interface TransactionRepository {
   /**
-   * Returns transactions for a portfolio, optionally filtered.
-   * Source: FR-014 (List Transactions), FR-015 (Search), FR-016 (Filter).
+   * Returns one page of a portfolio's transactions, optionally filtered.
+   * Source: FR-014 (List Transactions), FR-015 (Search), FR-016 (Filter),
+   * 07-api-spec.md §13 and §40.
+   *
+   * Ordered by `executedAt` descending (most recent first) with `id`
+   * descending as a tiebreaker, so pagination is stable even when
+   * several transactions share the same execution time.
    */
   listByPortfolioId(
     portfolioId: string,
-    filter?: {
-      assetId?: string;
-      type?: TransactionType;
-      dateFrom?: Date;
-      dateTo?: Date;
-    },
-  ): Promise<Transaction[]>;
+    filter: TransactionListFilter,
+    page: PageRequest,
+  ): Promise<Page<Transaction>>;
 
   /**
    * Returns a single transaction by id, or null if it does not exist.

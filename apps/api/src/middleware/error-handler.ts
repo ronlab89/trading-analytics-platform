@@ -38,6 +38,34 @@ function isDomainValidationError(err: unknown): err is Error {
 }
 
 /**
+ * Errors raised by Express's body parser (`express.json()`), built with
+ * `http-errors`: they carry a machine-readable `type` (e.g.
+ * "entity.parse.failed", "entity.too.large") and an HTTP `status`.
+ * Duck-typed for the same reason as the domain errors above: no extra
+ * dependency in the error-handling middleware.
+ */
+interface BodyParserError extends Error {
+  type: string;
+  status: number;
+}
+
+function isBodyParserError(err: unknown): err is BodyParserError {
+  return (
+    err instanceof Error &&
+    "type" in err &&
+    typeof err.type === "string" &&
+    err.type.startsWith("entity.") &&
+    "status" in err &&
+    typeof err.status === "number"
+  );
+}
+
+const BODY_PARSER_MESSAGES: Record<string, string> = {
+  "entity.parse.failed": "The request body is not valid JSON.",
+  "entity.too.large": "The request body is too large.",
+};
+
+/**
  * Central error-handling middleware. Must be registered last, after all
  * routes. Normalizes AppErrors, domain invariant errors, and unexpected
  * exceptions into the response shape defined in 07-api-spec.md §5, and
@@ -60,6 +88,20 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       },
     };
     res.status(err.statusCode).json(body);
+    return;
+  }
+
+  // Malformed or oversized request body, rejected by the body parser
+  // before any route ran. Client error (400/413), never a 500.
+  if (isBodyParserError(err)) {
+    const body: ErrorResponseBody = {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: BODY_PARSER_MESSAGES[err.type] ?? "The request body could not be processed.",
+        requestId,
+      },
+    };
+    res.status(err.status >= 400 && err.status < 500 ? err.status : 400).json(body);
     return;
   }
 

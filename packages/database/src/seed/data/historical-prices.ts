@@ -19,10 +19,11 @@ export interface DailyCandle {
 }
 
 /**
- * Source: 05-data-model.md §20 (Historical Price). 30 daily candles per
- * asset, ending 2026-09-14 — enough to render a non-trivial chart without
- * simulating an exchange-accurate calendar (weekends included on purpose,
- * for simplicity; this is illustrative data, not a real market feed).
+ * Source: 05-data-model.md §20 (Historical Price). 90 daily candles per
+ * asset, ending 2026-09-14 — enough to render a non-trivial chart and
+ * support drawdown/volatility calculations without simulating an
+ * exchange-accurate calendar (weekends included on purpose, for
+ * simplicity; this is illustrative data, not a real market feed).
  *
  * Start/end prices chosen so each series' final close matches the
  * `currentPrice` already seeded for that asset's Position in Step 6.3
@@ -33,7 +34,7 @@ export const SEED_HISTORICAL_PRICE_SERIES: readonly HistoricalPriceSeriesBluepri
   {
     assetSymbol: "AAPL",
     currency: "USD",
-    days: 30,
+    days: 90,
     endDate: new Date("2026-09-14T00:00:00Z"),
     startPrice: 160,
     endPrice: 184.22,
@@ -43,7 +44,7 @@ export const SEED_HISTORICAL_PRICE_SERIES: readonly HistoricalPriceSeriesBluepri
   {
     assetSymbol: "MSFT",
     currency: "USD",
-    days: 30,
+    days: 90,
     endDate: new Date("2026-09-14T00:00:00Z"),
     startPrice: 410,
     endPrice: 385,
@@ -53,7 +54,7 @@ export const SEED_HISTORICAL_PRICE_SERIES: readonly HistoricalPriceSeriesBluepri
   {
     assetSymbol: "VOO",
     currency: "USD",
-    days: 30,
+    days: 90,
     endDate: new Date("2026-09-14T00:00:00Z"),
     startPrice: 475,
     endPrice: 481,
@@ -63,7 +64,7 @@ export const SEED_HISTORICAL_PRICE_SERIES: readonly HistoricalPriceSeriesBluepri
   {
     assetSymbol: "QQQ",
     currency: "USD",
-    days: 30,
+    days: 90,
     endDate: new Date("2026-09-14T00:00:00Z"),
     startPrice: 495,
     endPrice: 505,
@@ -73,7 +74,7 @@ export const SEED_HISTORICAL_PRICE_SERIES: readonly HistoricalPriceSeriesBluepri
   {
     assetSymbol: "TSLA",
     currency: "USD",
-    days: 30,
+    days: 90,
     endDate: new Date("2026-09-14T00:00:00Z"),
     startPrice: 230,
     endPrice: 265,
@@ -83,7 +84,7 @@ export const SEED_HISTORICAL_PRICE_SERIES: readonly HistoricalPriceSeriesBluepri
   {
     assetSymbol: "BTC",
     currency: "USD",
-    days: 30,
+    days: 90,
     endDate: new Date("2026-09-14T00:00:00Z"),
     startPrice: 85000,
     endPrice: 112450.2,
@@ -93,7 +94,7 @@ export const SEED_HISTORICAL_PRICE_SERIES: readonly HistoricalPriceSeriesBluepri
   {
     assetSymbol: "ETH",
     currency: "USD",
-    days: 30,
+    days: 90,
     endDate: new Date("2026-09-14T00:00:00Z"),
     startPrice: 3300,
     endPrice: 3100,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paginationQueryShape } from "./pagination.schema.js";
 
 /**
  * Request-boundary shape for a monetary value in JSON payloads.
@@ -49,6 +50,7 @@ export const listTransactionsQuerySchema = z.object({
   type: z.enum(["BUY", "SELL"]).optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
+  ...paginationQueryShape,
 });
 
 export type ListTransactionsQuery = z.infer<typeof listTransactionsQuerySchema>;

@@ -13,6 +13,14 @@ export interface NotificationRepository {
   listByUserId(userId: string, filter?: { unreadOnly?: boolean }): Promise<Notification[]>;
 
   /**
+   * Returns a single notification, or null if it does not exist.
+   * Used to verify ownership before markAsRead — that method takes a
+   * bare id with no userId, so the service layer must confirm the
+   * notification belongs to the caller first.
+   */
+  getById(id: string): Promise<Notification | null>;
+
+  /**
    * Creates a new notification.
    * Callers are expected to have already run `validateNewNotification`
    * (see entities/notification.ts) before calling this.

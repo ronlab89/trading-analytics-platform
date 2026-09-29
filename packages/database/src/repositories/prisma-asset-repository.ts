@@ -1,4 +1,11 @@
-import type { Asset, AssetRepository, AssetType, CreateAssetInput } from "@trading/domain";
+import type {
+  Asset,
+  AssetListFilter,
+  AssetRepository,
+  CreateAssetInput,
+  Page,
+  PageRequest,
+} from "@trading/domain";
 import type { Prisma } from "../../generated/client/index.js";
 import { prisma } from "../client.js";
 import { toDomainAsset, toPrismaCreateInput } from "../mappers/asset-mapper.js";
@@ -13,10 +20,13 @@ import { toDomainAsset, toPrismaCreateInput } from "../mappers/asset-mapper.js";
  * `AssetStatus.INACTIVE` is the correct path for retiring an asset).
  */
 export class PrismaAssetRepository implements AssetRepository {
-  async list(filter?: { search?: string; assetType?: AssetType }): Promise<Asset[]> {
+  async list(filter: AssetListFilter, { page, pageSize }: PageRequest): Promise<Page<Asset>> {
     const where: Prisma.AssetWhereInput = {
-      ...(filter?.assetType !== undefined ? { assetType: filter.assetType } : {}),
-      ...(filter?.search !== undefined
+      ...(filter.assetType !== undefined ? { assetType: filter.assetType } : {}),
+      ...(filter.exchange !== undefined ? { exchange: filter.exchange } : {}),
+      ...(filter.currency !== undefined ? { currency: filter.currency } : {}),
+      ...(filter.status !== undefined ? { status: filter.status } : {}),
+      ...(filter.search !== undefined
         ? {
             OR: [
               { symbol: { contains: filter.search, mode: "insensitive" } },
@@ -26,13 +36,31 @@ export class PrismaAssetRepository implements AssetRepository {
         : {}),
     };
 
-    const rows = await prisma.asset.findMany({ where });
-    return rows.map(toDomainAsset);
+    // Single batch so the page and the total come from the same snapshot.
+    const [rows, total] = await prisma.$transaction([
+      prisma.asset.findMany({
+        where,
+        orderBy: { symbol: "asc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.asset.count({ where }),
+    ]);
+
+    return { items: rows.map(toDomainAsset), total };
   }
 
   async getById(id: string): Promise<Asset | null> {
     const row = await prisma.asset.findUnique({ where: { id } });
     return row ? toDomainAsset(row) : null;
+  }
+
+  async getByIds(ids: readonly string[]): Promise<Asset[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await prisma.asset.findMany({ where: { id: { in: [...ids] } } });
+    return rows.map(toDomainAsset);
   }
 
   async getBySymbol(symbol: string): Promise<Asset | null> {

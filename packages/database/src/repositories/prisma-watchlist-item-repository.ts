@@ -25,6 +25,13 @@ export class PrismaWatchlistItemRepository implements WatchlistItemRepository {
     return rows.map(toDomainWatchlistItem);
   }
 
+  async getByUserAndAsset(userId: string, assetId: string): Promise<WatchlistItem | null> {
+    const row = await prisma.watchlistItem.findUnique({
+      where: { userId_assetId: { userId, assetId } },
+    });
+    return row ? toDomainWatchlistItem(row) : null;
+  }
+
   async create(input: CreateWatchlistItemInput): Promise<WatchlistItem> {
     try {
       const row = await prisma.watchlistItem.create({ data: input });

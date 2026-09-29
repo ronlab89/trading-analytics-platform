@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/client/index.js";
+import { PrismaClient, type Prisma } from "../generated/client/index.js";
 
 /**
  * PrismaClient singleton.
@@ -16,6 +16,12 @@ import { PrismaClient } from "../generated/client/index.js";
  * Infrastructure Is Replaceable — the same isolation principle
  * applies to the real adapter, not just the mock one).
  */
+
+/**
+ * Client accepted by repositories: either the shared PrismaClient or the
+ * scoped client Prisma hands to an interactive `$transaction` callback.
+ */
+export type DatabaseClient = PrismaClient | Prisma.TransactionClient;
 
 declare global {
   var __prisma: PrismaClient | undefined;

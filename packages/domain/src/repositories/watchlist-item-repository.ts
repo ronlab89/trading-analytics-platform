@@ -9,6 +9,16 @@ export interface WatchlistItemRepository {
   listByUserId(userId: string): Promise<WatchlistItem[]>;
 
   /**
+   * Returns a single watchlist entry for a given user/asset pair, or
+   * null if the asset is not currently on that user's watchlist.
+   *
+   * Used to check existence before a destructive operation (removal),
+   * so the service layer can return a clean 404 instead of letting a
+   * "record to delete does not exist" database error surface.
+   */
+  getByUserAndAsset(userId: string, assetId: string): Promise<WatchlistItem | null>;
+
+  /**
    * Creates a watchlist entry.
    * Duplicate prevention (05-data-model.md §17: "A user cannot have
    * duplicate entries for the same asset") is enforced here — the
