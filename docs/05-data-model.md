@@ -423,6 +423,29 @@ NOTE_ADDED
 
 The event model should remain extensible.
 
+### Payload conventions
+
+`payload` is a free-form JSON object, but Decision Replay
+(`projectDecisionReplay`, `packages/domain`) understands these shapes.
+Prices are plain numbers interpreted in the asset's currency.
+
+```text
+DECISION_CREATED   {}
+THESIS_RECORDED    { thesis? }          falls back to decision.thesis
+POSITION_OPENED    { quantity, price }
+PRICE_UPDATE       { price }
+RISK_CHANGED       { riskLevel }
+TARGET_REACHED     { price }
+POSITION_ADJUSTED  { quantity, price }  quantity = new total, not a delta
+POSITION_CLOSED    { price }
+NOTE_ADDED         { note }
+```
+
+Malformed or out-of-sequence events do not break the replay: they are
+ignored for state purposes and reported as issues. Event `timestamp`
+is the real event time and may be supplied at creation (historical
+data); it defaults to the creation time when omitted.
+
 ---
 
 # 13. Decision Replay Model

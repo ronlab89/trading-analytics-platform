@@ -26,6 +26,7 @@ export * from "./calculations/scenario-impact";
 export * from "./calculations/volatility";
 export * from "./calculations/portfolio-pulse";
 export * from "./calculations/position-recalculation";
+export * from "./calculations/decision-replay";
 export type { PortfolioRepository } from "./repositories/portfolio-repository";
 export type { UserRepository } from "./repositories/user-repository";
 export type { CredentialRepository } from "./repositories/credential-repository";

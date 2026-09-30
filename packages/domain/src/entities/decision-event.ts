@@ -6,10 +6,11 @@ import { DecisionEventType } from "./enums";
  *
  * Represents one chronological event in a Decision's history. Decision
  * Replay derives its state by folding events[0..currentIndex] — this
- * file only defines the event shape and structural invariants; the
- * fold/replay logic itself belongs to the application layer
- * (06-architecture.md §11, "ReplayDecision" use case), not the domain
- * entity module.
+ * file only defines the event shape and structural invariants. The
+ * fold itself is the pure domain function `projectDecisionReplay`
+ * (calculations/decision-replay.ts), which also documents the payload
+ * conventions per event type. The `ReplayDecision` use case
+ * (06-architecture.md §11) only loads data and calls it.
  */
 export interface DecisionEvent {
   readonly id: string;
