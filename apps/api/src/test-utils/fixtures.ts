@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma, PrismaUserRepository, PrismaCredentialRepository } from "@trading/database";
-import type { Portfolio, User } from "@trading/domain";
+import type { DecisionEventType, Portfolio, User } from "@trading/domain";
 import { PrismaPortfolioRepository } from "@trading/database";
 
 const userRepository = new PrismaUserRepository();
@@ -87,6 +87,60 @@ export async function createTestNotification(
     },
   });
   return { id: row.id };
+}
+
+export interface TestDecisionEventInput {
+  type: DecisionEventType;
+  timestamp: Date;
+  payload?: Record<string, string | number>;
+}
+
+/**
+ * Creates a decision (with entry/target/stop prices in USD) and its
+ * events directly through Prisma — there is no write endpoint for
+ * decisions yet. Events are inserted in the order given, so tests can
+ * pass them out of chronological order to verify the API sorts them.
+ * Cascade deletes (Portfolio -> Decision -> DecisionEvent) mean
+ * `cleanupTestData` needs no extra step for these rows.
+ */
+export async function createTestDecision(
+  portfolioId: string,
+  assetId: string,
+  overrides: {
+    title?: string;
+    direction?: "LONG" | "SHORT" | "NEUTRAL";
+    createdAt?: Date;
+    events?: TestDecisionEventInput[];
+  } = {},
+): Promise<{ id: string }> {
+  const decision = await prisma.decision.create({
+    data: {
+      portfolioId,
+      assetId,
+      title: overrides.title ?? "Integration test decision",
+      thesis: "Created by an integration test.",
+      direction: overrides.direction ?? "LONG",
+      entryPrice: 150,
+      targetPrice: 170,
+      stopPrice: 140,
+      currency: "USD",
+      riskLevel: "MODERATE",
+      createdAt: overrides.createdAt ?? new Date("2026-06-01T14:00:00Z"),
+    },
+  });
+
+  for (const event of overrides.events ?? []) {
+    await prisma.decisionEvent.create({
+      data: {
+        decisionId: decision.id,
+        type: event.type,
+        timestamp: event.timestamp,
+        payload: event.payload ?? {},
+      },
+    });
+  }
+
+  return { id: decision.id };
 }
 
 /**

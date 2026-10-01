@@ -706,12 +706,17 @@ Filters:
 ```text id="v1p6n9"
 assetId
 direction
-outcome
 dateFrom
 dateTo
-page
-pageSize
 ```
+
+> **Implementation note (diverges from the original spec).** `outcome`,
+> `page` and `pageSize` are not implemented. A portfolio holds a small
+> number of decisions, `outcome` is a free-form string with no useful
+> filter semantics yet, and `DecisionRepository.listByPortfolioId`
+> returns a plain array. The response is `{ "data": [...] }` without
+> `meta`. Revisit if decision volume or an enumerated outcome justifies
+> it (NFR-070).
 
 ---
 
@@ -722,6 +727,19 @@ GET /api/v1/portfolios/:portfolioId/decisions/:decisionId
 ```
 
 ---
+
+> **Deferred (not implemented).** Create, Update and Close Decision
+> (the three endpoints below) are intentionally deferred. No functional
+> requirement asks for them (FR-032/033/034 are read and replay only),
+> and decision events cannot be generated honestly by the service: there
+> is no `DECISION_CLOSED` event type, `POSITION_CLOSED` needs an exit
+> price the close endpoint does not receive, and `Decision` has no link
+> to `Transaction` from which position events could be derived. Writing
+> decisions properly also requires extending `UnitOfWork` so a decision
+> and its events are created atomically (FR-074). Decisions currently
+> come from seed/demo data. If the frontend needs to create decisions,
+> design this together with an event journal endpoint
+> (`POST .../decisions/:decisionId/events`) once the screen exists.
 
 ## Create Decision
 
@@ -777,12 +795,23 @@ Response:
   "data": {
     "decision": {},
     "events": [],
+    "currency": "USD",
     "initialState": {}
   }
 }
 ```
 
 The client controls playback.
+
+> **Implementation note.** `events` are returned in chronological order.
+> `currency` is the asset's currency: event payload prices are plain
+> numbers interpreted in it, so a client folding the timeline needs it.
+> `initialState` is the projection before the first event
+> (`currentIndex = -1`). The client advances by folding events with the
+> same pure `projectDecisionReplay` function from `@trading/domain`
+> that the server uses, which keeps the public demo identical.
+> Ownership is resolved decision → portfolio → user; a missing decision
+> and another user's decision both return the same 404.
 
 ---
 

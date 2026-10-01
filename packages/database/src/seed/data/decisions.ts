@@ -2,11 +2,8 @@ import { DecisionDirection, DecisionEventType, Money } from "@trading/domain";
 
 export interface DecisionEventBlueprint {
   /**
-   * Narrative-only ordering aid — NOT passed to `decisionEventRepository.create()`.
-   * `CreateDecisionEventInput` does not accept `timestamp` (repository always
-   * assigns it, per PROGRESS.md "timestamp always repository-assigned"), so
-   * the persisted timestamp will be the moment the seed script ran, not this
-   * date. Kept here so the blueprint reads as a coherent chronological story.
+   * Real event time, persisted via `CreateDecisionEventInput.timestamp`
+   * so Decision Replay has a coherent chronological timeline.
    */
   readonly type: DecisionEventType;
   readonly timestamp: Date;
@@ -24,10 +21,8 @@ export interface DecisionBlueprint {
   readonly stopPrice: Money;
   readonly riskLevel: string;
   /**
-   * Narrative anchor for `events[].timestamp` below — NOT passed to
-   * `decisionRepository.create()`. `CreateDecisionInput` does not accept
-   * `createdAt` (the schema sets it via @default(now())), so the actual
-   * persisted `createdAt` will be the seed run's timestamp, not this date.
+   * Persisted via `CreateDecisionInput.createdAt`; anchors the
+   * `events[].timestamp` values below and precedes `closedAt`.
    */
   readonly createdAt: Date;
   readonly closedAt: Date;

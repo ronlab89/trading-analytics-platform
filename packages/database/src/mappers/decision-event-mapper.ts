@@ -31,15 +31,16 @@ export function toDomainDecisionEvent(row: PrismaDecisionEvent): DecisionEvent {
  * Per-type payload completeness, if ever required, belongs in
  * `validateNewDecisionEvent` (domain), not this repository.
  *
- * `timestamp` is always set here (`new Date()`) — `CreateDecisionEventInput`
- * does not expose it at all (see entities/decision-event.ts), so
- * assigning it is this repository's responsibility, same as `id`.
+ * `timestamp` defaults to `new Date()` when the caller omits it, and is
+ * used as-is when provided (historical events: seed data, imports,
+ * demo scenarios). Events are immutable once created, so this is the
+ * only moment the timestamp is ever set.
  */
 export function toPrismaCreateInput(input: CreateDecisionEventInput) {
   return {
     decisionId: input.decisionId,
     type: input.type,
     payload: (input.payload ?? {}) as Prisma.InputJsonValue,
-    timestamp: new Date(),
+    timestamp: input.timestamp ?? new Date(),
   };
 }

@@ -109,6 +109,18 @@ describe("validateNewDecision", () => {
     }).toThrow(InvalidDecisionError);
   });
 
+  it("should accept a valid historical createdAt", () => {
+    expect(() => {
+      validateNewDecision({ ...baseInput, createdAt: new Date("2026-06-01T14:00:00Z") });
+    }).not.toThrow();
+  });
+
+  it("should reject an invalid createdAt date", () => {
+    expect(() => {
+      validateNewDecision({ ...baseInput, createdAt: new Date("not-a-date") });
+    }).toThrow(InvalidDecisionError);
+  });
+
   it("should accept a SHORT decision", () => {
     expect(() => {
       validateNewDecision({

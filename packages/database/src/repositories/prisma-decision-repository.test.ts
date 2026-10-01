@@ -58,6 +58,21 @@ describe("PrismaDecisionRepository", () => {
     expect(decision.outcome).toBeNull();
   });
 
+  it("persists an explicit createdAt instead of assigning now()", async () => {
+    const createdAt = new Date("2026-06-01T14:00:00.000Z");
+
+    const decision = await repository.create({
+      portfolioId,
+      assetId,
+      title: "Historical decision",
+      thesis: "Recorded after the fact.",
+      direction: "LONG",
+      createdAt,
+    });
+
+    expect(decision.createdAt.toISOString()).toBe(createdAt.toISOString());
+  });
+
   it("creates a decision with entry, target and stop sharing one currency", async () => {
     const decision = await repository.create({
       portfolioId,

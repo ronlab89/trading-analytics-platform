@@ -42,11 +42,21 @@ export interface Decision {
   readonly notes: string | null;
 }
 
+/**
+ * `createdAt` is optional and defaults to "now" when omitted. It exists
+ * so decisions that describe past activity (seed data, imports, demo
+ * scenarios) can be recorded with their real creation time — Decision
+ * Replay needs a coherent timeline, and a `createdAt` later than
+ * `closedAt` would be contradictory. See 05-data-model.md §40 (event
+ * time vs. creation time must be distinguishable).
+ */
 export type CreateDecisionInput = Pick<
   Decision,
   "portfolioId" | "assetId" | "title" | "thesis" | "direction"
 > &
-  Partial<Pick<Decision, "entryPrice" | "targetPrice" | "stopPrice" | "riskLevel" | "notes">>;
+  Partial<
+    Pick<Decision, "entryPrice" | "targetPrice" | "stopPrice" | "riskLevel" | "notes" | "createdAt">
+  >;
 
 export class InvalidDecisionError extends Error {
   constructor(message: string) {
@@ -89,6 +99,10 @@ export function validateNewDecision(input: CreateDecisionInput): void {
 
   if (!Object.values(DecisionDirection).includes(input.direction)) {
     throw new InvalidDecisionError(`Unsupported decision direction: ${input.direction}`);
+  }
+
+  if (input.createdAt !== undefined && Number.isNaN(input.createdAt.getTime())) {
+    throw new InvalidDecisionError("Decision createdAt must be a valid date.");
   }
 
   validateOptionalPrice(input.entryPrice, "Entry price");
