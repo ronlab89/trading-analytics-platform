@@ -728,6 +728,19 @@ GET /api/v1/portfolios/:portfolioId/decisions/:decisionId
 
 ---
 
+> **Deferred (not implemented).** Create, Update and Close Decision
+> (the three endpoints below) are intentionally deferred. No functional
+> requirement asks for them (FR-032/033/034 are read and replay only),
+> and decision events cannot be generated honestly by the service: there
+> is no `DECISION_CLOSED` event type, `POSITION_CLOSED` needs an exit
+> price the close endpoint does not receive, and `Decision` has no link
+> to `Transaction` from which position events could be derived. Writing
+> decisions properly also requires extending `UnitOfWork` so a decision
+> and its events are created atomically (FR-074). Decisions currently
+> come from seed/demo data. If the frontend needs to create decisions,
+> design this together with an event journal endpoint
+> (`POST .../decisions/:decisionId/events`) once the screen exists.
+
 ## Create Decision
 
 ```text id="m9x4p1"
