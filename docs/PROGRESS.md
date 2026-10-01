@@ -1,9 +1,10 @@
 # Trading Analytics Platform — Progress
 
-**Last updated:** end of Step D (Watchlist, Alerts, Notifications, User
-Preferences endpoints + integration tests)
-**Branch:** `feat/api-foundation` (created from `feat/database-infrastructure`,
-which was closed via PR covering Phases 2-3 base work)
+**Last updated:** end of Decisions + Replay (read API, pure replay
+projection, timestamp foundation); decision write endpoints deferred
+**Branch:** `feat/decisions`, created from `develop`. `feat/api-foundation`
+(Phases 3 hardening, Market Data, Step D) was merged via PR into
+`develop` (not `main`).
 
 ---
 
@@ -32,8 +33,13 @@ existed, before deciding the next block of work.
 Notifications, User Preferences, each with endpoints and HTTP-level
 integration tests (see §3.6).
 
+**Decisions + Replay is complete on the read side:** list, detail and
+replay endpoints, a pure `projectDecisionReplay` domain projection and
+real timestamps in the seed (see §3.7). The write endpoints (create,
+update, close) are **deliberately deferred**.
+
 **Explicitly NOT started yet** (schema + repositories exist in
-`packages/database`, no API): Decisions (with replay) and Scenarios.
+`packages/database`, no API): Scenarios.
 
 ---
 
@@ -58,8 +64,9 @@ docs/                   SDD documents (00-15) + this file
   MarketPrice, HistoricalPrice (all have entity files + tests; only
   User/Credential/Portfolio/Asset/Position/Transaction/MarketPrice/
   HistoricalPrice/WatchlistItem/Alert/Notification/UserPreference
-  currently have API routes wired up — Decision/DecisionEvent/Scenario
-  have repository implementations but no API yet, see §1).
+  currently have API routes wired up; Decision/DecisionEvent are
+  exposed read-only (list/detail/replay), and Scenario has a repository
+  implementation but no API yet, see §1).
 - `Money` value object (decimal.js-backed): `add`, `subtract`,
   `multiply`, `divide`, `isZero`/`isPositive`/`isNegative`, `equals`,
   `greaterThan`/`lessThan`, `toNumber`/`toString`/`toFixed`.
@@ -82,6 +89,10 @@ docs/                   SDD documents (00-15) + this file
     when absent) since the calculation module itself has no opinion on
     which asset's data to use
   - `calculateScenarioImpact`
+  - `projectDecisionReplay` (new, Decisions) — pure fold of a decision's
+    chronological events into a replay state at a given index (`-1` =
+    before the first event). Tolerates malformed events (reported in
+    `issues`, never thrown). Shared by the API and, later, the demo.
 - Repository contracts (interfaces only): one per entity, plus:
   - `pagination.ts` — shared `Page<T>` / `PageRequest` primitives, used
     by Asset and Transaction listings (and anything paginated going
@@ -190,6 +201,7 @@ malformed payload) — never reveals which one applies.
 | Alerts (Step D) | `GET/POST /api/v1/alerts`, `GET/PATCH/DELETE /api/v1/alerts/:alertId` | Create verifies a referenced `portfolioId` belongs to the caller and a referenced `assetId` exists; at-least-one-target rule enforced by both the Zod schema and `validateNewAlert`. PATCH edits only `condition`/`threshold`/`enabled` (what an alert monitors is immutable — a different target is a new alert). |
 | Notifications (Step D) | `GET /api/v1/notifications?unreadOnly=`, `POST /api/v1/notifications/:id/read`, `POST /api/v1/notifications/read-all` | No create endpoint by design (notifications come from system events). Mark-read checks ownership via the new `getById` first (`markAsRead` takes a bare id). See §3.6 for the deliberate divergence from `07-api-spec.md` §28. |
 | Preferences (Step D) | `GET/PATCH /api/v1/preferences` | One row per user, created lazily. `GET` with no saved row → `200` with `data: null` (not 404, and a read never writes). `PATCH` is an atomic upsert; `defaultPortfolioId` must belong to the caller (404 otherwise), `null` clears it. |
+| Decisions (read-only) | `GET /api/v1/portfolios/:id/decisions` (filters: assetId/direction/dateFrom/dateTo, not paginated), `GET .../decisions/:decisionId`, `GET /api/v1/decisions/:decisionId/replay` | Replay is not nested under a portfolio (per the spec): ownership is resolved decision → portfolio → user, same 404 for missing and foreign. Returns `decision`, chronologically ordered `events`, the asset's `currency` and `initialState` (projection at index -1). Create/update/close are deferred, see §3.7. |
 
 **Cross-cutting decisions worth remembering:**
 - Cross-user resource access is always 404, never 403 (anti-enumeration,
@@ -455,6 +467,63 @@ signing; migrating them to `tokenFor` is optional cleanup.
 
 **Verification:** typecheck, lint and the full test suites passed.
 
+### 3.7 Decisions + Replay (read side)
+
+Done in three slices on `feat/decisions`; the write side was
+evaluated and deferred on purpose.
+
+**Slice 1 — real timestamps.** `CreateDecisionInput` now accepts an
+optional `createdAt` and `CreateDecisionEventInput` an optional
+`timestamp` (default: now), both validated as real dates. This reverses
+the earlier "timestamp always repository-assigned" decision: without it,
+every seeded event got the seed-run time (milliseconds apart, so a
+replay timeline had no real time span and ordering could tie), and
+`createdAt` could be later than `closedAt`. Justified by
+`05-data-model.md` §40 (event time vs. creation time must be
+distinguishable). The seed now passes the blueprints' real dates; only
+the mappers changed in `packages/database` (repositories delegate).
+
+**Slice 2 — `projectDecisionReplay`** (`packages/domain/src/calculations/
+decision-replay.ts`). Signature `projectDecisionReplay({ decision,
+events, currency }, currentIndex)`. Pure; does not mutate inputs
+(FR-034). `currency` is passed by the caller (the asset's) because
+`Decision` has no currency of its own. Out-of-range index throws
+`DecisionReplayError`; malformed or out-of-sequence events never throw,
+they are ignored and listed in `issues`. Tracks phase
+(`PLANNED`/`OPEN`/`CLOSED`), thesis, risk level, notes, position,
+last price, unrealized and realized P/L (SHORT inverts the sign; NEUTRAL
+is computed like LONG). Position increases use a weighted-average entry
+price, reductions realize P/L; quantity deltas go through `Decimal`.
+Payload conventions per event type are now documented in
+`05-data-model.md` §12 (they were previously implicit in the seed).
+Placed in the domain, not the application layer, so the API and the
+demo share the same projection (corrects an old comment in
+`decision-event.ts`).
+
+**Slice 3 — read endpoints** (see the §2.4 table). Deliberate
+divergences, reflected in `07-api-spec.md` §23-24: no `outcome`,
+`page` or `pageSize` (the repo does not support them), list responds
+`{ data }` without `meta`, and the replay response adds `currency`.
+19 integration tests in `decisions.routes.test.ts`; new
+`createTestDecision` fixture (events can be passed out of order to prove
+the API sorts them). `cleanupTestData` needed no change: Portfolio →
+Decision → DecisionEvent cascade.
+
+**Slice 4 — write endpoints: DEFERRED (option C).** Create, update and
+close are annotated as deferred in `07-api-spec.md` §23. Reasons: no FR
+asks for them (FR-032/033/034 are read and replay only); events cannot
+be generated honestly by the service (no `DECISION_CLOSED` type,
+`POSITION_CLOSED` needs an exit price the close endpoint does not
+receive, and `Decision` has no link to `Transaction` to derive position
+events); and writing decisions properly needs `UnitOfWork` extended so a
+decision and its events are created atomically (FR-074), repeated later
+in the demo mock. If the frontend needs to create decisions, design it
+then together with an event-journal endpoint
+(`POST .../decisions/:decisionId/events`) with the screen in view.
+
+**Verification:** typecheck, lint and the domain, database and api test
+suites passed after slices 1 to 3.
+
 ---
 
 ## 4. Environment Files Reference
@@ -520,6 +589,17 @@ test(api): add alerts integration tests
 test(api): add notifications integration tests
 test(api): add user preferences integration tests
 docs(progress): update progress after step d
+
+# --- feat/decisions (branched from develop) ---
+feat(domain): accept optional createdAt and timestamp on decision inputs
+feat(database): persist explicit decision and event timestamps in seed
+feat(domain): add pure decision replay projection
+docs(data-model): document decision event payload conventions
+feat(api): add decisions list, detail and replay endpoints
+test(api): cover decisions endpoints with integration tests
+docs(api-spec): reconcile decisions list filters and replay response
+docs(api-spec): mark decision write endpoints as deferred
+docs(progress): update progress after decisions and replay
 ```
 
 (Exact wording/order of commits, and whether the last one was split
@@ -530,24 +610,36 @@ A PR was opened and merged earlier in this session for the base Phase
 2-3 work (portfolios/positions/transactions CRUD, database
 infrastructure) from `feat/database-infrastructure` into `main`,
 **before** the hardening and Assets/Analytics/Overview/Market Data work
-described in this document — that work all lives on `feat/api-foundation`,
-not yet merged.
+described in this document — that work lived on `feat/api-foundation`,
+which was later merged via PR into `develop` (not `main`).
 
 ---
 
-## 6. Immediate Next Step: to be chosen (Step D is closed)
+## 6. Immediate Next Step: Scenarios
 
-No next block has been confirmed by the user yet — **ask at the start of
-the next session.** Candidates, all listed under "remaining before
-Phase 4/5" below. Before Decisions/Scenarios, the user may also want
-to merge `feat/api-foundation` into `main` (a large amount of work now
-lives on that branch, see §5).
+Agreed order of work, set at the start of this session: (1) merge
+`feat/api-foundation` — done, into `develop`; (2) Decisions + Replay —
+done on the read side; (3) **Scenarios**; (4) Auth/RBAC; (5) Frontend and
+Demo Mode.
+
+**Next:** open the PR `feat/decisions` → `develop` (if not yet done),
+then start Scenarios on a new branch from `develop`. Same method as
+Decisions: first read `calculateScenarioImpact`, the `Scenario` schema
+and repository, `01-product-spec.md` §15 and `07-api-spec.md` §25, and
+then propose small slices. Open design questions to settle up front:
+how scenario variables are persisted (the schema has `baseSnapshotId`
+but the product spec wants isolated baselines), whether `calculate` is
+stateless or stores a result, and which lifecycle operations are
+in scope (FR-036 to FR-043). Given the lesson from Decisions, check
+what the FRs actually require before designing write endpoints.
+
+If the demo frontend is prioritized instead (rule 11), the backend
+already exposes the contracts the mock adapters would implement.
 
 Remaining before Phase 4/5:
-- **Decisions** (with replay) and **Scenarios** — larger, more novel
-  pieces (Decision Replay's chronological event projection, Scenario's
-  isolated-baseline calculation) that deserve their own planning
-  conversation rather than being bundled into "small CRUD."
+- **Scenarios** — a larger, more novel piece (the isolated-baseline
+  calculation) that deserves its own planning conversation rather than
+  being bundled into "small CRUD."
 - **RBAC + user registration** (Phase 4 proper).
 - **`performance` by period** (FR-025/026) — needs a transaction-aware
   portfolio value time series, flagged in §2.4/§3.5 as intentionally
@@ -614,13 +706,31 @@ Remaining before Phase 4/5:
   the realtime/market-simulation work, not CRUD).
 - **`tokenFor` migration (optional):** `portfolios`/`transactions`
   tests still sign JWTs inline; could adopt `test-utils/auth.ts`.
+- **Decision write endpoints** (create/update/close) and the event
+  journal endpoint: deferred, see §3.7. Prerequisite when revisited:
+  extend `UnitOfWork` to cover decisions and events.
+- **Replay `riskLevel` limitation:** `projectDecisionReplay` starts from
+  `decision.riskLevel` because the model stores no original risk level;
+  if a `RISK_CHANGED` is already reflected in the stored value, early
+  frames show the later one. Documented in the code; only fixable with
+  a new field.
+- **Event ordering ties:** events are ordered by `timestamp` only; two
+  events with the exact same millisecond could swap. Not an issue with
+  the seed's real dates; add a tiebreaker if events ever get created
+  in bursts.
+- **`dateFrom`/`dateTo` on decisions** are assumed to filter on
+  `createdAt` (covered by one integration test); confirm if the
+  semantics ever matter beyond that.
+- **Decision statuses in the seed:** `NEUTRAL` direction P/L is computed
+  as LONG in replay; revisit if NEUTRAL decisions with positions appear.
 
 ---
 
 ## 8. How to Resume Work in a New Chat
 
 1. Read this file first.
-2. Confirm current branch (`feat/api-foundation` expected) and that
+2. Confirm current branch (`develop`, or the active feature branch)
+   and that
    `git status` is clean.
 3. Run the full verification loop to confirm nothing regressed since
    last session:
