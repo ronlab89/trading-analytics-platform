@@ -4,9 +4,12 @@ import type {
   ScenarioChange,
   ScenarioRepository,
 } from "@trading/domain";
-import type { Prisma } from "../../generated/client/index.js";
 import { prisma } from "../client.js";
-import { toDomainScenario, toPrismaCreateInput } from "../mappers/scenario-mapper.js";
+import {
+  toDomainScenario,
+  toPrismaChanges,
+  toPrismaCreateInput,
+} from "../mappers/scenario-mapper.js";
 
 export class PrismaScenarioRepository implements ScenarioRepository {
   async listByPortfolioId(portfolioId: string): Promise<Scenario[]> {
@@ -33,15 +36,13 @@ export class PrismaScenarioRepository implements ScenarioRepository {
   }
 
   /**
-   * Persists `changes` into the Json column but returns the domain
-   * `Scenario` shape, which does not itself carry `changes` (see
-   * scenario-mapper.ts). Reading the changes back out is not part of
-   * this contract — see ScenarioRepository's module comment.
+   * Replaces the scenario's `changes` and returns the updated scenario,
+   * whose `changes` reflect what was just stored.
    */
-  async updateChanges(id: string, changes: ScenarioChange[]): Promise<Scenario> {
+  async updateChanges(id: string, changes: readonly ScenarioChange[]): Promise<Scenario> {
     const row = await prisma.scenario.update({
       where: { id },
-      data: { changes: changes as unknown as Prisma.InputJsonValue },
+      data: { changes: toPrismaChanges(changes) },
     });
     return toDomainScenario(row);
   }
