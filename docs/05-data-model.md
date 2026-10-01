@@ -522,6 +522,15 @@ The exact persistence representation should remain implementation-dependent.
 
 The domain should expose meaningful operations rather than leaking storage structure into the UI.
 
+> **Implementation note.** A scenario's variables (`changes`) are part of
+> the `Scenario` entity as `ScenarioChange[]`: a scenario is its set of
+> modifications, and without reading them back there is no way to
+> calculate, show or duplicate a saved scenario. How they are stored
+> (a JSON column) remains an infrastructure detail. The only variable
+> supported today is `{ assetId, percentChange }`: a percentage change
+> to that asset's current price, never below -100%, at most one entry per
+> asset. Results (§16) are still derived and never persisted.
+
 ---
 
 # 16. Scenario Result
