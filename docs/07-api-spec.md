@@ -706,12 +706,17 @@ Filters:
 ```text id="v1p6n9"
 assetId
 direction
-outcome
 dateFrom
 dateTo
-page
-pageSize
 ```
+
+> **Implementation note (diverges from the original spec).** `outcome`,
+> `page` and `pageSize` are not implemented. A portfolio holds a small
+> number of decisions, `outcome` is a free-form string with no useful
+> filter semantics yet, and `DecisionRepository.listByPortfolioId`
+> returns a plain array. The response is `{ "data": [...] }` without
+> `meta`. Revisit if decision volume or an enumerated outcome justifies
+> it (NFR-070).
 
 ---
 
@@ -777,12 +782,23 @@ Response:
   "data": {
     "decision": {},
     "events": [],
+    "currency": "USD",
     "initialState": {}
   }
 }
 ```
 
 The client controls playback.
+
+> **Implementation note.** `events` are returned in chronological order.
+> `currency` is the asset's currency: event payload prices are plain
+> numbers interpreted in it, so a client folding the timeline needs it.
+> `initialState` is the projection before the first event
+> (`currentIndex = -1`). The client advances by folding events with the
+> same pure `projectDecisionReplay` function from `@trading/domain`
+> that the server uses, which keeps the public demo identical.
+> Ownership is resolved decision → portfolio → user; a missing decision
+> and another user's decision both return the same 404.
 
 ---
 
