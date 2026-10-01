@@ -39,7 +39,7 @@ export type {
 export type { PositionRepository } from "./repositories/position-repository";
 export type { DecisionRepository } from "./repositories/decision-repository";
 export type { DecisionEventRepository } from "./repositories/decision-event-repository";
-export type { ScenarioRepository, ScenarioChange } from "./repositories/scenario-repository";
+export type { ScenarioRepository } from "./repositories/scenario-repository";
 export type { WatchlistItemRepository } from "./repositories/watchlist-item-repository";
 export type { AlertRepository } from "./repositories/alert-repository";
 export type { NotificationRepository } from "./repositories/notification-repository";

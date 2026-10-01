@@ -1,5 +1,6 @@
 import type { Portfolio } from "../entities/portfolio";
 import type { Position } from "../entities/position";
+import type { ScenarioChange } from "../entities/scenario";
 import type { Money } from "../value-objects/money";
 import { type PortfolioMetrics, calculatePortfolioMetrics } from "./portfolio-metrics";
 
@@ -15,21 +16,11 @@ import { type PortfolioMetrics, calculatePortfolioMetrics } from "./portfolio-me
  * and never touches the `positions` array/objects passed in.
  *
  * DECOUPLING FROM THE `Scenario` ENTITY: this function intentionally
- * does not accept a `Scenario` entity as a parameter. `Scenario`
- * (05-data-model.md §15) does not yet define a fixed persistence shape
- * for its variable changes — "the exact persistence representation
- * should remain implementation-dependent." Translating a persisted
- * `Scenario` into the `ScenarioChange[]` shape used here is the
- * responsibility of the application layer, not this calculations
- * module — keeping domain calculations independent of how scenarios
- * are eventually stored.
+ * does not accept a `Scenario` entity as a parameter, only the
+ * `ScenarioChange[]` (declared in entities/scenario.ts, the single
+ * source of that shape). Callers pass `scenario.changes`; this module
+ * stays free of any opinion about scenario status, naming or storage.
  */
-
-export interface ScenarioChange {
-  readonly assetId: string;
-  /** Percentage change to apply to the position's current price, e.g. -12 for -12%, 5 for +5%. */
-  readonly percentChange: number;
-}
 
 export interface ScenarioImpactResult {
   readonly baseline: PortfolioMetrics;
