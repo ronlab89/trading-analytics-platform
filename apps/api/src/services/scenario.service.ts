@@ -1,12 +1,17 @@
 import { PrismaPositionRepository, PrismaScenarioRepository } from "@trading/database";
 import {
   calculateScenarioImpact,
+  ScenarioStatus,
+  validateNewScenario,
+  validateScenarioChanges,
+  type CreateScenarioInput,
   type PortfolioMetrics,
   type Scenario,
+  type ScenarioChange,
   type ScenarioImpactResult,
-  type ScenarioStatus,
 } from "@trading/domain";
 import { AppError } from "../errors/app-error.js";
+import { getAssetsByIds } from "./asset.service.js";
 import { getPortfolioById } from "./portfolio.service.js";
 
 const scenarioRepository = new PrismaScenarioRepository();
@@ -124,4 +129,170 @@ export async function calculateScenario(
     difference: impact.difference,
     unmatchedAssetIds,
   };
+}
+
+/**
+ * Checks that every asset a scenario changes exists. Reports ALL the
+ * unknown ones at once (400 with one detail each) so the client can fix
+ * them in a single round trip.
+ *
+ * Only existence is checked, not whether the portfolio holds the asset:
+ * a scenario may legitimately mention an asset before buying it, and
+ * `calculate` reports changes it could not match (`unmatchedAssetIds`).
+ *
+ * Answered with 400 rather than 404 (unlike createAlert) because the
+ * missing thing is a field inside the body, not the resource addressed
+ * by the URL.
+ */
+async function assertChangedAssetsExist(changes: readonly ScenarioChange[]): Promise<void> {
+  if (changes.length === 0) {
+    return;
+  }
+
+  const assets = await getAssetsByIds(changes.map((change) => change.assetId));
+  const unknown = changes.filter((change) => !assets.has(change.assetId));
+
+  if (unknown.length > 0) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "The scenario references assets that do not exist.",
+      400,
+      unknown.map((change) => ({
+        field: "changes",
+        code: "UNKNOWN_ASSET",
+        message: `Unknown asset: ${change.assetId}`,
+      })),
+    );
+  }
+}
+
+export interface CreateScenarioRequest {
+  name: string;
+  description?: string;
+  changes?: readonly ScenarioChange[];
+}
+
+/**
+ * Creates a scenario in a portfolio the caller owns, as a DRAFT.
+ * Source: FR-036 (Create Scenario), 07-api-spec.md §25.
+ *
+ * Only the `scenarios` table is written, so the baseline portfolio is
+ * untouched (01-product-spec.md §15.1). Domain invariants run before
+ * the asset lookup, so a malformed list fails fast without a query.
+ */
+export async function createScenario(
+  userId: string,
+  portfolioId: string,
+  input: CreateScenarioRequest,
+): Promise<Scenario> {
+  await getPortfolioById(userId, portfolioId);
+
+  const createInput: CreateScenarioInput = {
+    portfolioId,
+    name: input.name,
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.changes !== undefined ? { changes: input.changes } : {}),
+  };
+
+  validateNewScenario(createInput);
+  await assertChangedAssetsExist(input.changes ?? []);
+
+  return scenarioRepository.create(createInput);
+}
+
+export interface UpdateScenarioRequest {
+  name?: string;
+  description?: string;
+  status?: typeof ScenarioStatus.DRAFT | typeof ScenarioStatus.SAVED;
+  changes?: readonly ScenarioChange[];
+}
+
+/**
+ * Updates a scenario's name, description, status and/or variables.
+ * Source: FR-037 (Modify Variables), FR-039 (Reset: `changes: []`),
+ * FR-040 (Save: `status: SAVED`), 07-api-spec.md §25.
+ *
+ * - `changes` replaces the whole list.
+ * - An ARCHIVED scenario is read-only: editing it is a 409 CONFLICT.
+ *   There is no way back from ARCHIVED, which keeps the lifecycle
+ *   simple (no FR asks for un-archiving).
+ * - All validation happens before the single write, and the write is
+ *   one repository call, so a failed request changes nothing.
+ */
+export async function updateScenario(
+  userId: string,
+  portfolioId: string,
+  scenarioId: string,
+  input: UpdateScenarioRequest,
+): Promise<Scenario> {
+  await getPortfolioById(userId, portfolioId);
+  const existing = await findScenarioInPortfolio(portfolioId, scenarioId);
+
+  if (existing.status === ScenarioStatus.ARCHIVED) {
+    throw new AppError("CONFLICT", "An archived scenario cannot be modified.", 409);
+  }
+
+  if (input.changes !== undefined) {
+    validateScenarioChanges(input.changes);
+    await assertChangedAssetsExist(input.changes);
+  }
+
+  const updateInput: Partial<Pick<Scenario, "name" | "description" | "status" | "changes">> = {
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.status !== undefined ? { status: input.status } : {}),
+    ...(input.changes !== undefined ? { changes: input.changes } : {}),
+  };
+
+  return scenarioRepository.update(scenarioId, updateInput);
+}
+
+export interface ArchiveScenarioResult {
+  scenario: Scenario;
+  alreadyArchived: boolean;
+}
+
+/**
+ * Archives a scenario (status transition, not deletion).
+ * Source: 07-api-spec.md §25 (Archive Scenario).
+ *
+ * Idempotent, same as archivePortfolio: archiving an archived scenario
+ * is not an error; `alreadyArchived` tells the client whether this call
+ * changed anything.
+ */
+export async function archiveScenario(
+  userId: string,
+  portfolioId: string,
+  scenarioId: string,
+): Promise<ArchiveScenarioResult> {
+  await getPortfolioById(userId, portfolioId);
+  const existing = await findScenarioInPortfolio(portfolioId, scenarioId);
+
+  if (existing.status === ScenarioStatus.ARCHIVED) {
+    return { scenario: existing, alreadyArchived: true };
+  }
+
+  const scenario = await scenarioRepository.update(scenarioId, {
+    status: ScenarioStatus.ARCHIVED,
+  });
+
+  return { scenario, alreadyArchived: false };
+}
+
+/**
+ * Permanently deletes a scenario (any status).
+ * Source: FR-043 (Delete Scenario).
+ *
+ * Safe to hard-delete: a scenario is hypothetical and nothing else
+ * references it (results are derived, never stored).
+ */
+export async function deleteScenario(
+  userId: string,
+  portfolioId: string,
+  scenarioId: string,
+): Promise<void> {
+  await getPortfolioById(userId, portfolioId);
+  await findScenarioInPortfolio(portfolioId, scenarioId);
+
+  await scenarioRepository.delete(scenarioId);
 }

@@ -2,11 +2,19 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { listScenariosQuerySchema } from "../schemas/scenario.schema.js";
 import {
+  createScenarioRequestSchema,
+  listScenariosQuerySchema,
+  updateScenarioRequestSchema,
+} from "../schemas/scenario.schema.js";
+import {
+  archiveScenarioHandler,
   calculateScenarioHandler,
+  createScenarioHandler,
+  deleteScenarioHandler,
   getScenarioByIdHandler,
   listScenariosHandler,
+  updateScenarioHandler,
 } from "../controllers/scenarios.controller.js";
 
 export const scenariosRouter: ExpressRouter = Router();
@@ -18,10 +26,36 @@ scenariosRouter.get(
   listScenariosHandler,
 );
 
+scenariosRouter.post(
+  "/api/v1/portfolios/:portfolioId/scenarios",
+  authenticate,
+  validate(createScenarioRequestSchema, "body"),
+  createScenarioHandler,
+);
+
 scenariosRouter.get(
   "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId",
   authenticate,
   getScenarioByIdHandler,
+);
+
+scenariosRouter.patch(
+  "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId",
+  authenticate,
+  validate(updateScenarioRequestSchema, "body"),
+  updateScenarioHandler,
+);
+
+scenariosRouter.delete(
+  "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId",
+  authenticate,
+  deleteScenarioHandler,
+);
+
+scenariosRouter.post(
+  "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive",
+  authenticate,
+  archiveScenarioHandler,
 );
 
 scenariosRouter.post(
