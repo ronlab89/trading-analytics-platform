@@ -32,9 +32,16 @@ export class PrismaScenarioRepository implements ScenarioRepository {
 
   async update(
     id: string,
-    input: Partial<Pick<Scenario, "name" | "description" | "status">>,
+    input: Partial<Pick<Scenario, "name" | "description" | "status" | "changes">>,
   ): Promise<Scenario> {
-    const row = await prisma.scenario.update({ where: { id }, data: input });
+    const { changes, ...rest } = input;
+    const row = await prisma.scenario.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(changes !== undefined ? { changes: toPrismaChanges(changes) } : {}),
+      },
+    });
     return toDomainScenario(row);
   }
 

@@ -32,21 +32,25 @@ export interface ScenarioRepository {
   create(input: CreateScenarioInput): Promise<Scenario>;
 
   /**
-   * Updates scenario metadata (not its variable changes).
-   * Source: 07-api-spec.md §25 (PATCH .../scenarios/:scenarioId).
+   * Updates a scenario's name, description, status and/or variable
+   * changes in a single write, so a combined edit (e.g. rename and
+   * change variables) is atomic and cannot leave the scenario half
+   * updated. Fields left out are untouched.
+   * Source: 07-api-spec.md §25 (PATCH .../scenarios/:scenarioId),
+   * FR-037, FR-039, FR-040.
    */
   update(
     id: string,
-    input: Partial<Pick<Scenario, "name" | "description" | "status">>,
+    input: Partial<Pick<Scenario, "name" | "description" | "status" | "changes">>,
   ): Promise<Scenario>;
 
   /**
    * Replaces a scenario's variable changes and returns the updated
    * scenario (including the new `changes`).
    * Source: FR-037 (Modify Scenario Variables), FR-039 (Reset Scenario —
-   * called with an empty array). Kept separate from `update` since this
-   * is the frequent, interactive write path during Scenario Lab usage
-   * (01-product-spec.md §15), distinct from editing name/description.
+   * called with an empty array). A changes-only shortcut for the
+   * frequent, interactive write path during Scenario Lab usage
+   * (01-product-spec.md §15); `update` can carry `changes` too.
    */
   updateChanges(id: string, changes: readonly ScenarioChange[]): Promise<Scenario>;
 

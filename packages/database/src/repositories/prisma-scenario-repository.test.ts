@@ -94,6 +94,23 @@ describe("PrismaScenarioRepository", () => {
     expect(updated.changes).toEqual([{ assetId: "asset_001", percentChange: 7 }]);
   });
 
+  it("updates name and changes together in a single call", async () => {
+    const created = await repository.create({
+      portfolioId,
+      name: "Before",
+      changes: [{ assetId: "asset_001", percentChange: 1 }],
+    });
+
+    const updated = await repository.update(created.id, {
+      name: "After",
+      changes: [{ assetId: "asset_002", percentChange: -8 }],
+    });
+
+    expect(updated.name).toBe("After");
+    expect(updated.changes).toEqual([{ assetId: "asset_002", percentChange: -8 }]);
+    expect((await repository.getById(created.id))?.changes).toEqual(updated.changes);
+  });
+
   it("persists changes via updateChanges and reads them back", async () => {
     const created = await repository.create({ portfolioId, name: "With Changes" });
 
