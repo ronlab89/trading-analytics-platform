@@ -897,6 +897,32 @@ PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
 POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive
 ```
 
+> **Implementation note (write side).** The spec left the write bodies
+> open; this is what is implemented.
+>
+> - `POST .../scenarios` body: `name` (required), `description?`,
+>   `changes?` (`[{ assetId, percentChange }]`, default none). Returns
+>   201 with the scenario as a `DRAFT`.
+> - `PATCH .../scenarios/:scenarioId` body: any of `name`, `description`,
+>   `status` (`DRAFT` or `SAVED` only), `changes`; at least one is
+>   required. `changes` REPLACES the whole list, so `changes: []` is the
+>   reset (FR-039) and `status: "SAVED"` is save (FR-040); they need no
+>   endpoints of their own. The update is a single write, so a request
+>   that is partly invalid changes nothing.
+> - `POST .../archive` is idempotent (always 200, `meta.alreadyArchived`
+>   says whether it changed anything), like archiving a portfolio.
+>   An archived scenario is read-only: `PATCH` returns 409 `CONFLICT`,
+>   and there is no un-archive.
+> - `DELETE .../scenarios/:scenarioId` returns 204 for any status
+>   (FR-043).
+> - A change is `{ assetId, percentChange }`: a percentage change to the
+>   asset's price, never below -100%, one entry per asset. Unknown
+>   assets are a 400 listing all of them (`UNKNOWN_ASSET`), not a 404,
+>   because the missing thing is a body field. The portfolio does not
+>   have to hold the asset.
+> - Not implemented: duplicate (FR-041, P2) and compare (FR-042, P1;
+>   to be decided separately).
+
 ---
 
 # 26. Watchlist API
