@@ -13,7 +13,10 @@ import {
 
 export class PrismaScenarioRepository implements ScenarioRepository {
   async listByPortfolioId(portfolioId: string): Promise<Scenario[]> {
-    const rows = await prisma.scenario.findMany({ where: { portfolioId } });
+    const rows = await prisma.scenario.findMany({
+      where: { portfolioId },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    });
     return rows.map(toDomainScenario);
   }
 

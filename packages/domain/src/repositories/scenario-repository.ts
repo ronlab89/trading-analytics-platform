@@ -10,7 +10,8 @@ import type { CreateScenarioInput, Scenario, ScenarioChange } from "../entities/
  */
 export interface ScenarioRepository {
   /**
-   * Returns scenarios for a portfolio.
+   * Returns scenarios for a portfolio, newest first (by `createdAt`,
+   * ties broken by `id`) so the order is deterministic.
    * Source: FR-036 (Create Scenario) implies listing; 07-api-spec.md §25
    * (GET /portfolios/:portfolioId/scenarios).
    */

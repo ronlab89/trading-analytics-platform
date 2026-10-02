@@ -163,6 +163,25 @@ describe("PrismaScenarioRepository", () => {
     expect(scenario?.changes).toEqual([]);
   });
 
+  it("lists scenarios newest first regardless of insertion order", async () => {
+    const orderingPortfolio = await prisma.portfolio.create({
+      data: { userId, name: "Ordering Portfolio", baseCurrency: "USD" },
+    });
+    const scenarioData = (name: string, createdAt: string) => ({
+      portfolioId: orderingPortfolio.id,
+      name,
+      createdAt: new Date(createdAt),
+    });
+
+    await prisma.scenario.create({ data: scenarioData("Newest", "2026-03-01T00:00:00Z") });
+    await prisma.scenario.create({ data: scenarioData("Oldest", "2026-01-01T00:00:00Z") });
+    await prisma.scenario.create({ data: scenarioData("Middle", "2026-02-01T00:00:00Z") });
+
+    const scenarios = await repository.listByPortfolioId(orderingPortfolio.id);
+
+    expect(scenarios.map((s) => s.name)).toEqual(["Newest", "Middle", "Oldest"]);
+  });
+
   it("deletes a scenario", async () => {
     const created = await repository.create({ portfolioId, name: "To Delete" });
 

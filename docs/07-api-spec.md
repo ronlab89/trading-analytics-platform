@@ -823,6 +823,13 @@ The client controls playback.
 GET /api/v1/portfolios/:portfolioId/scenarios
 ```
 
+> **Implementation note.** Returns `{ "data": [...] }`, each scenario
+> including its `changes`, newest first. An optional `status` filter
+> (`DRAFT`, `SAVED`, `ARCHIVED`) is added so a client can hide archived
+> scenarios; the spec defines no filters. Not paginated (a portfolio
+> holds few scenarios). `GET .../scenarios/:scenarioId` returns a single
+> scenario the same way.
+
 ---
 
 ## Create Scenario
@@ -855,10 +862,24 @@ Response:
   "data": {
     "scenarioId": "...",
     "baseline": {},
-    "result": {}
+    "result": {},
+    "difference": {},
+    "unmatchedAssetIds": []
   }
 }
 ```
+
+> **Implementation note.** Stateless: it combines the scenario's stored
+> `changes` with the portfolio's current positions and writes nothing
+> (results are derived, `05-data-model.md` §16), so the baseline cannot
+> be modified (FR-036). `baseline` and `result` are portfolio metrics
+> (`totalValue`, `investedValue`, `unrealizedPnL`,
+> `unrealizedPnLPercent`); `difference` has `totalValue` and
+> `unrealizedPnL`. Allocation, risk and exposure from FR-038 are not
+> computed yet because the domain cannot derive them honestly.
+> `unmatchedAssetIds` lists assets the scenario changes but the
+> portfolio no longer holds, which the calculation ignores. Any
+> status, including `ARCHIVED`, can be calculated.
 
 ---
 
