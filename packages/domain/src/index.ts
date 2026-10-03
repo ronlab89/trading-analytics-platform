@@ -23,6 +23,7 @@ export * from "./calculations/allocation";
 export * from "./calculations/attribution";
 export * from "./calculations/drawdown";
 export * from "./calculations/scenario-impact";
+export * from "./calculations/scenario-comparison";
 export * from "./calculations/volatility";
 export * from "./calculations/portfolio-pulse";
 export * from "./calculations/position-recalculation";
