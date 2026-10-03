@@ -17,22 +17,22 @@ export async function seedScenarios(context: SeedContext): Promise<SeedContext> 
   for (const blueprint of SEED_SCENARIOS) {
     const portfolioId = resolvePortfolioId(context, blueprint.portfolioName);
 
-    const scenarioInput = {
-      portfolioId,
-      name: blueprint.name,
-      status: blueprint.status,
-      ...(blueprint.description !== undefined ? { description: blueprint.description } : {}),
-    };
-
-    validateNewScenario(scenarioInput);
-    const scenario = await scenarioRepository.create(scenarioInput);
-
     const changes: ScenarioChange[] = blueprint.changes.map((change) => ({
       assetId: resolveAssetId(context, change.assetSymbol),
       percentChange: change.percentChange,
     }));
 
-    await scenarioRepository.updateChanges(scenario.id, changes);
+    const scenarioInput = {
+      portfolioId,
+      name: blueprint.name,
+      status: blueprint.status,
+      changes,
+      ...(blueprint.description !== undefined ? { description: blueprint.description } : {}),
+    };
+
+    // Also validates the changes (valid percentages, no repeated asset).
+    validateNewScenario(scenarioInput);
+    await scenarioRepository.create(scenarioInput);
   }
 
   return context;

@@ -34,3 +34,6 @@ test-results/
 
 # Docker volumes (local dev data)
 docker/**/data/
+
+# Docs
+pr-body.md

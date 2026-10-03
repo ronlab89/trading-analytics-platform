@@ -144,6 +144,56 @@ export async function createTestDecision(
 }
 
 /**
+ * Creates a position directly through Prisma (USD). Positions are
+ * normally a projection of transaction history, but scenario tests need
+ * a known, fixed baseline without going through transaction creation.
+ */
+export async function createTestPosition(
+  portfolioId: string,
+  assetId: string,
+  overrides: { quantity?: number; averageEntryPrice?: number; currentPrice?: number } = {},
+): Promise<{ id: string }> {
+  const row = await prisma.position.create({
+    data: {
+      portfolioId,
+      assetId,
+      quantity: overrides.quantity ?? 10,
+      currency: "USD",
+      averageEntryPrice: overrides.averageEntryPrice ?? 100,
+      currentPrice: overrides.currentPrice ?? 100,
+      openedAt: new Date("2026-01-01T00:00:00Z"),
+    },
+  });
+  return { id: row.id };
+}
+
+/**
+ * Creates a scenario directly through Prisma. `createdAt` can be set to
+ * control list ordering. Cascade deletes (Portfolio -> Scenario) mean
+ * `cleanupTestData` needs no extra step for these rows.
+ */
+export async function createTestScenario(
+  portfolioId: string,
+  overrides: {
+    name?: string;
+    status?: "DRAFT" | "SAVED" | "ARCHIVED";
+    changes?: { assetId: string; percentChange: number }[];
+    createdAt?: Date;
+  } = {},
+): Promise<{ id: string }> {
+  const row = await prisma.scenario.create({
+    data: {
+      portfolioId,
+      name: overrides.name ?? "Integration test scenario",
+      status: overrides.status ?? "DRAFT",
+      changes: overrides.changes ?? [],
+      ...(overrides.createdAt !== undefined ? { createdAt: overrides.createdAt } : {}),
+    },
+  });
+  return { id: row.id };
+}
+
+/**
  * Deletes everything created by the helpers above, for the given user
  * and asset ids. Cascades through portfolios/transactions/positions via
  * Prisma's referential actions where configured; where it is not,

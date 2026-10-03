@@ -1,10 +1,9 @@
 # Trading Analytics Platform — Progress
 
-**Last updated:** end of Decisions + Replay (read API, pure replay
-projection, timestamp foundation); decision write endpoints deferred
-**Branch:** `feat/decisions`, created from `develop`. `feat/api-foundation`
-(Phases 3 hardening, Market Data, Step D) was merged via PR into
-`develop` (not `main`).
+**Last updated:** end of Scenarios (changes on the entity, read and
+write API, calculate, compare); duplicate scenario deferred
+**Branch:** `feat/scenarios`, created from `develop`. `feat/api-foundation`
+and `feat/decisions` were merged into `develop` via PR (not `main`).
 
 ---
 
@@ -38,8 +37,15 @@ replay endpoints, a pure `projectDecisionReplay` domain projection and
 real timestamps in the seed (see §3.7). The write endpoints (create,
 update, close) are **deliberately deferred**.
 
-**Explicitly NOT started yet** (schema + repositories exist in
-`packages/database`, no API): Scenarios.
+**Scenarios is complete** (see §3.8): `changes` are now part of the
+`Scenario` entity, with list/detail/create/update/archive/delete,
+a stateless `calculate`, and a `compare` endpoint backed by a pure
+domain function. Only duplicating a scenario (FR-041, P2) is deferred.
+
+**Every resource in the data model now has an API**, except the
+explicitly deferred pieces (decision writes, scenario duplicate). The
+remaining backend work is RBAC/registration (Phase 4), `performance` by
+period, and the realtime/background phases (9-10).
 
 ---
 
@@ -65,8 +71,8 @@ docs/                   SDD documents (00-15) + this file
   User/Credential/Portfolio/Asset/Position/Transaction/MarketPrice/
   HistoricalPrice/WatchlistItem/Alert/Notification/UserPreference
   currently have API routes wired up; Decision/DecisionEvent are
-  exposed read-only (list/detail/replay), and Scenario has a repository
-  implementation but no API yet, see §1).
+  exposed read-only (list/detail/replay), and Scenario has a full API
+  (see §2.4).
 - `Money` value object (decimal.js-backed): `add`, `subtract`,
   `multiply`, `divide`, `isZero`/`isPositive`/`isNegative`, `equals`,
   `greaterThan`/`lessThan`, `toNumber`/`toString`/`toFixed`.
@@ -88,7 +94,14 @@ docs/                   SDD documents (00-15) + this file
     are optional inputs supplied by the caller (classified `"UNKNOWN"`
     when absent) since the calculation module itself has no opinion on
     which asset's data to use
-  - `calculateScenarioImpact`
+  - `calculateScenarioImpact`, built on `applyScenarioChanges` (new, the
+    single definition of what a scenario change does to positions)
+  - `compareScenarioImpacts` (new, Scenarios) — pure comparison of the
+    baseline against N scenarios: per scenario the metrics, the
+    difference (value, % of baseline or `null` when the baseline is
+    zero, P/L) and a per-asset breakdown (value, difference,
+    allocation, allocation shift in percentage points). Shared by the
+    API and, later, the demo.
   - `projectDecisionReplay` (new, Decisions) — pure fold of a decision's
     chronological events into a replay state at a given index (`-1` =
     before the first event). Tolerates malformed events (reported in
@@ -202,6 +215,7 @@ malformed payload) — never reveals which one applies.
 | Notifications (Step D) | `GET /api/v1/notifications?unreadOnly=`, `POST /api/v1/notifications/:id/read`, `POST /api/v1/notifications/read-all` | No create endpoint by design (notifications come from system events). Mark-read checks ownership via the new `getById` first (`markAsRead` takes a bare id). See §3.6 for the deliberate divergence from `07-api-spec.md` §28. |
 | Preferences (Step D) | `GET/PATCH /api/v1/preferences` | One row per user, created lazily. `GET` with no saved row → `200` with `data: null` (not 404, and a read never writes). `PATCH` is an atomic upsert; `defaultPortfolioId` must belong to the caller (404 otherwise), `null` clears it. |
 | Decisions (read-only) | `GET /api/v1/portfolios/:id/decisions` (filters: assetId/direction/dateFrom/dateTo, not paginated), `GET .../decisions/:decisionId`, `GET /api/v1/decisions/:decisionId/replay` | Replay is not nested under a portfolio (per the spec): ownership is resolved decision → portfolio → user, same 404 for missing and foreign. Returns `decision`, chronologically ordered `events`, the asset's `currency` and `initialState` (projection at index -1). Create/update/close are deferred, see §3.7. |
+| Scenarios | `GET/POST /api/v1/portfolios/:id/scenarios` (list filter: `status`), `GET/PATCH/DELETE .../scenarios/:scenarioId`, `POST .../scenarios/:scenarioId/archive`, `POST .../scenarios/:scenarioId/calculate`, `POST .../scenarios/compare` | Nested under a portfolio like Transactions; cross-user and wrong-portfolio access are the same 404. Reset and save need no endpoints: `PATCH` with `changes: []` and `status: "SAVED"`. `changes` replace the whole list. `ARCHIVED` is read-only (409 on `PATCH`, no un-archive) and reached only via the idempotent archive endpoint. `calculate` and `compare` are read-only POSTs; results are never stored. Details in §3.8. |
 
 **Cross-cutting decisions worth remembering:**
 - Cross-user resource access is always 404, never 403 (anti-enumeration,
@@ -524,6 +538,76 @@ then together with an event-journal endpoint
 **Verification:** typecheck, lint and the domain, database and api test
 suites passed after slices 1 to 3.
 
+### 3.8 Scenarios
+
+Done in four slices on `feat/scenarios`. Unlike Decisions, writing is
+required here: FR-036/037/038/039/042 are P1 (FR-040/041/043 are P2).
+
+**Slice 1 — `changes` on the entity.** The persisted `changes` could
+be written (`updateChanges`) but never read back, so a saved scenario
+could not be calculated, shown or duplicated. `Scenario` now carries
+`changes: readonly ScenarioChange[]` (reverses the earlier decision to
+leave them out, justified by `05-data-model.md` §15: a scenario *is* its
+modifications). `ScenarioChange` was declared twice (calculation and
+repository contract); it now has a single declaration in
+`entities/scenario.ts`. New `validateScenarioChanges`: finite
+percentage, not below -100%, one entry per asset; `create` accepts
+`changes` (default none). The mapper reads the JSON column defensively
+(non-array → no changes, malformed entries skipped, never a 500; trade
+off: it can hide corruption). No migration was needed (`changes Json
+@default("[]")`). The seed now creates a scenario with its changes in
+one write, validated by the domain.
+
+**Slice 2 — read API.** List (newest first, optional `status` filter),
+detail, and `calculate`. The list repository query had no `orderBy`, so
+its order was arbitrary; it is now `createdAt` desc then `id`, and the
+contract documents it (the demo mock must respect it). `calculate` is
+stateless: stored `changes` + the portfolio's CURRENT positions, nothing
+written, so the baseline cannot change (FR-036, `01-product-spec.md`
+§15.1; an integration test checks the positions in the DB afterwards).
+Response: `scenarioId`, `baseline`, `result`, `difference`,
+`unmatchedAssetIds` (assets the scenario changes but the portfolio does
+not hold; the calculation ignores them, reporting avoids a silent
+no-op). Outputs are total value and unrealized P/L only; allocation,
+risk and exposure from FR-038 are not computed because the domain cannot
+derive them honestly.
+
+**Slice 3 — write API.** Create (201, always a `DRAFT`), `PATCH`
+(`name`, `description`, `status` DRAFT or SAVED, `changes`; at least one
+field), archive, delete (204). `changes` replaces the whole list, so
+reset (FR-039) is `changes: []` and save (FR-040) is `status: "SAVED"`.
+The repository `update` now accepts `changes` so a combined edit is a
+single write (an invalid part of a request changes nothing; covered by a
+test). `ARCHIVED` is read-only: `PATCH` returns 409 `CONFLICT`, and
+there is no un-archive (no FR asks for it); archive is idempotent with
+`meta.alreadyArchived`, like portfolios. Unknown assets in `changes` are
+a 400 listing all of them (`UNKNOWN_ASSET`), not a 404 like Alerts,
+because the missing thing is a body field; only existence is checked,
+not that the portfolio holds the asset.
+
+**Slice 4 — compare (FR-042).** `01-product-spec.md` §15.2 asks for
+"meaningful differences rather than only separate charts"; `calculate`
+totals cannot show which asset explains a difference or how allocation
+shifts. So: pure domain function `compareScenarioImpacts` (reusing the
+extracted `applyScenarioChanges`, `calculateAllocation` and
+`calculatePortfolioMetrics`) and `POST .../scenarios/compare` with 1 to 5
+distinct ids (any missing or foreign id makes the whole request a 404,
+so no column is silently dropped). Per asset it reports value,
+difference, allocation and allocation shift in percentage points,
+ordered by size of difference; the service adds each asset's `symbol`
+and `name` with one batched lookup. No ranking (derivable by the client).
+The `07-api-spec.md` §25 contract is documented there.
+
+**Tests:** 3 integration files (`scenarios.routes`, `scenarios.write.routes`,
+`scenarios.compare.routes`), domain tests for validation and comparison,
+plus repository tests (changes read/write/reset, defensive reads, list
+order). New fixtures `createTestPosition` and `createTestScenario`. One
+lint fix: zod v4 `z.number()` already rejects infinity, so `.finite()` is
+deprecated and was removed (the domain still validates finiteness).
+
+**Verification:** lint, typecheck and the domain, database and api test
+suites passed.
+
 ---
 
 ## 4. Environment Files Reference
@@ -600,6 +684,25 @@ test(api): cover decisions endpoints with integration tests
 docs(api-spec): reconcile decisions list filters and replay response
 docs(api-spec): mark decision write endpoints as deferred
 docs(progress): update progress after decisions and replay
+
+# --- feat/scenarios (branched from develop) ---
+feat(domain): add changes to scenario entity and validate them
+feat(database): read and write scenario changes in repository and seed
+docs(data-model): document scenario changes as part of the entity
+feat(api): add scenarios list, detail and calculate endpoints
+test(api): cover scenarios endpoints with integration tests
+fix(database): order scenario list newest first
+docs(api-spec): reconcile scenarios read endpoints
+feat(database): let scenario update carry changes in one write
+feat(api): add scenarios create, update, archive and delete endpoints
+test(api): cover scenarios write endpoints with integration tests
+docs(api-spec): document scenarios write contract
+refactor(domain): extract applyScenarioChanges from scenario impact
+feat(domain): add pure scenario comparison calculation
+feat(api): add scenarios compare endpoint
+test(api): cover scenarios compare endpoint
+docs(api-spec): document scenario compare contract
+docs(progress): update progress after scenarios
 ```
 
 (Exact wording/order of commits, and whether the last one was split
@@ -615,31 +718,30 @@ which was later merged via PR into `develop` (not `main`).
 
 ---
 
-## 6. Immediate Next Step: Scenarios
+## 6. Immediate Next Step: choose between Auth/RBAC and the demo frontend
 
-Agreed order of work, set at the start of this session: (1) merge
+Agreed order of work, set earlier in this effort: (1) merge
 `feat/api-foundation` — done, into `develop`; (2) Decisions + Replay —
-done on the read side; (3) **Scenarios**; (4) Auth/RBAC; (5) Frontend and
-Demo Mode.
+done on the read side; (3) Scenarios — done; (4) Auth/RBAC; (5) Frontend
+and Demo Mode.
 
-**Next:** open the PR `feat/decisions` → `develop` (if not yet done),
-then start Scenarios on a new branch from `develop`. Same method as
-Decisions: first read `calculateScenarioImpact`, the `Scenario` schema
-and repository, `01-product-spec.md` §15 and `07-api-spec.md` §25, and
-then propose small slices. Open design questions to settle up front:
-how scenario variables are persisted (the schema has `baseSnapshotId`
-but the product spec wants isolated baselines), whether `calculate` is
-stateless or stores a result, and which lifecycle operations are
-in scope (FR-036 to FR-043). Given the lesson from Decisions, check
-what the FRs actually require before designing write endpoints.
+**Next:** open the PR `feat/scenarios` → `develop` (if not yet done),
+then confirm with the user which block comes next, because step (4) is
+worth re-examining against rule 11 (the public demo first). RBAC
+(`requireRole`) and registration have no consumer today: no route needs
+role restriction, users are seeded, and the public demo runs on mock
+infrastructure, not on this backend. The backend already exposes the
+contracts the mock adapters would implement (DTOs, errors, pagination,
+repositories, and the pure domain functions `projectDecisionReplay`,
+`compareScenarioImpacts`, etc.). Recommended: raise this at the start of
+the next session and let the user choose; do not assume either.
 
-If the demo frontend is prioritized instead (rule 11), the backend
-already exposes the contracts the mock adapters would implement.
-
-Remaining before Phase 4/5:
-- **Scenarios** — a larger, more novel piece (the isolated-baseline
-  calculation) that deserves its own planning conversation rather than
-  being bundled into "small CRUD."
+If the frontend/demo is chosen, decisions to settle first: where
+`apps/web` lives in the workspace, how it consumes `@trading/domain`
+(today `main`/`types` point at `./src/index.ts`, see the production
+build item in §7), and the order of slices (app shell and routing, then
+the mock adapters behind the repository contracts, then screens).
+Remaining backend work:
 - **RBAC + user registration** (Phase 4 proper).
 - **`performance` by period** (FR-025/026) — needs a transaction-aware
   portfolio value time series, flagged in §2.4/§3.5 as intentionally
@@ -723,6 +825,28 @@ Remaining before Phase 4/5:
   semantics ever matter beyond that.
 - **Decision statuses in the seed:** `NEUTRAL` direction P/L is computed
   as LONG in replay; revisit if NEUTRAL decisions with positions appear.
+- **Duplicate scenario (FR-041, P2)** is not implemented. It would be a
+  `POST .../scenarios/:scenarioId/duplicate` creating a `DRAFT` copy of
+  the name (suffixed) and `changes`.
+- **`ScenarioRepository.updateChanges` has no production caller:** the
+  service uses `update`, which now also carries `changes` (single write).
+  It remains in the contract and tests as a changes-only shortcut;
+  candidate to remove if it is still unused when the demo mock is built.
+- **FR-038 outputs not computed:** `calculate` returns total value and
+  unrealized P/L only. `compare` adds per-asset allocation, but risk and
+  exposure are not derived anywhere (the domain has no honest way yet).
+- **`compare` is not in the original spec** (`07-api-spec.md` §25 lists
+  only `calculate`); it is documented there as an addition. Percentages
+  in it (`totalValuePercent`, allocation) use JS numbers, for display;
+  money values stay `Money`/decimal.
+- **`Scenario.baseSnapshotId` is never set:** nothing creates baseline
+  snapshots; the baseline is always the live positions. Keep the column
+  unless a snapshot feature is ever designed.
+- **Defensive read of scenario `changes` hides corruption:** malformed
+  stored entries are skipped silently (by design, a read must not 500).
+  If data integrity ever needs surfacing, log skipped entries.
+- **Dev database re-seed:** the scenario seed step changed (creates the
+  scenario with its `changes` in one write); run `db:seed` once.
 
 ---
 

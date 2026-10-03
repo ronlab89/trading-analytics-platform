@@ -823,6 +823,13 @@ The client controls playback.
 GET /api/v1/portfolios/:portfolioId/scenarios
 ```
 
+> **Implementation note.** Returns `{ "data": [...] }`, each scenario
+> including its `changes`, newest first. An optional `status` filter
+> (`DRAFT`, `SAVED`, `ARCHIVED`) is added so a client can hide archived
+> scenarios; the spec defines no filters. Not paginated (a portfolio
+> holds few scenarios). `GET .../scenarios/:scenarioId` returns a single
+> scenario the same way.
+
 ---
 
 ## Create Scenario
@@ -855,10 +862,24 @@ Response:
   "data": {
     "scenarioId": "...",
     "baseline": {},
-    "result": {}
+    "result": {},
+    "difference": {},
+    "unmatchedAssetIds": []
   }
 }
 ```
+
+> **Implementation note.** Stateless: it combines the scenario's stored
+> `changes` with the portfolio's current positions and writes nothing
+> (results are derived, `05-data-model.md` §16), so the baseline cannot
+> be modified (FR-036). `baseline` and `result` are portfolio metrics
+> (`totalValue`, `investedValue`, `unrealizedPnL`,
+> `unrealizedPnLPercent`); `difference` has `totalValue` and
+> `unrealizedPnL`. Allocation, risk and exposure from FR-038 are not
+> computed yet because the domain cannot derive them honestly.
+> `unmatchedAssetIds` lists assets the scenario changes but the
+> portfolio no longer holds, which the calculation ignores. Any
+> status, including `ARCHIVED`, can be calculated.
 
 ---
 
@@ -875,6 +896,50 @@ PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
 ```text id="r7m4x2"
 POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive
 ```
+
+> **Implementation note (write side).** The spec left the write bodies
+> open; this is what is implemented.
+>
+> - `POST .../scenarios` body: `name` (required), `description?`,
+>   `changes?` (`[{ assetId, percentChange }]`, default none). Returns
+>   201 with the scenario as a `DRAFT`.
+> - `PATCH .../scenarios/:scenarioId` body: any of `name`, `description`,
+>   `status` (`DRAFT` or `SAVED` only), `changes`; at least one is
+>   required. `changes` REPLACES the whole list, so `changes: []` is the
+>   reset (FR-039) and `status: "SAVED"` is save (FR-040); they need no
+>   endpoints of their own. The update is a single write, so a request
+>   that is partly invalid changes nothing.
+> - `POST .../archive` is idempotent (always 200, `meta.alreadyArchived`
+>   says whether it changed anything), like archiving a portfolio.
+>   An archived scenario is read-only: `PATCH` returns 409 `CONFLICT`,
+>   and there is no un-archive.
+> - `DELETE .../scenarios/:scenarioId` returns 204 for any status
+>   (FR-043).
+> - A change is `{ assetId, percentChange }`: a percentage change to the
+>   asset's price, never below -100%, one entry per asset. Unknown
+>   assets are a 400 listing all of them (`UNKNOWN_ASSET`), not a 404,
+>   because the missing thing is a body field. The portfolio does not
+>   have to hold the asset.
+> - Not implemented: duplicate (FR-041, P2).
+>
+> **Compare Scenarios (FR-042).** Not in the original spec; added as
+> `POST /api/v1/portfolios/:portfolioId/scenarios/compare` with body
+> `{ "scenarioIds": [...] }`: 1 to 5 distinct ids, all belonging to the
+> portfolio (any missing or foreign id makes the whole request a 404, so
+> a column is never silently dropped). Read-only (200, nothing written),
+> so the baseline cannot change. It exists because totals alone
+> (`calculate`) cannot show *which asset explains a difference* or *how
+> allocation shifts*, which `01-product-spec.md` §15.2 asks for.
+> Response: `baseline` (`metrics` plus one row per asset with `value` and
+> `allocationPercent`, largest first) and `scenarios` in the requested
+> order, each with `scenarioId`, `name`, `status`, `metrics`,
+> `difference` (`totalValue`, `totalValuePercent` which is `null` when
+> the baseline is zero, and `unrealizedPnL`), `unmatchedAssetIds`, and
+> `assets` rows with `value`, `valueDifference`, `allocationPercent` and
+> `allocationShift` (percentage points), ordered by the size of the
+> difference. Each asset row carries `symbol` and `name`. Allocation is
+> per asset only (no asset type or sector). Computed by the pure domain
+> function `compareScenarioImpacts`, shared with the demo.
 
 ---
 
