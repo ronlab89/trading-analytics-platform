@@ -1,13 +1,17 @@
 import { PrismaPositionRepository, PrismaScenarioRepository } from "@trading/database";
 import {
   calculateScenarioImpact,
+  compareScenarioImpacts,
   ScenarioStatus,
   validateNewScenario,
   validateScenarioChanges,
+  type BaselineAssetRow,
   type CreateScenarioInput,
   type PortfolioMetrics,
   type Scenario,
+  type ScenarioAssetRow,
   type ScenarioChange,
+  type ScenarioComparisonEntry,
   type ScenarioImpactResult,
 } from "@trading/domain";
 import { AppError } from "../errors/app-error.js";
@@ -295,4 +299,95 @@ export async function deleteScenario(
   await findScenarioInPortfolio(portfolioId, scenarioId);
 
   await scenarioRepository.delete(scenarioId);
+}
+
+/** Label fields the service adds to the domain's asset rows (the domain only knows ids). */
+interface AssetLabel {
+  symbol: string | null;
+  name: string | null;
+}
+
+export interface ScenarioComparisonResult {
+  /** The portfolio as it is now, untouched by any scenario. */
+  baseline: {
+    metrics: PortfolioMetrics;
+    assets: (BaselineAssetRow & AssetLabel)[];
+  };
+  /** In the order the ids were requested. */
+  scenarios: (Omit<ScenarioComparisonEntry, "assets"> & {
+    name: string;
+    status: ScenarioStatus;
+    assets: (ScenarioAssetRow & AssetLabel)[];
+    /** Changed assets the portfolio does not hold (ignored by the calculation). */
+    unmatchedAssetIds: string[];
+  })[];
+}
+
+/**
+ * Compares the portfolio's current state against 1 or more of its
+ * scenarios, side by side.
+ * Source: FR-042 (Compare Scenarios), 01-product-spec.md §15.2.
+ *
+ * Read-only and stateless, like `calculateScenario`: the stored changes
+ * are applied to the portfolio's CURRENT positions and nothing is
+ * written, so the baseline cannot be modified. The comparison itself
+ * (per-asset values, differences and allocation shifts) is the pure
+ * domain function `compareScenarioImpacts`; this service only loads the
+ * data, checks ownership and adds each asset's symbol and name with one
+ * batched lookup.
+ *
+ * Every requested scenario must belong to the portfolio: one that does
+ * not exist or belongs elsewhere makes the whole request a 404, so a
+ * comparison never silently drops a column.
+ */
+export async function compareScenarios(
+  userId: string,
+  portfolioId: string,
+  scenarioIds: readonly string[],
+): Promise<ScenarioComparisonResult> {
+  const portfolio = await getPortfolioById(userId, portfolioId);
+  const scenarios = await Promise.all(
+    scenarioIds.map((scenarioId) => findScenarioInPortfolio(portfolioId, scenarioId)),
+  );
+
+  const positions = await positionRepository.listByPortfolioId(portfolioId);
+  const comparison = compareScenarioImpacts(
+    portfolio,
+    positions,
+    scenarios.map((scenario) => ({ id: scenario.id, changes: scenario.changes })),
+  );
+
+  const assets = await getAssetsByIds(positions.map((position) => position.assetId));
+  const label = (assetId: string): AssetLabel => ({
+    symbol: assets.get(assetId)?.symbol ?? null,
+    name: assets.get(assetId)?.name ?? null,
+  });
+
+  const heldAssetIds = new Set(positions.map((position) => position.assetId));
+  const scenarioById = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
+
+  return {
+    baseline: {
+      metrics: comparison.baseline.metrics,
+      assets: comparison.baseline.assets.map((row) => ({ ...row, ...label(row.assetId) })),
+    },
+    scenarios: comparison.scenarios.map((entry) => {
+      const scenario = scenarioById.get(entry.scenarioId);
+
+      if (!scenario) {
+        // Unreachable: the entries come from the scenarios loaded above.
+        throw new AppError("INTERNAL_ERROR", "An unexpected error occurred.", 500);
+      }
+
+      return {
+        ...entry,
+        name: scenario.name,
+        status: scenario.status,
+        assets: entry.assets.map((row) => ({ ...row, ...label(row.assetId) })),
+        unmatchedAssetIds: scenario.changes
+          .map((change) => change.assetId)
+          .filter((assetId) => !heldAssetIds.has(assetId)),
+      };
+    }),
+  };
 }

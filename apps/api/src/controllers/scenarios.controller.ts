@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
 import type {
+  compareScenariosRequestSchema,
   createScenarioRequestSchema,
   listScenariosQuerySchema,
   updateScenarioRequestSchema,
@@ -8,6 +9,7 @@ import type {
 import {
   archiveScenario,
   calculateScenario,
+  compareScenarios,
   createScenario,
   deleteScenario,
   getScenarioById,
@@ -18,6 +20,7 @@ import {
 type ListScenariosQuery = z.infer<typeof listScenariosQuerySchema>;
 type CreateScenarioRequestBody = z.infer<typeof createScenarioRequestSchema>;
 type UpdateScenarioRequestBody = z.infer<typeof updateScenarioRequestSchema>;
+type CompareScenariosRequestBody = z.infer<typeof compareScenariosRequestSchema>;
 
 /**
  * GET /api/v1/portfolios/:portfolioId/scenarios
@@ -182,6 +185,32 @@ export async function deleteScenarioHandler(
       req.params.scenarioId as string,
     );
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /api/v1/portfolios/:portfolioId/scenarios/compare
+ * Source: FR-042 (Compare Scenarios), 01-product-spec.md §15.2.
+ *
+ * Body validated upstream by `validate(compareScenariosRequestSchema, "body")`.
+ * Read-only: answers 200 and writes nothing.
+ */
+export async function compareScenariosHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const { scenarioIds } = req.validated?.body as CompareScenariosRequestBody;
+
+  try {
+    const comparison = await compareScenarios(
+      req.auth.userId,
+      req.params.portfolioId as string,
+      scenarioIds,
+    );
+    res.json({ data: comparison });
   } catch (error) {
     next(error);
   }

@@ -76,3 +76,34 @@ export const updateScenarioRequestSchema = z
   );
 
 export type UpdateScenarioRequestBody = z.infer<typeof updateScenarioRequestSchema>;
+
+/**
+ * Upper bound on scenarios per comparison: keeps the work bounded
+ * (09-security-spec.md §27, batch limits) and matches what a side by
+ * side screen can reasonably show.
+ */
+export const MAX_COMPARED_SCENARIOS = 5;
+
+/**
+ * POST /api/v1/portfolios/:portfolioId/scenarios/compare
+ * Source: FR-042 (Compare Scenarios), 01-product-spec.md §15.2.
+ *
+ * 1 to 5 distinct scenario ids. Whether they exist and belong to the
+ * portfolio is checked by the service (404).
+ */
+export const compareScenariosRequestSchema = z
+  .object({
+    scenarioIds: z
+      .array(z.string().min(1, "Scenario id is required."))
+      .min(1, "At least one scenario is required.")
+      .max(
+        MAX_COMPARED_SCENARIOS,
+        `At most ${String(MAX_COMPARED_SCENARIOS)} scenarios can be compared at once.`,
+      ),
+  })
+  .refine((data) => new Set(data.scenarioIds).size === data.scenarioIds.length, {
+    message: "Scenario ids must not repeat.",
+    path: ["scenarioIds"],
+  });
+
+export type CompareScenariosRequestBody = z.infer<typeof compareScenariosRequestSchema>;

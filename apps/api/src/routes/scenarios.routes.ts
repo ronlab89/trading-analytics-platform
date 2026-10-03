@@ -3,6 +3,7 @@ import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
 import {
+  compareScenariosRequestSchema,
   createScenarioRequestSchema,
   listScenariosQuerySchema,
   updateScenarioRequestSchema,
@@ -10,6 +11,7 @@ import {
 import {
   archiveScenarioHandler,
   calculateScenarioHandler,
+  compareScenariosHandler,
   createScenarioHandler,
   deleteScenarioHandler,
   getScenarioByIdHandler,
@@ -31,6 +33,14 @@ scenariosRouter.post(
   authenticate,
   validate(createScenarioRequestSchema, "body"),
   createScenarioHandler,
+);
+
+// A fixed path segment, so it cannot be mistaken for a :scenarioId.
+scenariosRouter.post(
+  "/api/v1/portfolios/:portfolioId/scenarios/compare",
+  authenticate,
+  validate(compareScenariosRequestSchema, "body"),
+  compareScenariosHandler,
 );
 
 scenariosRouter.get(
