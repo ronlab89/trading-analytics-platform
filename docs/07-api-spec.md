@@ -920,8 +920,26 @@ POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive
 >   assets are a 400 listing all of them (`UNKNOWN_ASSET`), not a 404,
 >   because the missing thing is a body field. The portfolio does not
 >   have to hold the asset.
-> - Not implemented: duplicate (FR-041, P2) and compare (FR-042, P1;
->   to be decided separately).
+> - Not implemented: duplicate (FR-041, P2).
+>
+> **Compare Scenarios (FR-042).** Not in the original spec; added as
+> `POST /api/v1/portfolios/:portfolioId/scenarios/compare` with body
+> `{ "scenarioIds": [...] }`: 1 to 5 distinct ids, all belonging to the
+> portfolio (any missing or foreign id makes the whole request a 404, so
+> a column is never silently dropped). Read-only (200, nothing written),
+> so the baseline cannot change. It exists because totals alone
+> (`calculate`) cannot show *which asset explains a difference* or *how
+> allocation shifts*, which `01-product-spec.md` §15.2 asks for.
+> Response: `baseline` (`metrics` plus one row per asset with `value` and
+> `allocationPercent`, largest first) and `scenarios` in the requested
+> order, each with `scenarioId`, `name`, `status`, `metrics`,
+> `difference` (`totalValue`, `totalValuePercent` which is `null` when
+> the baseline is zero, and `unrealizedPnL`), `unmatchedAssetIds`, and
+> `assets` rows with `value`, `valueDifference`, `allocationPercent` and
+> `allocationShift` (percentage points), ordered by the size of the
+> difference. Each asset row carries `symbol` and `name`. Allocation is
+> per asset only (no asset type or sector). Computed by the pure domain
+> function `compareScenarioImpacts`, shared with the demo.
 
 ---
 
