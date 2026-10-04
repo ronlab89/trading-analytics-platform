@@ -1,6 +1,6 @@
-# Trading Analytics Platform
-## SDD — 03. Non-Functional Requirements
+# SDD 03 — Non-Functional Requirements
 
+**Project:** Trading Analytics Platform  
 **Status:** Draft  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`
@@ -390,7 +390,7 @@ The architecture should support appropriate mechanisms such as:
 - operation identifiers;
 - safe retry policies.
 
-The final strategy will be defined in `05-architecture.md` and `07-api-spec.md`.
+The final strategy will be defined in `06-architecture.md` and `07-api-spec.md`.
 
 ---
 

@@ -1,6 +1,6 @@
-# Trading Analytics Platform
-## SDD — 04. Technology Stack
+# SDD 04 — Technology Stack
 
+**Project:** Trading Analytics Platform  
 **Status:** Draft  
 **Version:** 1.0  
 **Purpose:** Define the approved technology stack and technology-selection rules for the project.

@@ -1,7 +1,6 @@
-# Trading Analytics Platform
+# SDD 07 — API Specification
 
-## SDD — 07. API Specification
-
+**Project:** Trading Analytics Platform  
 **Status:** Draft  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`
@@ -78,7 +77,7 @@ Successful responses should use a consistent structure where appropriate.
 
 Example:
 
-```text id="4f0w8v"
+```text
 {
   "data": {},
   "meta": {}
@@ -87,7 +86,7 @@ Example:
 
 For collections:
 
-```text id="y1n8m3"
+```text
 {
   "data": [],
   "meta": {
@@ -107,7 +106,7 @@ Not every endpoint requires `meta`.
 
 All application errors should use a normalized structure.
 
-```text id="3s7d2k"
+```text
 {
   "error": {
     "code": "VALIDATION_ERROR",
@@ -124,7 +123,7 @@ All application errors should use a normalized structure.
 
 Initial error categories:
 
-```text id="5m3x8q"
+```text
 VALIDATION_ERROR
 UNAUTHORIZED
 FORBIDDEN
@@ -146,7 +145,7 @@ Validation errors should identify the affected fields.
 
 Example:
 
-```text id="z7q1p4"
+```text
 {
   "error": {
     "code": "VALIDATION_ERROR",
@@ -170,7 +169,7 @@ Every API request should receive a request identifier.
 
 Example:
 
-```text id="m4x7d2"
+```text
 X-Request-ID
 ```
 
@@ -182,13 +181,13 @@ The identifier should appear in logs and relevant error responses.
 
 ## Login
 
-```text id="x8c1n7"
+```text
 POST /api/v1/auth/login
 ```
 
 Request:
 
-```text id="k3m9p2"
+```text
 {
   "email": "user@example.com",
   "password": "..."
@@ -197,7 +196,7 @@ Request:
 
 Response:
 
-```text id="p2r8v5"
+```text
 {
   "data": {
     "user": {},
@@ -210,7 +209,7 @@ Response:
 
 ## Current User
 
-```text id="d4f7q9"
+```text
 GET /api/v1/auth/me
 ```
 
@@ -220,7 +219,7 @@ Returns the authenticated user.
 
 ## Logout
 
-```text id="r5w2m8"
+```text
 POST /api/v1/auth/logout
 ```
 
@@ -230,13 +229,13 @@ POST /api/v1/auth/logout
 
 ## List Portfolios
 
-```text id="k8d4s1"
+```text
 GET /api/v1/portfolios
 ```
 
 Optional parameters:
 
-```text id="v2m9x5"
+```text
 status
 page
 pageSize
@@ -247,7 +246,7 @@ sort
 
 ## Get Portfolio
 
-```text id="c6n1r8"
+```text
 GET /api/v1/portfolios/:portfolioId
 ```
 
@@ -255,13 +254,13 @@ GET /api/v1/portfolios/:portfolioId
 
 ## Create Portfolio
 
-```text id="h7p3w2"
+```text
 POST /api/v1/portfolios
 ```
 
 Request:
 
-```text id="q9x4m1"
+```text
 {
   "name": "Growth Portfolio",
   "description": "Long-term growth strategy.",
@@ -271,7 +270,7 @@ Request:
 
 Response:
 
-```text id="z5v8n3"
+```text
 {
   "data": {
     "id": "...",
@@ -287,7 +286,7 @@ Response:
 
 ## Update Portfolio
 
-```text id="b3k7y9"
+```text
 PATCH /api/v1/portfolios/:portfolioId
 ```
 
@@ -295,7 +294,7 @@ PATCH /api/v1/portfolios/:portfolioId
 
 ## Archive Portfolio
 
-```text id="n8q2c5"
+```text
 POST /api/v1/portfolios/:portfolioId/archive
 ```
 
@@ -305,13 +304,13 @@ Archiving is preferred over destructive deletion where historical integrity matt
 
 # 11. Portfolio Overview
 
-```text id="p5d7w1"
+```text
 GET /api/v1/portfolios/:portfolioId/overview
 ```
 
 Returns a purpose-specific representation containing:
 
-```text id="h4m9x2"
+```text
 portfolio
 summary
 positions
@@ -329,13 +328,13 @@ This endpoint exists to avoid requiring the dashboard to orchestrate many unrela
 
 ## List Positions
 
-```text id="v7c2n5"
+```text
 GET /api/v1/portfolios/:portfolioId/positions
 ```
 
 Optional parameters:
 
-```text id="q1x8m4"
+```text
 assetType
 sort
 direction
@@ -347,7 +346,7 @@ pageSize
 
 ## Get Position
 
-```text id="m5r8d3"
+```text
 GET /api/v1/portfolios/:portfolioId/positions/:positionId
 ```
 
@@ -355,7 +354,7 @@ Response should include current derived metrics where useful.
 
 Example:
 
-```text id="x2v7p9"
+```text
 {
   "data": {
     "position": {},
@@ -376,13 +375,13 @@ Example:
 
 ## List Transactions
 
-```text id="d9m4k7"
+```text
 GET /api/v1/portfolios/:portfolioId/transactions
 ```
 
 Filters:
 
-```text id="p8x2n6"
+```text
 assetId
 type
 dateFrom
@@ -396,7 +395,7 @@ sort
 
 ## Get Transaction
 
-```text id="f3w8q1"
+```text
 GET /api/v1/portfolios/:portfolioId/transactions/:transactionId
 ```
 
@@ -404,13 +403,13 @@ GET /api/v1/portfolios/:portfolioId/transactions/:transactionId
 
 ## Create Transaction
 
-```text id="c7v2m9"
+```text
 POST /api/v1/portfolios/:portfolioId/transactions
 ```
 
 Request:
 
-```text id="x4n8p2"
+```text
 {
   "assetId": "asset_001",
   "type": "BUY",
@@ -430,7 +429,7 @@ Transaction creation may be asynchronous.
 
 Response:
 
-```text id="m7q5x3"
+```text
 {
   "data": {
     "transaction": {},
@@ -448,13 +447,13 @@ The client should not assume immediate completion if the operation is configured
 
 # 15. Transaction Job Status
 
-```text id="v2k9d5"
+```text
 GET /api/v1/jobs/:jobId
 ```
 
 Response:
 
-```text id="p4m7x1"
+```text
 {
   "data": {
     "id": "job_001",
@@ -467,7 +466,7 @@ Response:
 
 Possible statuses:
 
-```text id="w6n3q8"
+```text
 QUEUED
 PROCESSING
 COMPLETED
@@ -479,7 +478,7 @@ CANCELLED
 
 # 16. Retry Failed Job
 
-```text id="x8r2m4"
+```text
 POST /api/v1/jobs/:jobId/retry
 ```
 
@@ -491,13 +490,13 @@ Only retryable jobs may be retried.
 
 ## List Assets
 
-```text id="k3p7v1"
+```text
 GET /api/v1/assets
 ```
 
 Filters:
 
-```text id="m8q2x5"
+```text
 search
 assetType
 exchange
@@ -511,7 +510,7 @@ pageSize
 
 ## Get Asset
 
-```text id="d5n9w2"
+```text
 GET /api/v1/assets/:assetId
 ```
 
@@ -519,13 +518,13 @@ GET /api/v1/assets/:assetId
 
 ## Asset Price
 
-```text id="r7x4c8"
+```text
 GET /api/v1/assets/:assetId/price
 ```
 
 Response:
 
-```text id="p1m6v9"
+```text
 {
   "data": {
     "assetId": "...",
@@ -543,13 +542,13 @@ Response:
 
 # 18. Historical Market Data
 
-```text id="q4x7n1"
+```text
 GET /api/v1/assets/:assetId/history
 ```
 
 Parameters:
 
-```text id="m8d2p5"
+```text
 from
 to
 interval
@@ -557,7 +556,7 @@ interval
 
 Example intervals:
 
-```text id="v1k9r3"
+```text
 1m
 5m
 15m
@@ -571,13 +570,13 @@ Example intervals:
 
 For dashboards displaying multiple assets:
 
-```text id="w5c8m2"
+```text
 GET /api/v1/market/prices
 ```
 
 Parameters:
 
-```text id="p7x1d4"
+```text
 assetIds
 ```
 
@@ -589,13 +588,13 @@ This avoids excessive individual requests.
 
 ## Portfolio Performance
 
-```text id="r3m8q5"
+```text
 GET /api/v1/portfolios/:portfolioId/analytics/performance
 ```
 
 Optional:
 
-```text id="v6n2x9"
+```text
 from
 to
 interval
@@ -605,13 +604,13 @@ interval
 
 ## Allocation
 
-```text id="k7p4d1"
+```text
 GET /api/v1/portfolios/:portfolioId/analytics/allocation
 ```
 
 Optional grouping:
 
-```text id="m2x8q5"
+```text
 asset
 assetType
 currency
@@ -622,13 +621,13 @@ sector
 
 ## Risk
 
-```text id="c9v3n7"
+```text
 GET /api/v1/portfolios/:portfolioId/analytics/risk
 ```
 
 Potential response:
 
-```text id="p5x1m8"
+```text
 {
   "data": {
     "volatility": 14.2,
@@ -643,13 +642,13 @@ Potential response:
 
 # 21. Portfolio Pulse API
 
-```text id="d8q4v2"
+```text
 GET /api/v1/portfolios/:portfolioId/pulse
 ```
 
 Response:
 
-```text id="m7x2p9"
+```text
 {
   "data": {
     "overall": "HEALTHY",
@@ -671,13 +670,13 @@ The pulse must remain explainable.
 
 # 22. Attribution API
 
-```text id="n5r8c2"
+```text
 GET /api/v1/portfolios/:portfolioId/analytics/attribution
 ```
 
 Optional parameters:
 
-```text id="x7m3q1"
+```text
 from
 to
 groupBy
@@ -685,7 +684,7 @@ groupBy
 
 Possible grouping:
 
-```text id="p2d9v4"
+```text
 asset
 assetType
 sector
@@ -697,13 +696,13 @@ sector
 
 ## List Decisions
 
-```text id="c8m4x7"
+```text
 GET /api/v1/portfolios/:portfolioId/decisions
 ```
 
 Filters:
 
-```text id="v1p6n9"
+```text
 assetId
 direction
 dateFrom
@@ -722,7 +721,7 @@ dateTo
 
 ## Get Decision
 
-```text id="q7d2m5"
+```text
 GET /api/v1/portfolios/:portfolioId/decisions/:decisionId
 ```
 
@@ -743,13 +742,13 @@ GET /api/v1/portfolios/:portfolioId/decisions/:decisionId
 
 ## Create Decision
 
-```text id="m9x4p1"
+```text
 POST /api/v1/portfolios/:portfolioId/decisions
 ```
 
 Request:
 
-```text id="k5v8d3"
+```text
 {
   "assetId": "asset_001",
   "title": "Breakout setup",
@@ -766,7 +765,7 @@ Request:
 
 ## Update Decision
 
-```text id="p3x7m2"
+```text
 PATCH /api/v1/portfolios/:portfolioId/decisions/:decisionId
 ```
 
@@ -774,7 +773,7 @@ PATCH /api/v1/portfolios/:portfolioId/decisions/:decisionId
 
 ## Close Decision
 
-```text id="v8q1d5"
+```text
 POST /api/v1/portfolios/:portfolioId/decisions/:decisionId/close
 ```
 
@@ -784,13 +783,13 @@ POST /api/v1/portfolios/:portfolioId/decisions/:decisionId/close
 
 ## Get Replay Timeline
 
-```text id="m4n9x2"
+```text
 GET /api/v1/decisions/:decisionId/replay
 ```
 
 Response:
 
-```text id="d7p3v8"
+```text
 {
   "data": {
     "decision": {},
@@ -819,7 +818,7 @@ The client controls playback.
 
 ## List Scenarios
 
-```text id="x5q8m1"
+```text
 GET /api/v1/portfolios/:portfolioId/scenarios
 ```
 
@@ -834,13 +833,13 @@ GET /api/v1/portfolios/:portfolioId/scenarios
 
 ## Create Scenario
 
-```text id="k9d2p4"
+```text
 POST /api/v1/portfolios/:portfolioId/scenarios
 ```
 
 Request:
 
-```text id="v3m7x1"
+```text
 {
   "name": "Increase technology exposure",
   "description": "Evaluate higher technology allocation."
@@ -851,13 +850,13 @@ Request:
 
 ## Calculate Scenario
 
-```text id="p8n4q6"
+```text
 POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/calculate
 ```
 
 Response:
 
-```text id="m2x7d9"
+```text
 {
   "data": {
     "scenarioId": "...",
@@ -885,7 +884,7 @@ Response:
 
 ## Update Scenario
 
-```text id="c5v1q8"
+```text
 PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
 ```
 
@@ -893,7 +892,7 @@ PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
 
 ## Archive Scenario
 
-```text id="r7m4x2"
+```text
 POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive
 ```
 
@@ -947,7 +946,7 @@ POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive
 
 ## Get Watchlist
 
-```text id="d8p2n5"
+```text
 GET /api/v1/watchlist
 ```
 
@@ -955,13 +954,13 @@ GET /api/v1/watchlist
 
 ## Add Asset
 
-```text id="m6x9q3"
+```text
 POST /api/v1/watchlist
 ```
 
 Request:
 
-```text id="v1c7p4"
+```text
 {
   "assetId": "asset_001"
 }
@@ -971,7 +970,7 @@ Request:
 
 ## Remove Asset
 
-```text id="k4n8m2"
+```text
 DELETE /api/v1/watchlist/:assetId
 ```
 
@@ -992,7 +991,7 @@ watch the same asset.
 
 ## List Alerts
 
-```text id="p9x3d6"
+```text
 GET /api/v1/alerts
 ```
 
@@ -1000,13 +999,13 @@ GET /api/v1/alerts
 
 ## Create Alert
 
-```text id="m5q7v1"
+```text
 POST /api/v1/alerts
 ```
 
 Request:
 
-```text id="x8d2n4"
+```text
 {
   "assetId": "asset_001",
   "type": "PRICE",
@@ -1020,7 +1019,7 @@ Request:
 
 ## Update Alert
 
-```text id="c3v9m7"
+```text
 PATCH /api/v1/alerts/:alertId
 ```
 
@@ -1028,7 +1027,7 @@ PATCH /api/v1/alerts/:alertId
 
 ## Delete Alert
 
-```text id="r6p1x8"
+```text
 DELETE /api/v1/alerts/:alertId
 ```
 
@@ -1049,13 +1048,13 @@ yet — that lands with the realtime/market-simulation work (FR-053).
 
 ## List Notifications
 
-```text id="m7q2d4"
+```text
 GET /api/v1/notifications
 ```
 
 Parameters:
 
-```text id="v8x5p1"
+```text
 unreadOnly
 ```
 
@@ -1076,7 +1075,7 @@ Operations, Phases 9-10 of `15-implementation-plan.md`).
 
 ## Mark Notification Read
 
-```text id="c9n3m7"
+```text
 POST /api/v1/notifications/:notificationId/read
 ```
 
@@ -1084,7 +1083,7 @@ POST /api/v1/notifications/:notificationId/read
 
 ## Mark All Read
 
-```text id="p4x8d2"
+```text
 POST /api/v1/notifications/read-all
 ```
 
@@ -1094,7 +1093,7 @@ POST /api/v1/notifications/read-all
 
 ## Get Preferences
 
-```text id="m2v7q5"
+```text
 GET /api/v1/preferences
 ```
 
@@ -1102,13 +1101,13 @@ GET /api/v1/preferences
 
 ## Update Preferences
 
-```text id="d8x1n4"
+```text
 PATCH /api/v1/preferences
 ```
 
 Example:
 
-```text id="k5p9m3"
+```text
 {
   "theme": "dark",
   "language": "en",
@@ -1134,13 +1133,13 @@ kept there as the single source of truth rather than duplicated here.
 
 # 30. Health API
 
-```text id="r4x7m2"
+```text
 GET /api/v1/health
 ```
 
 Response:
 
-```text id="p8n3q5"
+```text
 {
   "data": {
     "status": "healthy",
@@ -1172,7 +1171,7 @@ The client must consume a normalized internal event contract.
 
 # 32. Realtime Event Envelope
 
-```text id="x5m8q1"
+```text
 {
   "id": "event_001",
   "type": "MARKET_PRICE_UPDATED",
@@ -1186,7 +1185,7 @@ The client must consume a normalized internal event contract.
 
 # 33. Market Price Event
 
-```text id="d7p2v9"
+```text
 {
   "type": "MARKET_PRICE_UPDATED",
   "payload": {
@@ -1203,7 +1202,7 @@ The client must consume a normalized internal event contract.
 
 Example:
 
-```text id="m8q4x2"
+```text
 {
   "type": "PORTFOLIO_UPDATED",
   "payload": {
@@ -1221,7 +1220,7 @@ The client can fetch or derive the affected state.
 
 # 35. Job Progress Event
 
-```text id="p5x9d1"
+```text
 {
   "type": "JOB_PROGRESS_UPDATED",
   "payload": {
@@ -1236,7 +1235,7 @@ The client can fetch or derive the affected state.
 
 # 36. Notification Event
 
-```text id="v3m7q8"
+```text
 {
   "type": "NOTIFICATION_CREATED",
   "payload": {
@@ -1251,7 +1250,7 @@ The client can fetch or derive the affected state.
 
 The client should receive normalized connection state:
 
-```text id="x8n4p2"
+```text
 CONNECTED
 DISCONNECTED
 RECONNECTING
@@ -1267,7 +1266,7 @@ These are transport/application events and should not be treated as domain entit
 
 The client must reject or ignore stale events where:
 
-```text id="m7q3v9"
+```text
 incomingSequence <= lastProcessedSequence
 ```
 
@@ -1283,7 +1282,7 @@ Mutations with potentially duplicate execution should support idempotency.
 
 Example:
 
-```text id="d2p8x4"
+```text
 Idempotency-Key: <unique-key>
 ```
 
@@ -1302,14 +1301,14 @@ The demo should simulate duplicate requests where useful.
 
 Collection endpoints should support:
 
-```text id="v6m1q9"
+```text
 page
 pageSize
 ```
 
 Default:
 
-```text id="k3x7p2"
+```text
 page = 1
 pageSize = 20
 ```
@@ -1324,7 +1323,7 @@ Filtering parameters should use predictable naming.
 
 Examples:
 
-```text id="n8q4m1"
+```text
 status
 type
 assetId
@@ -1340,7 +1339,7 @@ Complex filters should not be encoded into arbitrary query strings.
 
 Sorting may use:
 
-```text id="p7d2x5"
+```text
 sort=createdAt
 sort=-createdAt
 ```
@@ -1355,7 +1354,7 @@ API timestamps should use ISO 8601.
 
 Example:
 
-```text id="m4v8q2"
+```text
 2026-08-29T14:30:00Z
 ```
 
@@ -1371,7 +1370,7 @@ The API should avoid ambiguous representations.
 
 Possible implementation:
 
-```text id="x7n2p5"
+```text
 {
   "amount": "12345.67",
   "currency": "USD"
@@ -1403,13 +1402,13 @@ A user must only access resources they own or are authorized to access.
 
 Example:
 
-```text id="q8m3d1"
+```text
 GET /api/v1/portfolios/:portfolioId
 ```
 
 must verify:
 
-```text id="v2p7x5"
+```text
 authenticatedUser
         ↓
 portfolio.owner
@@ -1437,7 +1436,7 @@ Requests should have defined timeout behavior.
 
 When a dependency times out:
 
-```text id="m8x2q4"
+```text
 Dependency Timeout
       ↓
 Normalize Error
@@ -1457,7 +1456,7 @@ The mock implementation must expose the same application operations as the produ
 
 Example:
 
-```text id="p4n7x1"
+```text
 PortfolioService
      │
      ├── MockPortfolioService
@@ -1484,7 +1483,7 @@ The mock API should simulate:
 
 Example:
 
-```text id="x9m3d7"
+```text
 UI
  ↓
 Mock API
@@ -1506,7 +1505,7 @@ Response
 
 The following must remain equivalent:
 
-```text id="v5q8m2"
+```text
 Request shape
 Response shape
 Error shape
@@ -1525,7 +1524,7 @@ Demo-specific controls should not be part of the production API contract.
 
 Examples may include:
 
-```text id="d2x7p4"
+```text
 POST /demo/reset
 POST /demo/simulation/start
 POST /demo/simulation/stop
@@ -1540,13 +1539,13 @@ These belong to a separate demo controller.
 
 Conceptually:
 
-```text id="m9q3v6"
+```text
 POST /demo/reset
 ```
 
 Result:
 
-```text id="p5x8d1"
+```text
 Seed Data
     ↓
 Fresh Session
@@ -1560,7 +1559,7 @@ The endpoint is unavailable in production mode.
 
 Potential operations:
 
-```text id="x4n7m2"
+```text
 POST /demo/simulation/start
 POST /demo/simulation/pause
 POST /demo/simulation/resume
@@ -1575,7 +1574,7 @@ The exact controls may be exposed through a developer/demo panel rather than the
 
 Potential categories:
 
-```text id="q8d2v5"
+```text
 API_ERROR
 TIMEOUT
 NETWORK_ERROR
@@ -1594,7 +1593,7 @@ The mock implementation should be tested against the same schemas used to valida
 
 Conceptually:
 
-```text id="m7x4p1"
+```text
 Shared Contract
       │
  ┌────┴────┐
@@ -1635,7 +1634,7 @@ Breaking changes must require a versioning strategy.
 
 Examples:
 
-```text id="c5n8q2"
+```text
 v1 → v2
 ```
 
@@ -1675,7 +1674,7 @@ but:
 
 Therefore the API should remain centered around meaningful capabilities such as:
 
-```text id="j6p4x8"
+```text
 Create Transaction
 Calculate Scenario
 Replay Decision
@@ -1692,7 +1691,7 @@ rather than becoming a thin CRUD mirror of the database.
 
 The final architecture is:
 
-```text id="w3n8q5"
+```text
                      Application
                          │
                     API Contract

@@ -1,7 +1,6 @@
-# Trading Analytics Platform
+# SDD 05 — Data Model
 
-## SDD — 05. Data Model
-
+**Project:** Trading Analytics Platform  
 **Status:** Draft  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`
@@ -49,7 +48,7 @@ The data model follows these principles:
 
 The core domain can be represented as:
 
-```text id="1y1hvs"
+```text
 User
  │
  ├── Portfolios
@@ -75,7 +74,7 @@ User
 
 Market data exists as a separate domain source:
 
-```text id="ylf44m"
+```text
 Market Data
     │
     ├── Assets
@@ -148,7 +147,8 @@ Represents an authenticated application user.
 
 ## Fields
 
-```text id
+```text
+id
 email
 displayName
 role
@@ -175,7 +175,8 @@ Represents a logical collection of trading activity and positions.
 
 ## Fields
 
-```text id
+```text
+id
 userId
 name
 description
@@ -320,7 +321,7 @@ These should only be introduced when the business model requires them.
 
 A transaction should have an explicit lifecycle where asynchronous processing is required.
 
-```text id="t1k2yq"
+```text
 DRAFT
   ↓
 VALIDATING
@@ -332,7 +333,7 @@ COMPLETED
 
 Failure path:
 
-```text id="g5e2g1"
+```text
 PROCESSING
      ↓
 FAILED
@@ -452,7 +453,7 @@ data); it defaults to the creation time when omitted.
 
 Replay state should be derived from ordered events.
 
-```text id="7z0h8j"
+```text
 Decision
    │
    └── Events[]
@@ -509,7 +510,7 @@ A scenario contains modifications relative to a baseline.
 
 Conceptually:
 
-```text id="7f6d0f"
+```text
 Scenario
    │
    └── Changes
@@ -803,7 +804,7 @@ Allocation should be derived from current portfolio state.
 
 Example:
 
-```text id="h6qz3v"
+```text
 Position Market Value
         ÷
 Portfolio Total Value
@@ -841,7 +842,7 @@ Attribution represents the contribution of components to portfolio performance.
 
 Conceptually:
 
-```text id="2t8c1r"
+```text
 Portfolio Performance
         │
         ├── Asset A contribution
@@ -956,7 +957,7 @@ Derived values should be recalculated from authoritative inputs.
 
 Example:
 
-```text id="q6n0m1"
+```text
 Transaction added
       ↓
 Position state changes
@@ -1035,7 +1036,7 @@ Examples:
 
 Conceptually:
 
-```text id="sq2l8m"
+```text
 Seed Data
     ↓
 Session State
@@ -1321,7 +1322,7 @@ Mock repositories/services should expose the same conceptual operations as their
 
 Example:
 
-```text id="0o7gsc"
+```text
 PortfolioRepository
 
 getAll()

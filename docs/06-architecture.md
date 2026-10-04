@@ -1,7 +1,6 @@
-# Trading Analytics Platform
+# SDD 06 — Architecture
 
-## SDD — 06. Architecture
-
+**Project:** Trading Analytics Platform  
 **Status:** Draft  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`
@@ -79,7 +78,7 @@ Application and domain logic should depend on contracts rather than infrastructu
 
 Conceptually:
 
-```text id="6s9i5b"
+```text
 Application
      ↓
 Interface / Contract
@@ -119,7 +118,7 @@ The system should be designed so that domains are separable without forcing depl
 
 The system follows a modular layered architecture.
 
-```text id="o6n6fk"
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                    Presentation                         │
 │ React UI · Routes · Components · Charts · Interaction  │
@@ -147,7 +146,7 @@ The exact implementation may adapt this model where frontend-specific concerns r
 
 # 5. System Context
 
-```text id="5b5hxn"
+```text
                     ┌───────────────────┐
                     │   Portfolio User  │
                     └─────────┬─────────┘
@@ -173,7 +172,7 @@ The exact implementation may adapt this model where frontend-specific concerns r
 
 In Demo Mode:
 
-```text id="p5f4q3"
+```text
                     Web Client
                         │
                         ▼
@@ -202,7 +201,7 @@ The public demo must run without requiring:
 
 Architecture:
 
-```text id="p4c2dq"
+```text
 React Application
        │
        ▼
@@ -226,7 +225,7 @@ Mock Repositories   Simulation Engine
 
 The complete application uses real infrastructure.
 
-```text id="n4k5ha"
+```text
 React Client
      │
      ▼
@@ -251,7 +250,7 @@ The frontend uses a feature-oriented modular architecture.
 
 Recommended structure:
 
-```text id="0knc7q"
+```text
 src/
 ├── app/
 │   ├── router/
@@ -320,7 +319,7 @@ Each feature should own its feature-specific:
 
 Example:
 
-```text id="r48kqj"
+```text
 features/transactions/
 
 components/
@@ -369,7 +368,7 @@ The domain layer contains business rules that should remain independent from:
 
 Examples:
 
-```text id="c6w5e4"
+```text
 calculatePositionMetrics()
 calculatePortfolioMetrics()
 calculateAllocation()
@@ -390,7 +389,7 @@ The application layer coordinates domain operations.
 
 Examples:
 
-```text id="r0r4oh"
+```text
 CreatePortfolio
 RecordTransaction
 UpdateWatchlist
@@ -419,7 +418,7 @@ Repositories provide an abstraction over data access.
 
 Example:
 
-```text id="xczp4w"
+```text
 interface PortfolioRepository {
   getAll(): Promise<Portfolio[]>
   getById(id: string): Promise<Portfolio | null>
@@ -433,7 +432,7 @@ The application layer depends on the interface.
 
 Implementations may include:
 
-```text id="pr6n0k"
+```text
 MockPortfolioRepository
 ApiPortfolioRepository
 ```
@@ -446,7 +445,7 @@ The demo uses mock implementations behind the same contracts.
 
 Example:
 
-```text id="w4g2o9"
+```text
 PortfolioRepository
       │
       ├── MockPortfolioRepository
@@ -462,7 +461,7 @@ This allows the UI and application logic to remain identical.
 
 The mock infrastructure should contain separate responsibilities.
 
-```text id="y5x4gk"
+```text
 Seed Data
     ↓
 Mock Store
@@ -493,7 +492,7 @@ Capabilities:
 
 Example:
 
-```text id="w19h8q"
+```text
 Repository call
       ↓
 Simulated latency
@@ -515,7 +514,7 @@ The demo should provide controlled failure simulation.
 
 Possible mechanisms:
 
-```text id="cnc9w8"
+```text
 Demo Controls
     │
     ├── Force API Error
@@ -581,7 +580,7 @@ Every state value must have a clear owner.
 
 Example:
 
-```text id="3yd7zj"
+```text
 Selected Portfolio
       ↓
 Client State
@@ -605,7 +604,7 @@ Mutations should invalidate or update relevant cached state.
 
 Example:
 
-```text id="y4m7b8"
+```text
 Create Transaction
        ↓
 Transaction Cache
@@ -625,7 +624,7 @@ The final invalidation strategy should balance correctness and performance.
 
 Real-time market events should be isolated from the UI.
 
-```text id="g3s0qf"
+```text
 Realtime Connection
        ↓
 Event Adapter
@@ -649,7 +648,7 @@ A normalized internal event structure should be used.
 
 Example:
 
-```text id="d1a8bh"
+```text
 {
   type: "MARKET_PRICE_UPDATED",
   assetId: "...",
@@ -667,7 +666,7 @@ Infrastructure-specific payload formats should be converted at the boundary.
 
 When a market event arrives:
 
-```text id="5g0j3q"
+```text
 Market Event
     ↓
 Validate
@@ -693,7 +692,7 @@ Unrelated portfolios or components should not be recalculated unnecessarily.
 
 The realtime subsystem must expose connection state:
 
-```text id="9kz1w2"
+```text
 DISCONNECTED
       ↓
 CONNECTING
@@ -707,7 +706,7 @@ CONNECTED
 
 Failure:
 
-```text id="5m0s9c"
+```text
 RECONNECTING
       ↓
 FAILED
@@ -723,7 +722,7 @@ The backend should follow modular boundaries.
 
 Conceptual structure:
 
-```text id="d2y2s5"
+```text
 backend/
 ├── modules/
 │   ├── auth/
@@ -760,7 +759,7 @@ Each major module should separate responsibilities.
 
 Conceptually:
 
-```text id="9uqxwi"
+```text
 module/
 ├── domain/
 ├── application/
@@ -780,7 +779,7 @@ The backend exposes purpose-specific APIs rather than exposing database structur
 
 Example:
 
-```text id="l7lq6q"
+```text
 GET /portfolios
 GET /portfolios/:id
 POST /portfolios
@@ -801,7 +800,7 @@ Exact endpoint design will be defined in `07-api-spec.md`.
 
 External API responses should use DTOs.
 
-```text id="v9d3y1"
+```text
 Database Model
       ↓
 Domain Model
@@ -821,7 +820,7 @@ Database implementation details must not leak into the client.
 
 Validation should occur at multiple boundaries.
 
-```text id="qv5h7d"
+```text
 User Input
     ↓
 Frontend Schema
@@ -843,7 +842,7 @@ The backend should expose normalized application errors.
 
 Categories may include:
 
-```text id="y1g7d2"
+```text
 VALIDATION_ERROR
 UNAUTHORIZED
 FORBIDDEN
@@ -866,7 +865,7 @@ Operations that modify multiple related records should use explicit transaction 
 
 Example:
 
-```text id="z3j2xk"
+```text
 Create Transaction
        │
        ├── Transaction Record
@@ -887,7 +886,7 @@ The architecture should support internal events where they provide real value.
 
 Example:
 
-```text id="1y2n8m"
+```text
 TransactionCompleted
         ↓
  ┌──────┼──────────┐
@@ -913,7 +912,7 @@ Potential tasks:
 
 Conceptually:
 
-```text id="z8q4sp"
+```text
 Request
   ↓
 Create Job
@@ -964,7 +963,7 @@ The demo does not require a production database.
 
 Persistence access must remain behind infrastructure boundaries.
 
-```text id="7e1x9r"
+```text
 Application
      ↓
 Repository
@@ -982,7 +981,7 @@ This allows the domain/application layers to remain independent of the selected 
 
 Authentication should be isolated as a dedicated capability.
 
-```text id="u2v0na"
+```text
 Authentication
       ↓
 Identity
@@ -1002,7 +1001,7 @@ Authorization must be enforced at protected application boundaries.
 
 Conceptually:
 
-```text id="6yqv95"
+```text
 Request
   ↓
 Authenticate
@@ -1022,7 +1021,7 @@ The frontend may hide unavailable actions for UX purposes but must not be respon
 
 The security boundary exists primarily at the backend.
 
-```text id="4r4snb"
+```text
 Untrusted Client
        ↓
 API Boundary
@@ -1054,7 +1053,7 @@ The backend should provide:
 
 Example:
 
-```text id="x7t8kp"
+```text
 Request
   ↓
 Correlation ID
@@ -1084,7 +1083,7 @@ Appropriate boundaries should exist around major application surfaces.
 
 Routes should be separated into:
 
-```text id="q7e8ny"
+```text
 Public
 ├── /
 ├── /projects
@@ -1109,7 +1108,7 @@ Feature modules should not create uncontrolled dependency graphs.
 
 Preferred:
 
-```text id="d2u3v8"
+```text
 Feature
    ↓
 Application Contract
@@ -1119,7 +1118,7 @@ Domain
 
 Avoid:
 
-```text id="n5v7y3"
+```text
 Feature A → Feature B → Feature C → Feature A
 ```
 
@@ -1146,7 +1145,7 @@ Architecture should be enforced automatically where possible rather than relying
 
 Preferred dependency direction:
 
-```text id="0o9s8e"
+```text
 Presentation
      ↓
 Application
@@ -1171,7 +1170,7 @@ Configuration should be centralized.
 
 Examples:
 
-```text id="p9x4m0"
+```text
 API URL
 Environment
 Feature Flags
@@ -1202,7 +1201,7 @@ Demo-specific capabilities should live behind an explicit boundary.
 
 Example:
 
-```text id="u8q1w7"
+```text
 DemoController
     │
     ├── Seed
@@ -1237,7 +1236,7 @@ The simulator should support deterministic behavior when required.
 
 Example:
 
-```text id="j7x2d4"
+```text
 Seed
  +
 Simulation Configuration
@@ -1253,7 +1252,7 @@ This allows reproducible demonstrations and tests.
 
 Complete flow:
 
-```text id="5z8r4p"
+```text
 User
  ↓
 Transaction Form
@@ -1285,7 +1284,7 @@ UI Feedback
 
 # 51. Data Flow Example — Real-Time Price
 
-```text id="r9m0k3"
+```text
 Market Event
  ↓
 Realtime Adapter
@@ -1309,7 +1308,7 @@ UI Subscribers
 
 # 52. Data Flow Example — Scenario
 
-```text id="y3v5n2"
+```text
 Baseline Portfolio
        ↓
 Scenario Changes
@@ -1329,7 +1328,7 @@ The baseline must remain unchanged.
 
 # 53. Data Flow Example — Decision Replay
 
-```text id="e4w7s2"
+```text
 Decision
    ↓
 Ordered Events
@@ -1351,7 +1350,7 @@ Replay should be a projection of history, not a mutation of historical records.
 
 Performance optimization should occur at multiple levels.
 
-```text id="n6s7a2"
+```text
 Network
   ↓
 API
@@ -1392,7 +1391,7 @@ Charts should consume prepared data rather than perform complex domain calculati
 
 Preferred:
 
-```text id="x6m5c3"
+```text
 Raw Data
    ↓
 Domain Calculation
@@ -1412,7 +1411,7 @@ The architecture should allow gradual evolution.
 
 ### Stage 1
 
-```text id="t0y7q9"
+```text
 Single Frontend
 Single Backend
 Single Database
@@ -1420,7 +1419,7 @@ Single Database
 
 ### Stage 2
 
-```text id="z5f3a1"
+```text
 Multiple Backend Instances
 Shared Cache
 Realtime Infrastructure
@@ -1428,7 +1427,7 @@ Realtime Infrastructure
 
 ### Stage 3
 
-```text id="w8k4e2"
+```text
 Dedicated Workers
 Event Infrastructure
 Specialized Services
@@ -1444,7 +1443,7 @@ Initial production deployment should prioritize free-tier compatibility.
 
 Conceptual:
 
-```text id="n1j6y3"
+```text
 Frontend Hosting
       │
       ▼
@@ -1478,7 +1477,7 @@ No paid financial API is required.
 
 The architecture should support multiple testing levels.
 
-```text id="a8w2e7"
+```text
 Domain
   ↓
 Unit Tests
@@ -1500,7 +1499,7 @@ Complete Product
 End-to-End Tests
 ```
 
-The detailed strategy is defined in `11-testing-strategy.md`.
+The detailed strategy is defined in `10-testing-strategy.md`.
 
 ---
 
@@ -1603,7 +1602,7 @@ Significant architectural decisions should be documented using ADRs.
 
 Examples:
 
-```text id="c3k8w4"
+```text
 ADR-001 Modular Monolith
 ADR-002 Repository Abstraction
 ADR-003 Server vs Client State
@@ -1639,7 +1638,7 @@ The architecture is acceptable when:
 
 The architecture should make the following scenario possible:
 
-```text id="j9n1w3"
+```text
 Today
 ─────
 Public Demo
@@ -1681,7 +1680,7 @@ The architecture should communicate engineering maturity through **clarity and t
 
 The ideal result is:
 
-```text id="g2x5r8"
+```text
                  PRODUCT
                     │
           ┌─────────┴─────────┐

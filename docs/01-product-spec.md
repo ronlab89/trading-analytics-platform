@@ -1,6 +1,6 @@
-# Trading Analytics Platform
-## SDD — 01. Product Specification
+# SDD 01 — Product Specification
 
+**Project:** Trading Analytics Platform  
 **Status:** Draft  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`
@@ -295,7 +295,7 @@ Supported transaction types may include:
 - Fee;
 - Adjustment.
 
-The final transaction model will be defined in `06-data-model.md`.
+The final transaction model will be defined in `05-data-model.md`.
 
 ---
 
@@ -871,7 +871,7 @@ These scenarios may be triggered:
 - through a demo control;
 - through specific test data.
 
-The final mechanism will be defined in `12-demo-spec.md`.
+The final mechanism will be defined in `12-demo-mode-spec.md`.
 
 ---
 

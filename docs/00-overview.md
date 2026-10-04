@@ -1,6 +1,6 @@
-# Trading Analytics Platform
-## SDD — 00. Project Overview
+# SDD 00 — Project Overview
 
+**Project:** Trading Analytics Platform  
 **Status:** Draft  
 **Version:** 1.0  
 **Project Type:** Personal Engineering Project  

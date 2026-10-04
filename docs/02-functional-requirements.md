@@ -1,6 +1,6 @@
-# Trading Analytics Platform
-## SDD — 02. Functional Requirements
+# SDD 02 — Functional Requirements
 
+**Project:** Trading Analytics Platform  
 **Status:** Draft  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`
@@ -1395,7 +1395,7 @@ Test(s)
 Acceptance criteria
 ```
 
-The exact traceability mechanism will be defined in `11-testing-strategy.md`.
+The exact traceability mechanism will be defined in `10-testing-strategy.md`.
 
 ---
 
