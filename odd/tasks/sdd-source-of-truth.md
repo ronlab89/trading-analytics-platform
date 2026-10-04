@@ -38,7 +38,7 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 - [x] T0.4 ADR-004 Analytics methodology — accepted 2026-10-04 (`docs/adr/0004-analytics-methodology.md`), route: inline
 - [x] T0.5 ADR-005 Roles and authentication — accepted 2026-10-04 (`docs/adr/0005-roles-and-authentication.md`), route: inline
 - [x] T0.6 ADR-006 Deployment model and minimal CI — accepted 2026-10-04 (`docs/adr/0006-deployment-model-and-ci.md`), route: inline
-- [ ] T0.7 ADR-007 Realtime transport and simulation engine
+- [x] T0.7 ADR-007 Realtime and market simulation — accepted 2026-10-04 (`docs/adr/0007-realtime-and-market-simulation.md`), route: inline; ADR-001 amended with Actor note
 - [ ] T0.8 ADR-008 Background jobs scope
 - [ ] T0.9 ADR-009 Observability scope
 
@@ -86,7 +86,8 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 - 2026-10-04: ADR-003 committed (`975db68`).
 - 2026-10-04: ADR-004 committed (`c453dc6`).
 - 2026-10-04: ADR-005 committed (`4799f51`).
+- 2026-10-04: ADR-006 committed (`dc98597`).
 
 ## Next step
 
-T0.7 — present ADR-007 (realtime transport and simulation engine) decision points to the user.
+T0.8 — present ADR-008 (background jobs scope) decision points to the user.
