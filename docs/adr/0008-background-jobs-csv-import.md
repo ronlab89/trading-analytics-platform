@@ -53,11 +53,15 @@ retried `POST` must not create a duplicate transaction.
    reason `INTERRUPTED` and is retryable. On startup the runner also resumes
    every job still `QUEUED`. No job stays stuck silently.
 6. **Retry and cancellation.** Retry returns a job to `QUEUED` and
-   increments `attempt`. It is allowed only for transient outcomes:
-   `FAILED` with reason `INTERRUPTED`, `TIMED_OUT` and `CANCELLED`. A job
-   that `FAILED` because rows are invalid (reason `VALIDATION_FAILED`) is not
+   increments `attempt`. It is allowed for `TIMED_OUT`, `CANCELLED`, and
+   `FAILED` with reason `INTERRUPTED`, `APPLY_ERROR` (technical failure
+   during apply) or `APPLY_REJECTED` (a business rule rejected the apply,
+   for example because the portfolio changed after validation; the retry
+   re-runs validation from the start against current data). A job that
+   `FAILED` because rows are invalid (reason `VALIDATION_FAILED`) is not
    retryable, since the same stored input would fail the same way; the user
-   corrects the file and creates a new import. Cancellation is allowed while
+   corrects the file and creates a new import. This is the complete set of
+   failure reasons. Cancellation is allowed while
    `QUEUED` or during the validation stage, never during the apply stage.
 7. **Timeout.** Each job type has a timeout that applies while the job is
    `QUEUED` or validating. Exceeding it moves the job to `TIMED_OUT`
