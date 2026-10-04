@@ -37,7 +37,8 @@ contract, entities, validators and pure calculations.
 2. **Style.** One factory per resource that receives its dependencies and
    returns the same functions the services expose today, for example
    `createPortfolioService({ portfolioRepository })`. No class-per-use-case
-   or command bus.
+   or command bus. Functions keep their current responsibilities, but the
+   caller identity changes from a bare `userId` to an `Actor` (ADR-005).
 3. **Errors.** The application throws transport-free errors
    (`NotFoundError`, `ConflictError`, and similar) defined in the
    application package. Each delivery mechanism maps them: the API error
