@@ -40,7 +40,7 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 - [x] T0.6 ADR-006 Deployment model and minimal CI — accepted 2026-10-04 (`docs/adr/0006-deployment-model-and-ci.md`), route: inline
 - [x] T0.7 ADR-007 Realtime and market simulation — accepted 2026-10-04 (`docs/adr/0007-realtime-and-market-simulation.md`), route: inline; ADR-001 amended with Actor note
 - [x] T0.8 ADR-008 Background jobs (CSV import) and idempotency — accepted 2026-10-04 (`docs/adr/0008-background-jobs-csv-import.md`), route: inline
-- [ ] T0.9 ADR-009 Observability scope
+- [x] T0.9 ADR-009 Observability scope — accepted 2026-10-04 (`docs/adr/0009-observability-scope.md`), route: inline
 
 ### Phase 1 — Governance
 
@@ -88,7 +88,8 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 - 2026-10-04: ADR-005 committed (`4799f51`).
 - 2026-10-04: ADR-006 committed (`dc98597`).
 - 2026-10-04: ADR-001 amended (`ce90667`); ADR-007 committed (`03ad203`).
+- 2026-10-04: ADR-008 committed (`bc94ca0`); ADR-009 committed (see git log). Phase 0 complete.
 
 ## Next step
 
-T0.9 — present ADR-009 (observability scope) decision points to the user.
+Phase 0 complete. Next: Phase 1 (governance) — T1.1 `docs/README.md`, T1.2 ADR template and index, T1.3 mechanical normalization, T1.4 `docs:check` script. Route: delegated writer (multiple non-trivial files).
