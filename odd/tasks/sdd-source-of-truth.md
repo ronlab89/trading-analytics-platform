@@ -33,7 +33,7 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 ### Phase 0 — Decisions (ADRs), one at a time with the user
 
 - [x] T0.1 ADR-001 Application layer — accepted 2026-10-04 (`docs/adr/0001-application-layer.md`), route: inline
-- [ ] T0.2 ADR-002 Shared contracts package
+- [x] T0.2 ADR-002 Shared contracts — accepted 2026-10-04 (`docs/adr/0002-shared-contracts.md`), route: inline
 - [ ] T0.3 ADR-003 Cash model and transaction types
 - [ ] T0.4 ADR-004 Analytics methodology
 - [ ] T0.5 ADR-005 Roles and authentication/session
@@ -81,7 +81,8 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 ## Progress
 
 - 2026-10-04: branch created; `chore(repo): stop tracking local ai state` (`2c7469d`).
+- 2026-10-04: ADR-001 committed (`1120f2e`).
 
 ## Next step
 
-T0.2 — present ADR-002 (shared contracts) decision points to the user.
+T0.3 — present ADR-003 (cash model and transaction types) decision points to the user.
