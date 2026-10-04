@@ -90,6 +90,7 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 - 2026-10-04: ADR-001 amended (`ce90667`); ADR-007 committed (`03ad203`).
 - 2026-10-04: ADR-008 committed (`bc94ca0`); ADR-009 committed (`271b627`). Phase 0 complete.
 - 2026-10-04: RDD review of Phase 0 (base `origin/develop`) approved and acknowledged; three advisory findings accepted by the user and fixed: ADR-004 daily-return formula (negative denominator on sales), ADR-008 timeout during apply and `QUEUED` jobs on restart.
+- 2026-10-04: second RDD review (full PR, base `origin/develop`) approved and acknowledged; three advisory findings accepted and fixed: ADR-008 input storage and non-retryable validation failures, ADR-007 socket bound to token expiry, superseded-in-part banners on `PROGRESS.md` and `BACKEND-ROADMAP.md`.
 
 ## Next step
 

@@ -1,5 +1,12 @@
 # Backend Completion Roadmap
 
+> **Superseded in part (2026-10-04).** The architecture decision records in
+> `docs/adr/` take precedence over this file. A new block **B0** (application
+> layer and shared contracts, ADR-001 and ADR-002), preceded by minimal CI
+> (ADR-006), comes before B1. The open decisions listed for B1 to B5 are
+> settled by ADR-003 to ADR-009. This file is rewritten in Phase 5 of
+> `odd/tasks/sdd-source-of-truth.md`.
+
 **Purpose:** the ordered path to finish the whole backend before starting
 the frontend and the public demo. This is a working plan, not a
 specification: the SDD (`00`-`15`) stays the source of truth for behavior,

@@ -1,5 +1,12 @@
 # Trading Analytics Platform — Progress
 
+> **Superseded in part (2026-10-04).** The architecture decision records in
+> `docs/adr/` take precedence over this file. In particular, the next block
+> is **B0** (application layer and shared contracts, ADR-001 and ADR-002),
+> not B1; CI is now adopted (ADR-006); token and logout semantics are
+> decided (ADR-005). This file is rewritten in Phase 5 of
+> `odd/tasks/sdd-source-of-truth.md`.
+
 **Last updated:** end of Scenarios (changes on the entity, read and
 write API, calculate, compare); duplicate scenario deferred
 **Branch:** `feat/scenarios`, created from `develop`. `feat/api-foundation`
