@@ -38,14 +38,23 @@ Two further facts shape the decision:
 1. **Value series.** The daily portfolio value is
    `V(d) = Σ quantityHeld(asset, end of d) × close(asset, d)`, reconstructed
    from transactions and daily `HistoricalPrice` candles.
-2. **Cash flows.** The flow of day `d` is
-   `F(d) = Σ BUY (quantity × price + fees) − Σ SELL (quantity × price − fees)`.
-   Fees therefore reduce the return.
-3. **Daily return.** `r(d) = V(d) / (V(d−1) + F(d)) − 1`, with flows treated
-   as occurring at the start of the day. Intraday movement between the trade
-   price and the previous close is ignored; this simplification is
-   documented. When the denominator is zero (empty portfolio), the day has
-   no return, which is different from a zero return.
+2. **Cash flows.** For day `d`, inflows are
+   `B(d) = Σ BUY (quantity × price + fees)` and outflows are
+   `S(d) = Σ SELL (quantity × price − fees)`. The net flow is
+   `F(d) = B(d) − S(d)`. Fees therefore reduce the return.
+3. **Daily return.** `r(d) = (V(d) + S(d)) / (V(d−1) + B(d)) − 1`. Inflows
+   are treated as occurring at the start of the day and outflows at the end
+   of the day, so the denominator can never be negative and a sale is
+   measured against the capital that was invested. Intraday movement between
+   the trade price and the previous close is otherwise ignored; this
+   simplification is documented. When the denominator is zero (empty
+   portfolio and no purchases that day), the day has no return, which is
+   different from a zero return. Required hand-computed tests include a full
+   liquidation above the previous close (`V(d−1) = 100`, everything sold for
+   `110`, `r(d) = +10%`) and a first-day purchase.
+   *Corrected on 2026-10-04 after review:* the original formula,
+   `V(d) / (V(d−1) + F(d)) − 1` with all flows at the start of the day, gave
+   a negative denominator on such a sale and reported −100%.
 4. **Period return.** Time-weighted return: `TWR = Π (1 + r(d)) − 1`. The
    absolute profit or loss for the period is also reported:
    `P/L = V(end) − V(start) − Σ F(d)`.
@@ -90,7 +99,7 @@ Two further facts shape the decision:
 
 **Negative**
 
-- Daily granularity and the start-of-day flow convention make returns an
+- Daily granularity and the flow timing convention make returns an
   approximation on days with trades.
 - Reconstructing the series on every request may be slow for long histories;
   caching is not introduced until measured (`15-implementation-plan.md`
