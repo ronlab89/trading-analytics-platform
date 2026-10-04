@@ -66,6 +66,7 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 - [x] T1.2 `docs/adr/` template + accepted ADRs, route: delegated writer
 - [x] T1.3 Mechanical normalization (headers, cross-refs, code fences), route: delegated writer
 - [x] T1.4 `docs:check` script (cross-references, fence attributes, titles, ADR sections), route: delegated writer; `eslint.config.js` extended inline to cover `scripts/*.mjs`; `pnpm lint` and `pnpm docs:check` pass
+- [ ] T1.5 Deferred from the Phase 1 review, done together with the minimal CI workflow (ADR-006, before B0): run `pnpm docs:check` in CI; harden `scripts/check-docs.mjs` (one shared fence-state helper for all checks, ADR sections as `{ name, pattern }` pairs, fixture-based tests covering fences, ADR-number lookbehind, unused-allowlist reporting and exit code).
 
 ### Phase 2 — Foundations
 
