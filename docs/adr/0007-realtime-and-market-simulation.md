@@ -34,8 +34,15 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
    so the rest of the code does not depend on it.
 2. **Authentication.** The client sends the access token in the first
    message, never in the URL. A connection not authenticated within 5
-   seconds is closed. After a token refresh (ADR-005) the client
-   re-authenticates over the same socket.
+   seconds is closed. Each socket is bound to the expiry of the token it
+   authenticated with. After a token refresh (ADR-005) the client
+   re-authenticates over the same socket, which extends that bound. If the
+   token expires without re-authentication, the server closes the socket.
+   Every re-authentication reloads role and ownership and drops any
+   subscription the actor is no longer allowed to hold, so role changes take
+   effect within the same 15-minute window as HTTP.
+   *Corrected on 2026-10-04 after review:* the original text validated the
+   token only once, so a socket could stay authorized indefinitely.
 3. **Channels.** `market:{assetId}`, `portfolio:{portfolioId}` and
    `notifications` (scoped to the authenticated user). Every subscription is
    authorized in the application layer by permission and ownership
