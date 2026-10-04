@@ -24,6 +24,24 @@ backend, `15` missing the backend-first override, stale README/PROGRESS,
 2. Every spec section carries a status: `Implemented`, `Planned (B#)`, `Deferred`.
 3. Precedence: ADR > SDD > ROADMAP > PROGRESS. Code is evidence of what exists.
 
+## Review exit criterion (adopted 2026-10-04)
+
+Sampled reviews kept surfacing new implementation edge cases in the ADRs.
+To converge instead of looping:
+
+1. Edge cases are found in **one systematic pass** using the failure-mode
+   checklist: concurrency, crash/restart, timeouts and expiry, retries and
+   duplicates, boundary math and data edges, partial failure.
+2. All findings are fixed in **one batch**.
+3. Each ADR has a **"Deferred detail"** section. An edge case that does not
+   change the decision goes there, assigned to its block (B0-B7), and is
+   specified and tested when that block is implemented.
+4. After the batch, **one** final review of the full PR. Only a finding that
+   shows a decision is wrong or contradictory gets a new commit. Any other
+   finding is added to "Deferred detail" and the PR proceeds.
+5. The same checklist is applied in Phase 6 and at the start of every
+   implementation block.
+
 ## Scope
 
 Documentation only. No source code changes (code starts at roadmap block B0).
@@ -91,6 +109,7 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 - 2026-10-04: ADR-008 committed (`bc94ca0`); ADR-009 committed (`271b627`). Phase 0 complete.
 - 2026-10-04: RDD review of Phase 0 (base `origin/develop`) approved and acknowledged; three advisory findings accepted by the user and fixed: ADR-004 daily-return formula (negative denominator on sales), ADR-008 timeout during apply and `QUEUED` jobs on restart.
 - 2026-10-04: second RDD review (full PR, base `origin/develop`) approved and acknowledged; three advisory findings accepted and fixed: ADR-008 input storage and non-retryable validation failures, ADR-007 socket bound to token expiry, superseded-in-part banners on `PROGRESS.md` and `BACKEND-ROADMAP.md`.
+- 2026-10-04: systematic failure-mode audit of all ADRs (6-category checklist): 2 decision findings fixed (X1 simulator closes daily candles; X2 chronological transaction validation), 26 implementation details recorded in each ADR's "Deferred detail" section.
 
 ## Next step
 
