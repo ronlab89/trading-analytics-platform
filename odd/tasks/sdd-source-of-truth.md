@@ -62,10 +62,10 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 
 ### Phase 1 — Governance
 
-- [ ] T1.1 `docs/README.md` (index, precedence, status legend, maintenance rule)
-- [ ] T1.2 `docs/adr/` template + accepted ADRs
-- [ ] T1.3 Mechanical normalization (headers, cross-refs, code fences)
-- [ ] T1.4 `docs:check` cross-reference script
+- [x] T1.1 `docs/README.md` (index, precedence, status legend, maintenance rule), route: delegated writer
+- [x] T1.2 `docs/adr/` template + accepted ADRs, route: delegated writer
+- [x] T1.3 Mechanical normalization (headers, cross-refs, code fences), route: delegated writer
+- [x] T1.4 `docs:check` script (cross-references, fence attributes, titles, ADR sections), route: delegated writer; `eslint.config.js` extended inline to cover `scripts/*.mjs`; `pnpm lint` and `pnpm docs:check` pass
 
 ### Phase 2 — Foundations
 
@@ -110,7 +110,8 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 - 2026-10-04: RDD review of Phase 0 (base `origin/develop`) approved and acknowledged; three advisory findings accepted by the user and fixed: ADR-004 daily-return formula (negative denominator on sales), ADR-008 timeout during apply and `QUEUED` jobs on restart.
 - 2026-10-04: second RDD review (full PR, base `origin/develop`) approved and acknowledged; three advisory findings accepted and fixed: ADR-008 input storage and non-retryable validation failures, ADR-007 socket bound to token expiry, superseded-in-part banners on `PROGRESS.md` and `BACKEND-ROADMAP.md`.
 - 2026-10-04: systematic failure-mode audit of all ADRs (6-category checklist): 2 decision findings fixed (X1 simulator closes daily candles; X2 chronological transaction validation), 26 implementation details recorded in each ADR's "Deferred detail" section.
+- 2026-10-04: Phase 1 (governance): `scripts/check-docs.mjs` + `pnpm docs:check`; RED 220 problems (190 fence attributes, 17 broken or placeholder references, 13 non-conforming titles), GREEN 0 after normalizing docs 00-15; `docs/README.md`, `docs/adr/README.md`, `docs/adr/template.md` added. `pnpm lint` fails on the new script until `eslint.config.js` covers `scripts/*.mjs`.
 
 ## Next step
 
-Phase 0 complete. Next: Phase 1 (governance) — T1.1 `docs/README.md`, T1.2 ADR template and index, T1.3 mechanical normalization, T1.4 `docs:check` script. Route: delegated writer (multiple non-trivial files).
+Phase 1 complete. Next: Phase 2 (foundations) — T2.1 `00`, `04`; T2.2 `05` against `schema.prisma`; T2.3 `06` rewritten against ADR-001/002; T2.4 new `16-analytics-spec.md` (ADR-004). Apply the failure-mode checklist while writing.
