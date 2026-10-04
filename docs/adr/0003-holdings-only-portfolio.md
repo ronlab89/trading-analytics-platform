@@ -98,7 +98,9 @@ on whether buying increases portfolio value or converts cash into holdings.
 Implementation edge cases that do not change this decision. Each is
 specified and tested in the listed block.
 
-None identified.
+| Item | Resolution | Block |
+|---|---|---|
+| Transactions with the same `executedAt` (common in CSV imports at day granularity) have no defined order, so chronological validation could accept or reject the same data differently in the API and the demo. | A deterministic tiebreak: `executedAt`, then creation order (row order for an import). The same rule applies in every runtime, with a test for a `BUY` and a `SELL` sharing a timestamp. | B0 |
 
 ## Related
 
