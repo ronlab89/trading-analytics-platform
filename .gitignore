@@ -37,3 +37,5 @@ docker/**/data/
 
 # Docs
 pr-body.md
+# Local AI runtime state
+.atl/
