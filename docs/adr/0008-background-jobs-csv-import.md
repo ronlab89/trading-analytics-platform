@@ -85,8 +85,9 @@ validation failure that can only fail again.
    All are checked for permission and ownership (ADR-005); importing
    requires `transaction:create`.
 10. **Input limits.** File size and row count are bounded (values fixed in
-    B4). Rows follow ADR-003 (`BUY` and `SELL` only) and ADR-004 (asset
-    currency must match the portfolio's base currency).
+    B4). Rows follow ADR-003 (`BUY` and `SELL` only, chronological
+    validation) and ADR-004 (asset currency must match the portfolio's base
+    currency).
 11. **Realtime.** Channel `jobs:{jobId}` with `JOB_PROGRESS_UPDATED`,
     `JOB_COMPLETED` and `JOB_FAILED`, completing the catalog of ADR-007.
 12. **Transactions stay synchronous.** The asynchronous transaction flow is
@@ -130,6 +131,21 @@ validation failure that can only fail again.
   infrastructure than a local deployment needs. Rejected.
 - **Row-by-row import with partial success.** Leaves partial state and
   complicates retry. Rejected.
+
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+| Item | Resolution | Block |
+|---|---|---|
+| Apply-stage failure path: validation can go stale before apply (a concurrent transaction makes a `SELL` oversell), or the database fails. | Apply re-checks invariants inside the `UnitOfWork`. A business-rule rejection ends `FAILED` with reason `APPLY_REJECTED` (retry re-runs validation); a technical failure ends `FAILED` with reason `APPLY_ERROR` (retryable). | B4 |
+| Two in-flight requests carry the same `Idempotency-Key` before any response is stored. | Reserve the key with a unique constraint before processing; the second in-flight request gets 409. | B4 |
+| Racing transitions: startup resume and in-memory enqueue pick the same job, and cancel can overwrite a committed apply. | Every transition is a compare-and-set on status, a persisted `stage` and `attempt`, checking affected rows. The apply `UnitOfWork` sets `COMPLETED` conditionally and rolls back if no row matches. | B4 |
+| The idempotency record is written outside the mutation's transaction, so a crash between commit and record duplicates on retry; a crashed reservation blocks the key for 24 hours. | Write the key and response in the same `UnitOfWork` as the mutation. Reservations have a lease, and an expired lease counts as absent. 5xx outcomes are not stored. | B4 |
+| A request hash covering only the body lets the same key and body against another portfolio return a stored response; expired rows still hit the unique constraint. | The hash includes method, route and path parameters. Expired rows are purged or treated as absent. | B4 |
+| A timeout measured from creation makes retried or resumed jobs time out immediately. | The timeout is measured per attempt from when the job was queued. Startup handling of jobs past their deadline is defined. | B4 |
+| Retry and cancel have no stated permission. | Retry requires `transaction:create`; cancel requires `transaction:create` on an owned job. | B4 |
 
 ## Related
 

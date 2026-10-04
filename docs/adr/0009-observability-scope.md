@@ -93,6 +93,16 @@ of its scope.
 - **Winston.** Slower and with weaker structured-logging defaults than pino
   for this use. Rejected.
 
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+| Item | Resolution | Block |
+|---|---|---|
+| Redaction by header name misses `Set-Cookie` on responses, the access token inside the WebSocket authentication message, and the stored CSV input. | Redaction paths cover the response `set-cookie` header and the WebSocket token. Job input is never logged. Each case has a test. | B3 |
+| `LOG_LEVEL=silent` in tests contradicts the integration test that asserts `requestId` in log entries. | Those tests inject a capturing logger at `info`; `silent` remains the default elsewhere. | B3 |
+
 ## Related
 
 - ADR-001, ADR-005, ADR-006, ADR-007, ADR-008

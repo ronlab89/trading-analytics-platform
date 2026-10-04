@@ -88,6 +88,15 @@ format shared by the API, the web app and the demo.
 - **Runtime response validation in production.** Cost without benefit once
   contract tests exist. Rejected.
 
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+| Item | Resolution | Block |
+|---|---|---|
+| Decimal strings can come out in exponential notation (`decimal.js` `toString` gives `"5e-8"`). | Presenters emit fixed notation, and the response schema enforces a decimal-string pattern. Scale and rounding for computed amounts are defined. | B0 |
+
 ## Related
 
 - ADR-001 (application layer)

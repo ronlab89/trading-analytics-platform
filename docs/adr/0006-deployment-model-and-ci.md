@@ -101,6 +101,15 @@ Other facts:
   packages.** Hides the package-resolution problem rather than fixing it,
   and the web app needs consumable packages anyway. Rejected.
 
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+| Item | Resolution | Block |
+|---|---|---|
+| In the `full` Compose profile the API may run `migrate deploy` before PostgreSQL accepts connections. | `depends_on` with `condition: service_healthy`. | B7 |
+
 ## Related
 
 - ADR-001, ADR-002 (demo runs the application in process)

@@ -113,6 +113,18 @@ live there rather than only in Express middleware.
 - **Keep `USER`/`ADMIN`.** No read-only role, so RBAC would still protect
   nothing meaningful. Rejected.
 
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+| Item | Resolution | Block |
+|---|---|---|
+| Parallel refreshes (tabs, retries, a lost response) present an already-rotated token and revoke a legitimate session. | Single-flight refresh in the client, plus a grace window of about 10 seconds in which the just-rotated token returns the same new pair. A concurrent-refresh test covers it. | B2 |
+| The refresh token family and its cookie have no lifetime. | An idle timeout and an absolute family lifetime (`expiresAt` in the sessions table, cookie `Max-Age`). | B2 |
+| `USER` → `TRADER` enum migration: Prisma's generated migration recreates the enum and fails on existing rows, `@default(USER)` breaks, and old JWTs carry `role: "USER"`. | A hand-written migration with `RENAME VALUE 'USER' TO 'TRADER'` and `ADD VALUE 'VIEWER'`, an updated default, and unknown roles rejected with 401. | B2 |
+| The `Secure` cookie on the local production stack has no HTTPS. | Serve on `localhost`, which browsers treat as secure, and document it; or make `Secure` environment-dependent. | B2 |
+
 ## Related
 
 - ADR-001 (application layer, enforcement point)

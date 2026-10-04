@@ -89,6 +89,16 @@ contract, entities, validators and pure calculations.
   Solves testability but not reuse: the frontend cannot depend on the API
   application. Rejected.
 
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+| Item | Resolution | Block |
+|---|---|---|
+| Lost update on the position read-modify-write: two concurrent `SELL`s of 6 on a holding of 10 both succeed at `READ COMMITTED`. | The `UnitOfWork` contract guarantees isolation for position updates: a row lock (`SELECT … FOR UPDATE`), a per-portfolio-and-asset advisory lock, or `SERIALIZABLE` with retry. A concurrent-`SELL` test covers it. | B0 |
+| The in-memory `UnitOfWork` (demo) restores a snapshot on rollback, which can erase another unit's committed write when units interleave. | Serialize units with an async mutex, or roll back only the unit's own write log. | B0 |
+
 ## Related
 
 - `06-architecture.md` (to be rewritten against this decision)

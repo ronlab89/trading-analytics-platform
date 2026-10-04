@@ -2,7 +2,8 @@
 
 **Status:** Accepted
 **Date:** 2026-10-04
-**Implemented in:** already matches the code; documentation alignment only
+**Implemented in:** points 1 to 5 already match the code; point 6 in roadmap
+block B0 (not yet implemented)
 
 ## Context
 
@@ -42,6 +43,15 @@ on whether buying increases portfolio value or converts cash into holdings.
    `Deferred`. They may only be introduced together with a complete cash
    ledger (balance, cash-consuming buys, cash in portfolio value), decided
    in a new ADR that supersedes this one.
+6. **Chronological validation.** A transaction is accepted only if the
+   holding of that asset stays non-negative at its `executedAt` and after
+   every later transaction in date order. Backdating is allowed, because
+   CSV import is historical by definition. CSV import rows (ADR-008) go
+   through the same rule.
+   *Decision corrected on 2026-10-04 after a systematic audit (point 6
+   added):* `executedAt` may be in the past, but the oversell check used only
+   the current position. A `SELL` dated before an earlier `BUY` passed and
+   left historical holdings negative, which breaks ADR-004.
 
 ## Consequences
 
@@ -49,7 +59,7 @@ on whether buying increases portfolio value or converts cash into holdings.
 
 - Consistent with `00-overview.md`: the product is analytics, not a
   brokerage.
-- No migration or code change; the implementation already conforms.
+- No migration; points 1 to 5 already match the implementation.
 - Performance stays honest without a cash model, through the cash-flow rule
   in point 3.
 
@@ -58,6 +68,10 @@ on whether buying increases portfolio value or converts cash into holdings.
 - Portfolio value excludes cash, so it is not a full account balance.
 - The demo loses an "insufficient cash" failure case; overselling remains
   the representative validation failure.
+- The current implementation checks only the current position
+  (`apps/api/src/services/transaction.service.ts`) and must change to
+  replay the asset's transactions in date order (block B0, transaction use
+  case).
 
 **Documents to align**
 
@@ -75,8 +89,18 @@ on whether buying increases portfolio value or converts cash into holdings.
   a new enum, a reworked seed and an extended `UnitOfWork`, and it
   contradicts `00-overview.md` §5.2. Rejected for version 1; reachable later
   through point 5.
+- **Forbidding backdated transactions.** Would make the oversell check
+  against the current position sufficient, but CSV import is historical by
+  definition. Rejected.
+
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+None identified.
 
 ## Related
 
-- ADR-004 (analytics methodology)
+- ADR-004 (analytics methodology), ADR-008 (CSV import)
 - `00-overview.md` §5.2

@@ -67,9 +67,19 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
    depends only on `@trading/domain`. The API and the demo use the same
    engine.
 8. **Persistence in real mode.** Each tick updates `MarketPrice` and appends
-   a `MarketEvent`, with bounded retention defined in B5. `HistoricalPrice`
-   candles are not written in version 1, so analytics never mix seeded and
-   simulated history. This limitation is documented.
+   a `MarketEvent`, with bounded retention defined in B5. At every UTC day
+   rollover the simulator closes a daily `HistoricalPrice` candle for each
+   asset and rolls `MarketPrice.previousPrice` to that close. Seed candles
+   end the day before the seed runs, using dates relative to the seed run,
+   not a fixed date. On startup the simulator deterministically generates
+   the candles for the days the server was offline, so the daily series has
+   no gaps. In real mode every price is synthetic (the seed is `MOCK` data
+   too), so there is no real history for simulated candles to contaminate.
+   *Point 8 corrected on 2026-10-04 after a systematic audit:* the original
+   text never wrote candles and the seed ended on a fixed date, so the value
+   series froze at the last seeded close. A purchase at a simulated price of
+   150 was valued at a carried-forward close of 100 (a false −33%), and
+   `previousPrice` never rolled over.
 9. **Alerts.** Evaluated on every tick, but edge-triggered: an alert fires
    when its condition changes from false to true, and re-arms when it
    becomes false again. Alerts never repeat on every tick (FR-053). Each
@@ -86,8 +96,9 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
     port, fed by `@trading/market-sim` running in the browser.
 14. **`MarketPrice` change semantics.** `previousPrice`, `change` and
     `changePercent` on `MarketPrice` are always measured against the last
-    daily close, never against the previous tick. The tick-to-tick delta
-    exists only in the event payload. This keeps the overview's
+    closed daily candle (point 8), never against the previous tick. The
+    tick-to-tick delta exists only in the event payload. This keeps the
+    overview's
     `dailyChange` and ADR-004's `1D` period correct while prices tick.
 
 ## Consequences
@@ -99,14 +110,16 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
   cannot derive by itself.
 - Authorization of subscriptions follows the same rules as HTTP.
 - Daily change figures stay meaningful under continuous ticking.
+- The daily candle series extends without gaps while the server runs and
+  across downtime, so performance charts and valuations stay current.
 
 **Negative**
 
 - A new runtime dependency (`ws`) and a new workspace package.
 - The client must recompute valuations from price events.
 - Without a replay buffer, every gap costs an HTTP resynchronization.
-- Simulated prices do not extend the historical series, so performance
-  charts end at the last seeded candle.
+- The simulator owns a daily rollover job and a startup backfill, and the
+  seed must compute relative dates.
 
 **Documents to align**
 
@@ -125,8 +138,24 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
 - **Server-pushed portfolio valuations on every tick.** Cost grows with
   connected users for data the client can compute. Rejected.
 - **Separate simulators for server and demo.** Guaranteed drift. Rejected.
-- **Writing simulated ticks into daily candles.** Mixes seeded and simulated
-  history in analytics. Rejected for version 1.
+- **Writing every simulated tick into daily candles.** Rewrites the current
+  day's candle on every tick for no analytical gain. Rejected. Closing one
+  daily candle at the UTC rollover is adopted instead (point 8).
+- **Never writing simulated candles.** Freezes the value series at the last
+  seeded close and misvalues recent purchases. Rejected after the audit.
+
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+| Item | Resolution | Block |
+|---|---|---|
+| `Position.currentPrice` stays at the opening trade price while `MarketPrice` ticks, so allocation and value disagree with `dailyChange`. | Drop `Position.currentPrice` and read `MarketPrice` at query time, or update it on every tick. | B5 |
+| Events between the HTTP fetch and the subscription are lost; a job can finish before `jobs:{id}` is subscribed; in-memory sequences restart at 1 after a server restart. | Subscribe first and buffer, then fetch a snapshot carrying its sequence. Add a per-process epoch to the envelope; the client resets its baseline when it changes. | B5 |
+| Alert armed/triggered state is not persisted (re-fires after restart), oscillation around the threshold fires repeatedly, and the initial state of a new, already-true alert is undefined. | Persist `armed` and `lastTriggeredAt` in the same transaction as the notification. Re-arm only past a hysteresis band or after a cooldown. Define the initial state. | B5 |
+| After a restart the simulator restarts from the seed state and `MarketEvent.sequence` restarts. | Initialize the engine from persisted `MarketPrice` and `MAX(sequence)` per asset. Make `(assetId, sequence)` unique. | B5 |
+| Re-authentication on the same socket with another user's token keeps the previous user's `notifications` subscription. | Reject re-authentication when `sub` changes and close the socket. | B5 |
 
 ## Related
 

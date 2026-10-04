@@ -37,7 +37,12 @@ Two further facts shape the decision:
 
 1. **Value series.** The daily portfolio value is
    `V(d) = Σ quantityHeld(asset, end of d) × close(asset, d)`, reconstructed
-   from transactions and daily `HistoricalPrice` candles.
+   from transactions and daily `HistoricalPrice` candles. Candles come from
+   the seed and from the simulator's daily closes (ADR-007 point 8), so the
+   series reaches the last closed day.
+   *Point 1 corrected on 2026-10-04 after a systematic audit:* candles
+   previously came from the seed only, so the series stopped at a fixed
+   date and recent purchases were valued at a stale carried-forward close.
 2. **Cash flows.** For day `d`, inflows are
    `B(d) = Σ BUY (quantity × price + fees)` and outflows are
    `S(d) = Σ SELL (quantity × price − fees)`. The net flow is
@@ -55,6 +60,11 @@ Two further facts shape the decision:
    *Corrected on 2026-10-04 after review:* the original formula,
    `V(d) / (V(d−1) + F(d)) − 1` with all flows at the start of the day, gave
    a negative denominator on such a sale and reported −100%.
+   The non-negative denominator also relies on holdings never being negative
+   on any day, which ADR-003's chronological validation guarantees.
+   *Point 3 corrected on 2026-10-04 after a systematic audit:* a backdated
+   `SELL` checked only against the current position could leave historical
+   holdings negative, making `V(d)` negative.
 4. **Period return.** Time-weighted return: `TWR = Π (1 + r(d)) − 1`. The
    absolute profit or loss for the period is also reported:
    `P/L = V(end) − V(start) − Σ F(d)`.
@@ -120,9 +130,22 @@ Two further facts shape the decision:
 - **Converting currencies with fixed or invented rates.** Fabricated data.
   Rejected.
 
+## Deferred detail
+
+Implementation edge cases that do not change this decision. Each is
+specified and tested in the listed block.
+
+| Item | Resolution | Block |
+|---|---|---|
+| `SELL` fees larger than the gross proceeds make `S(d)` negative. | Reject `SELL` fees greater than the gross proceeds, or count the excess as an inflow. | B1 |
+| Period P/L boundaries are undefined, so first-day flows are double-counted. | P/L uses `V(day before from)` and flows over `[from, to]`. When clamped, it uses `V(effectiveFrom)` and flows over `(effectiveFrom, to]`, where `effectiveFrom` is the first day every held asset has a price. Attribution uses the same boundaries. | B1 |
+| Annualization assumes trading days, but candles are calendar days. | Annualize by series frequency (√365 for a calendar-day series), or build the series on trading days only. | B1 |
+| Day and `YTD` boundaries have no timezone, so the server and the browser demo can disagree. | Day boundaries are UTC calendar dates everywhere, including the demo and the simulator clock. | B1 |
+
 ## Related
 
-- ADR-003 (holdings-only portfolio)
+- ADR-003 (holdings-only portfolio, chronological validation)
+- ADR-007 (simulator daily candles)
 - `02-functional-requirements.md` FR-025 to FR-031
 - `07-api-spec.md` §20-22
 - `16-analytics-spec.md` (to be written in Phase 2)
