@@ -34,7 +34,7 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 
 - [x] T0.1 ADR-001 Application layer — accepted 2026-10-04 (`docs/adr/0001-application-layer.md`), route: inline
 - [x] T0.2 ADR-002 Shared contracts — accepted 2026-10-04 (`docs/adr/0002-shared-contracts.md`), route: inline
-- [ ] T0.3 ADR-003 Cash model and transaction types
+- [x] T0.3 ADR-003 Holdings-only portfolio — accepted 2026-10-04 (`docs/adr/0003-holdings-only-portfolio.md`), route: inline
 - [ ] T0.4 ADR-004 Analytics methodology
 - [ ] T0.5 ADR-005 Roles and authentication/session
 - [ ] T0.6 ADR-006 Deployment model (and minimal CI question)
@@ -82,7 +82,8 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 
 - 2026-10-04: branch created; `chore(repo): stop tracking local ai state` (`2c7469d`).
 - 2026-10-04: ADR-001 committed (`1120f2e`).
+- 2026-10-04: ADR-002 committed (`f0341cf`).
 
 ## Next step
 
-T0.3 — present ADR-003 (cash model and transaction types) decision points to the user.
+T0.4 — present ADR-004 (analytics methodology) decision points to the user.
