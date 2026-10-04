@@ -1,5 +1,12 @@
 # Trading Analytics Platform — Progress
 
+> **Superseded in part (2026-10-04).** The architecture decision records in
+> `docs/adr/` take precedence over this file. In particular, the next block
+> is **B0** (application layer and shared contracts, ADR-001 and ADR-002),
+> not B1; CI is now adopted (ADR-006); token and logout semantics are
+> decided (ADR-005). This file is rewritten in Phase 5 of
+> `odd/tasks/sdd-source-of-truth.md`.
+
 **Last updated:** end of Scenarios (changes on the entity, read and
 write API, calculate, compare); duplicate scenario deferred
 **Branch:** `feat/scenarios`, created from `develop`. `feat/api-foundation`
@@ -718,30 +725,30 @@ which was later merged via PR into `develop` (not `main`).
 
 ---
 
-## 6. Immediate Next Step: choose between Auth/RBAC and the demo frontend
+## 6. Immediate Next Step: finish the backend (see `BACKEND-ROADMAP.md`)
 
 Agreed order of work, set earlier in this effort: (1) merge
 `feat/api-foundation` — done, into `develop`; (2) Decisions + Replay —
 done on the read side; (3) Scenarios — done; (4) Auth/RBAC; (5) Frontend
 and Demo Mode.
 
-**Next:** open the PR `feat/scenarios` → `develop` (if not yet done),
-then confirm with the user which block comes next, because step (4) is
-worth re-examining against rule 11 (the public demo first). RBAC
-(`requireRole`) and registration have no consumer today: no route needs
-role restriction, users are seeded, and the public demo runs on mock
-infrastructure, not on this backend. The backend already exposes the
-contracts the mock adapters would implement (DTOs, errors, pagination,
-repositories, and the pure domain functions `projectDecisionReplay`,
-`compareScenarioImpacts`, etc.). Recommended: raise this at the start of
-the next session and let the user choose; do not assume either.
+**Decision (user):** finish the whole backend before starting the
+frontend and the public demo. The ordered plan, with scope, open
+decisions and "done when" criteria for each block, is in
+**`docs/BACKEND-ROADMAP.md`**. Order: B1 performance and risk analytics,
+B2 auth and RBAC, B3 observability, B4 background jobs and idempotency,
+B5 realtime, B6 OpenAPI and contract, B7 deployment readiness. The
+`feat/scenarios` PR is merged into `develop`.
 
-If the frontend/demo is chosen, decisions to settle first: where
-`apps/web` lives in the workspace, how it consumes `@trading/domain`
-(today `main`/`types` point at `./src/index.ts`, see the production
-build item in §7), and the order of slices (app shell and routing, then
-the mock adapters behind the repository contracts, then screens).
-Remaining backend work:
+**Next:** the user picks the first block (B1 is the recommendation: it
+is the only P0 product requirement still missing, FR-025). Each block
+starts by taking its open decisions to the user; B2 first needs the
+role model reconciled (the SDD contradicts itself, roadmap section 5).
+The frontend-side questions (where `apps/web` lives, how it consumes
+`@trading/domain`, slice order) are listed in the roadmap's handoff
+section and are settled when that phase starts.
+
+Remaining backend work (summary; the roadmap is authoritative):
 - **RBAC + user registration** (Phase 4 proper).
 - **`performance` by period** (FR-025/026) — needs a transaction-aware
   portfolio value time series, flagged in §2.4/§3.5 as intentionally
