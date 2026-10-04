@@ -42,17 +42,23 @@ retried `POST` must not create a duplicate transaction.
 3. **States.** `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`,
    `TIMED_OUT`. Progress is a field (`processed`, `total`), not a state.
 4. **Runner.** In-process, backed by a `jobs` table in PostgreSQL. No
-   separate worker process and no external queue.
+   separate worker process and no external queue. The job's input (the CSV
+   content, bounded by point 10) is stored in the `jobs` row when the job is
+   created, so resuming after a restart and retrying never depend on the
+   original request.
 5. **Restarts.** The apply stage sets the job to `COMPLETED` inside the same
    database transaction that writes the imported rows, so a job can never be
    both applied and not completed. On startup, every job left in
    `PROCESSING` therefore has written nothing; it becomes `FAILED` with
    reason `INTERRUPTED` and is retryable. On startup the runner also resumes
    every job still `QUEUED`. No job stays stuck silently.
-6. **Retry and cancellation.** Retry returns a `FAILED`, `CANCELLED` or
-   `TIMED_OUT` job to `QUEUED` and increments `attempt`. Cancellation is
-   allowed while `QUEUED` or during the validation stage, never during the
-   apply stage.
+6. **Retry and cancellation.** Retry returns a job to `QUEUED` and
+   increments `attempt`. It is allowed only for transient outcomes:
+   `FAILED` with reason `INTERRUPTED`, `TIMED_OUT` and `CANCELLED`. A job
+   that `FAILED` because rows are invalid (reason `VALIDATION_FAILED`) is not
+   retryable, since the same stored input would fail the same way; the user
+   corrects the file and creates a new import. Cancellation is allowed while
+   `QUEUED` or during the validation stage, never during the apply stage.
 7. **Timeout.** Each job type has a timeout that applies while the job is
    `QUEUED` or validating. Exceeding it moves the job to `TIMED_OUT`
    (NFR-017). The apply stage is exempt, as it is from cancellation: it is a
@@ -62,6 +68,9 @@ retried `POST` must not create a duplicate transaction.
 *Points 5 and 7 corrected on 2026-10-04 after review:* the original text did
 not cover `QUEUED` jobs on restart, and allowed a timeout during the apply
 stage, which could lead a retry to import the rows twice.
+*Points 4 and 6 corrected on 2026-10-04 after a second review:* the original
+text did not say where the input is stored, and allowed retrying a
+validation failure that can only fail again.
 8. **Idempotency.** An `Idempotency-Key` header is supported on
    `POST /portfolios/:id/transactions` and on import creation. Keys are
    stored per user with a hash of the request and the resulting response,
