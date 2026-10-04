@@ -1,0 +1,119 @@
+# ADR-004: Portfolio Analytics Methodology
+
+**Status:** Accepted
+**Date:** 2026-10-04
+**Implemented in:** roadmap block B1 (not yet implemented)
+**Detailed specification:** `16-analytics-spec.md` (formulas, edge cases,
+hand-computed examples)
+
+## Context
+
+FR-025 (portfolio performance, P0) leaves its periods "defined later".
+FR-028 (drawdown) and FR-029 (volatility) defer their methodology to an
+analytics specification that does not exist. `07-api-spec.md` §20-22 lists
+performance, risk, pulse and attribution endpoints without formulas.
+
+The domain has the building blocks, but only at asset level:
+
+- `calculateVolatility` computes the sample standard deviation of daily
+  close-to-close returns of one asset, optionally annualized with
+  √252 (`packages/domain/src/calculations/volatility.ts`).
+- `calculateDrawdown` computes the maximum peak-to-trough decline of one
+  asset's closes (`packages/domain/src/calculations/drawdown.ts`).
+
+Applying them to raw portfolio value would be wrong: a purchase raises the
+value without being a gain, and a sale lowers it without being a loss.
+ADR-003 established that every `BUY` is an external inflow and every `SELL`
+an external outflow.
+
+Two further facts shape the decision:
+
+- There is no foreign-exchange data. Portfolio metrics assume one currency;
+  mixed currencies make `Money.add` throw `CurrencyMismatchError`, which
+  currently surfaces as a 500. All seed data is in USD.
+- Assets have no sector field; `metadata` is untyped JSON.
+
+## Decision
+
+1. **Value series.** The daily portfolio value is
+   `V(d) = Σ quantityHeld(asset, end of d) × close(asset, d)`, reconstructed
+   from transactions and daily `HistoricalPrice` candles.
+2. **Cash flows.** The flow of day `d` is
+   `F(d) = Σ BUY (quantity × price + fees) − Σ SELL (quantity × price − fees)`.
+   Fees therefore reduce the return.
+3. **Daily return.** `r(d) = V(d) / (V(d−1) + F(d)) − 1`, with flows treated
+   as occurring at the start of the day. Intraday movement between the trade
+   price and the previous close is ignored; this simplification is
+   documented. When the denominator is zero (empty portfolio), the day has
+   no return, which is different from a zero return.
+4. **Period return.** Time-weighted return: `TWR = Π (1 + r(d)) − 1`. The
+   absolute profit or loss for the period is also reported:
+   `P/L = V(end) − V(start) − Σ F(d)`.
+5. **Periods.** `1W`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL` and a custom
+   `from`/`to` range. `1D` comes from `MarketPrice`, as the existing
+   `dailyChange` does.
+6. **Insufficient history.** A period that starts before the first available
+   data is clamped to it, and the response states the `effectiveFrom` date.
+   Values are never extrapolated.
+7. **Missing prices.** The last known close is carried forward. If an asset
+   held on a day has never had a price on or before that day, that range is
+   `InsufficientData`.
+8. **Volatility.** Sample standard deviation of the daily TWR returns,
+   annualized with √252, expressed as a percentage. At least 20 daily returns
+   are required; otherwise the result is `UNKNOWN`. The existing calculation
+   is generalized to accept a return series.
+9. **Drawdown.** Computed on the cumulative return index (growth of 1), not
+   on raw value. Reports maximum drawdown with peak and trough dates, and the
+   current drawdown.
+10. **Attribution over a range.** The contribution of each asset in money is
+    its value change minus its own flows over the period. Contributions sum
+    exactly to the period P/L. No Brinson-style decomposition.
+11. **Pulse.** Uses the portfolio's real volatility and drawdown instead of
+    the current proxy based on the largest position.
+12. **Currency.** Version 1 is single-currency. A transaction on an asset
+    whose currency differs from the portfolio's base currency is rejected
+    with 400. Multi-currency support is `Deferred` until foreign-exchange
+    data exists.
+13. **Sector.** `Deferred`. Removed from allocation and attribution
+    `groupBy` options until a typed sector field exists.
+14. **Precision.** Values and flows use `Money` (decimal). Returns, ratios
+    and percentages are JSON numbers, consistent with ADR-002.
+
+## Consequences
+
+**Positive**
+
+- FR-025 to FR-029 become implementable without inventing anything.
+- Returns are not distorted by deposits of capital through purchases.
+- Every metric is testable against hand-computed examples.
+- The single-currency rule closes a path that currently ends in a 500.
+
+**Negative**
+
+- Daily granularity and the start-of-day flow convention make returns an
+  approximation on days with trades.
+- Reconstructing the series on every request may be slow for long histories;
+  caching is not introduced until measured (`15-implementation-plan.md`
+  rule 1).
+- With 90 days of seeded history, `1Y` and longer periods report a clamped
+  `effectiveFrom`.
+
+## Alternatives Considered
+
+- **Money-weighted return (IRR / Modified Dietz) as the headline metric.**
+  Reflects the investor's timing rather than portfolio performance, and
+  needs iterative solving. Rejected as headline; the absolute P/L covers the
+  investor view.
+- **Simple return on invested capital.** Easy, but misleading once positions
+  are added or reduced over time. Rejected.
+- **Drawdown on raw value.** Treats purchases and sales as gains and losses.
+  Rejected.
+- **Converting currencies with fixed or invented rates.** Fabricated data.
+  Rejected.
+
+## Related
+
+- ADR-003 (holdings-only portfolio)
+- `02-functional-requirements.md` FR-025 to FR-031
+- `07-api-spec.md` §20-22
+- `16-analytics-spec.md` (to be written in Phase 2)
