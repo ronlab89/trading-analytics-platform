@@ -46,10 +46,10 @@ export default [
   },
 
   {
-    // Config files live outside any tsconfig `include`, so type-aware rules
+    // Config files and repository scripts live outside any tsconfig `include`, so type-aware rules
     // (which require project membership) must be disabled for them.
     // This is typescript-eslint's documented pattern for root-level config files.
-    files: ["*.config.js", "*.config.mjs", "*.config.cjs", "**/*.config.ts"],
+    files: ["*.config.js", "*.config.mjs", "*.config.cjs", "**/*.config.ts", "scripts/*.mjs"],
     ...tseslint.configs.disableTypeChecked,
   },
 

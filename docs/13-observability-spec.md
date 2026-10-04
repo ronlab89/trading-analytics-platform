@@ -2127,10 +2127,10 @@ This document depends on and complements:
 - `02-functional-requirements.md` — functional requirements
 - `03-non-functional-requirements.md` — quality attributes
 - `04-tech-stack.md` — technical stack
-- `05-architecture.md` — system architecture
-- `06-api-spec.md` — API contracts
-- `07-realtime-spec.md` — realtime architecture
-- `09-*.md` — supporting technical specification
+- `06-architecture.md` — system architecture
+- `07-api-spec.md` — API contracts
+- `08-realtime-spec.md` — realtime architecture
+- `09-security-spec.md` — security specification
 - `10-testing-strategy.md` — testing approach
 - `11-ui-ux-spec.md` — interface and UX behavior
 - `12-demo-mode-spec.md` — demo infrastructure and simulation

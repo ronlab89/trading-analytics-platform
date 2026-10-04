@@ -1,6 +1,6 @@
-# Trading Analytics Platform
-## Demo Mode Specification
+# SDD 12 — Demo Mode Specification
 
+**Project:** Trading Analytics Platform  
 **Document:** `12-demo-mode-spec.md`  
 **Version:** 1.0  
 **Status:** Specification  
@@ -2291,9 +2291,9 @@ This document extends:
 02-functional-requirements.md
 03-non-functional-requirements.md
 04-tech-stack.md
-05-architecture.md
-06-api-spec.md
-07-realtime-spec.md
+06-architecture.md
+07-api-spec.md
+08-realtime-spec.md
 10-testing-strategy.md
 11-ui-ux-spec.md
 ```
