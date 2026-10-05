@@ -1067,47 +1067,87 @@ decision's asset is missing (data integrity).
 
 # 25. Scenario API
 
+**Status:** `Implemented`; archived-portfolio guard `Planned (B0)` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
+
+All endpoints require a Bearer token (§9). The portfolio must be the
+caller's and the scenario must belong to it; otherwise 404 `NOT_FOUND`.
+Payloads are serialized entities today; response schemas and presenters are
+`Planned (B0)` (ADR-002). `Planned (B2)` (ADR-005 point 1): `VIEWER` reads
+only; writes need `TRADER` or `ADMIN`.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/scenarios` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented` |
+| `POST /api/v1/portfolios/:portfolioId/scenarios` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
+| `PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
+| `POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive` | `Implemented` |
+| `DELETE /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
+| `POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/calculate` | `Implemented` |
+| `POST /api/v1/portfolios/:portfolioId/scenarios/compare` | `Implemented` |
+
+Duplicate scenario (FR-041) is `Deferred`.
+
 ## List Scenarios
+
+**Status:** `Implemented`
 
 ```text
 GET /api/v1/portfolios/:portfolioId/scenarios
 ```
 
-> **Implementation note.** Returns `{ "data": [...] }`, each scenario
-> including its `changes`, newest first. An optional `status` filter
-> (`DRAFT`, `SAVED`, `ARCHIVED`) is added so a client can hide archived
-> scenarios; the spec defines no filters. Not paginated (a portfolio
-> holds few scenarios). `GET .../scenarios/:scenarioId` returns a single
-> scenario the same way.
+Optional query `status` (`DRAFT`, `SAVED`, `ARCHIVED`). Returns 200
+`{ "data": [scenario] }`, each with its `changes`, newest first. Not
+paginated. Errors: 400 `VALIDATION_ERROR` (invalid `status`); 404
+`NOT_FOUND`.
+
+`GET .../scenarios/:scenarioId` returns 200 `{ "data": scenario }`. Errors:
+404 `NOT_FOUND`.
 
 ---
 
 ## Create Scenario
 
+**Status:** `Implemented` (FR-037)
+
 ```text
 POST /api/v1/portfolios/:portfolioId/scenarios
 ```
 
-Request:
+Request (`description` and `changes` optional; `changes` defaults to none):
 
-```text
+```json
 {
   "name": "Increase technology exposure",
-  "description": "Evaluate higher technology allocation."
+  "description": "Evaluate higher technology allocation.",
+  "changes": [{ "assetId": "asset_001", "percentChange": 10 }]
 }
 ```
+
+A change is a percentage change to the asset's price: never below -100%,
+one entry per asset. The portfolio does not have to hold the asset.
+Converting `percentChange` to `Decimal` before money arithmetic is
+`Planned (B0)` (ADR-002 point 9).
+
+Returns 201 `{ "data": scenario }` with `status = DRAFT`.
+
+Errors: 400 `VALIDATION_ERROR` (blank `name`, invalid or repeated changes;
+unknown assets are listed together, one `UNKNOWN_ASSET` detail each); 404
+`NOT_FOUND`.
 
 ---
 
 ## Calculate Scenario
 
+**Status:** `Implemented` (FR-038); allocation, risk and exposure `Deferred`
+
 ```text
 POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/calculate
 ```
 
-Response:
+Response (200):
 
-```text
+```json
 {
   "data": {
     "scenarioId": "...",
@@ -1119,91 +1159,118 @@ Response:
 }
 ```
 
-> **Implementation note.** Stateless: it combines the scenario's stored
-> `changes` with the portfolio's current positions and writes nothing
-> (results are derived, `05-data-model.md` §16), so the baseline cannot
-> be modified (FR-036). `baseline` and `result` are portfolio metrics
-> (`totalValue`, `investedValue`, `unrealizedPnL`,
-> `unrealizedPnLPercent`); `difference` has `totalValue` and
-> `unrealizedPnL`. Allocation, risk and exposure from FR-038 are not
-> computed yet because the domain cannot derive them honestly.
-> `unmatchedAssetIds` lists assets the scenario changes but the
-> portfolio no longer holds, which the calculation ignores. Any
-> status, including `ARCHIVED`, can be calculated.
+Stateless: it applies the stored `changes` to the portfolio's current
+positions and writes nothing, so the baseline never changes (FR-036,
+`05-data-model.md` §16). `baseline` and `result` hold `totalValue`,
+`investedValue`, `unrealizedPnL` and `unrealizedPnLPercent`; `difference`
+holds `totalValue` and `unrealizedPnL`. `unmatchedAssetIds` lists changed
+assets the portfolio no longer holds, which are ignored. Any status,
+`ARCHIVED` included, can be calculated. Errors: 404 `NOT_FOUND`.
 
 ---
 
 ## Update Scenario
 
+**Status:** `Implemented` (FR-037, FR-039, FR-040)
+
 ```text
 PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
 ```
+
+Request: any of `name`, `description`, `status` (`DRAFT` or `SAVED`),
+`changes`; at least one is required. `changes` replaces the whole list, so
+`changes: []` is reset (FR-039) and `status: "SAVED"` is save (FR-040). A
+single write: a partly invalid request changes nothing. Returns 200
+`{ "data": scenario }`.
+
+Errors: 400 `VALIDATION_ERROR` (empty body, invalid changes, unknown
+assets); 404 `NOT_FOUND`; 409 `CONFLICT` when the scenario is `ARCHIVED`.
 
 ---
 
 ## Archive Scenario
 
+**Status:** `Implemented`
+
 ```text
 POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive
 ```
 
-> **Implementation note (write side).** The spec left the write bodies
-> open; this is what is implemented.
->
-> - `POST .../scenarios` body: `name` (required), `description?`,
->   `changes?` (`[{ assetId, percentChange }]`, default none). Returns
->   201 with the scenario as a `DRAFT`.
-> - `PATCH .../scenarios/:scenarioId` body: any of `name`, `description`,
->   `status` (`DRAFT` or `SAVED` only), `changes`; at least one is
->   required. `changes` REPLACES the whole list, so `changes: []` is the
->   reset (FR-039) and `status: "SAVED"` is save (FR-040); they need no
->   endpoints of their own. The update is a single write, so a request
->   that is partly invalid changes nothing.
-> - `POST .../archive` is idempotent (always 200, `meta.alreadyArchived`
->   says whether it changed anything), like archiving a portfolio.
->   An archived scenario is read-only: `PATCH` returns 409 `CONFLICT`,
->   and there is no un-archive.
-> - `DELETE .../scenarios/:scenarioId` returns 204 for any status
->   (FR-043).
-> - A change is `{ assetId, percentChange }`: a percentage change to the
->   asset's price, never below -100%, one entry per asset. Unknown
->   assets are a 400 listing all of them (`UNKNOWN_ASSET`), not a 404,
->   because the missing thing is a body field. The portfolio does not
->   have to hold the asset.
-> - Not implemented: duplicate (FR-041, P2).
->
-> **Compare Scenarios (FR-042).** Not in the original spec; added as
-> `POST /api/v1/portfolios/:portfolioId/scenarios/compare` with body
-> `{ "scenarioIds": [...] }`: 1 to 5 distinct ids, all belonging to the
-> portfolio (any missing or foreign id makes the whole request a 404, so
-> a column is never silently dropped). Read-only (200, nothing written),
-> so the baseline cannot change. It exists because totals alone
-> (`calculate`) cannot show *which asset explains a difference* or *how
-> allocation shifts*, which `01-product-spec.md` §15.2 asks for.
-> Response: `baseline` (`metrics` plus one row per asset with `value` and
-> `allocationPercent`, largest first) and `scenarios` in the requested
-> order, each with `scenarioId`, `name`, `status`, `metrics`,
-> `difference` (`totalValue`, `totalValuePercent` which is `null` when
-> the baseline is zero, and `unrealizedPnL`), `unmatchedAssetIds`, and
-> `assets` rows with `value`, `valueDifference`, `allocationPercent` and
-> `allocationShift` (percentage points), ordered by the size of the
-> difference. Each asset row carries `symbol` and `name`. Allocation is
-> per asset only (no asset type or sector). Computed by the pure domain
-> function `compareScenarioImpacts`, shared with the demo.
+Idempotent: always 200 `{ "data": scenario, "meta": { "alreadyArchived": false } }`,
+`meta.alreadyArchived` telling whether this call changed anything. An
+archived scenario is read-only; there is no unarchive. Errors: 404
+`NOT_FOUND`.
+
+---
+
+## Delete Scenario
+
+**Status:** `Implemented` (FR-043)
+
+```text
+DELETE /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
+```
+
+Returns 204 for any status. Errors: 404 `NOT_FOUND` (including a repeated
+delete).
+
+---
+
+## Compare Scenarios
+
+**Status:** `Implemented` (FR-042)
+
+```text
+POST /api/v1/portfolios/:portfolioId/scenarios/compare
+```
+
+Request: `{ "scenarioIds": [...] }`, 1 to 5 distinct ids of the portfolio.
+Read-only: returns 200 and writes nothing.
+
+Response: `baseline` (`metrics`, plus one asset row with `value` and
+`allocationPercent`, largest first) and `scenarios` in request order, each
+with `scenarioId`, `name`, `status`, `metrics`, `difference`
+(`totalValue`, `totalValuePercent` (`null` when the baseline is zero),
+`unrealizedPnL`), `unmatchedAssetIds` and `assets` rows (`value`,
+`valueDifference`, `allocationPercent`, `allocationShift` in percentage
+points), ordered by the size of the difference. Asset rows carry `symbol`
+and `name`. Allocation is per asset only. Computed by the domain function
+`compareScenarioImpacts`, shared with the demo.
+
+Errors: 400 `VALIDATION_ERROR` (empty, more than 5 or repeated ids); 404
+`NOT_FOUND` when any id is missing or foreign (no column is dropped
+silently).
 
 ---
 
 # 26. Watchlist API
 
+**Status:** `Implemented`; role checks `Planned (B2)` (ADR-005)
+
+All endpoints require a Bearer token (§9) and act on the caller's watchlist.
+Uniqueness is per user. `Planned (B2)`: `VIEWER` cannot add or remove.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/watchlist` | `Implemented` |
+| `POST /api/v1/watchlist` | `Implemented` |
+| `DELETE /api/v1/watchlist/:assetId` | `Implemented` |
+
 ## Get Watchlist
+
+**Status:** `Implemented`
 
 ```text
 GET /api/v1/watchlist
 ```
 
+Returns 200 `{ "data": [watchlistItem] }`. No parameters, no pagination.
+
 ---
 
 ## Add Asset
+
+**Status:** `Implemented`
 
 ```text
 POST /api/v1/watchlist
@@ -1211,52 +1278,83 @@ POST /api/v1/watchlist
 
 Request:
 
-```text
+```json
 {
   "assetId": "asset_001"
 }
 ```
 
+Returns 201 `{ "data": watchlistItem }`.
+
+Errors: 400 `VALIDATION_ERROR` (missing `assetId`, or the asset is already
+on the watchlist: duplicates are 400, not 409); 404 `NOT_FOUND` (unknown
+asset).
+
 ---
 
 ## Remove Asset
+
+**Status:** `Implemented`
 
 ```text
 DELETE /api/v1/watchlist/:assetId
 ```
 
-Duplicate additions should return a conflict or equivalent idempotent response.
-
-**Implementation note (Step D):** duplicate additions return `400
-VALIDATION_ERROR` (the repository's `@@unique([userId, assetId])`
-constraint surfaces as the domain's `InvalidWatchlistItemError`, mapped
-by the generic `Invalid*Error → 400` handler), not `409 CONFLICT` as
-"conflict" above might suggest. Removing a nonexistent entry returns
-`404 NOT_FOUND`. Adding a nonexistent `assetId` returns `404 NOT_FOUND`.
-Watchlist uniqueness is per user, not global — two different users may
-watch the same asset.
+Returns 204. Errors: 404 `NOT_FOUND` when the asset is not on the caller's
+watchlist (including a repeated removal).
 
 ---
 
 # 27. Alerts API
 
+**Status:** `Implemented` (configuration, FR-053); evaluation `Planned (B5)` (ADR-007 point 9); archived-portfolio guard `Planned (B0)` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
+
+All endpoints require a Bearer token (§9) and are scoped to the caller:
+another user's alert is 404 `NOT_FOUND`. Alerts are managed in the Alerts
+tab under Markets (ADR-010 point 9). `Planned (B2)`: `VIEWER` reads only.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/alerts` | `Implemented` |
+| `GET /api/v1/alerts/:alertId` | `Implemented` |
+| `POST /api/v1/alerts` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
+| `PATCH /api/v1/alerts/:alertId` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
+| `DELETE /api/v1/alerts/:alertId` | `Implemented` |
+
+Nothing evaluates alerts yet. `Planned (B5)` (ADR-007 point 9): the server
+evaluates alerts on every tick; an alert fires when its condition changes
+from false to true and re-arms when it becomes false. Each trigger creates
+a `WARNING` notification (§28) and emits `ALERT_TRIGGERED` and
+`NOTIFICATION_CREATED`. `armed` and `lastTriggeredAt` are persisted with
+the notification (ADR-007 Deferred detail).
+
 ## List Alerts
+
+**Status:** `Implemented`
 
 ```text
 GET /api/v1/alerts
 ```
 
+Returns 200 `{ "data": [alert] }`. No parameters, no pagination.
+
+`GET /api/v1/alerts/:alertId` returns 200 `{ "data": alert }`. Errors: 404
+`NOT_FOUND`.
+
 ---
 
 ## Create Alert
+
+**Status:** `Implemented` (FR-053)
 
 ```text
 POST /api/v1/alerts
 ```
 
-Request:
+Request (`assetId`, `portfolioId` and `enabled` optional, but at least one
+of `assetId` or `portfolioId` is required):
 
-```text
+```json
 {
   "assetId": "asset_001",
   "type": "PRICE",
@@ -1266,99 +1364,144 @@ Request:
 }
 ```
 
+`type` is `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION` or `VOLATILITY`;
+`condition` is a non-empty string. Returns 201 `{ "data": alert }`.
+
+Errors: 400 `VALIDATION_ERROR` (no target, unknown `type`, schema or domain
+rules); 404 `NOT_FOUND` (unknown asset, or a portfolio that is not the
+caller's).
+
 ---
 
 ## Update Alert
+
+**Status:** `Implemented` (FR-053)
 
 ```text
 PATCH /api/v1/alerts/:alertId
 ```
 
+Request: any of `condition`, `threshold`, `enabled`; at least one is
+required. The target (`assetId`, `portfolioId`, `type`) cannot change; a
+new target is a new alert. Returns 200 `{ "data": alert }`.
+
+Errors: 400 `VALIDATION_ERROR`; 404 `NOT_FOUND`.
+
 ---
 
 ## Delete Alert
+
+**Status:** `Implemented`
 
 ```text
 DELETE /api/v1/alerts/:alertId
 ```
 
-**Implementation note (Step D):** an alert must reference an asset, a
-portfolio, or both — enforced both by the request schema and by the
-domain's `validateNewAlert`. If `portfolioId` is given, it must belong
-to the caller (`404 NOT_FOUND` otherwise). Update only accepts
-`condition`/`threshold`/`enabled`; the target (`assetId`/`portfolioId`/
-`type`) is immutable after creation — changing what an alert monitors
-is a new alert. `GET /api/v1/alerts/:alertId` (not listed above) also
-exists, following the same get-by-id shape used by Positions/
-Transactions. Nothing evaluates alert conditions against live prices
-yet — that lands with the realtime/market-simulation work (FR-053).
+Returns 204. Errors: 404 `NOT_FOUND`.
 
 ---
 
 # 28. Notifications API
 
+**Status:** `Implemented` (FR-051, FR-052); notification creation `Planned (B5)` (ADR-007, ADR-010 point 9)
+
+All endpoints require a Bearer token (§9) and are scoped to the caller:
+another user's notification is 404 `NOT_FOUND`. A notification is `unread`
+or `read` only; there is no `dismissed` state or dismiss action (ADR-010
+point 3).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/notifications` | `Implemented` |
+| `POST /api/v1/notifications/:notificationId/read` | `Implemented` |
+| `POST /api/v1/notifications/read-all` | `Implemented` |
+
+There is no `POST /api/v1/notifications`: notifications come from system
+events only, and nothing creates them yet. `Planned (B5)` (ADR-010 point
+9): sources are triggered alerts (`WARNING`) and CSV import jobs reaching
+`COMPLETED` (`SUCCESS`) or `FAILED` (`ERROR`); connection changes create
+none. Creation emits `NOTIFICATION_CREATED` (§31).
+
 ## List Notifications
+
+**Status:** `Implemented` (FR-051)
 
 ```text
 GET /api/v1/notifications
 ```
 
-Parameters:
+Optional query `unreadOnly` (`true` or `false`). Returns 200
+`{ "data": [notification] }`, newest first. Filters by `read` or `type`,
+and pagination, are `Deferred`.
 
-```text
-unreadOnly
-```
-
-**Implementation note (Step D):** the parameters above are the
-original design intent; the shipped filter is `unreadOnly` (boolean),
-matching exactly what `NotificationRepository.listByUserId` supports.
-`read`/`type`/`page`/`pageSize` are not implemented — a two-way `read`
-filter, filtering by `type`, and pagination are all deferred until a
-concrete need appears (03-non-functional-requirements.md NFR-070:
-complexity proportional to an actual requirement, not anticipated
-usage). There is no `POST /api/v1/notifications` — notifications are
-produced by system events (transaction completed, alert triggered,
-job events), not created directly by API callers; that production path
-is not implemented yet either (belongs with Realtime/Background
-Operations, Phases 9-10 of `15-implementation-plan.md`).
+Errors: 400 `VALIDATION_ERROR` (invalid `unreadOnly`).
 
 ---
 
 ## Mark Notification Read
 
+**Status:** `Implemented` (FR-052)
+
 ```text
 POST /api/v1/notifications/:notificationId/read
 ```
+
+Sets `readAt` and returns 200 `{ "data": notification }`. Errors: 404
+`NOT_FOUND`.
 
 ---
 
 ## Mark All Read
 
+**Status:** `Implemented` (FR-052)
+
 ```text
 POST /api/v1/notifications/read-all
 ```
+
+Marks every unread notification of the caller as read. Returns 204.
 
 ---
 
 # 29. User Preferences API
 
+**Status:** `Implemented` (FR-087); `language` limited to `en`/`es` `Planned (B0)` (ADR-010 point 8)
+
+Both endpoints require a Bearer token (§9) and act on the caller's
+preferences; there is no user id in the route. Preferences are a per-user
+singleton row.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/preferences` | `Implemented` |
+| `PATCH /api/v1/preferences` | `Implemented`; `en`/`es` validation `Planned (B0)` |
+
 ## Get Preferences
+
+**Status:** `Implemented` (FR-087)
 
 ```text
 GET /api/v1/preferences
 ```
 
+Returns 200 `{ "data": preferences }`, or 200 `{ "data": null }` when the
+user has never saved preferences (not 404; a read creates nothing). The
+client then applies the application defaults.
+
 ---
 
 ## Update Preferences
+
+**Status:** `Implemented` (FR-087); `en`/`es` validation `Planned (B0)`
 
 ```text
 PATCH /api/v1/preferences
 ```
 
-Example:
+Request: any of `theme`, `language`, `defaultPortfolioId`,
+`reducedMotion`, `notificationPreferences`; at least one is required.
 
-```text
+```json
 {
   "theme": "dark",
   "language": "en",
@@ -1366,43 +1509,73 @@ Example:
 }
 ```
 
-**Implementation note (Step D):** preferences are a per-user singleton
-row, created lazily on the first `PATCH` (an atomic upsert, not a
-separate create step). `GET` for a user who has never saved
-preferences returns `200` with `data: null`, not `404` — absence of
-saved preferences is a valid state (same principle as the null
-`dailyChange` in the portfolio overview), and a read must not have the
-side effect of creating a row. `PATCH` requires at least one field.
-`defaultPortfolioId` may be set to `null` to clear it, or to a
-portfolio id the caller owns (`404 NOT_FOUND` if it belongs to someone
-else). Omitted fields on the very first `PATCH` fall back to the
-column defaults declared in `schema.prisma` (`theme="system"`,
-`language="en"`, `reducedMotion=false`, `notificationPreferences={}`),
-kept there as the single source of truth rather than duplicated here.
+The first `PATCH` creates the row (atomic upsert); omitted fields take the
+column defaults of `05-data-model.md` §23 (`theme = "system"`,
+`language = "en"`, `reducedMotion = false`, `notificationPreferences = {}`).
+`defaultPortfolioId: null` clears it. Returns 200 `{ "data": preferences }`.
+
+Errors: 400 `VALIDATION_ERROR` (no field, empty `theme` or `language`); 404
+`NOT_FOUND` (`defaultPortfolioId` missing or another user's). Today
+`theme` and `language` accept any non-empty string. `Planned (B0)` (ADR-010
+point 8): `language` other than `en` or `es` is 400 and changes nothing.
 
 ---
 
 # 30. Health API
 
+**Status:** `Implemented` (NFR-051)
+
+Health routes sit outside `/api/v1`, need no token and are never
+rate-limited. Their bodies do not use the `data` envelope. There is no
+"degraded" state in version 1: the only dependency is the database.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /health` | `Implemented` |
+| `GET /health/ready` | `Implemented` |
+
+## Liveness
+
+**Status:** `Implemented`
+
 ```text
-GET /api/v1/health
+GET /health
 ```
 
-Response:
+Answers whether the process runs; checks no dependency. Always 200:
 
-```text
+```json
 {
-  "data": {
-    "status": "healthy",
-    "timestamp": "...",
-    "dependencies": {
-      "database": "healthy",
-      "cache": "healthy",
-      "realtime": "healthy"
-    }
-  }
+  "status": "ok",
+  "service": "trading-api",
+  "timestamp": "..."
 }
 ```
+
+---
+
+## Readiness
+
+**Status:** `Implemented`
+
+```text
+GET /health/ready
+```
+
+Runs `SELECT 1` against the database. Returns 200 with
+`"status": "ok"` and `"checks": { "database": "ok" }`, or 503:
+
+```json
+{
+  "status": "unavailable",
+  "service": "trading-api",
+  "timestamp": "...",
+  "checks": { "database": "unavailable" }
+}
+```
+
+The body never exposes connection strings or driver errors; details go to
+the server log (`health.database.unavailable`).
 
 ---
 
