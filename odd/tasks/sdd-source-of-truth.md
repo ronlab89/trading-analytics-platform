@@ -70,8 +70,13 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 
 ### Phase 2 — Foundations
 
+Branch `docs/sdd-foundations` (from `develop` after PR #10). Order approved
+2026-10-05: T2.2 → T2.3 → T2.4 → T2.1. Route: one delegated writer per task
+(each document exceeds the inline evidence budget), parent structural readback
+plus `pnpm docs:check`.
+
 - [ ] T2.1 `00-overview.md`, `04-tech-stack.md`
-- [ ] T2.2 `05-data-model.md` regenerated against `schema.prisma`
+- [x] T2.2 `05-data-model.md` regenerated against `schema.prisma` — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Section numbers 1-51 kept (cited by code comments); §52 Job, §53 IdempotencyKey, §54 failure-mode review added. Reported, not resolved: `DecisionEvent.payload` prices as JSON numbers vs ADR-002 (pending user decision); backdated transactions vs incremental `Position` (B0); no creation-order column for ADR-003 tiebreak (B0/B4); no status for demo work (Phase 5); `schema.prisma` comment cites `07-realtime-spec.md` instead of `08` (code, B0).
 - [ ] T2.3 `06-architecture.md` rewritten (real monorepo + ADR-001)
 - [ ] T2.4 New `16-analytics-spec.md` (ADR-004)
 
@@ -115,4 +120,4 @@ Documentation only. No source code changes (code starts at roadmap block B0).
 
 ## Next step
 
-Phase 1 complete. Next: Phase 2 (foundations) — T2.1 `00`, `04`; T2.2 `05` against `schema.prisma`; T2.3 `06` rewritten against ADR-001/002; T2.4 new `16-analytics-spec.md` (ADR-004). Apply the failure-mode checklist while writing.
+Phase 2 in progress on `docs/sdd-foundations`. T2.2 done. Next: T2.3, T2.4, T2.1. Apply the failure-mode checklist while writing.
