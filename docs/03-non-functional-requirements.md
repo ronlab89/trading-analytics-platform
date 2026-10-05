@@ -1,91 +1,52 @@
 # SDD 03 — Non-Functional Requirements
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft  
+**Status:** §1-§9 reconciled with the ADRs and the code on 2026-10-05 (task T3.2); later sections Draft  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`
+
+Status values follow the legend in `docs/README.md`. Targets marked
+`(proposed)` were added during reconciliation because the requirement had no
+number; they are open to revision when their block is planned.
 
 ---
 
 # 1. Purpose
 
-This document defines the non-functional requirements for Trading Analytics Platform.
+**Status:** `Reference`
 
-While the functional requirements define **what the system does**, this document defines **how well the system must do it**.
+This document defines **how well** the system must do what
+`02-functional-requirements.md` defines. It covers performance, scalability,
+reliability, resilience, security, accessibility, maintainability,
+developer experience, observability, testability, deployment and cost.
 
-The requirements cover:
-
-- performance;
-- scalability;
-- reliability;
-- maintainability;
-- security;
-- accessibility;
-- developer experience;
-- observability;
-- testability;
-- resilience;
-- deployment;
-- cost efficiency.
-
-The requirements apply to both:
-
-- the full-stack application;
-- the public demo, where applicable.
+Each requirement applies to the local full stack and, where applicable, to
+the static public demo (ADR-006). Every requirement states a target and how
+it is checked; where an ADR knowingly limits a requirement, the exception is
+written next to it.
 
 ---
 
 # 2. Engineering Philosophy
 
-The system should demonstrate production-oriented engineering without introducing unnecessary infrastructure complexity.
+**Status:** `Reference`
 
-The architecture should favor:
-
-```text
-Simple
-   ↓
-Well-defined
-   ↓
-Composable
-   ↓
-Testable
-   ↓
-Scalable
-```
-
-rather than:
-
-```text
-Complex
-   ↓
-Distributed
-   ↓
-Expensive
-   ↓
-Difficult to maintain
-```
-
-A technology or architectural pattern must have a clear engineering justification.
+Prefer simple, well-defined, composable and testable designs over
+distributed or expensive ones. A technology or architectural pattern needs a
+clear engineering justification (see NFR-070).
 
 ---
 
 # 3. Requirement Priorities
 
-### P0 — Critical
+**Status:** `Reference`
 
-Failure directly compromises the product.
-
-### P1 — Required
-
-Important for a production-quality implementation.
-
-### P2 — Valuable
-
-Improves quality but does not block the initial release.
-
-### P3 — Future
-
-Potential evolution beyond the initial implementation.
+| Priority | Meaning |
+| --- | --- |
+| P0 — Critical | Failure directly compromises the product. |
+| P1 — Required | Important for a production-quality implementation. |
+| P2 — Valuable | Improves quality but does not block the initial release. |
+| P3 — Future | Possible evolution beyond the initial implementation. |
 
 ---
 
@@ -93,62 +54,56 @@ Potential evolution beyond the initial implementation.
 
 ## NFR-001 — Initial Application Load
 
-**Priority:** P0
-
-The public application should achieve a fast initial loading experience under normal network conditions.
+**Priority:** P0  
+**Status:** `Planned (FE)`
 
 ### Target
 
-The application should aim for:
+- LCP ≤ 2.5 s, CLS ≤ 0.1, INP ≤ 200 ms.
 
-- LCP ≤ 2.5s;
-- CLS ≤ 0.1;
-- INP ≤ 200ms;
+### Measurement
 
-under a representative production environment.
-
-These metrics should be evaluated using Lighthouse and/or equivalent browser performance tooling.
-
-### Acceptance criteria
-
-- Initial rendering does not require unnecessary blocking requests.
-- Critical UI is available quickly.
-- Non-critical resources are deferred where appropriate.
+Lighthouse (mobile preset, simulated throttling) on the production build of
+the static demo (ADR-006). The requirement passes when every listed metric
+meets its threshold. Non-critical resources are lazy-loaded so the first
+view needs no blocking request beyond the application bundle.
 
 ---
 
 ## NFR-002 — Route Navigation
 
-**Priority:** P1
-
-Navigation between application views should feel immediate.
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
 ### Target
 
-For client-side navigation:
+- Visible UI response to a client-side navigation within 100 ms.
+- A loading indicator whenever the target view is not ready within
+  300 ms `(proposed)`.
 
-- UI transition should begin within 100ms where technically possible;
-- loading indicators should appear when an operation cannot complete immediately.
+### Measurement
+
+Browser performance trace on the production build: time from the click to
+the first frame of the new route or of its loading state.
 
 ---
 
 ## NFR-003 — Interaction Responsiveness
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Planned (FE)`
 
-User interactions must remain responsive during normal application operation.
+### Target
 
-Examples:
+- INP ≤ 200 ms (as NFR-001) for filtering, sorting, dialogs, portfolio
+  switching, chart interaction, Decision Replay and Scenario Lab.
+- No main-thread task longer than 200 ms `(proposed)` during these
+  interactions; heavier calculations move off the main thread or are split.
 
-- filtering;
-- sorting;
-- opening dialogs;
-- changing portfolios;
-- interacting with charts;
-- navigating Decision Replay;
-- manipulating Scenario Lab.
+### Measurement
 
-Heavy calculations must not unnecessarily block the main UI thread.
+Browser performance trace (Long Tasks) while running each listed
+interaction on the seeded dataset.
 
 ---
 
@@ -156,49 +111,56 @@ Heavy calculations must not unnecessarily block the main UI thread.
 
 ## NFR-004 — Market Update Propagation
 
-**Priority:** P1
-
-Simulated market events should propagate through the application efficiently.
+**Priority:** P1  
+**Status:** `Planned (B5)` (server); `Planned (FE)` (client)
 
 ### Target
 
-Under normal demo conditions:
+UI-visible price updates within 100 ms of the client receiving the
+simulated event. The target covers application propagation only, not
+market-data latency (all prices are simulated, ADR-007).
 
-> UI-visible price updates should generally propagate within 100ms of receiving the simulated event.
+### Measurement
 
-The target refers to application propagation, not external market-data latency.
+Client instrumentation comparing the event receipt time with the next
+frame that shows the new price, in both real and demo mode.
 
 ---
 
 ## NFR-005 — Update Stability
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-Frequent market updates must not cause excessive rendering.
+### Target
 
-The application should avoid:
+A `MARKET_PRICE_UPDATED` event re-renders only components that display the
+affected asset or a value derived from it; no full-page re-render and no
+redraw of charts that do not plot that asset.
 
-- unnecessary global state updates;
-- full-page re-renders;
-- repeated expensive calculations;
-- excessive chart redraws.
+### Measurement
+
+Component tests with render counting (one event → only subscribed
+components render), plus a profiler check during continuous ticking.
 
 ---
 
 ## NFR-006 — Burst Handling
 
-**Priority:** P2
+**Priority:** P2  
+**Status:** `Planned (B5)` (server limits); `Planned (FE)` (client batching)
 
-The system should tolerate short bursts of market events without becoming unusable.
+### Target
 
-The architecture should support:
+- Server: per-connection subscription limit, inbound message rate limit
+  and bounded memory per connection (ADR-007 point 11).
+- Client: a burst of 100 events within 1 s `(proposed)` keeps INP
+  ≤ 200 ms and is applied in at most one render per animation frame.
 
-- event batching where appropriate;
-- throttling;
-- selective subscriptions;
-- derived-state optimization.
+### Measurement
 
-The exact strategy will be defined in the architecture specification.
+Simulator scenario that emits the burst; browser trace on the client and
+realtime tests for the server limits (`08-realtime-spec.md`).
 
 ---
 
@@ -206,41 +168,46 @@ The exact strategy will be defined in the architecture specification.
 
 ## NFR-007 — Derived Analytics
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B1)` (server); `Planned (FE)` (client)
 
-Analytics calculations should avoid unnecessary recomputation.
+### Target
 
-Derived values should be recalculated only when relevant source data changes.
+- Client: derived values recompute only when their source data changes
+  (transaction → position → portfolio metrics → analytics); unrelated views
+  do not recompute.
+- Server: an analytics request over the seeded 90-day history completes
+  within 500 ms `(proposed)`, the ADR-009 slow-operation threshold.
 
-Examples:
+### Accepted exception
 
-```text
-Transaction changes
-        ↓
-Position recalculation
-        ↓
-Portfolio metrics
-        ↓
-Relevant analytics
-```
+ADR-004 rebuilds the value series on every request and adds caching only
+when measured to be needed. The server therefore does not avoid
+recomputation in version 1; it is bounded by the time target instead.
 
-Unrelated application areas should not be recalculated unnecessarily.
+### Measurement
+
+Server: the separate timing of series reconstruction (ADR-009 point 8)
+stays under the slow-operation threshold. Client: selector or memo tests
+showing no recomputation on unrelated state changes.
 
 ---
 
 ## NFR-008 — Large Historical Datasets
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-Chart and analytics components should remain usable with representative historical datasets.
+### Target
 
-The implementation should consider:
+Charts with 5 years of daily points per asset `(proposed)` keep INP
+≤ 200 ms and initial chart render ≤ 500 ms `(proposed)`. Techniques
+(windowing, aggregation, memoization, progressive loading, canvas) are
+chosen per chart in the frontend stage.
 
-- data windowing;
-- aggregation;
-- memoization;
-- progressive loading;
-- canvas rendering where justified.
+### Measurement
+
+Browser trace with a generated 5-year dataset in demo mode.
 
 ---
 
@@ -248,74 +215,87 @@ The implementation should consider:
 
 ## NFR-009 — Horizontal Growth
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Deferred` (ADR-006)
 
-The backend architecture should allow the application to scale beyond a single application instance without requiring a fundamental rewrite.
+### Accepted exception
 
-The architecture should avoid unnecessary in-process assumptions.
+ADR-006 limits version 1 to a single local backend instance and a static
+demo; there is no hosted backend. Realtime connections and subscriptions
+(ADR-007) and the job runner (ADR-008) are deliberately in-process. No
+multi-instance target applies in version 1. Hosting the backend requires a
+new ADR, which reopens this requirement.
 
-Potential future growth should allow:
+### What still holds
 
-```text
-             Load Balancer
-                  │
-       ┌──────────┼──────────┐
-       ↓          ↓          ↓
-   Instance A  Instance B  Instance C
-       │          │          │
-       └──────────┼──────────┘
-                  ↓
-        Shared infrastructure
-```
-
-The initial deployment does not need to use multiple instances.
+Persistent state lives in PostgreSQL, not in process memory (see NFR-010).
 
 ---
 
 ## NFR-010 — Stateless Application Layer
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** persistent state in PostgreSQL `Implemented`; refresh sessions
+`Planned (B2)`; in-process realtime and job runner accepted (ADR-007,
+ADR-008)
 
-Where practical, application servers should remain stateless.
+### Target
 
-Session, cache, and persistent state should not depend exclusively on local process memory in the production architecture.
+All business data, jobs (`jobs` table, ADR-008) and idempotency records
+(ADR-008) are stored in PostgreSQL. An API restart loses no persisted
+state: jobs left `PROCESSING` become `FAILED` with reason `INTERRUPTED` and
+`QUEUED` jobs resume (ADR-008 point 5).
+
+### Accepted exception
+
+Realtime sockets and subscriptions live in process memory (ADR-007); a
+restart drops them and clients reconnect and resynchronize (NFR-018).
+
+### Measurement
+
+Restart test for the job runner (B4) and the existing API integration
+tests against PostgreSQL.
 
 ---
 
 ## NFR-011 — Domain Isolation
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** entities reference other aggregates by ID `Implemented`
+(`packages/domain/src/entities`); lint import-boundary rules
+`Planned (B0)` (ADR-001 point 1; today only a placeholder in
+`eslint.config.js`, see `06-architecture.md` §43)
 
-Application domains should be sufficiently isolated to allow future evolution without widespread coupling.
+### Target
 
-Primary domains include:
+Domains (portfolios, positions, transactions, assets, analytics, decisions,
+scenarios, notifications) reference each other only by identifier, and
+`@trading/domain` depends on no application or infrastructure package
+(ADR-001).
 
-- portfolios;
-- positions;
-- transactions;
-- assets;
-- analytics;
-- decisions;
-- scenarios;
-- notifications.
+### Measurement
+
+Code review today; a lint rule (`no-restricted-imports` or equivalent)
+failing the build on a cross-layer import once the deferred check is built.
 
 ---
 
 ## NFR-012 — Data Growth
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** paginated lists `Implemented` (transactions, assets); remaining
+collections follow the same rule when built
 
-The data model should support growth in:
+### Target
 
-- users;
-- portfolios;
-- positions;
-- transactions;
-- historical data;
-- decisions;
-- scenarios.
+Every collection endpoint is paginated with a bounded page size (default
+20, maximum 100, `apps/api/src/schemas/pagination.schema.ts`). No endpoint
+returns an unbounded list.
 
-The application should avoid structures that assume a permanently small dataset.
+### Measurement
+
+Request validation rejects `pageSize` above 100; API tests per collection
+endpoint.
 
 ---
 
@@ -323,56 +303,61 @@ The application should avoid structures that assume a permanently small dataset.
 
 ## NFR-013 — Graceful Failure
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** API error envelope with `requestId` `Implemented`; UI error
+states `Planned (FE)`
 
-Expected infrastructure failures must not cause uncontrolled application crashes.
+### Target
 
-Failures should result in:
+- Every API failure returns the standard error envelope with a `requestId`
+  (`07-api-spec.md`); no unhandled error terminates the process.
+- Every failed UI request shows an error state with a user-readable message
+  and, for retryable failures, a retry action; already-loaded valid data
+  stays visible.
 
-- recoverable UI states;
-- useful error messages;
-- retry where appropriate;
-- preservation of valid state.
+### Measurement
+
+API tests for each error category (`apps/api/src/middleware/error-handler.ts`);
+component tests for error and retry states.
 
 ---
 
 ## NFR-014 — Partial Failure Isolation
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B5)` (server); `Planned (FE)` (client)
 
-Failure of one non-critical capability should not unnecessarily disable unrelated functionality.
+### Target
 
-For example:
+With the realtime socket down, portfolios, transactions and historical
+analytics remain usable through HTTP; the UI shows a stale-data indicator
+and refetches periodically until reconnection (ADR-007 point 12). Analytics
+with missing prices return partial results (`16-analytics-spec.md` §16).
 
-```text
-Market feed unavailable
-        ↓
-Portfolio remains accessible
-        ↓
-Historical analytics remain accessible
-```
+### Measurement
+
+Realtime failure test in B5 ("realtime failure degrades to HTTP",
+`BACKEND-ROADMAP.md`) and a UI test with the realtime adapter disconnected.
 
 ---
 
 ## NFR-015 — Operation Consistency
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** transaction creation `Implemented`; CSV import `Planned (B4)`
 
-Business operations affecting multiple dependent entities must preserve data consistency.
+### Target
 
-For example:
+A mutation that changes several entities either commits all of them or
+none. Transaction creation writes the transaction, recalculates the
+position and marks it `COMPLETED` in one `UnitOfWork`
+(`apps/api/src/services/transaction.service.ts`). CSV import applies all
+rows in one `UnitOfWork` (ADR-008 point 2).
 
-```text
-Transaction
-   ↓
-Position
-   ↓
-Portfolio
-   ↓
-Analytics
-```
+### Measurement
 
-The system must avoid exposing partially updated states after successful mutations.
+Integration tests forcing a failure mid-operation and asserting no partial
+state (`apps/api/src/routes/transactions.routes.test.ts`; B4 import tests).
 
 ---
 
@@ -380,41 +365,68 @@ The system must avoid exposing partially updated states after successful mutatio
 
 ## NFR-016 — Retry Safety
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B4)` (ADR-008)
 
-Retries must not unintentionally duplicate state-changing operations.
+### Target
 
-The architecture should support appropriate mechanisms such as:
+- Repeating a state-changing request with the same `Idempotency-Key`
+  returns the stored response and applies the change once
+  (`07-api-spec.md` §39). The key and response are written in the same
+  `UnitOfWork` as the mutation; 5xx outcomes are not stored (ADR-008).
+- A job retry never imports the same rows twice (ADR-008 point 7).
 
-- idempotency;
-- operation identifiers;
-- safe retry policies.
+### Measurement
 
-The final strategy will be defined in `06-architecture.md` and `07-api-spec.md`.
+B4 idempotency tests with duplicate and concurrent submissions.
 
 ---
 
 ## NFR-017 — Timeout Handling
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** job timeouts `Planned (B4)`; client request timeouts
+`Planned (FE)`
 
-External or internal operations that exceed defined time limits must transition into an explicit timeout state.
+### Target
 
-The user should be informed and provided a recovery path where appropriate.
+- Each job type has a timeout per attempt while `QUEUED` or validating;
+  exceeding it ends in `TIMED_OUT`, which is retryable (ADR-008 points 6-7).
+  The apply stage is exempt.
+- Client HTTP requests time out after 15 s `(proposed)` and show a timeout
+  state with a retry action.
+- Requests slower than 500 ms are logged at `warn` (ADR-009 point 8).
+
+### Measurement
+
+B4 state-transition tests for timeout; client tests with a delayed mock.
 
 ---
 
 ## NFR-018 — Real-Time Reconnection
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B5)` (server); `Planned (FE)` (client)
 
-The real-time client should recover from temporary connection failures where supported.
+### Target
 
-The implementation should avoid:
+- Heartbeat: ping/pong every 30 s (ADR-007 point 11); unauthenticated
+  sockets close after 5 s (ADR-007 point 2).
+- Reconnection uses exponential backoff from 1 s, doubling, capped at
+  30 s, with jitter `(proposed)`.
+- After reconnecting, the client restores each subscription exactly once.
+- A `sequence` gap or a reconnect triggers an HTTP resynchronization;
+  events with an already-seen `sequence` are discarded (ADR-007 point 5).
 
-- duplicate subscriptions;
-- duplicate events;
-- uncontrolled reconnect loops.
+### Accepted exception
+
+No server-side replay buffer in version 1 (ADR-007): missed events are
+recovered by HTTP resynchronization, not replayed.
+
+### Measurement
+
+B5 reconnect, duplicate and stale-event tests (`08-realtime-spec.md` §59)
+and client tests with a simulated disconnect.
 
 ---
 
