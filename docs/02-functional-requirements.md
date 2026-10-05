@@ -1695,8 +1695,8 @@ into a portfolio as a background job.
 ## FR-087 — User Preferences
 
 **Priority:** P1  
-**Status:** `Implemented` (`GET` and `PATCH /api/v1/preferences`); settings UI `Planned (FE)`  
-**Decisions:** `05-data-model.md` §23; `07-api-spec.md` §29
+**Status:** `Implemented` (`GET` and `PATCH /api/v1/preferences`); `en`/`es` language validation `Planned (B0)`; settings UI `Planned (FE)`  
+**Decisions:** ADR-010 point 8; `05-data-model.md` §23; `07-api-spec.md` §29
 
 The user reads and updates their own preferences: theme, language, default
 portfolio, reduced motion and notification preferences.
@@ -1709,12 +1709,17 @@ portfolio, reduced motion and notification preferences.
   upsert) or updates it, and returns the stored preferences.
 - `PATCH` with no field, an empty `theme` or an empty `language` returns
   400 `VALIDATION_ERROR`.
+- (B0) `language` accepts only `en` or `es` (ADR-010 point 8); any other
+  value returns 400 `VALIDATION_ERROR` and changes nothing.
 - `defaultPortfolioId` set to another user's portfolio, or to one that does
   not exist, returns 404 and changes nothing; `null` clears it.
 - Preferences are always the caller's: there is no user identifier in the
   route.
 - (FE) `reducedMotion` disables non-essential motion (FR-065); `theme` and
   `language` apply without reloading the page.
+- (FE) The whole UI is available in English and Spanish (NFR-066). Without
+  a stored preference, a Spanish browser language selects Spanish; any other
+  selects English.
 
 ---
 
@@ -1862,7 +1867,7 @@ This applies equally to the full stack and to the public demo.
 | FR-084 | `Implemented`; `Planned (B0)`, `Planned (B2)` | ADR-005 p1-3, 10-12 | B0, B2 |
 | FR-085 | `Planned (B1)` | ADR-004 p1, 4, 6-7; `16` §2, §5, §8 | B1 |
 | FR-086 | `Planned (B5)` | ADR-007 p2-3, 11 | B5 |
-| FR-087 | `Implemented`; UI `Planned (FE)` | `05` §23, `07` §29 | FE |
+| FR-087 | `Implemented`; language validation `Planned (B0)`; UI `Planned (FE)` | ADR-010 p8, `05` §23 | B0, FE |
 
 ---
 

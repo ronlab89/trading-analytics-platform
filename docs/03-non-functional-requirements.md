@@ -5,9 +5,9 @@
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`
 
-Status values follow the legend in `docs/README.md`. Targets marked
-`(proposed)` were added during reconciliation because the requirement had no
-number; they are open to revision when their block is planned.
+Status values follow the legend in `docs/README.md`. Targets that had no
+number before the 2026-10-05 reconciliation were set then and approved by the
+project owner; they are revised only through a documented change.
 
 ---
 
@@ -79,7 +79,7 @@ view needs no blocking request beyond the application bundle.
 
 - Visible UI response to a client-side navigation within 100 ms.
 - A loading indicator whenever the target view is not ready within
-  300 ms `(proposed)`.
+  300 ms.
 
 ### Measurement
 
@@ -97,7 +97,7 @@ the first frame of the new route or of its loading state.
 
 - INP ≤ 200 ms (as NFR-001) for filtering, sorting, dialogs, portfolio
   switching, chart interaction, Decision Replay and Scenario Lab.
-- No main-thread task longer than 200 ms `(proposed)` during these
+- No main-thread task longer than 200 ms during these
   interactions; heavier calculations move off the main thread or are split.
 
 ### Measurement
@@ -154,7 +154,7 @@ components render), plus a profiler check during continuous ticking.
 
 - Server: per-connection subscription limit, inbound message rate limit
   and bounded memory per connection (ADR-007 point 11).
-- Client: a burst of 100 events within 1 s `(proposed)` keeps INP
+- Client: a burst of 100 events within 1 s keeps INP
   ≤ 200 ms and is applied in at most one render per animation frame.
 
 ### Measurement
@@ -177,7 +177,7 @@ realtime tests for the server limits (`08-realtime-spec.md`).
   (transaction → position → portfolio metrics → analytics); unrelated views
   do not recompute.
 - Server: an analytics request over the seeded 90-day history completes
-  within 500 ms `(proposed)`, the ADR-009 slow-operation threshold.
+  within 500 ms, the ADR-009 slow-operation threshold.
 
 ### Accepted exception
 
@@ -200,8 +200,8 @@ showing no recomputation on unrelated state changes.
 
 ### Target
 
-Charts with 5 years of daily points per asset `(proposed)` keep INP
-≤ 200 ms and initial chart render ≤ 500 ms `(proposed)`. Techniques
+Charts with 5 years of daily points per asset keep INP
+≤ 200 ms and initial chart render ≤ 500 ms. Techniques
 (windowing, aggregation, memoization, progressive loading, canvas) are
 chosen per chart in the frontend stage.
 
@@ -393,7 +393,7 @@ B4 idempotency tests with duplicate and concurrent submissions.
 - Each job type has a timeout per attempt while `QUEUED` or validating;
   exceeding it ends in `TIMED_OUT`, which is retryable (ADR-008 points 6-7).
   The apply stage is exempt.
-- Client HTTP requests time out after 15 s `(proposed)` and show a timeout
+- Client HTTP requests time out after 15 s and show a timeout
   state with a retry action.
 - Requests slower than 500 ms are logged at `warn` (ADR-009 point 8).
 
@@ -413,7 +413,7 @@ B4 state-transition tests for timeout; client tests with a delayed mock.
 - Heartbeat: ping/pong every 30 s (ADR-007 point 11); unauthenticated
   sockets close after 5 s (ADR-007 point 2).
 - Reconnection uses exponential backoff from 1 s, doubling, capped at
-  30 s, with jitter `(proposed)`.
+  30 s, with jitter.
 - After reconnecting, the client restores each subscription exactly once.
 - A `sequence` gap or a reconnect triggers an HTTP resynchronization;
   events with an already-seen `sequence` are discarded (ADR-007 point 5).
@@ -441,7 +441,7 @@ and client tests with a simulated disconnect.
 
 ### Target
 
-- Passwords are hashed with `bcryptjs` at cost 10 or higher `(proposed)`;
+- Passwords are hashed with `bcryptjs` at cost 10 or higher;
   login returns a generic "Invalid credentials." error.
 - Login is limited to 5 attempts per 15 minutes per IP (ADR-005 point 12).
 - Access tokens expire after 900 s (`JWT_EXPIRES_IN_SECONDS`); `JWT_SECRET`
@@ -568,7 +568,7 @@ variable.
 ### Target
 
 `pnpm audit --prod --audit-level=high` reports 0 high or critical
-advisories `(proposed)`, or each remaining one is recorded with a reason.
+advisories, or each remaining one is recorded with a reason.
 
 ### Accepted exception
 
@@ -601,7 +601,7 @@ No hosted backend, TLS termination or reverse proxy in version 1
 ### Measurement
 
 An API test asserting `X-Content-Type-Options: nosniff` and no
-`X-Powered-By` `(proposed)`; no such test exists yet.
+`X-Powered-By`; no such test exists yet.
 
 ---
 
@@ -638,7 +638,7 @@ The NFR-020 tests call the API directly, bypassing the UI.
 
 - User-provided and imported content (notes, CSV fields) renders as text.
 - No `dangerouslySetInnerHTML` or `innerHTML` use without sanitization;
-  0 unsanitized occurrences in `apps/web` `(proposed)`.
+  0 unsanitized occurrences in `apps/web`.
 
 ### Measurement
 
@@ -679,8 +679,7 @@ FE test asserting browser storage holds no token after login.
 Core workflows meet WCAG 2.2 AA: keyboard access, semantic structure,
 visible focus, contrast of 4.5:1 for text (3:1 for large text and UI
 components), labelled form fields and announced status changes. Automated
-checks report 0 serious or critical violations on core routes
-`(proposed)`.
+checks report 0 serious or critical violations on core routes.
 
 ### Measurement
 
@@ -794,7 +793,7 @@ A `no-restricted-imports` lint rule (placeholder today in
 
 Each UI primitive (button, input, dialog, table) is defined once and
 reused; a component is generalized only when it has at least two real
-uses `(proposed)`.
+uses.
 
 ### Measurement
 
@@ -904,8 +903,8 @@ Type errors, unsafe `any` and common bug patterns are caught by
 
 ### Accepted exception
 
-No dedicated analyzer for code smells, complexity or duplication
-`(proposed)`; these are covered by review (NFR-070).
+No dedicated analyzer for code smells, complexity or duplication;
+these are covered by review (NFR-070).
 
 ### Measurement
 
@@ -977,7 +976,7 @@ Shared contract tests run against both implementations.
 ### Target
 
 The demo starts from a seeded dataset; the same seed produces the same
-initial state and the same simulated series `(proposed)`.
+initial state and the same simulated series.
 
 ### Measurement
 
@@ -997,7 +996,7 @@ resulting state.
 
 From a clean clone, the documented steps (install, environment file,
 database, migrate, seed, run) start the API with no undocumented step, in
-15 minutes or less `(proposed)`.
+15 minutes or less.
 
 ### Measurement
 
@@ -1105,7 +1104,7 @@ B3 error-handler tests per category.
 
 ### Accepted exception
 
-No separate "degraded" state in version 1 `(proposed)`: the only
+No separate "degraded" state in version 1: the only
 dependency is the database.
 
 ### Measurement
@@ -1163,10 +1162,10 @@ origin.
 
 ### Target
 
-- The API runs within a 512 MB container memory limit `(proposed)` in the
+- The API runs within a 512 MB container memory limit in the
   `full` Compose profile.
 - List endpoints are paginated; each client holds at most one realtime
-  connection `(proposed)`.
+  connection.
 
 ### Measurement
 
@@ -1264,7 +1263,7 @@ repositories (ADR-001 point 7).
   or browser API, enforced by lint rules (ADR-001 point 1).
 - Demo-only code (in-memory repositories, simulation controls, failure
   injection) lives only behind the demo composition root (ADR-001 point 4);
-  the API build contains 0 demo modules `(proposed)`.
+  the API build contains 0 demo modules.
 
 ### Measurement
 
@@ -1308,7 +1307,7 @@ ADR (ADR-010 point 6)
 
 When that ADR lands, the dataset covers at least one case of each: empty
 state, negative performance, positive performance, extreme values, missing
-optional data, a large dataset (at least 1,000 transactions `(proposed)`)
+optional data, a large dataset (at least 1,000 transactions)
 and a failed operation.
 
 ### Measurement
@@ -1327,7 +1326,7 @@ record or scenario.
 
 ### Target
 
-- Every user action shows visible feedback within 100 ms `(proposed)`.
+- Every user action shows visible feedback within 100 ms.
 - Loading states (skeletons, optimistic updates, progressive rendering)
   reflect real application state; an optimistic update is rolled back on
   failure.
@@ -1365,7 +1364,7 @@ during animations; animated properties are checked in review.
 
 ### Target
 
-The last 2 major versions `(proposed)` of Chrome/Chromium, Firefox, Safari
+The last 2 major versions of Chrome/Chromium, Firefox, Safari
 and Edge.
 
 ### Accepted exception
@@ -1399,7 +1398,7 @@ server rendering and no public backend (ADR-006 point 2).
 
 ### Measurement
 
-Lighthouse SEO score of at least 90 `(proposed)` on the demo build.
+Lighthouse SEO score of at least 90 on the demo build.
 
 ---
 
@@ -1424,22 +1423,23 @@ Application routes carry `noindex`, asserted by an end-to-end test.
 ## NFR-066 — Localization Support
 
 **Priority:** P1  
-**Status:** string separation `Planned (FE)`; additional languages
-`Deferred`
+**Status:** `Planned (FE)` (ADR-010 point 8); language validation in preferences `Planned (B0)`; further languages `Deferred`
 
 ### Target
 
-User-facing strings live outside domain and application code; those layers
-return codes and data, never display text.
-
-### Accepted exception
-
-Version 1 ships in English only; translations need a new decision.
+- Version 1 ships complete in English (`en`) and Spanish (`es`): every
+  user-facing string, including validation and error messages, exists in
+  both catalogs.
+- User-facing strings live outside domain and application code; those layers
+  return codes and data, never display text. The client maps API error
+  `code` values to localized messages.
+- Dates and numbers are formatted with the active locale (`Intl`).
 
 ### Measurement
 
-0 user-facing string literals in `@trading/domain` and
-`@trading/application` `(proposed)`, checked in review.
+- A test fails when a key exists in one catalog and not in the other.
+- 0 user-facing string literals in `@trading/domain` and
+  `@trading/application`, checked in review.
 
 ---
 

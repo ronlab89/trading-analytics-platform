@@ -150,7 +150,12 @@ needs a product decision is asked to the user, not invented.
     - Benchmark comparison is `Deferred` (ADR-010 point 7).
     - The legend gains a `Reference` status, applied to the purpose, principles, boundary, policy and traceability sections in `01` and `02`.
   - [x] T3.1 complete.
-- [ ] T3.2 `03` (measurable targets, accepted exceptions)
+- [x] T3.2 `03` (measurable targets, accepted exceptions), done in 3 delegated slices.
+  - All 71 NFRs have a status, a target, a measurement and, where they apply, ADR-cited accepted exceptions.
+  - The user approved the 24 targets that had no number before (2026-10-05). The (proposed) markers were removed.
+  - The user decided that v1 ships in English and Spanish: ADR-010 point 8, NFR-066, FR-087, and the `05` language column. API language validation is B0; translations are FE.
+  - Parent fixes: NFR-011 lint boundary is `Planned (B0)` (ADR-001); `APP_MODE` is `Planned (FE)`.
+  - For T5.3: roadmap B7 says CI was rejected and B4 lists open decisions that ADR-008 settled.
 - [ ] T3.3 `11` (navigation aligned with wireframe)
 
 ### Phase 4 — Contracts

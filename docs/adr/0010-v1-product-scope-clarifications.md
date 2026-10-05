@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-10-05
-**Implemented in:** roadmap block B0 (archived portfolios), B1 (What Changed); frontend stage (sorting, demo)
+**Implemented in:** roadmap block B0 (archived portfolios, language validation), B1 (What Changed); frontend stage (sorting, demo, translations)
 
 ## Context
 
@@ -57,6 +57,21 @@ requirements that no ADR or spec defines precisely enough to build or test:
 7. **Benchmark comparison** (added 2026-10-05). Comparing portfolio
    performance with a market index or benchmark is `Deferred`. The system
    has no benchmark data, and no FR asks for it.
+8. **Languages** (added 2026-10-05). Version 1 ships in English (`en`) and
+   Spanish (`es`), and every user-facing string exists in both:
+   - The active language is the user's `language` preference (FR-087).
+     Without a stored preference, the client uses the browser language when
+     it is Spanish, and otherwise English.
+   - `UserPreference.language` accepts only `en` or `es`; any other value is
+     400 `VALIDATION_ERROR`.
+   - The API keeps returning stable error `code` values with an English
+     `message` for logs. The client shows a localized message mapped from
+     the `code` (ADR-002 error envelope).
+   - Dates and numbers are formatted with the active locale. Money keeps its
+     decimal-string value and its currency on the wire (ADR-002).
+   - Seed and simulated data (asset names, symbols) are not translated.
+
+   Further languages are `Deferred`.
 
 ## Consequences
 
