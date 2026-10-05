@@ -127,7 +127,7 @@ specified and tested in the listed block.
 
 | Item | Resolution | Block |
 |---|---|---|
-| A portfolio is archived while a CSV import job for it is `QUEUED` or `RUNNING`. | The job checks the portfolio status inside the unit of work that applies rows (ADR-008). An archived portfolio fails the job with a non-retryable error, and no rows are written. | B4 |
+| A portfolio is archived while a CSV import job for it is `QUEUED` or `PROCESSING`. | The job checks the portfolio status inside the unit of work that applies rows (ADR-008). An archived portfolio fails the job with a non-retryable error, and no rows are written. | B4 |
 | Two assets tie as the largest contributor or detractor. | The tie goes to the alphabetically first asset symbol, so the result is deterministic. | B1 |
 | A position opens and closes within the same period. | Both events are reported, in date order. | B1 |
 

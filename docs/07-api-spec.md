@@ -299,40 +299,59 @@ refresh cookie. An access token already issued stays valid until it expires
 
 # 10. Portfolio API
 
+**Status:** `Implemented`; archived-portfolio guard `Planned (B0)` (ADR-010 point 5)
+
+All endpoints require a Bearer token (§9) and are scoped to the caller: a
+portfolio of another user returns 404 `NOT_FOUND`, the same as a missing one.
+Payloads are serialized entities today; response schemas and presenters are
+`Planned (B0)` (ADR-002).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId` | `Implemented` |
+| `POST /api/v1/portfolios` | `Implemented` |
+| `PATCH /api/v1/portfolios/:portfolioId` | `Implemented`; 409 on archived `Planned (B0)` |
+| `POST /api/v1/portfolios/:portfolioId/archive` | `Implemented` |
+
 ## List Portfolios
+
+**Status:** `Implemented` (FR-008)
 
 ```text
 GET /api/v1/portfolios
 ```
 
-Optional parameters:
-
-```text
-status
-page
-pageSize
-sort
-```
+Returns 200 `{ "data": [portfolio] }` with all of the caller's portfolios,
+archived ones included (`status = ARCHIVED`). No query parameters, no
+pagination. The `status`, `page`, `pageSize` and `sort` parameters are
+`Deferred`.
 
 ---
 
 ## Get Portfolio
 
+**Status:** `Implemented` (FR-008)
+
 ```text
 GET /api/v1/portfolios/:portfolioId
 ```
+
+Returns 200 `{ "data": portfolio }`. Errors: 404 `NOT_FOUND`.
 
 ---
 
 ## Create Portfolio
 
+**Status:** `Implemented` (FR-009)
+
 ```text
 POST /api/v1/portfolios
 ```
 
-Request:
+Request (`description` optional; `baseCurrency` is a 3-letter code):
 
-```text
+```json
 {
   "name": "Growth Portfolio",
   "description": "Long-term growth strategy.",
@@ -340,9 +359,9 @@ Request:
 }
 ```
 
-Response:
+Response (201):
 
-```text
+```json
 {
   "data": {
     "id": "...",
@@ -354,170 +373,266 @@ Response:
 }
 ```
 
+Errors: 400 `VALIDATION_ERROR` (schema or domain invariants).
+
 ---
 
 ## Update Portfolio
+
+**Status:** `Implemented` (FR-010); archived guard `Planned (B0)`
 
 ```text
 PATCH /api/v1/portfolios/:portfolioId
 ```
 
+Request: `name` and/or `description`; at least one is required.
+`baseCurrency` cannot change after creation. Returns 200 `{ "data": portfolio }`.
+
+Errors: 400 `VALIDATION_ERROR`; 404 `NOT_FOUND`. `Planned (B0)`: 409
+`CONFLICT` when the portfolio is archived (ADR-010 point 5).
+
 ---
 
 ## Archive Portfolio
+
+**Status:** `Implemented` (FR-011)
 
 ```text
 POST /api/v1/portfolios/:portfolioId/archive
 ```
 
-Archiving is preferred over destructive deletion where historical integrity matters.
+Sets `status = ARCHIVED`; nothing is deleted. Idempotent: always 200, with
+`meta.alreadyArchived` telling whether this call changed anything:
+
+```json
+{
+  "data": { "id": "...", "status": "ARCHIVED" },
+  "meta": { "alreadyArchived": false }
+}
+```
+
+Errors: 404 `NOT_FOUND`. Hard deletion and unarchiving are `Deferred`.
+
+`Planned (B0)` (ADR-010 point 5): an archived portfolio is read-only. Every
+mutation scoped to it (update, transactions, CSV imports) returns 409
+`CONFLICT` and writes nothing; reads and the archive call are unchanged.
 
 ---
 
 # 11. Portfolio Overview
 
+**Status:** `Implemented` (FR-004); period `performance` field `Planned (B1)` (ADR-004, `16-analytics-spec.md` §11-§15)
+
 ```text
 GET /api/v1/portfolios/:portfolioId/overview
 ```
 
-Returns a purpose-specific representation containing:
+Returns 200 with one purpose-specific payload, so the dashboard does not
+orchestrate many requests:
 
 ```text
 portfolio
-summary
-positions
-performance
+summary              total market value, cost basis, unrealized P/L and percent
+positions            [{ position, asset, metrics, allocationPercent, dailyChange }]
 allocation
-recentTransactions
+attribution          current-state attribution
+recentTransactions   [{ transaction, asset }]
+dailyChange          null when no held asset has a market price
 pulse
 ```
 
-This endpoint exists to avoid requiring the dashboard to orchestrate many unrelated requests.
+An empty portfolio returns zeroed totals in `baseCurrency`, empty lists and a
+non-null `dailyChange`. Errors: 404 `NOT_FOUND`.
 
 ---
 
 # 12. Position API
 
+**Status:** `Implemented`
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/positions` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/positions/:positionId` | `Implemented` |
+
+Positions are derived from transactions and are read-only (ADR-003).
+
 ## List Positions
+
+**Status:** `Implemented` (FR-012)
 
 ```text
 GET /api/v1/portfolios/:portfolioId/positions
 ```
 
-Optional parameters:
-
-```text
-assetType
-sort
-direction
-page
-pageSize
-```
+Returns 200 `{ "data": [position] }`, unpaginated. A fully sold position no
+longer appears. The `assetType`, `sort`, `direction`, `page` and `pageSize`
+parameters are `Deferred`. Errors: 404 `NOT_FOUND`.
 
 ---
 
 ## Get Position
 
+**Status:** `Implemented` (FR-013)
+
 ```text
 GET /api/v1/portfolios/:portfolioId/positions/:positionId
 ```
 
-Response should include current derived metrics where useful.
+Returns the position with derived metrics:
 
-Example:
-
-```text
+```json
 {
   "data": {
     "position": {},
     "metrics": {
-      "marketValue": 12000,
-      "costBasis": 10000,
-      "unrealizedPnL": 2000,
-      "unrealizedPnLPercent": 20,
-      "allocation": 18.4
+      "marketValue": { "amount": "12000", "currency": "USD" },
+      "costBasis": { "amount": "10000", "currency": "USD" },
+      "unrealizedPnL": { "amount": "2000", "currency": "USD" },
+      "unrealizedPnLPercent": 20
     }
   }
 }
 ```
+
+`allocation` is not returned here; it is in the overview
+(`positions[].allocationPercent`, §11). Errors: 404 `NOT_FOUND` when the
+position belongs to another portfolio or user. `BUY` fees in
+`averageEntryPrice` are `Planned (B1)` (ADR-004 point 15).
 
 ---
 
 # 13. Transaction API
 
+**Status:** `Implemented`; `Idempotency-Key` `Planned (B4)` (ADR-008 point 8)
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/transactions` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/transactions/:transactionId` | `Implemented` |
+| `POST /api/v1/portfolios/:portfolioId/transactions` | `Implemented` |
+
+Only `BUY` and `SELL` exist; there is no cash balance and no cash validation
+(ADR-003). Transactions are immutable: no update or delete endpoint.
+
 ## List Transactions
+
+**Status:** `Implemented` (FR-014, FR-016)
 
 ```text
 GET /api/v1/portfolios/:portfolioId/transactions
 ```
 
-Filters:
+Filters, combined with AND:
 
 ```text
 assetId
-type
-dateFrom
-dateTo
-page
-pageSize
-sort
+type        BUY | SELL
+dateFrom    ISO-8601
+dateTo      ISO-8601
+page        default 1
+pageSize    default 20, max 100
 ```
+
+Ordered by `executedAt` descending, then `id` descending; `sort` is
+`Deferred`. Response (200):
+
+```json
+{
+  "data": [],
+  "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 }
+}
+```
+
+Errors: 400 `VALIDATION_ERROR` (invalid filter); 404 `NOT_FOUND`.
 
 ---
 
 ## Get Transaction
 
+**Status:** `Implemented` (FR-014)
+
 ```text
 GET /api/v1/portfolios/:portfolioId/transactions/:transactionId
 ```
+
+Returns 200 `{ "data": transaction }`. Errors: 404 `NOT_FOUND` when the
+transaction belongs to another portfolio or user.
 
 ---
 
 ## Create Transaction
 
+**Status:** `Implemented` (FR-017, FR-018); see Planned rules below
+
 ```text
 POST /api/v1/portfolios/:portfolioId/transactions
 ```
 
-Request:
+Request (`fees` and `executedAt` optional; `amount` is a decimal string or a
+number):
 
-```text
+```json
 {
   "assetId": "asset_001",
   "type": "BUY",
   "quantity": 10,
-  "price": 150,
-  "fees": 2.5,
-  "currency": "USD",
+  "price": { "amount": "150", "currency": "USD" },
+  "fees": { "amount": "2.5", "currency": "USD" },
   "executedAt": "2026-08-29T14:30:00Z"
 }
 ```
+
+Synchronous: the transaction is persisted and its position recalculated in
+one unit of work (ADR-008 point 12). Response (201); `position` is `null`
+when a `SELL` closes the position:
+
+```json
+{
+  "data": {
+    "transaction": { "id": "...", "status": "COMPLETED" },
+    "position": {}
+  }
+}
+```
+
+Errors: 400 `VALIDATION_ERROR` (schema, domain invariants, `SELL` above the
+held quantity); 404 `NOT_FOUND` (portfolio or `assetId`).
+
+`Planned`:
+
+- (B0) Chronological validation of backdated transactions (ADR-003 point 6);
+  409 `CONFLICT` on an archived portfolio (ADR-010 point 5).
+- (B1) 400 when a `SELL` has `fees > quantity × price`, or the asset currency
+  differs from `baseCurrency` (ADR-004 points 2 and 12).
+- (B4) `Idempotency-Key` header: the same key and request returns the stored
+  response; a different request returns 409 `CONFLICT` (ADR-008 point 8).
 
 ---
 
 # 14. Transaction Processing
 
-Transaction creation may be asynchronous.
+**Status:** asynchronous transaction creation removed (ADR-008 point 12); CSV import `Planned (B4)` (FR-080)
 
-Response:
+Transaction creation is synchronous (§13); there is no job for a single
+transaction. Background jobs exist only for CSV transaction import:
 
 ```text
-{
-  "data": {
-    "transaction": {},
-    "processing": {
-      "status": "PROCESSING",
-      "jobId": "job_001"
-    }
-  }
-}
+POST /api/v1/portfolios/:portfolioId/imports
 ```
 
-The client should not assume immediate completion if the operation is configured as asynchronous.
+`Planned (B4)` (ADR-008 points 1-2, 8-10): creates an import job and returns
+it in `QUEUED`. Every row is validated first; if any row fails, the job ends
+`FAILED` with a per-row report and nothing is written. Valid rows are applied
+in one unit of work. Rows follow the §13 rules (`BUY` and `SELL` only). File
+size and row count are bounded (values fixed in B4). Accepts
+`Idempotency-Key`.
 
 ---
 
 # 15. Transaction Job Status
+
+**Status:** `Planned (B4)` (ADR-008 points 3 and 9, FR-081)
 
 ```text
 GET /api/v1/jobs/:jobId
@@ -525,18 +640,17 @@ GET /api/v1/jobs/:jobId
 
 Response:
 
-```text
+```json
 {
   "data": {
     "id": "job_001",
     "status": "PROCESSING",
-    "progress": 60,
-    "message": "Updating portfolio state."
+    "progress": { "processed": 60, "total": 100 }
   }
 }
 ```
 
-Possible statuses:
+Statuses:
 
 ```text
 QUEUED
@@ -544,17 +658,29 @@ PROCESSING
 COMPLETED
 FAILED
 CANCELLED
+TIMED_OUT
 ```
+
+Progress is a field, not a state. `FAILED` carries a reason:
+`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`.
+Ownership is checked; another user's job returns 404.
 
 ---
 
 # 16. Retry Failed Job
 
+**Status:** `Planned (B4)` (ADR-008 point 6, FR-081)
+
 ```text
 POST /api/v1/jobs/:jobId/retry
+POST /api/v1/jobs/:jobId/cancel
 ```
 
-Only retryable jobs may be retried.
+Retry returns the job to `QUEUED` and increments `attempt`. It is allowed for
+`TIMED_OUT`, `CANCELLED`, and `FAILED` with reason `INTERRUPTED`,
+`APPLY_ERROR` or `APPLY_REJECTED`; `VALIDATION_FAILED` is not retryable (the
+user fixes the file and creates a new import). Cancel is allowed while
+`QUEUED` or validating, never during the apply stage.
 
 ---
 
