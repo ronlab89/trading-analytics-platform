@@ -658,7 +658,7 @@ enforced by the schema; a `PRICE` threshold is a `Float` compared with a
 | --- | --- | --- | --- | --- |
 | `userId` | `String` | no | — | PK and FK to `User`, `onDelete: Cascade` |
 | `theme` | `String` | no | `"system"` | |
-| `language` | `String` | no | `"en"` | |
+| `language` | `String` | no | `"en"` | `en` or `es` only, validated at the API boundary `Planned (B0)` (ADR-010 point 8) |
 | `defaultPortfolioId` | `String` | yes | — | no foreign key; ownership checked by the service |
 | `reducedMotion` | `Boolean` | no | `false` | |
 | `notificationPreferences` | `Json` | no | `{}` | |
@@ -958,6 +958,9 @@ key is the relationship itself: `Credential`, `UserPreference` and
 There is no soft-delete column. Portfolios are archived through
 `status = ARCHIVED` rather than deleted. Assets referenced by history cannot
 be deleted (`Restrict`).
+
+`Planned (B0)`: an archived portfolio is read-only. Mutations scoped to it
+are rejected with 409 `CONFLICT` (ADR-010 point 5).
 
 ---
 

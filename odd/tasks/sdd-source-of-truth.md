@@ -125,9 +125,44 @@ plus `pnpm docs:check`.
 
 ### Phase 3 — Product
 
-- [ ] T3.1 `01`, `02` (acceptance criteria for all P0/P1, status per FR, new FRs)
-- [ ] T3.2 `03` (measurable targets, accepted exceptions)
-- [ ] T3.3 `11` (navigation aligned with wireframe)
+Branch `docs/sdd-product` (from `develop` after PR #11, 2026-10-05). Order:
+T3.1 (`02` first, the 79 FRs are the contract; then `01` aligned with `02`)
+→ T3.2 → T3.3. Route: one delegated writer per document, parent readback,
+`pnpm docs:check`. ADR precedence settles FR conflicts (FR-025 periods and
+FR-031 factor breakdown follow ADR-004); any FR without an ADR basis that
+needs a product decision is asked to the user, not invented.
+
+- [x] T3.1 `01`, `02` (acceptance criteria for all P0/P1, status per FR, new FRs)
+  - [x] Part 1, `02` (delegated writer; `pnpm docs:check` and `pnpm lint` pass): 86 FRs, every one with a status. 75 of the 79 P0/P1 FRs have testable acceptance criteria; the remaining 4 are Deferred. New FRs FR-080 to FR-086 cover CSV import, job lifecycle, idempotency, session refresh, roles, analytics data boundaries and realtime sessions. FR-025 and FR-031 are aligned with ADR-004. All 79 original headings are kept. Six FRs are pending a user decision: FR-006, FR-015, the demo FRs, FR-052, FR-055 and FR-011.
+  - [x] Six FR decisions approved by the user 2026-10-05, route inline:
+    - New ADR-010 "Version 1 Product Scope Clarifications":
+      - What Changed v1 uses only events with no threshold;
+      - FR-015 is satisfied by the filters;
+      - notifications are `unread`/`read` only;
+      - only fully loaded lists are sorted, in the client;
+      - archived portfolios are read-only (409, B0);
+      - the demo specifics wait for a frontend-stage ADR.
+    - `02` updated: FR-006, 011, 015, 052, 055, the demo FRs and the traceability table.
+    - `05` §42 note added and the ADR index updated.
+    - `pnpm docs:check` passes.
+  - [x] Part 2, `01` aligned with `02` in 3 delegated slices (§1-8, §9-18, §19-end). Each section has a status and references FR IDs. Contradictions fixed: cash transaction types, delete semantics, per-tick analytics, the factor breakdown, `dismissed`, the mock-API demo, and the document chain. Three follow-up decisions, approved by the user on 2026-10-05 and applied inline:
+    - FR-087 User Preferences documents the existing API.
+    - Benchmark comparison is `Deferred` (ADR-010 point 7).
+    - The legend gains a `Reference` status, applied to the purpose, principles, boundary, policy and traceability sections in `01` and `02`.
+  - [x] T3.1 complete.
+- [x] T3.2 `03` (measurable targets, accepted exceptions), done in 3 delegated slices.
+  - All 71 NFRs have a status, a target, a measurement and, where they apply, ADR-cited accepted exceptions.
+  - The user approved the 24 targets that had no number before (2026-10-05). The (proposed) markers were removed.
+  - The user decided that v1 ships in English and Spanish: ADR-010 point 8, NFR-066, FR-087, and the `05` language column. API language validation is B0; translations are FE.
+  - Parent fixes: NFR-011 lint boundary is `Planned (B0)` (ADR-001); `APP_MODE` is `Planned (FE)`.
+  - For T5.3: roadmap B7 says CI was rejected and B4 lists open decisions that ADR-008 settled.
+- [x] T3.3 `11` (navigation aligned with wireframe), done in 3 delegated slices plus one closing edit.
+  - Navigation now matches the real wireframe: icon rail, top bar, status bar.
+  - Each destination is mapped to its FR, and the gaps are listed.
+  - Every section has a status, and the approved NFR targets are applied.
+  - The user approved the UI decisions on 2026-10-05, recorded as ADR-010 point 9 and applied to `11` and to FR-051, 052, 053, 062 and 081.
+  - The initial language is English; Spanish applies only when the user selects it (ADR-010 point 8, corrected).
+  - For the frontend stage: fix `lang="es"` in the wireframe and update `WIREFRAME-PLAN.md`.
 
 ### Phase 4 — Contracts
 
@@ -169,4 +204,4 @@ plus `pnpm docs:check`.
 
 ## Next step
 
-Phase 2 complete on `docs/sdd-foundations` (T2.1-T2.8). The full-PR review against `develop` (medium risk, 11 files) was offered and declined by the user for this candidate on 2026-10-05; the earlier slice up to `ce68543` was reviewed and approved. Next: push and open the PR into `develop` (user decision). After that comes Phase 3 (product). PR reviews use `develop` as base; per-commit assessments start from the last reviewed commit. Apply the failure-mode checklist while writing.
+Phase 2 merged in PR #11. Phase 3 is complete on `docs/sdd-product` (T3.1-T3.3, 14 commits, all assessed passive against `develop`, so no review was due). Next: the user pushes and opens the PR into `develop`; then Phase 4 (contracts: `07`, `08`, `09`, `10`). Delegated work is split into slices of 300-500 lines. PR reviews use `develop` as base.
