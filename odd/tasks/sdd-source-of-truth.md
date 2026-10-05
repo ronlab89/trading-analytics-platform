@@ -169,4 +169,4 @@ plus `pnpm docs:check`.
 
 ## Next step
 
-Phase 2 complete on `docs/sdd-foundations` (T2.1-T2.8). Next: one review of the full PR against `develop`, then the user opens the PR. After that comes Phase 3 (product). PR reviews use `develop` as base; per-commit assessments start from the last reviewed commit. Apply the failure-mode checklist while writing.
+Phase 2 complete on `docs/sdd-foundations` (T2.1-T2.8). The full-PR review against `develop` (medium risk, 11 files) was offered and declined by the user for this candidate on 2026-10-05; the earlier slice up to `ce68543` was reviewed and approved. Next: push and open the PR into `develop` (user decision). After that comes Phase 3 (product). PR reviews use `develop` as base; per-commit assessments start from the last reviewed commit. Apply the failure-mode checklist while writing.
