@@ -9,7 +9,13 @@
 
 # 1. Purpose
 
+**Status:** `Reference`
+
 This document defines the UI/UX principles, interaction model, visual behavior, responsive strategy, accessibility requirements, and motion system for Trading Analytics Platform.
+
+The frontend is not built yet. Behavior described here is `Planned (FE)`. The HTML prototype `apps/web/wireframe.html` is the visual reference; "shown in the wireframe" means the prototype already sketches it, not that the product implements it. Acceptance criteria live in `02-functional-requirements.md`; this document references FR IDs instead of repeating them.
+
+Every user-facing string (labels, navigation, validation and error messages, toasts) exists in English and Spanish (ADR-010 point 8, FR-087).
 
 The interface must communicate:
 
@@ -27,6 +33,8 @@ The product must feel like a real modern analytics platform rather than a portfo
 
 # 2. UX Goals
 
+**Status:** `Reference`
+
 The primary UX goals are:
 
 1. Make complex trading information understandable at a glance.
@@ -42,6 +50,8 @@ The primary UX goals are:
 
 # 3. Product Experience Principles
 
+**Status:** `Reference`
+
 The interface follows these principles:
 
 ### Clarity over decoration
@@ -54,7 +64,7 @@ Advanced information should appear when relevant rather than being exposed every
 
 ### Immediate feedback
 
-Actions should communicate:
+Actions should communicate (FR-060, FR-079):
 
 - started;
 - in progress;
@@ -77,6 +87,8 @@ Primary information must remain visually dominant over secondary metadata.
 ---
 
 # 4. Visual Direction
+
+**Status:** `Reference`
 
 The visual language should feel:
 
@@ -104,105 +116,124 @@ The interface should differentiate itself through composition, interaction, info
 
 # 5. Layout System
 
-The application should use a structured application shell.
+**Status:** `Planned (FE)`; shown in the wireframe
 
-Conceptual layout:
+The application uses a panel-based shell (rounded panels separated by a fixed gap). Authentication happens on a separate screen before the shell (§7).
+
+Layout as shown in the wireframe:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│ Header / Global Controls                                    │
-├───────────────┬─────────────────────────────────────────────┤
-│               │                                             │
-│ Navigation    │                Main Content                 │
-│               │                                             │
-│               │                                             │
-│               │                                             │
-├───────────────┴─────────────────────────────────────────────┤
-│ Optional contextual status / activity                       │
+┌──────┬──────────────────────────────────────────────────────┐
+│      │ Top bar: portfolio / view · notifications · demo     │
+│ Rail ├──────────────────────────────────────────────────────┤
+│ nav  │                                                      │
+│      │                  Main content                        │
+│      │                                                      │
+│ Set. │                                                      │
+│ Acct │                                                      │
+├──────┴──────────────────────────────────────────────────────┤
+│ Status bar: realtime state · last sync · alerts count       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-The layout must adapt according to viewport size.
+The layout adapts to viewport size (FR-062).
 
 ---
 
 # 6. Application Shell
 
-The shell should provide:
+**Status:** `Planned (FE)`; shown in the wireframe
 
-- primary navigation;
-- current section;
-- portfolio/context selector;
-- realtime connection status;
-- notifications;
-- user/session controls.
+The shell provides:
 
-The shell must remain stable while navigating between major product areas.
+- primary navigation: an icon rail with tooltips (§7);
+- current section: breadcrumb `<portfolio> / <view>` in the top bar;
+- portfolio selector in the top bar (FR-005, §11-§12);
+- realtime connection state, last sync time and active alerts count in the status bar (FR-046, §14);
+- notifications: bell with unread badge and a dropdown with "mark all as read" (FR-051, FR-052);
+- user/session controls: avatar menu with "View profile" and "Log out" (FR-003);
+- demo controls: a visually distinct "DEMO DATA" menu, present only in the demo (§16).
+
+The shell stays mounted while navigating between views.
 
 ---
 
 # 7. Navigation
 
-Primary navigation should expose the core product areas.
+**Status:** `Planned (FE)`
 
-Expected areas include:
+Top-level destinations, in wireframe order:
 
-```text
-Dashboard
-Portfolios
-Transactions
-Analytics
-Activity
-Settings
-```
+| # | Destination | Placement | In wireframe | FR |
+| --- | --- | --- | --- | --- |
+| 0 | Login / Enter Demo | Separate gate before the shell | Yes | FR-001, FR-002 |
+| 1 | Dashboard | Rail | Yes | FR-004, FR-006, FR-007 |
+| 2 | Portfolios (list, detail with Positions) | Rail | Yes | FR-008-FR-012 |
+| 3 | Transactions | Rail | Yes | FR-014, FR-016-FR-018 |
+| 4 | Analytics | Rail | Yes | FR-025-FR-031 |
+| 5 | Markets (tabs Watchlist, All Assets) | Rail | Yes | FR-019-FR-024 |
+| 6 | Decision Center (tabs Replay, Scenario Lab) | Rail | Yes | FR-032-FR-043 |
+| 7 | Activity | Rail | Yes | None (decision pending) |
+| 8 | Settings | Rail, bottom | Yes | FR-087 |
+| 9 | Profile, Log out | Avatar menu, bottom of rail | Yes | FR-003, FR-087 |
+| — | Notifications | Top bar dropdown, not a view | Yes | FR-051, FR-052 |
+| — | Demo Controls | Top bar menu, demo only | Yes | FR-048, FR-071, FR-072 |
 
-The exact labels may evolve with the final product structure.
+Required by FRs but not yet in the wireframe:
 
-Navigation should clearly communicate:
+- Position detail (FR-013), reached from the Positions table;
+- Asset detail (FR-021), reached from Markets;
+- CSV transaction import with job progress (FR-080, FR-081), reached from Transactions;
+- Alert configuration (FR-053), location not decided;
+- Settings fields for language, theme, default portfolio, reduced motion and notification preferences (FR-087); the wireframe Settings shows only profile fields.
 
-- current location;
-- available sections;
-- optional notification counts;
-- restricted sections where applicable.
+Positions and Assets are not top-level destinations: Positions live in the portfolio detail and Assets under Markets. There is no Admin view (ADR-005).
+
+Role-based visibility (ADR-005): every role sees every destination for its own data. `VIEWER` has read permissions only, so mutation controls are hidden or disabled; `TRADER` can mutate; only `ADMIN` (`simulation:control`) sees simulation controls (FR-048). The API enforces the same rules (FR-084).
+
+Navigation communicates the current location, the unread notification count and, for `VIEWER`, read-only state. Labels exist in English and Spanish.
 
 ---
 
 # 8. Navigation Behavior
 
+**Status:** `Planned (FE)`; direct navigation, active state and tooltips shown in the wireframe
+
 Navigation must support:
 
 - direct navigation;
-- active state;
-- keyboard navigation;
-- responsive mobile navigation;
-- preserved relevant context;
-- accessible focus states.
+- active state (sub-views such as portfolio detail keep their parent active);
+- keyboard navigation and accessible focus states (FR-063);
+- responsive mobile navigation (FR-062);
+- preserved portfolio context across views (FR-005).
 
-Navigation transitions should feel immediate.
-
-Long transitions must not delay access to content.
+Navigation transitions must feel immediate and never delay access to content.
 
 ---
 
 # 9. Dashboard UX
 
-The dashboard is the primary monitoring experience.
+**Status:** `Planned (FE)`; primary metrics, allocation and recent activity shown in the wireframe
+
+The dashboard is the primary monitoring experience (FR-004, FR-006, FR-007).
 
 It should prioritize:
 
 1. Portfolio value.
 2. Performance.
-3. Important changes.
+3. Important changes (What Changed, ADR-010 point 1).
 4. Positions/exposure.
 5. Market activity.
 6. Alerts.
 7. Recent activity.
 
-The dashboard should be configurable enough to demonstrate product depth without becoming a customizable-dashboard builder.
+No FR requires dashboard customization.
 
 ---
 
 # 10. Information Hierarchy
+
+**Status:** `Reference`
 
 Dashboard content should use three levels:
 
@@ -225,8 +256,9 @@ Examples:
 
 - allocation;
 - exposure;
-- recent transactions;
-- benchmark comparison.
+- recent transactions.
+
+Benchmark comparison is `Deferred` (ADR-010 point 7).
 
 ### Tertiary
 
@@ -243,97 +275,93 @@ Examples:
 
 # 11. Portfolio Context
 
-The currently selected portfolio is a global context.
+**Status:** `Planned (FE)`; selector shown in the wireframe
 
-Changing portfolio should:
+The selected portfolio is a global context (FR-005). Without a selection, the client uses `defaultPortfolioId` from preferences (FR-087).
 
-- update dependent data;
-- update analytics;
-- update positions;
-- update alerts;
-- update realtime subscriptions where applicable;
-- preserve the user's current navigation when appropriate.
+Changing portfolio:
 
-The UI must make the active portfolio obvious.
+- updates overview, positions, transactions, analytics and alerts;
+- updates realtime subscriptions (FR-086);
+- keeps the current view;
+- discards late responses for the previous portfolio (FR-005).
+
+The active portfolio is always visible in the top bar. An archived portfolio is read-only: mutation controls are disabled (ADR-010 point 5).
 
 ---
 
 # 12. Portfolio Switching
 
-Portfolio switching should be fast and visually clear.
+**Status:** `Planned (FE)`
 
 Expected interaction:
 
 ```text
-Open Selector
+Open selector
       ↓
-Choose Portfolio
+Choose portfolio
       ↓
-Loading / Transition
+Loading state (no values from the previous portfolio)
       ↓
-New Context
-      ↓
-Data Refresh
+New context and data
 ```
 
-The interface should prevent accidental confusion between old and new portfolio data.
+The previous portfolio's values are never shown under the new one (FR-005). If the selected portfolio is archived, the selection moves to another portfolio or to the empty state (FR-011).
 
 ---
 
 # 13. Data Freshness
 
-Realtime-sensitive information should communicate freshness.
+**Status:** `Planned (FE)`; last-sync text shown in the wireframe
 
-Possible states:
+Realtime-sensitive information communicates freshness through the connection state (§14) and a last-sync time.
 
-```text
-LIVE
-SYNCING
-DELAYED
-OFFLINE
-```
+When the connection is `Disconnected` or `Failed`, a stale-data indicator is shown and data is refetched through HTTP periodically until reconnection (FR-046, ADR-007 point 12). After a reconnect the client resynchronizes through HTTP (FR-047).
 
-The status should remain subtle unless user action is required.
+The indicator stays subtle unless user action is required.
 
 ---
 
 # 14. Realtime Status Indicator
 
-A global realtime indicator should communicate connection state.
+**Status:** `Planned (FE)`; shown in the wireframe status bar with a reduced set of states
 
-Possible states:
+A global indicator shows the realtime port state (FR-046):
 
 ```text
-Live
+Connected
 Connecting
 Reconnecting
-Offline
+Disconnected
+Failed
 ```
 
-The indicator should not constantly animate.
+The wireframe shows only Live, Connecting and Offline; the product uses the five states above, with labels in English and Spanish.
 
-Motion should primarily appear when the state changes.
+The indicator does not animate constantly; motion appears only when the state changes (FR-065).
 
 ---
 
 # 15. Realtime Data Updates
 
-Realtime changes must be visually distinguishable without causing excessive movement.
+**Status:** `Planned (FE)`
 
-Examples:
+Realtime changes (FR-044, FR-045, FR-077) must be visually distinguishable without excessive movement:
 
 - value transition;
 - subtle highlight;
 - directional indicator;
 - timestamp update.
 
-The interface must avoid causing the entire dashboard to visually flash on every event.
+The whole dashboard must never flash on every event.
 
 ---
 
 # 16. Market Simulation UX
 
-The demo should expose a controlled simulation experience.
+**Status:** `Planned (FE)`; a Demo Controls menu is shown in the wireframe
+
+Simulation control is restricted to `ADMIN` (`simulation:control`, FR-048, ADR-007 point 10). Modes and scenarios follow `12-demo-mode-spec.md` §37-§40.
 
 Possible controls:
 
@@ -341,43 +369,39 @@ Possible controls:
 Start
 Pause
 Resume
-Reset
 Speed
 Scenario
 ```
 
-The simulation UI should clearly communicate:
+Demo reset (FR-072) and demo failure scenarios beyond FR-071 are `Deferred` (ADR-010 point 6). The wireframe items "Simulate connection issue", "Push test notification" and "Reset demo data" are prototype aids, not decided controls.
 
-- current state;
-- simulation speed;
-- event activity;
-- whether realtime updates are active.
+The simulation UI communicates current state, speed, event activity and whether realtime updates are active, and is visually distinct from product controls.
 
 ---
 
 # 17. Transaction UX
 
-Transaction creation should follow a clear sequence:
+**Status:** `Planned (FE)`; inline creation form shown in the wireframe
+
+Creating a transaction (FR-017, FR-018) is synchronous (ADR-008 point 12):
 
 ```text
 Form
  ↓
 Validation
  ↓
-Review
- ↓
-Confirmation
- ↓
-Processing
+Submit
  ↓
 Success / Error
 ```
 
-The user should understand what will happen before committing the transaction.
+The user sees what will be recorded before submitting. On error, input is preserved (FR-076). Bulk entry uses CSV import as a background job (FR-080, FR-081; §30), not yet in the wireframe.
 
 ---
 
 # 18. Transaction Form
+
+**Status:** `Planned (FE)`
 
 Forms should:
 
@@ -388,24 +412,21 @@ Forms should:
 - avoid unnecessary validation interruptions;
 - show actionable errors.
 
-The form must distinguish:
+The form distinguishes (FR-018, FR-059):
 
 ```text
-Field Error
-Business Rule Error
-Server Error
+Field error
+Business rule error
+Server error
 ```
 
 ---
 
 # 19. Validation UX
 
-Validation should be:
+**Status:** `Planned (FE)`; login field errors shown in the wireframe
 
-- immediate when useful;
-- deferred when immediate validation would be distracting;
-- specific;
-- actionable.
+Validation should be immediate when useful, deferred when it would distract, specific and actionable.
 
 Bad:
 
@@ -419,75 +440,65 @@ Preferred:
 Quantity must be greater than 0.
 ```
 
-Validation messages should be placed close to the affected control.
+Messages are placed next to the affected control and exist in English and Spanish (ADR-010 point 8).
 
 ---
 
 # 20. Destructive Actions
 
-Destructive or irreversible actions require explicit confirmation.
+**Status:** `Planned (FE)`
 
-Examples:
+Destructive or irreversible actions require explicit confirmation (FR-061). Cancel sends no request.
 
-- deleting a portfolio;
-- deleting a transaction where supported;
-- resetting demo state.
+Version 1 cases:
 
-Confirmation dialogs should clearly communicate:
+- archiving a portfolio (FR-011): it is not deleted; history is kept and it becomes read-only; unarchiving is `Deferred`;
+- deleting a scenario (FR-043).
 
-- what will happen;
-- whether the action can be undone;
-- primary action;
-- cancellation.
+No FR covers deleting a transaction. Demo reset is `Deferred` (FR-072).
+
+Dialogs state what will happen, whether it can be undone, the primary action and cancellation.
 
 ---
 
 # 21. Tables
 
-Tables are a core analytical interaction.
+**Status:** `Planned (FE)`
 
-TanStack Table should provide the behavioral foundation for complex tables.
+TanStack Table provides the behavioral foundation for complex tables.
 
-Tables should support where relevant:
+Tables support where relevant:
 
-- sorting;
-- filtering;
-- pagination;
-- column visibility;
-- row selection;
-- responsive adaptation.
+- sorting in the client, only for lists loaded in full; paginated lists keep the API order (FR-055, ADR-010 point 4);
+- filtering (FR-016);
+- pagination (FR-056);
+- responsive adaptation (FR-062).
 
 ---
 
 # 22. Table UX
 
-Tables should provide:
+**Status:** `Planned (FE)`; loading, empty, filtered-empty and error states shown in the wireframe
+
+Tables provide (FR-057, FR-058, FR-059):
 
 ```text
 Loading
 Empty
-Filtered Empty
-Error
+Filtered empty
+Error (with retry)
 Success
 ```
 
-Rows should not jump unpredictably when realtime data changes.
-
-High-frequency updates should be visually restrained.
+Rows must not jump unpredictably when realtime data changes; high-frequency updates are visually restrained.
 
 ---
 
 # 23. Responsive Tables
 
-On smaller screens, tables should not simply shrink until unreadable.
+**Status:** `Planned (FE)`; horizontal scrolling shown in the wireframe
 
-Depending on importance, use:
-
-- horizontal scrolling;
-- column prioritization;
-- stacked row representations;
-- condensed metadata;
-- alternate mobile layouts.
+On smaller screens, tables must not shrink until unreadable (FR-062). Depending on importance, use horizontal scrolling, column prioritization, stacked rows, condensed metadata or alternate mobile layouts.
 
 Critical information must remain accessible.
 
@@ -495,7 +506,9 @@ Critical information must remain accessible.
 
 # 24. Charts
 
-Charts are analytical tools, not decoration.
+**Status:** `Planned (FE)`; portfolio value chart shown in the wireframe
+
+Charts are analytical tools, not decoration (FR-025-FR-029).
 
 Every chart must have:
 
@@ -506,19 +519,22 @@ Every chart must have:
 - loading state;
 - empty state;
 - error state;
-- accessible supporting information where practical.
+- accessible supporting information where practical (FR-064).
 
 ---
 
 # 25. Chart Interaction
 
-Where applicable, users should be able to:
+**Status:** `Planned (FE)`; range buttons shown in the wireframe
 
-- change time range;
+Where applicable, users can:
+
+- change the time range (periods per FR-025, FR-026);
 - hover/inspect values;
-- compare periods;
 - toggle relevant series;
 - inspect important points.
+
+Comparison with a benchmark is `Deferred` (ADR-010 point 7).
 
 Interactions must remain responsive with large datasets.
 
