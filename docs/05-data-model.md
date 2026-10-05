@@ -657,7 +657,7 @@ enforced by the schema; a `PRICE` threshold is a `Float` compared with a
 | Field | Type | Null | Default | Notes |
 | --- | --- | --- | --- | --- |
 | `userId` | `String` | no | — | PK and FK to `User`, `onDelete: Cascade` |
-| `theme` | `String` | no | `"system"` | |
+| `theme` | `String` | no | `"system"` | `light`, `dark` or `system` only, validated at the API boundary `Planned (B0)` (ADR-002 point 10) |
 | `language` | `String` | no | `"en"` | `en` or `es` only, validated at the API boundary `Planned (B0)` (ADR-010 point 8) |
 | `defaultPortfolioId` | `String` | yes | — | no foreign key; ownership checked by the service |
 | `reducedMotion` | `Boolean` | no | `false` | |

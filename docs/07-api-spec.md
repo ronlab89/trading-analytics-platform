@@ -135,12 +135,12 @@ Codes are stable within `v1`; adding a code is an additive change.
 | --- | --- | --- |
 | `VALIDATION_ERROR` | 400 (413 for an oversized body) | Request validation, malformed JSON, `Invalid*Error` and `Insufficient*Error` domain errors |
 | `UNAUTHORIZED` | 401 | Missing or invalid Bearer token, invalid credentials |
-| `FORBIDDEN` | 403 | Declared, not raised |
+| `FORBIDDEN` | 403 | Declared, not raised; role checks `Planned (B2)` (ADR-002 point 10) |
 | `NOT_FOUND` | 404 | Unknown route; missing resource or another user's resource (never 403, ADR-005 point 12) |
 | `CONFLICT` | 409 | Conflicting state changes |
 | `RATE_LIMITED` | 429 | Rate limiters (§9) |
-| `TIMEOUT` | — | Declared, not raised |
-| `DEPENDENCY_ERROR` | — | Declared, not raised |
+| `TIMEOUT` | — | Declared, not raised; removed from `AppErrorCode` `Planned (B0)` (ADR-002 point 10) |
+| `DEPENDENCY_ERROR` | 503 `Planned (B0)` | Declared, not raised; database unreachable (ADR-002 point 10) |
 | `INTERNAL_ERROR` | 500 | Unexpected errors |
 
 `FORBIDDEN` for a missing permission on an own resource is `Planned (B2)`
@@ -173,7 +173,9 @@ per issue. `field` is the dot-joined path:
 
 Invalid query parameters use the message
 `The request contains invalid query parameters.`. A per-detail `code` exists
-in the type but is not emitted.
+in the type but is not emitted. `Planned (B0)` (ADR-002 point 10): each entry
+is `{ field, code, message }`, where `code` is the Zod issue code (for
+example `too_small`) so the client can localize it (ADR-010 point 8).
 
 ---
 
@@ -680,7 +682,9 @@ Retry returns the job to `QUEUED` and increments `attempt`. It is allowed for
 `TIMED_OUT`, `CANCELLED`, and `FAILED` with reason `INTERRUPTED`,
 `APPLY_ERROR` or `APPLY_REJECTED`; `VALIDATION_FAILED` is not retryable (the
 user fixes the file and creates a new import). Cancel is allowed while
-`QUEUED` or validating, never during the apply stage.
+`QUEUED` or validating, never during the apply stage. Retry or cancel in a
+state that does not allow it returns 409 `CONFLICT` and changes nothing
+(ADR-008 point 6).
 
 ---
 
@@ -832,19 +836,23 @@ GET /api/v1/portfolios/:portfolioId/analytics/performance
 ```
 
 Query: `period` (`1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`) or a
-custom `from` / `to` (UTC dates, inclusive). Response fields decided in
-`16`:
+custom `from` / `to` (UTC dates, inclusive). They are mutually exclusive:
+sending both is 400 `VALIDATION_ERROR`; the default is `1M` (ADR-002 point
+10). Response fields (ADR-002 point 10; semantics in `16`):
 
 ```text
 asOf            effective end date (to clamped to the last closed day)
 effectiveFrom   first day on which every held asset has a price (§5 clamp)
+status          OK | INSUFFICIENT_DATA | UNKNOWN
 twrPercent      number, percentage points, unrounded; null when TWR has no value
-P/L             Money over the same days as TWR
-series          daily value series (FR-026, 16 §3)
+pnl             Money over the same days as TWR; null when unavailable
+series          [{ date, value, returnPercent }]; date is a UTC calendar date, value is Money (FR-026, 16 §3)
 ```
 
+Unavailable values are `null`, never `0` (ADR-002 point 10).
+
 Errors: 400 `VALIDATION_ERROR` when `from > to`. A valid range with no
-closed day (`asOf < from`) returns 200 with `InsufficientData` and `asOf`,
+closed day (`asOf < from`) returns 200 with `status: "INSUFFICIENT_DATA"` and `asOf`,
 not 400 (`16` §8). Benchmark comparison is `Deferred` (ADR-010 point 7).
 Money-weighted return is not reported.
 
@@ -896,13 +904,19 @@ Portfolio-level volatility and drawdown on the daily series over the
 requested period (same query, `asOf` and `effectiveFrom` as performance):
 
 ```text
-volatilityPercent   annualized (√365), percentage points; UNKNOWN when fewer than 20 returns
-maxDrawdown         negative percentage, with peak and trough dates; UNKNOWN when fewer than 2 index points
-currentDrawdown     drawdown on the last day of the period
+status                  OK | INSUFFICIENT_DATA | UNKNOWN
+volatilityPercent       annualized (√365), percentage points; null when fewer than 20 returns
+maxDrawdownPercent      negative percentage; null when fewer than 2 index points
+currentDrawdownPercent  drawdown on the last day of the period
+peakDate, troughDate    UTC dates bounding maxDrawdownPercent
 ```
 
-Errors: as performance. A composite `riskLevel` and a `concentration`
-score are not decided (concentration is a Pulse dimension, §21).
+Field names and `status` follow ADR-002 point 10; unavailable values are
+`null`, never `0`.
+
+Errors: as performance. The risk endpoint returns no composite
+`riskLevel` or `concentration` score: classification belongs to the Pulse
+(ADR-004 point 11, §21), so a second scale is not added.
 
 ---
 
@@ -1212,7 +1226,8 @@ DELETE /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
 ```
 
 Returns 204 for any status. Errors: 404 `NOT_FOUND` (including a repeated
-delete).
+delete). `Planned (B0)`: 409 `CONFLICT` when the portfolio is archived
+(ADR-010 point 5).
 
 ---
 
@@ -1418,9 +1433,9 @@ point 3).
 
 There is no `POST /api/v1/notifications`: notifications come from system
 events only, and nothing creates them yet. `Planned (B5)` (ADR-010 point
-9): sources are triggered alerts (`WARNING`) and CSV import jobs reaching
-`COMPLETED` (`SUCCESS`) or `FAILED` (`ERROR`); connection changes create
-none. Creation emits `NOTIFICATION_CREATED` (§31).
+9, ADR-008 point 6): sources are triggered alerts (`WARNING`) and CSV import
+jobs reaching `COMPLETED` (`SUCCESS`), `FAILED` or `TIMED_OUT` (`ERROR`);
+`CANCELLED` jobs and connection changes create none. Creation emits `NOTIFICATION_CREATED` (§31).
 
 ## List Notifications
 
@@ -1492,7 +1507,7 @@ client then applies the application defaults.
 
 ## Update Preferences
 
-**Status:** `Implemented` (FR-087); `en`/`es` validation `Planned (B0)`
+**Status:** `Implemented` (FR-087); `en`/`es` and `theme` validation `Planned (B0)`
 
 ```text
 PATCH /api/v1/preferences
@@ -1518,6 +1533,8 @@ Errors: 400 `VALIDATION_ERROR` (no field, empty `theme` or `language`); 404
 `NOT_FOUND` (`defaultPortfolioId` missing or another user's). Today
 `theme` and `language` accept any non-empty string. `Planned (B0)` (ADR-010
 point 8): `language` other than `en` or `es` is 400 and changes nothing.
+`Planned (B0)` (ADR-002 point 10): `theme` other than `light`, `dark` or
+`system` is 400 and changes nothing.
 
 ---
 
@@ -1829,9 +1846,11 @@ routes are not rate-limited. Realtime inbound limits are `Planned (B5)`
 
 # 48. API Timeout Behavior
 
-**Status:** Job timeouts `Planned (B4)` (ADR-008 point 7); HTTP request timeouts not decided
+**Status:** Job timeouts `Planned (B4)` (ADR-008 point 7); no HTTP request timeout in v1 (ADR-002 point 10)
 
-The API sets no request timeout today. CSV import jobs move to `TIMED_OUT`
+The API sets no request timeout, and none is planned for v1: it runs locally
+for one user, and the 15 s client timeout (NFR-017) covers the user
+experience. CSV import jobs move to `TIMED_OUT`
 when they exceed their type's timeout while `QUEUED` or validating; the
 apply stage is exempt.
 

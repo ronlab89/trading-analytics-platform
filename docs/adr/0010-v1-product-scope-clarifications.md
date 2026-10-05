@@ -47,8 +47,9 @@ requirements that no ADR or spec defines precisely enough to build or test:
    FR-014. Server-side sort parameters are `Deferred`.
 5. **Archived portfolios (FR-011).** An archived portfolio is read-only. Any
    mutation scoped to it is rejected with 409 `CONFLICT` and nothing is
-   written: creating or changing transactions, decisions, scenarios, alerts
-   and CSV import jobs. Reads and the archive call itself are unchanged.
+   written: creating, changing or deleting transactions, decisions,
+   scenarios, alerts and CSV import jobs. Reads and the archive call itself
+   are unchanged.
    Unarchiving is `Deferred`.
 6. **Demo specifics.** Demo data layers, reset, simulated latency and
    scripted failures are decided in a frontend-stage ADR before the demo is
@@ -81,11 +82,11 @@ requirements that no ADR or spec defines precisely enough to build or test:
      lists every alert. Asset detail also offers "Create alert".
    - Configurable table columns and row selection are `Deferred`.
    - Notifications are created by triggered alerts and by a CSV import job
-     reaching `COMPLETED` or `FAILED` (FR-081). Connection changes create no
+     reaching `COMPLETED`, `FAILED` or `TIMED_OUT` (FR-081, ADR-008 point 6). Connection changes create no
      notification; they appear only in the status bar (FR-046).
    - There is no separate alert severity. Notifications use
      `NotificationSeverity`: a triggered alert is `WARNING`, a completed
-     import is `SUCCESS`, a failed import is `ERROR`.
+     import is `SUCCESS`, a failed or timed-out import is `ERROR`.
    - The breakpoints are 900 px and 560 px (max-width), and the minimum
      supported viewport width is 360 px.
    - Displayed decimals, applied at display time only (ADR-002 keeps exact

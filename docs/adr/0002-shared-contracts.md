@@ -69,6 +69,30 @@ format shared by the API, the web app and the demo.
    `decision-replay.ts` reads `price` and `quantity` as numbers, and
    `scenario-impact.ts` computes `1 + percentChange / 100` in floating point.
    This rule replaces both in B0.
+10. **API contract details** (added 2026-10-05, from the `07-api-spec.md`
+    reconciliation):
+    - **Error codes.** `DEPENDENCY_ERROR` returns 503 when the database is
+      unreachable. `FORBIDDEN` returns 403 and is used by role checks from
+      B2. `TIMEOUT` is removed from `AppErrorCode` in B0.
+    - **Validation details.** Each entry is `{ field, code, message }`.
+      `code` is the Zod issue code (for example `too_small`) so the client
+      can localize it (ADR-010 point 8). Implemented in B0.
+    - **Server request timeout.** None in version 1. The API runs locally
+      for one user, and the 15 s client timeout (NFR-017) covers the user
+      experience.
+    - **Performance response.** `twrPercent`, `pnl` (Money) and
+      `series: [{ date, value, returnPercent }]`, where `value` is Money and
+      `date` is a UTC calendar date.
+    - **Data availability.** Each analytics result carries `status`:
+      `OK`, `INSUFFICIENT_DATA` or `UNKNOWN`. Unavailable values are `null`,
+      never `0`.
+    - **Risk response.** `volatilityPercent`, `maxDrawdownPercent`,
+      `currentDrawdownPercent`, `peakDate` and `troughDate`.
+    - **Period parameters.** `period` and `from`/`to` are mutually
+      exclusive; sending both is 400 `VALIDATION_ERROR`. The default period
+      is `1M`.
+    - **Theme.** `UserPreference.theme` accepts `light`, `dark` or
+      `system` (default `system`); other values are 400. Implemented in B0.
 
 ## Consequences
 

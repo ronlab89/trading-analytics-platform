@@ -63,6 +63,11 @@ retried `POST` must not create a duplicate transaction.
    corrects the file and creates a new import. This is the complete set of
    failure reasons. Cancellation is allowed while
    `QUEUED` or during the validation stage, never during the apply stage.
+   (Amended 2026-10-05.) A retry or cancel request for a job in a state
+   that does not allow it returns 409 `CONFLICT` and changes nothing. A job
+   reaching `COMPLETED` creates a `SUCCESS` notification for its owner, and
+   one reaching `FAILED` or `TIMED_OUT` creates an `ERROR` notification.
+   `CANCELLED` creates none, because the user caused it (ADR-010 point 9).
 7. **Timeout.** Each job type has a timeout that applies while the job is
    `QUEUED` or validating. Exceeding it moves the job to `TIMED_OUT`
    (NFR-017). The apply stage is exempt, as it is from cancellation: it is a

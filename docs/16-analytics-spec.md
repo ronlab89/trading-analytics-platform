@@ -67,7 +67,10 @@ not resolved here.
   zeroed or empty results (FR-058). Missing data for something that is held
   is `InsufficientData` (`InsufficientDataError` in the domain) or
   `UNKNOWN`, never a fabricated value (`Implemented` convention,
-  `drawdown.ts`, `portfolio-daily-change.ts`).
+  `drawdown.ts`, `portfolio-daily-change.ts`). In API responses each
+  analytics result carries `status` (`OK`, `INSUFFICIENT_DATA` or
+  `UNKNOWN`) and unavailable values are `null`, never `0` (ADR-002 point 10,
+  `Planned (B1)`).
 - **Day boundaries.** Days are UTC calendar dates everywhere, including the
   demo and the simulator clock (ADR-004 Deferred detail, `Planned (B1)`).
 - **Counted transactions.** Only transactions with status `COMPLETED` count
@@ -353,7 +356,9 @@ closes. Test: with the last closed day `2026-03-31`, a request with
 2026-04-01 changes neither `V`, `B` nor `twrPercent`.
 
 **Custom range validation** (`Planned (B1)`, decided 2026-10-05; schema in
-`07-api-spec.md` §20, T4.1):
+`07-api-spec.md` §20, T4.1). The performance response fields are `status`,
+`twrPercent`, `pnl` (Money) and `series: [{ date, value, returnPercent }]`
+(ADR-002 point 10):
 
 | Input | Result |
 | --- | --- |
@@ -361,11 +366,12 @@ closes. Test: with the last closed day `2026-03-31`, a request with
 | `to` in the future or after the last closed day | Clamped, `asOf` reported (above). |
 | `from` before the first available data | Clamped to `effectiveFrom` (§5). |
 | `from = to` | Valid single-day period: `TWR` from `r(from)` alone, P/L over one day. |
+| `period` together with `from`/`to` | 400 validation error; with neither, the period is `1M` (ADR-002 point 10). |
 
 `Planned (B1)` (decided 2026-10-05): a valid `from ≤ to` where `from` is
 after the last closed day leaves no closed day in the range once `to` is
-clamped (`asOf < from`). The response is 200 with `InsufficientData` and
-`asOf`, not 400: picking today is a normal request, not a client error.
+clamped (`asOf < from`). The response is 200 with `InsufficientData`
+(`status: "INSUFFICIENT_DATA"`) and `asOf`, not 400: picking today is a normal request, not a client error.
 Test: last closed day `2026-03-09`, `from = to = 2026-03-10` gives 200,
 `InsufficientData`, `asOf = 2026-03-09`, and no `twrPercent` or P/L value.
 
@@ -414,6 +420,10 @@ Test (B1): 20 alternating returns of `+0.01` and `−0.01` give
 **Status:** asset-level `Implemented` (`drawdown.ts`); portfolio-level `Planned (B1)`.  
 **Decisions:** ADR-004 point 9.  
 **Requirements:** FR-028.
+
+The risk response (`07-api-spec.md` §20) reports `status`,
+`volatilityPercent` (§9), `maxDrawdownPercent`, `currentDrawdownPercent`,
+`peakDate` and `troughDate`; an `UNKNOWN` value is `null` (ADR-002 point 10).
 
 ```text
 I(start) = 1

@@ -175,7 +175,14 @@ delegated writers in slices of 300-500 lines, one commit per slice.
 
 Product decisions that no ADR covers are asked to the user in batches.
 
-- [ ] T4.1 `07-api-spec.md` full reconciliation with per-endpoint status
+- [x] T4.1 `07-api-spec.md` full reconciliation with per-endpoint status, done in 5 delegated slices.
+  - Every endpoint is checked against the 62 real routes, and code-vs-ADR differences are recorded per block.
+  - The user approved 11 API contract decisions (2026-10-05), recorded in three places:
+    - ADR-002 point 10: error codes, validation detail codes, no server timeout, performance and risk response shapes, the `status` field, period parameters, theme values.
+    - ADR-008 point 6: retry and cancel 409, and the import notifications including `TIMED_OUT`.
+    - ADR-010 point 5: deleting on an archived portfolio returns 409.
+  - The decisions are propagated to `07`, `16`, `02`, `05` and `11`.
+  - Simulator control routes are left to `08`.
 - [ ] T4.2 `08`, `09`, `10`
 
 ### Phase 5 — Operations and living docs
