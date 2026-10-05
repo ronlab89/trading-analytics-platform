@@ -124,6 +124,18 @@ plus `pnpm docs:check`.
 - 2026-10-04: systematic failure-mode audit of all ADRs (6-category checklist): 2 decision findings fixed (X1 simulator closes daily candles; X2 chronological transaction validation), 26 implementation details recorded in each ADR's "Deferred detail" section.
 - 2026-10-04: Phase 1 (governance): `scripts/check-docs.mjs` + `pnpm docs:check`; RED 220 problems (190 fence attributes, 17 broken or placeholder references, 13 non-conforming titles), GREEN 0 after normalizing docs 00-15; `docs/README.md`, `docs/adr/README.md`, `docs/adr/template.md` added. `pnpm lint` fails on the new script until `eslint.config.js` covers `scripts/*.mjs`.
 
+- 2026-10-05: Phase 2 on `docs/sdd-foundations`:
+  - Commits: T2.2 `beed0ff`, T2.3 `e639a7e`, T2.5 `77dad0c`, T2.4 `ce68543`.
+  - Assessments against `develop`: the first three were passive. The fourth was medium, because `check-docs.mjs` is an executable change and the slice budget was reached.
+  - That medium slice got an RDD review (base `develop`, reliability lens), approved and acknowledged.
+  - The review left two advisory findings: the edge case of SELL fees larger than the proceeds in `16` §6, kept for the B1 open-detail decision, and a stale next step in this document, now fixed.
+
 ## Next step
 
-Phase 2 in progress on `docs/sdd-foundations`. T2.2 and T2.3 done. T2.5 done. Pending user decision: the status-legend gap. Next: T2.4, T2.1. Reviews and assessments always use `develop` as base. Apply the failure-mode checklist while writing.
+Phase 2 in progress on `docs/sdd-foundations`. T2.2, T2.3, T2.4 and T2.5 done. Pending user decisions:
+
+1. The status-legend gap.
+2. ADR-004 annualization: √252 or √365.
+3. The B1 open details in `16` §17, including SELL fees larger than the proceeds.
+
+Next: T2.1. Reviews and assessments always use `develop` as base. Apply the failure-mode checklist while writing.
