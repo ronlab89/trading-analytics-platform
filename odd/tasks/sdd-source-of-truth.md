@@ -204,4 +204,4 @@ needs a product decision is asked to the user, not invented.
 
 ## Next step
 
-Phase 2 complete on `docs/sdd-foundations` (T2.1-T2.8). The full-PR review against `develop` (medium risk, 11 files) was offered and declined by the user for this candidate on 2026-10-05; the earlier slice up to `ce68543` was reviewed and approved. Next: push and open the PR into `develop` (user decision). After that comes Phase 3 (product). PR reviews use `develop` as base; per-commit assessments start from the last reviewed commit. Apply the failure-mode checklist while writing.
+Phase 2 merged in PR #11. Phase 3 is complete on `docs/sdd-product` (T3.1-T3.3, 14 commits, all assessed passive against `develop`, so no review was due). Next: the user pushes and opens the PR into `develop`; then Phase 4 (contracts: `07`, `08`, `09`, `10`). Delegated work is split into slices of 300-500 lines. PR reviews use `develop` as base.
