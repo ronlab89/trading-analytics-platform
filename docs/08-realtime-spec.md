@@ -498,418 +498,326 @@ Open decisions for B5 (none changes ADR-007):
 
 # 23. Event Validation
 
-Every incoming event must be validated before entering application state.
+**Status:** `Planned (FE)` (ADR-007 point 4, ADR-002)
 
-Validation includes:
+The client parses every incoming event with the `@trading/contracts` Zod
+schemas before it reaches application state:
 
-- event type;
-- envelope structure;
-- payload structure;
-- required identifiers;
-- timestamp;
-- sequence where applicable.
+- envelope: all six fields of §14 present and well typed;
+- `type` is in the version 1 catalog (§15) and matches its `channel`;
+- `payload` matches the schema for `type`, including decimal-string money;
+- `channel` is one the client is subscribed to.
 
-Invalid events must be rejected safely.
+An event that fails validation is dropped and logged; it never updates
+state and does not advance `lastProcessedSequence`.
 
 ---
 
 # 24. Event Ordering
 
-For ordered streams, the client maintains:
+**Status:** server `Planned (B5)`; client `Planned (FE)` (ADR-007 point 5, NFR-018)
 
-```text
-lastProcessedSequence
-```
-
-Incoming event:
-
-```text
-incomingSequence
-```
-
-Processing rule:
+`sequence` is monotonic per channel. The client keeps one
+`lastProcessedSequence` per channel and applies an event only when:
 
 ```text
 incomingSequence > lastProcessedSequence
 ```
 
-If:
-
-```text
-incomingSequence <= lastProcessedSequence
-```
-
-the event is considered stale and must not overwrite current state.
+An event with `incomingSequence <= lastProcessedSequence` is a duplicate or
+stale event and is discarded (NFR-018).
 
 ---
 
 # 25. Event Gaps
 
-If the client receives:
+**Status:** `Planned (FE)` (ADR-007 point 5)
+
+A gap exists when `incomingSequence > lastProcessedSequence + 1`:
 
 ```text
 sequence 101
 sequence 102
-sequence 105
+sequence 105   -> 103 and 104 missing
 ```
 
-then events `103` and `104` may be missing.
-
-The client should detect the gap.
-
-Depending on the stream:
-
-```text
-Event Gap
-   ↓
-Request State Resynchronization
-```
-
-The exact recovery strategy may use HTTP state refresh.
+On a gap the client resynchronizes that channel through HTTP (§26). There
+is no server-side replay buffer in version 1, so missed events are never
+replayed (ADR-007 point 5).
 
 ---
 
 # 26. State Resynchronization
 
-When realtime state may be inconsistent:
+**Status:** `Planned (FE)` (ADR-007 point 5 and Deferred detail, NFR-018)
 
 ```text
-Realtime Event
+Gap, reconnect or epoch change
       ↓
-Consistency Check
+HTTP refetch of the affected resources
       ↓
-Gap / Invalid State
+Authoritative state
       ↓
-HTTP Refetch
-      ↓
-Authoritative State
+lastProcessedSequence reset from the snapshot
 ```
 
-HTTP APIs remain the authoritative recovery mechanism.
+- Triggers: a `sequence` gap (§25), every reconnect (§27), and a change of
+  the per-process epoch (§14).
+- HTTP is the authoritative source; realtime events only update or
+  invalidate it.
+- Subscribe first and buffer, then fetch a snapshot carrying its sequence,
+  so events between fetch and subscription are not lost (ADR-007 Deferred
+  detail, B5).
 
 ---
 
 # 27. Reconnection Strategy
 
-Reconnection should use exponential backoff.
+**Status:** `Planned (FE)` (NFR-018)
 
-Conceptually:
-
-```text
-1s
-2s
-4s
-8s
-16s
-...
-```
-
-A maximum retry delay must be enforced.
-
-Random jitter should be introduced to prevent synchronized reconnect storms.
+- Exponential backoff starting at 1 s and doubling each attempt
+  (1 s, 2 s, 4 s, 8 s, 16 s), capped at 30 s.
+- Random jitter on every delay to avoid synchronized reconnect storms.
+- After reconnecting, the client re-authenticates in the first message
+  (§9), restores each subscription exactly once and resynchronizes (§26).
 
 ---
 
 # 28. Reconnection UX
 
-The application should communicate connection state without unnecessarily interrupting the user.
+**Status:** `Planned (FE)` (ADR-007 point 12)
 
-Examples:
+| Connection state (§6) | UI |
+|---|---|
+| `CONNECTED` | No indicator. |
+| `CONNECTING`, `RECONNECTING`, `DISCONNECTED` | Subtle, non-blocking stale-data indicator. |
+| `FAILED` | Persistent stale-data warning with a manual retry action. |
 
-```text
-CONNECTED
-```
-
-Normal state.
-
-```text
-RECONNECTING
-```
-
-Subtle non-blocking indicator.
-
-```text
-FAILED
-```
-
-Persistent warning with manual retry.
+Connection changes create no notification (§21).
 
 ---
 
 # 29. Graceful Degradation
 
-If realtime becomes unavailable:
+**Status:** `Planned (FE)` (ADR-007 point 12)
 
-The application should continue functioning wherever possible.
-
-For example:
-
-```text
-Realtime unavailable
-       ↓
-Connection warning
-       ↓
-Fallback to HTTP refresh
-```
-
-Realtime failure must not make the entire platform unusable.
+While the socket is down the application stays usable: HTTP reads and
+writes keep working, the UI shows the stale-data indicator (§28), and data
+is refreshed through HTTP (§30). Realtime failure never blocks a screen.
 
 ---
 
 # 30. Polling Fallback
 
-Polling may be used as a fallback for data where realtime is unavailable.
-
-It must not run simultaneously with an active realtime subscription unless explicitly required.
-
-Example:
+**Status:** `Planned (FE)` (ADR-007 point 12, NFR-017)
 
 ```text
-CONNECTED
-    ↓
-Realtime updates
-
-DISCONNECTED
-    ↓
-Controlled polling
-
-RECONNECTED
-    ↓
-Stop polling
+CONNECTED              -> realtime updates, no polling
+socket down            -> periodic HTTP refetch of visible data
+reconnected            -> stop polling, resynchronize once (§26)
 ```
+
+- Polling never runs alongside an active subscription for the same data.
+- Polling requests use the 15 s client timeout (NFR-017).
+- The polling interval is not decided (decision 3, §41).
 
 ---
 
 # 31. Selective Updates
 
-A market price event must not trigger a complete application render.
+**Status:** `Planned (FE)` (ADR-007 point 6, NFR-006)
 
-Example:
+A market price event updates only what depends on that asset:
 
 ```text
-Price Event
+MARKET_PRICE_UPDATED
     ↓
-Asset State
+Asset price
     ↓
-Affected Position
+Positions holding the asset
     ↓
-Affected Portfolio
+Their portfolio metrics (recomputed on the client)
 ```
 
-Unrelated portfolios and screens remain untouched.
+Unrelated portfolios and screens do not re-render. A burst of 100 events in
+1 s keeps INP ≤ 200 ms and is applied in at most one render per animation
+frame (NFR-006).
 
 ---
 
 # 32. State Update Strategy
 
-Realtime updates should prefer targeted state updates over global invalidation.
+**Status:** `Planned (FE)` (ADR-007 point 6)
 
-Bad:
+| Event | Client action |
+|---|---|
+| `MARKET_PRICE_UPDATED` | Write the price into cached state; recompute dependent values locally. |
+| `PORTFOLIO_UPDATED` | Invalidate and refetch the portfolio through HTTP (§18). |
+| `JOB_PROGRESS_UPDATED` | Update the job progress in cached state. |
+| `JOB_COMPLETED`, `JOB_FAILED` | Refetch the job through HTTP. |
+| `NOTIFICATION_CREATED` | Fetch the notification (§21). |
+| `ALERT_TRIGGERED` | Update the alert state; the paired `NOTIFICATION_CREATED` drives the notification fetch (§22). |
 
-```text
-MARKET_PRICE_UPDATED
-      ↓
-Invalidate Everything
-```
-
-Preferred:
-
-```text
-MARKET_PRICE_UPDATED
-      ↓
-Update Asset
-      ↓
-Update Affected Position
-      ↓
-Update Relevant Portfolio Metrics
-```
-
-Full refetch should be used when local reconciliation becomes more complex than retrieving authoritative state.
+Events that carry authoritative data update state directly; events that
+only signal a change trigger a refetch. Global invalidation on a price tick
+is not allowed.
 
 ---
 
 # 33. TanStack Query Integration
 
-Server state updated through realtime events should integrate with TanStack Query.
+**Status:** `Planned (FE)`; library choice `Deferred` (`04-tech-stack.md`)
 
-Possible strategies:
+Library-agnostic server-state cache rules:
 
-```text
-Event
- ↓
-queryClient.setQueryData()
-```
+- Server data lives in one server-state cache keyed by resource.
+- An event with authoritative data writes into the cached entry (direct
+  update); an event that only signals a change marks the entry stale and
+  refetches it (invalidation), per §32.
+- Resynchronization (§26) refetches the affected entries.
 
-or:
-
-```text
-Event
- ↓
-queryClient.invalidateQueries()
-```
-
-The strategy should depend on whether the event contains enough authoritative data.
+No ADR selects TanStack Query; the library is chosen in a frontend-stage
+decision.
 
 ---
 
 # 34. Zustand Integration
 
-Zustand should primarily handle realtime-related client state such as:
+**Status:** `Planned (FE)`; library choice `Deferred` (`04-tech-stack.md`)
 
-```text
-connectionState
-activeSubscriptions
-simulationState
-replayState
-```
+Library-agnostic client-state rules:
 
-Domain server data should not automatically be duplicated in Zustand.
+- Realtime client state (connection state, active subscriptions,
+  `lastProcessedSequence` per channel, current epoch) lives in a client
+  state store separate from the server-state cache.
+- Server data is never duplicated into that store.
+
+No ADR selects Zustand; the library is chosen in a frontend-stage decision.
 
 ---
 
 # 35. Market Simulation
 
-Demo Mode requires a realtime simulation engine.
+**Status:** server simulator `Planned (B5)`; demo adapter `Planned (FE)` (ADR-007 points 7, 8 and 13)
 
-The simulator generates controlled market events without external APIs.
-
-Architecture:
+There is no external market data provider. One engine, the pure package
+`@trading/market-sim`, produces all prices in both modes:
 
 ```text
-Simulation Engine
-       ↓
-Price Generator
-       ↓
-Event Scheduler
-       ↓
-Mock Realtime Transport
-       ↓
-Same Event Pipeline
-       ↓
-Application
+@trading/market-sim (seeded PRNG, injected clock)
+   ├─ real mode: API process -> MarketPrice + MarketEvent -> WebSocket
+   └─ demo: browser -> in-process realtime adapter (same client port)
 ```
+
+- The engine depends only on `@trading/domain`.
+- Real mode: each tick updates `MarketPrice` and appends a `MarketEvent`
+  (bounded retention defined in B5).
+- At every UTC day rollover the simulator closes a daily `HistoricalPrice`
+  candle per asset and rolls `MarketPrice.previousPrice` to that close.
+- On startup it deterministically generates the candles for the days the
+  server was offline, so the daily series has no gaps.
 
 ---
 
 # 36. Price Simulation
 
-The simulator should produce realistic-looking but deterministic-enough price movements.
+**Status:** `Planned (B5)` (ADR-007 points 7 and 14, ADR-002)
 
-It must avoid purely random values that cause visually meaningless behavior.
-
-The simulation may incorporate:
-
-- trend;
-- volatility;
-- momentum;
-- noise;
-- event spikes.
-
-The simulator is not intended to model real markets accurately.
-
-Its purpose is to reproduce application behavior.
+- Prices come from the seeded generator, never from an unseeded random
+  source.
+- Prices are emitted as decimal strings (ADR-002).
+- The simulator does not model real markets; it reproduces application
+  behavior (alerts, valuations, charts).
+- The price model (trend, volatility, noise) is a B5 implementation detail.
 
 ---
 
 # 37. Simulation Profiles
 
-The simulator should support configurable behavior.
+**Status:** `Planned (B5)` (ADR-007 point 7)
 
-Potential profiles:
+The engine implements the modes and scenarios of `12-demo-mode-spec.md`
+§37 and §39:
 
 ```text
-CALM
-NORMAL
-VOLATILE
-BREAKOUT
-SELL_OFF
-RECOVERY
+Modes:     Paused, Normal, Volatile, Bullish, Bearish
+Scenarios: Stable Market, Bullish Session, Volatile Session,
+           Sharp Drawdown, Recovery
 ```
 
-Profiles allow different product states to be demonstrated.
+This replaces the earlier profile list (`CALM`, `BREAKOUT`, `SELL_OFF` and
+others). Wire identifiers are not decided (decision 4, §41).
 
 ---
 
 # 38. Simulation Timing
 
-The simulator should allow configurable update frequency.
+**Status:** `Planned (B5)` (ADR-007 points 7 and 8)
 
-Example:
-
-```text
-FAST
-NORMAL
-SLOW
-PAUSED
-```
-
-The default demo should prioritize visual clarity and browser performance over maximum event frequency.
+- Time comes from an injected clock, so tests and the demo can accelerate
+  or freeze it (`12-demo-mode-spec.md` §40).
+- Daily candles close at the UTC day rollover of that clock.
+- The tick interval is not decided (decision 3, §41); any value must
+  respect NFR-006.
 
 ---
 
 # 39. Simulation Determinism
 
-The simulation engine should support a seed.
-
-Conceptually:
+**Status:** `Planned (B5)`; demo `Planned (FE)` (ADR-007 point 7, NFR-045)
 
 ```text
-simulationSeed
-+
-simulationProfile
-+
-initialState
+seed + mode or scenario + initial state + clock -> same event sequence
 ```
 
-produce a reproducible event sequence.
-
-This is important for:
-
-- testing;
-- bug reproduction;
-- interviews;
-- deterministic demos.
+The same seed produces the same initial state and the same simulated
+series (NFR-045). After a server restart the engine resumes from persisted
+`MarketPrice` and `MAX(sequence)` per asset, not from the seed state
+(ADR-007 Deferred detail, B5).
 
 ---
 
 # 40. Simulation Lifecycle
 
+**Status:** `Planned (B5)` (ADR-007 points 8 and 10)
+
 ```text
-STOPPED
-   ↓
-STARTING
-   ↓
-RUNNING
-   ↓
-PAUSED
-   ↓
-RUNNING
-   ↓
-STOPPING
-   ↓
-STOPPED
+RUNNING <-> PAUSED
 ```
+
+- The server simulator runs with the API process; on startup it backfills
+  missing daily candles (§35).
+- `ADMIN` can pause it, start it again and change its mode (§41).
+- Other states (`STOPPED`, `STARTING`, `STOPPING`) are not decided
+  (decision 2, §41).
 
 ---
 
 # 41. Demo Simulation Controls
 
-The demo may expose a dedicated simulation panel.
+**Status:** real-mode control `Planned (B5)` (ADR-007 point 10); demo controls `Deferred` (ADR-010 point 6)
 
-Controls may include:
+Real mode: each operation requires the `simulation:control` permission
+(`ADMIN` only, ADR-005):
 
-```text
-Start
-Pause
-Resume
-Reset
-Speed
-Market Profile
-Simulate Disconnect
-Simulate Error
-```
+| Operation | Source |
+|---|---|
+| Start the simulation | ADR-007 point 10 |
+| Pause the simulation | ADR-007 point 10 |
+| Change the simulation mode | ADR-007 point 10 |
 
-These controls should be visually separated from normal product functionality.
+Demo: the simulation panel, reset, speed, simulated disconnect and
+simulated errors are decided in the frontend-stage demo ADR (ADR-010
+point 6).
+
+Decisions needed (none changes ADR-007):
+
+1. HTTP paths, methods and payloads of the three control operations.
+   `07-api-spec.md` §54 points here, but ADR-007 gives no paths.
+2. Whether stop, seed reset and a `STOPPED` state exist in real mode.
+3. Simulator tick interval (§38) and HTTP polling interval while the
+   socket is down (§30).
+4. Wire identifiers for modes and scenarios (§37).
 
 ---
 

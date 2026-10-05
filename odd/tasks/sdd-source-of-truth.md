@@ -184,6 +184,20 @@ Product decisions that no ADR covers are asked to the user in batches.
   - The decisions are propagated to `07`, `16`, `02`, `05` and `11`.
   - Simulator control routes are left to `08`.
 - [ ] T4.2 `08`, `09`, `10`
+  - [x] `08` slice A (§1-22, `5f0d43e`) and slice B (§23-41) done.
+  - [ ] `08` slice C (§42-62).
+  - [ ] User decision on the pending `08` items, one batch:
+    - the `ALERT_TRIGGERED` channel;
+    - whether `CANCELLED` and `TIMED_OUT` jobs emit events;
+    - protocol message names, close codes and errors;
+    - numeric limits and the missed-pong rule;
+    - the `tickChange` field name;
+    - simulator control paths and payloads (`07` §54 points to `08`, but ADR-007 has none);
+    - whether real mode has stop or seed reset;
+    - the tick interval and the HTTP polling interval while the socket is down;
+    - wire identifiers for modes and scenarios.
+  - [ ] `09` in 3 slices.
+  - [ ] `10` in 3 slices.
 
 ### Phase 5 — Operations and living docs
 
@@ -220,4 +234,16 @@ Product decisions that no ADR covers are asked to the user in batches.
 
 ## Next step
 
-Phase 2 merged in PR #11. Phase 3 is complete on `docs/sdd-product` (T3.1-T3.3, 14 commits, all assessed passive against `develop`, so no review was due). Next: the user pushes and opens the PR into `develop`; then Phase 4 (contracts: `07`, `08`, `09`, `10`). Delegated work is split into slices of 300-500 lines. PR reviews use `develop` as base.
+Paused 2026-10-05 by the user. Phase 4 is in progress on `docs/sdd-contracts`:
+
+- T4.1 (`07`) is done.
+- T4.2: `08` slices A and B are done.
+
+Resume with:
+
+1. `08` slice C (§42-62).
+2. Present the `08` decision table to the user.
+3. `09` in 3 slices, then `10` in 3 slices.
+4. Close Phase 4: `pr-body.md` and the `gh` command, which the user runs.
+
+PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.
