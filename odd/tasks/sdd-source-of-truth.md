@@ -125,7 +125,16 @@ plus `pnpm docs:check`.
 
 ### Phase 3 — Product
 
+Branch `docs/sdd-product` (from `develop` after PR #11, 2026-10-05). Order:
+T3.1 (`02` first, the 79 FRs are the contract; then `01` aligned with `02`)
+→ T3.2 → T3.3. Route: one delegated writer per document, parent readback,
+`pnpm docs:check`. ADR precedence settles FR conflicts (FR-025 periods and
+FR-031 factor breakdown follow ADR-004); any FR without an ADR basis that
+needs a product decision is asked to the user, not invented.
+
 - [ ] T3.1 `01`, `02` (acceptance criteria for all P0/P1, status per FR, new FRs)
+  - [x] Part 1, `02` (delegated writer; `pnpm docs:check` and `pnpm lint` pass): 86 FRs, every one with a status. 75 of the 79 P0/P1 FRs have testable acceptance criteria; the remaining 4 are Deferred. New FRs FR-080 to FR-086 cover CSV import, job lifecycle, idempotency, session refresh, roles, analytics data boundaries and realtime sessions. FR-025 and FR-031 are aligned with ADR-004. All 79 original headings are kept. Six FRs are pending a user decision: FR-006, FR-015, the demo FRs, FR-052, FR-055 and FR-011.
+  - [ ] Part 2, `01` aligned with `02`, in 2-3 slices
 - [ ] T3.2 `03` (measurable targets, accepted exceptions)
 - [ ] T3.3 `11` (navigation aligned with wireframe)
 
