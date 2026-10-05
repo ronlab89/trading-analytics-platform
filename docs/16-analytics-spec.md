@@ -16,6 +16,10 @@ This document turns ADR-004 into formulas, inputs, edge cases and
 hand-computed examples precise enough to write unit tests from. It adds no
 decision: where ADR-002, ADR-003 or ADR-004 is silent, the item is an
 **Open detail** assigned to a roadmap block, or a gap reported in §17.
+The open details closed by the user on 2026-10-05 (task T2.8) are recorded
+in ADR-004 when they are methodology, and here, citing ADR-002 and ADR-004,
+when they are wire format (`twrPercent`, `asOf`, range validation,
+attribution `groupBy`).
 
 Each section states its status (legend in `docs/README.md`), the ADR points
 it implements and the functional requirements it serves
@@ -66,15 +70,22 @@ not resolved here.
   `drawdown.ts`, `portfolio-daily-change.ts`).
 - **Day boundaries.** Days are UTC calendar dates everywhere, including the
   demo and the simulator clock (ADR-004 Deferred detail, `Planned (B1)`).
-
-Open detail (B1):
-
-- Whether daily returns are computed in `Decimal` and converted to a number
-  only in the presenter, or in floating point as the current calculations do
-  (`toNumber()` before dividing). Either satisfies ADR-004 point 14; tests
-  compare returns with a tolerance of `1e-9`.
-- The unit of `TWR` on the wire (fraction or percentage points) is fixed with
-  the response schema in `07-api-spec.md` §20 (ADR-002).
+- **Counted transactions.** Only transactions with status `COMPLETED` count
+  (ADR-004 point 1, amended 2026-10-05, `Planned (B1)`).
+- **Decimal returns.** Returns, ratios and percentages are computed in
+  `Decimal` end to end and converted to a JavaScript number only in the
+  presenter (ADR-004 point 14, amended 2026-10-05; ADR-002 point 9;
+  `Planned (B1)`). Today the calculations call `toNumber()` before dividing
+  (`Implemented`, to be replaced). Tests compare returns exactly in
+  `Decimal`: in §7, `TWR` of the worked example equals
+  `Decimal(117).div(101).minus(1)` without tolerance.
+- **TWR on the wire.** The period return is the field `twrPercent`, in
+  percentage points like `unrealizedPnLPercent` and `volatilityPercent`
+  (`0.158416` → `15.8416…`), not rounded; rounding is a UI concern
+  (ADR-002 point 3, `Planned (B1)`). When `TWR` has no value (§7),
+  `twrPercent` is `null`, never `0`. Test: the §7 example gives
+  `twrPercent = Decimal(117).div(101).minus(1).times(100).toNumber()`
+  (`≈ 15.841584`), unrounded.
 - Scale and rounding of computed money amounts follow ADR-002 Deferred detail
   (B0); this document adds no rounding of its own.
 
@@ -120,8 +131,12 @@ Edge cases:
 | Backdated transaction | Changes `q(a, d)` from its day onward; since the series is rebuilt per request, the next read reflects it. |
 | Asset fully sold | `q(a, d) = 0`; the asset contributes `0` and needs no price. |
 
-Open detail (B1): which transaction `status` values are counted
-(`05-data-model.md` §10); only executed transactions represent holdings.
+Counted transactions (`Planned (B1)`, ADR-004 point 1, amended
+2026-10-05): only `status = COMPLETED` is read, for `q(a, d)`, `B(d)` and
+`S(d)`. Today only `COMPLETED` rows are ever committed (`05-data-model.md`
+§10), so the filter is explicit rather than implied by the write path. Test:
+a fixture with a `COMPLETED` `BUY 10 @ 10` and a `DRAFT` `BUY 5 @ 10` on the
+same day gives `q = 10` and `B = 100`.
 
 ---
 
@@ -147,7 +162,7 @@ Edge cases:
 | Case | Expected |
 | --- | --- |
 | No trades on `d` | `B(d) = S(d) = F(d) = 0`. |
-| `SELL` fees greater than gross proceeds | Would make `S(d) < 0`. Open detail (B1, ADR-004 Deferred detail): reject such a `SELL`, or count the excess as an inflow. `05-data-model.md` §9.2 tracks the validation. |
+| `SELL` fees greater than gross proceeds | Rejected with a 400 validation error (`Planned (B1)`, ADR-004 point 2, amended 2026-10-05; `05-data-model.md` §9.2), so `S(d) ≥ 0` always. Tests: `SELL 2 @ 5, fees 10` is accepted with `S = 0`; `SELL 2 @ 5, fees 10.00000001` is rejected with 400. |
 
 ---
 
@@ -221,7 +236,7 @@ Edge cases:
 | Empty before and no purchase on `d` | Denominator `0`: no return. |
 | Partial sale, no price move | `r(d) = 0` only when the sale price equals the previous close and fees are `0`. |
 | Purchase and sale of the same asset on `d` | Both flows apply; result depends only on end-of-day `V(d)` and the day's sums. |
-| Negative denominator | Impossible while §3 rule 3 and §4 hold; if `S(d) < 0` is allowed by the §4 open detail, a test must show the denominator stays `≥ 0`. |
+| Negative denominator | Impossible: `V(d−1) ≥ 0` (§3 rule 3) and `B(d) ≥ 0`. The numerator is also `≥ 0`, because `S(d) ≥ 0` (§4). |
 
 ---
 
@@ -232,14 +247,17 @@ Edge cases:
 **Requirements:** FR-025, FR-026.
 
 ```text
-TWR = Π_{d in period, d has a return} (1 + r(d)) − 1
-
 Unclamped period [from, to]:
+  TWR = Π_{d = from..to, d has a return} (1 + r(d)) − 1
   P/L = V(to) − V(from−1) − Σ_{d = from..to} F(d)
 
 Clamped period (effectiveFrom > from):
+  TWR = Π_{d in (effectiveFrom, to], d has a return} (1 + r(d)) − 1
   P/L = V(to) − V(effectiveFrom) − Σ_{d in (effectiveFrom, to]} F(d)
 ```
+
+`TWR` uses the same days as `P/L` (`Planned (B1)`, ADR-004 point 4,
+amended 2026-10-05).
 
 The time-weighted return is the headline; `P/L` (`Money`) is the investor's
 absolute result. Money-weighted return is not reported (ADR-004,
@@ -268,11 +286,20 @@ Edge cases:
 | No day in the period has a return | `TWR` has no value (not `0`); `P/L` is still defined. |
 | Empty portfolio throughout | `P/L = 0`; `TWR` has no value (FR-058). |
 | First-day flows | Counted once: `V(from−1)` excludes them and `Σ F` includes them (ADR-004 Deferred detail). |
-| Clamped period | `V(effectiveFrom)` already includes that day's flows, so they are excluded from `Σ F`. |
+| Clamped period | `V(effectiveFrom)` already includes that day's flows, so they are excluded from `Σ F`, and `r(effectiveFrom)` is excluded from `TWR`. |
 
-Open detail (B1): `TWR` uses the same days as `P/L` (`r(d)` for `d` in
-`[from, to]`, or `(effectiveFrom, to]` when clamped). ADR-004 fixes the
-boundaries for P/L and attribution only; tests pin the `TWR` boundary.
+`TWR` boundary tests (B1), on the worked example above:
+
+```text
+Unclamped [d2, d3]:  TWR = (110/105) × (117/110) − 1 = 117/105 − 1 = +11.4286%
+                     P/L = 72 − 105 − (0 − 45) = 12
+Clamped, effectiveFrom = d2, period [d1, d3]:
+                     TWR = 117/110 − 1 = +6.3636%   (r(d3) only)
+                     P/L = 72 − 110 − (0 − 45) = 7
+```
+
+In the clamped case, `P/L` and `TWR` both measure from the close of `d2`:
+`7 / 110 = 6.3636%` matches `TWR` because there is no inflow after `d2`.
 
 ---
 
@@ -285,21 +312,59 @@ boundaries for P/L and attribution only; tests pin the `TWR` boundary.
 | Period | Source |
 | --- | --- |
 | `1D` | `MarketPrice` (§11), not the daily series. |
-| `1W`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL` | Daily series (§3-§7). `YTD` starts on 1 January (UTC) of the year of `to`. |
+| `1W`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL` | Daily series (§3-§7), window below. |
 | Custom `from` / `to` | Daily series, UTC dates, inclusive. |
 
 FR-025 lists `1D`, `1W`, `1M`, `3M`, `6M`, `1Y` and custom with periods
 "defined later"; ADR-004 point 5 settles them and adds `YTD` and `ALL`.
 
-Open detail (B1):
+**Preset windows** (`Planned (B1)`, ADR-004 point 5, amended 2026-10-05).
+Windows are counted back from `to` (after the clamp below) in UTC calendar
+dates. The anchor `to − offset` is the baseline day `from − 1` of §7, so
+`from = (to − offset) + 1 day`, P/L subtracts `V(to − offset)`, and `TWR`
+and `Σ F` cover exactly the days after the anchor up to `to`.
 
-- Exact window of `1W`/`1M`/`3M`/`6M`/`1Y` (calendar offset or fixed day
-  count) and the start of `ALL` (first transaction day).
-- A `to` later than the last closed day, and trades executed after the last
-  closed day: the series ends at the last closed day (§3 rule 4); how the
-  response states it.
-- Validation of custom ranges (`from > to`, future dates) with
-  `07-api-spec.md` §20.
+| Period | Offset or start |
+| --- | --- |
+| `1W` | 7 days: `from = to − 6 days`, 7 daily returns. |
+| `1M`, `3M`, `6M`, `1Y` | 1, 3 or 6 calendar months, or 1 calendar year. A day that does not exist is clamped to the last day of that month. |
+| `YTD` | `from` = 1 January UTC of the year of `to`; the baseline is 31 December of the previous year. |
+| `ALL` | `from` = the UTC date of the earliest `COMPLETED` transaction; `V(from − 1) = 0`. |
+
+Each preset may then be clamped by `effectiveFrom` (§5).
+
+Worked example, `to = 2026-03-31`:
+
+```text
+1W:  anchor 2026-03-24, from 2026-03-25, days 25-31 March (7 days)
+1M:  anchor 2026-02-28 (31 Feb does not exist), from 2026-03-01
+     P/L = V(2026-03-31) − V(2026-02-28) − Σ F over [2026-03-01, 2026-03-31]
+3M:  anchor 2025-12-31, from 2026-01-01   (same days as YTD)
+1Y from to = 2028-02-29:  anchor 2027-02-28, from 2027-03-01
+```
+
+**End of the series** (`Planned (B1)`, ADR-004 point 1). A `to` later than
+the last closed UTC day is clamped to that day; an omitted `to` is today and
+is therefore clamped too. The response states the effective end date in the
+field `asOf` (equal to `to` when no clamp applies). Transactions executed
+after the last closed day are excluded from the series until their day
+closes. Test: with the last closed day `2026-03-31`, a request with
+`to = 2026-04-02` returns `asOf = 2026-03-31`, and a `BUY` executed on
+2026-04-01 changes neither `V`, `B` nor `twrPercent`.
+
+**Custom range validation** (`Planned (B1)`, decided 2026-10-05; schema in
+`07-api-spec.md` §20, T4.1):
+
+| Input | Result |
+| --- | --- |
+| `from > to` | 400 validation error. Test: `from = 2026-03-10`, `to = 2026-03-09`. |
+| `to` in the future or after the last closed day | Clamped, `asOf` reported (above). |
+| `from` before the first available data | Clamped to `effectiveFrom` (§5). |
+| `from = to` | Valid single-day period: `TWR` from `r(from)` alone, P/L over one day. |
+
+Open detail (B1): a valid `from ≤ to` where `from` is after the last closed
+day, so the clamped `asOf` precedes `from`. The 2026-10-05 decisions do not
+cover it; see §17.
 
 ---
 
@@ -378,11 +443,18 @@ Edge cases:
 | --- | --- |
 | Monotonically rising index | `maxDrawdown = 0`, `currentDrawdown = 0`. |
 | Purchase on a down day | Only `r(d)` moves the index; the inflow does not. |
+| Fewer than 2 index points | `UNKNOWN`. The index holds `I(start) = 1` plus one point per day with a return, so at least one return is required (`Planned (B1)`, ADR-004 point 9, amended 2026-10-05). Test: a period with no day that has a return gives `UNKNOWN`; one return of `−5%` gives `maxDrawdown = −5%`. |
+| Equal peaks | The first is reported: `P` changes only when `I(d) > P(d−1)`, strictly, matching `drawdown.ts` (ADR-004 point 9, amended 2026-10-05). |
 
-Open detail (B1): minimum number of returns for portfolio drawdown (asset
-level requires 2 prices), and which peak is reported when two peaks are
-equal (asset level keeps the first, since a new peak must be strictly
-higher).
+Equal-peak test (B1), exact in `Decimal`:
+
+```text
+r = +25%, −20%, +25%, −20%
+I = 1.25, 1.00, 1.25, 1.00
+maxDrawdown     = 1.00 / 1.25 − 1 = −20%   peak d1, trough d2
+                  (d3 equals the peak and d4 equals the drawdown; neither replaces them)
+currentDrawdown = −20%
+```
 
 ---
 
@@ -413,7 +485,7 @@ and `previousPrice` (§18). `previousPrice` is the last closed daily candle
 # 12. Current-State Metrics and P/L
 
 **Status:** unrealized `Implemented` (`portfolio-metrics.ts`, `position-metrics.ts`); realized `Planned (B1)`.  
-**Decisions:** ADR-003 point 4; ADR-004 point 14.  
+**Decisions:** ADR-003 point 4; ADR-004 points 14 and 15.  
 **Requirements:** FR-025, FR-030.
 
 ```text
@@ -428,12 +500,34 @@ portfolio totals      = Σ over positions; percent 0 when total cost basis is 0
 leaves it unchanged (`position-recalculation.ts`, `Implemented`). `BUY` fees
 are not part of it today.
 
-**Realized P/L** (`Planned (B1)`, ADR-003 point 4): realized on each `SELL`
-against the weighted-average cost at the time of the sale; sale proceeds
-leave the portfolio.
+**Fees in cost basis** (`Planned (B1)`, ADR-004 point 15, decided
+2026-10-05; a code change in `position-recalculation.ts`):
 
 ```text
-realizedPnL(SELL) = quantity × (price − averageEntryPrice at the sale)   (fees: Open detail)
+on BUY:  newAverageEntryPrice = (heldQuantity × averageEntryPrice + quantity × price + fees)
+                                / (heldQuantity + quantity)
+```
+
+A `SELL` still leaves it unchanged. Effect on unrealized P/L: `costBasis`
+rises by the `BUY` fees of the held units, so `unrealizedPnL`,
+`unrealizedPnLPercent`, the current-state attribution of §14 and the Pulse
+performance dimension of §15 are lower by those fees than today.
+
+**Realized P/L** (`Planned (B1)`, ADR-003 point 4, ADR-004 point 15):
+realized on each `SELL` against the weighted-average cost at the time of the
+sale, net of the `SELL` fees; sale proceeds leave the portfolio.
+
+```text
+realizedPnL(SELL) = quantity × (price − averageEntryPrice at the sale) − fees
+```
+
+Hand-computed test (B1), the §7 example with `currentPrice = 12`:
+
+```text
+d1: BUY 10 @ 10, fees 1      averageEntryPrice = 101 / 10 = 10.1   (today: 10)
+d3: SELL 4 @ 11.5, fees 1    realizedPnL = 4 × (11.5 − 10.1) − 1 = 4.6
+remaining 6 @ 12             costBasis = 60.6, unrealizedPnL = 72 − 60.6 = 11.4
+realized + unrealized        = 16 = P/L over [d1, d3] (§7)
 ```
 
 Edge cases:
@@ -444,9 +538,8 @@ Edge cases:
 | Zero cost basis on a position | `PositionMetricsCalculationError` (`Implemented`); unreachable while `price > 0`. |
 | Backdated transactions | Average cost depends on date order; the projection must be rebuilt in date order (`05-data-model.md` §8, `Planned (B0)`). |
 
-Open detail (B1): whether `BUY` and `SELL` fees enter realized P/L and
-average cost. `Position.currentPrice` keeps the last trade price while
-`MarketPrice` ticks (`05-data-model.md` §8, B5).
+`Position.currentPrice` keeps the last trade price while `MarketPrice` ticks
+(`05-data-model.md` §8, B5).
 
 ---
 
@@ -512,9 +605,14 @@ B: held throughout, no flows,
 P/L = 11 = 16 + (−5)
 ```
 
-Open detail (B1): whether range attribution reports a percentage of total
-and how when `P/L = 0`; `groupBy` values other than sector are fixed with
-`07-api-spec.md` §22.
+Range attribution output (`Planned (B1)`, decided 2026-10-05; ADR-004
+point 10; schema in `07-api-spec.md` §22, T4.1): each group reports its
+contribution in money only, with no percentage, so `P/L = 0` needs no
+special case. `groupBy` accepts `asset` and `assetType`; a group's
+contribution is the sum of its assets' contributions. Sector stays
+`Deferred` (ADR-004 point 13). Test: in the example above, with A of type
+`STOCK` and B of type `CRYPTO`, `groupBy=assetType` gives `STOCK 16` and
+`CRYPTO −5`; if both are `STOCK`, a single group `STOCK 11`.
 
 ---
 
@@ -528,18 +626,33 @@ and how when `P/L = 0`; `groupBy` values other than sector are fixed with
 concentration from the largest allocation by asset. Volatility and drawdown
 come from the **largest position's** candles (proxy in
 `apps/api/src/services/overview.service.ts`) and are `UNKNOWN` when absent.
-Thresholds are placeholders, not product decisions.
+The code still labels its thresholds as placeholders; the performance,
+concentration and drawdown values are decided as they stand (below).
 
 `Planned (B1)`: volatility and drawdown come from the portfolio series (§9,
-§10). `UNKNOWN` when §9 has fewer than 20 returns. Exposure and liquidity are
-`Deferred` (`05-data-model.md` §29).
+§10) over a trailing `1Y` window (§8) ending on the last closed day
+(ADR-004 point 11, amended 2026-10-05). With less history the window is
+clamped to `effectiveFrom` (§5) and the minimums apply: `UNKNOWN` when §9
+has fewer than 20 returns or §10 fewer than 2 index points. Tests: a first
+`BUY` 10 days before the last closed day gives at most 10 returns, so
+volatility is `UNKNOWN` and drawdown is known; a first `BUY` 400 days
+before gives an unclamped window that starts at `(to − 1Y) + 1 day`.
+Exposure and liquidity are `Deferred` (`05-data-model.md` §29).
 
 `Planned (B1)`: volatility thresholds apply to the annualized value
-(ADR-004 point 11): `LOW` below 20%, `MODERATE` from 20% to below 60%,
-`HIGH` from 60%. Boundary tests: 19.99 is `LOW`, 20 is `MODERATE`, 60 is
-`HIGH`.
+(ADR-004 point 11): `HIGH` when `> 60`, `MODERATE` when `> 20`, otherwise
+`LOW`. Boundary tests: 20 is `LOW`, 20.01 is `MODERATE`, 60 is `MODERATE`,
+60.01 is `HIGH`.
 
-Open detail (B1): the look-back period of the Pulse inputs is unfixed.
+Decided thresholds (ADR-004 point 11, amended 2026-10-05), with the
+operators of `portfolio-pulse.ts` (`Implemented` values; boundary tests and
+removal of the placeholder comment `Planned (B1)`):
+
+| Dimension | Rule | Boundary tests |
+| --- | --- | --- |
+| Performance (`unrealizedPnLPercent`) | `> 5` `POSITIVE`; `< −5` `NEGATIVE`; otherwise `NEUTRAL` | `5` and `−5` are `NEUTRAL`; `5.01` is `POSITIVE`; `−5.01` is `NEGATIVE` |
+| Concentration (largest allocation by asset) | `> 50` `HIGH`; `> 25` `MODERATE`; otherwise `LOW` | `50` is `MODERATE`; `50.01` is `HIGH`; `25` is `LOW`; `25.01` is `MODERATE` |
+| Drawdown (`maxDrawdownPercent`) | `< −20` `SEVERE`; `< −10` `MODERATE`; otherwise `LOW` | `−20` is `MODERATE`; `−20.01` is `SEVERE`; `−10` is `LOW`; `−10.01` is `MODERATE` |
 
 ---
 
@@ -559,7 +672,13 @@ The checklist in `docs/README.md` applied to the analytics.
 | Retries and duplicates | Repeated analytics request | Idempotent: same inputs, same result. | B1 |
 | Retries and duplicates | Duplicated candle | Prevented by the `(assetId, timestamp)` primary key (`05-data-model.md` §20). | Implemented |
 | Boundary math and data edges | Zero denominator in `r(d)` | No return, not zero (§6). | B1 |
-| Boundary math and data edges | Negative denominator | Impossible given non-negative holdings and `S(d) ≥ 0` (§3, §4). | B0, B1 |
+| Boundary math and data edges | Negative denominator | Impossible given non-negative holdings; `S(d) ≥ 0` because a `SELL` with fees above its gross proceeds is rejected with 400 (§3, §4). | B0, B1 |
+| Boundary math and data edges | Month-end offsets, `YTD`, `ALL` | Calendar offsets clamped to the month end; anchor is `from − 1` (§8). | B1 |
+| Boundary math and data edges | `to` after the last closed day; trades not yet closed | Clamped, `asOf` reported, later trades excluded (§8). | B1 |
+| Boundary math and data edges | `from > to` | 400 (§8). | B1 |
+| Boundary math and data edges | Equal drawdown peaks; drawdown with no return | First peak kept; `UNKNOWN` below 2 index points (§10). | B1 |
+| Boundary math and data edges | Pulse threshold boundaries | Strict operators of `portfolio-pulse.ts`, boundary tests (§15). | B1 |
+| Boundary math and data edges | Non-`COMPLETED` transaction rows | Ignored by every metric (§3). | B1 |
 | Boundary math and data edges | Same-timestamp transactions | No effect on daily sums (§3); tiebreak matters for validation only. | B0 |
 | Boundary math and data edges | Single data point, fewer than 20 returns, empty portfolio | §5, §7, §9 edge tables. | B1 |
 | Boundary math and data edges | Weekend and offline gaps; calendar vs trading days | Carry-forward (§5); √365 matches the calendar-day series (§9). | B1 |
@@ -571,7 +690,7 @@ The checklist in `docs/README.md` applied to the analytics.
 
 # 17. Gaps and Contradictions Reported
 
-**Status:** reported, not resolved.
+**Status:** reported; resolved items carry their date.
 
 1. **Annualization.** Resolved 2026-10-05: ADR-004 point 8 now decides
    √365 (§9).
@@ -581,8 +700,19 @@ The checklist in `docs/README.md` applied to the analytics.
    decided. Align in T3.1.
 3. **FR-025 periods.** FR-025 still says periods are "defined later" and
    omits `YTD` and `ALL`; ADR-004 point 5 settles them. Align in T3.1.
-4. **Pulse thresholds.** Volatility resolved 2026-10-05: 20% and 60%,
-   annualized (ADR-004 point 11, §15). The performance, concentration and
-   drawdown thresholds are still placeholders in `portfolio-pulse.ts`.
+4. **Pulse thresholds.** Resolved 2026-10-05: volatility 20% and 60%,
+   annualized; performance ±5, concentration 25/50 and drawdown −10/−20
+   adopted as decided with the existing operators; trailing `1Y` look-back
+   (ADR-004 point 11, §15). All dimensions, volatility included, use strict
+   operators.
 5. **Decision replay money.** `decision-replay.ts` reads payload prices as
    numbers, against ADR-002 (task T2.5).
+6. **Analytics open details.** Resolved 2026-10-05 (T2.8): `Decimal`
+   returns and `twrPercent` (§2), `COMPLETED` only (§3), `SELL` fee
+   validation (§4), `TWR` boundaries (§7), preset windows, `asOf` and range
+   validation (§8), drawdown minimum and equal peaks (§10), fees in cost
+   basis and realized P/L (§12), money-only range attribution and `groupBy`
+   (§14), Pulse look-back (§15).
+7. **`from` after the last closed day.** Not covered by the 2026-10-05
+   decisions: a valid `from ≤ to` with `from` later than the last closed
+   day leaves `asOf < from` after the clamp (§8). Open detail (B1).

@@ -79,6 +79,23 @@ plus `pnpm docs:check`.
 - [x] T2.2 `05-data-model.md` regenerated against `schema.prisma` — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Section numbers 1-51 kept (cited by code comments); §52 Job, §53 IdempotencyKey, §54 failure-mode review added. Reported, not resolved: `DecisionEvent.payload` prices as JSON numbers vs ADR-002 (pending user decision); backdated transactions vs incremental `Position` (B0); no creation-order column for ADR-003 tiebreak (B0/B4); no status for demo work (Phase 5); `schema.prisma` comment cites `07-realtime-spec.md` instead of `08` (code, B0).
 - [x] T2.3 `06-architecture.md` rewritten (real monorepo + ADR-001) — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Sections 1-66 kept (cited by code and `eslint.config.js` §43); §67 failure-mode review added. Reported: roadmap puts the position-recalculation race in B7 while ADR-001 puts it in B0 (fix in T5.3); the status legend has no ID for frontend, demo or pre-B0 CI work (pending user decision); ADR-007 does not fix the `@trading/market-sim` path (open detail, B5).
 - [x] T2.6 Status legend (approved 2026-10-05). Adds `Planned (FE)` for decided frontend and demo work; the pre-B0 minimal CI of ADR-006 is `Planned (B0)`. The legend is updated in `docs/README.md`, route inline. Reclassifying decided frontend and demo items from `Deferred` to `Planned (FE)` in `05`, `06` and `16` goes to a delegated writer. T5.2 defines the FE block breakdown in `15`. Done: 16 entries reclassified in `06` and `05`; `16` needed no change. `pnpm docs:check` and `pnpm lint` pass. Still `Deferred` because no ADR decides them: demo data layers and reset (`05` §34-37, `06` §14), and frontend routing, state, rendering, charts, shared UI, dependency rules and performance. These are open decisions for the frontend stage and do not block B0.
+- [x] T2.8 Close the analytics open details, all 13 approved by the user on 2026-10-05. Route: delegated writer (ADR-004, `16`, `05`).
+  1. Returns are computed in `Decimal` end to end; numbers appear only in the presenter.
+  2. TWR goes on the wire in percentage points as `twrPercent`, unrounded.
+  3. Only `COMPLETED` transactions count.
+  4. A `SELL` whose fees exceed `quantity × price` is rejected with 400.
+  5. TWR uses the same days as P/L.
+  6. Periods are counted back from `to` in UTC: `1W` is 7 days; `1M`/`3M`/`6M`/`1Y` are calendar offsets clamped to month end; `YTD` starts on 1 Jan UTC; `ALL` starts on the first transaction day.
+  7. A `to` after the last closed day is clamped to it, the response carries `asOf`, and later trades are excluded.
+  8. `from > to` gives 400, a future `to` is clamped, and an early `from` is clamped to `effectiveFrom`.
+  9. Drawdown needs at least 2 index points, otherwise `UNKNOWN`; between equal peaks, the first is reported.
+  10. BUY fees enter the cost basis and `averageEntryPrice`; SELL fees reduce realized P/L. This is a code change in B1.
+  11. Attribution reports money only, with no percentage; `groupBy` accepts `asset` and `assetType`.
+  12. Pulse looks back over `1Y`.
+  13. The current Pulse thresholds for performance (±5%), concentration (25/50) and drawdown (−10/−20) are adopted as decided.
+  - Done: written to ADR-004 (points 1, 2, 4, 5, 9, 11, 14 and new point 15, with B1 rows in Deferred detail), `16` and `05`. `pnpm docs:check` and `pnpm lint` pass.
+  - Volatility thresholds aligned to the strict operators the other Pulse dimensions use (>20, >60).
+  - A new open detail is pending a user decision: a custom range whose `from` is after the last closed day.
 - [x] T2.7 ADR-004 annualization contradiction, decided 2026-10-05 (the user delegated the choice), route: inline.
   - Point 8 now uses √365, which matches the UTC calendar-day series with carry-forward and the simulator's daily candles. A trading-day series was rejected.
   - Point 11 sets the Pulse volatility thresholds on the annualized value: 20% and 60%, replacing the daily placeholders of 1% and 3%.
