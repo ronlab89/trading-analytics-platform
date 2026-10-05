@@ -1,8 +1,8 @@
 # SDD 00 — Project Overview
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft  
-**Version:** 1.0  
+**Status:** Reconciled with the repository and ADR-001 to ADR-009 on 2026-10-05  
+**Version:** 2.0  
 **Project Type:** Personal Engineering Project  
 **Primary Goal:** Portfolio project and technical demonstration
 
@@ -10,101 +10,75 @@
 
 ## 1. Project Overview
 
-Trading Analytics Platform is a web-based analytics and portfolio management system designed for independent traders who need a centralized interface to monitor portfolios, positions, transactions, market data, and performance.
+**Status:** backend foundation `Implemented`; web app and public demo `Planned (FE)`.
 
-The project is designed primarily as a **Software Engineering case study**, with emphasis on architecture, maintainability, performance, state management, real-time data handling, security, accessibility, and developer experience.
+Trading Analytics Platform is a portfolio analytics system for independent
+traders: portfolios, holdings, transactions, market data, performance and
+alerts in one place. It is a software engineering case study: architecture,
+domain modeling, correctness of financial calculations, security, realtime
+handling and testing matter more than feature count.
 
-The project will have two related implementations:
+The same product has two targets (ADR-006 point 1):
 
-1. **Public Interactive Demo** — a fully functional frontend experience using deterministic mock data and simulated services.
-2. **Complete Application** — a real full-stack implementation with backend, persistence, authentication, business logic, and real application infrastructure.
+1. **Local full stack.** A production-like Node API, PostgreSQL and the web
+   app, run locally for demonstrations.
+2. **Public demo.** A static build of `apps/web` in demo mode. It runs the
+   same application layer in the browser on in-memory infrastructure and
+   calls no backend (ADR-001, ADR-002 point 5, ADR-006 point 7).
 
-Both implementations represent the same product and follow the same product and architectural principles. The public demo replaces infrastructure and external dependencies with local simulations rather than reducing the functional quality of the experience.
+Current state: development is backend-first. The REST API foundation exists
+(`apps/api`, `packages/domain`, `packages/database`); backend work continues
+in blocks B0-B7 (`BACKEND-ROADMAP.md`). `apps/web` holds only a wireframe; the
+frontend stage follows the backend blocks.
 
 ---
 
 ## 2. Project Objectives
 
-The project has four primary objectives.
-
 ### 2.1 Demonstrate Software Engineering Skills
 
-Demonstrate the ability to design and implement a maintainable software system rather than only producing a visual interface.
+**Status:** backend `Implemented` and `Planned (B0-B7)`; frontend `Planned (FE)`.
 
-The project should provide evidence of:
-
-- System architecture.
-- Frontend architecture.
-- API design.
-- Domain modeling.
-- State management.
-- Authentication and authorization.
-- Data validation.
-- Error handling.
-- Asynchronous processing.
-- Real-time state management.
-- Performance optimization.
-- Testing.
-- Security practices.
-- Developer experience.
+The repository must give evidence of: system and API design, domain
+modeling, authentication and authorization, validation, error handling,
+asynchronous processing (CSV import jobs, ADR-008), realtime state
+(ADR-007), testing, security practices and developer experience.
 
 ### 2.2 Provide a High-Quality Public Demonstration
 
-The public demo should allow recruiters, hiring managers, developers, and other visitors to interact with the product without requiring:
+**Status:** `Planned (FE)` — ADR-006 points 1 and 7.
 
-- account creation;
-- paid services;
-- API keys;
-- external integrations;
-- backend availability;
-- database availability.
-
-The demo must still provide a realistic product experience.
+Visitors use the demo without an account, paid services, API keys, a
+backend or a database. A controlled demo identity with a role selector
+replaces login (ADR-005 point 11).
 
 ### 2.3 Provide a Defensible Technical Implementation
 
-The complete implementation must represent a real software system that can be:
+**Status:** `Implemented`
 
-- executed locally;
-- inspected through its repository;
-- explained during technical interviews;
-- tested;
-- demonstrated end-to-end;
-- evaluated from an architectural perspective.
-
-Every significant architectural decision should have an identifiable reason, trade-off, and expected outcome.
+The full stack runs locally, is inspectable in the repository, is tested,
+and every significant decision is recorded with its reason and trade-offs in
+an ADR (`adr/README.md`).
 
 ### 2.4 Maintain Zero Recurring Infrastructure Cost
 
-The project is a personal portfolio project and is not intended to generate revenue.
-
-The target is therefore:
+**Status:** `Implemented`
 
 > **$0 recurring infrastructure cost.**
 
-The system must avoid critical dependencies on paid APIs or services.
-
-Free-tier infrastructure may be used when appropriate, but the project must remain functional without requiring a paid subscription.
+No paid API, database, hosting, identity provider or monitoring service is
+required. There is no hosted backend (ADR-006 point 2).
 
 ---
 
 ## 3. Product Vision
 
-The platform should provide a realistic environment where a trader can:
+**Status:** see the per-domain status in §5.1.
 
-- monitor portfolios;
-- review positions;
-- track assets;
-- register transactions;
-- analyze portfolio performance;
-- inspect market information;
-- visualize historical data;
-- monitor simulated real-time price changes;
-- interact with alerts and system feedback.
-
-The application should feel like a coherent product rather than a collection of unrelated dashboard screens.
-
-The experience should communicate:
+A trader can manage portfolios, record `BUY` and `SELL` transactions,
+review holdings, follow simulated market prices, analyze performance and
+risk, record trading decisions and what-if scenarios, and receive alerts and
+notifications, all in one coherent product.
 
 > **Complex software can remain understandable when its architecture, state, workflows, and user feedback are deliberately designed.**
 
@@ -112,13 +86,13 @@ The experience should communicate:
 
 ## 4. Target User
 
-The primary target user is:
+**Status:** `Implemented`
 
 > **An independent trader managing one or more investment portfolios.**
 
-The project does not attempt to replicate the functionality of a professional institutional trading terminal or brokerage platform.
-
-The product is intended to demonstrate engineering capabilities through a realistic but controlled domain.
+The product is not a brokerage or an institutional trading terminal. Users
+come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
+`Planned (B2)`; the schema has `USER` and `ADMIN` today).
 
 ---
 
@@ -126,474 +100,311 @@ The product is intended to demonstrate engineering capabilities through a realis
 
 ### 5.1 Core Scope
 
-The initial product may include the following domains:
+**Status:** per domain, below. Requirements are in `01-product-spec.md` and
+`02-functional-requirements.md`.
 
-- Authentication.
-- User profile.
-- Portfolio management.
-- Assets.
-- Positions.
-- Transactions.
-- Watchlists.
-- Market data.
-- Portfolio analytics.
-- Performance history.
-- Dashboard.
-- Notifications and alerts.
-- Real-time price updates.
-- Data visualization.
-
-The exact functional scope will be defined in `01-product-spec.md`.
+| Domain | Status | Decision |
+| --- | --- | --- |
+| Login, `GET /auth/me`, Bearer JWT | `Implemented` | ADR-005 point 12 |
+| Sessions with refresh tokens, roles and permissions | `Planned (B2)`; permission checks `Planned (B0)` | ADR-005 |
+| Portfolios, assets, positions, transactions (`BUY`, `SELL`) | `Implemented` | ADR-003 |
+| Chronological transaction validation | `Planned (B0)` | ADR-003 point 6 |
+| Market data reads, watchlist, alerts, notifications, preferences | `Implemented` | — |
+| Decisions and replay, scenarios | `Implemented` | — |
+| Overview (dashboard data) | `Implemented` | — |
+| Performance and risk analytics (TWR, P/L, drawdown, volatility, attribution, Pulse) | `Planned (B1)` | ADR-004, `16-analytics-spec.md` |
+| Structured logging | `Planned (B3)` | ADR-009 |
+| CSV transaction import (background jobs) and idempotency | `Planned (B4)` | ADR-008 |
+| Realtime prices and events, shared market simulator | `Planned (B5)` | ADR-007 |
+| Generated OpenAPI document | `Planned (B6)` | ADR-002 point 7 |
+| Production-like containerized local run | `Planned (B7)` | ADR-006 |
+| Web app, dashboard UI, charts, public demo | `Planned (FE)` | ADR-001, ADR-002, ADR-006 |
 
 ### 5.2 Explicitly Out of Scope
 
-The project will not attempt to become a real brokerage or financial execution platform.
+**Status:** `Deferred`
 
-The following are outside the initial scope:
+The project is not a brokerage or execution platform. Out of scope:
 
-- Real-money trading.
-- Real order execution.
-- Deposits or withdrawals.
-- Brokerage account management.
-- Payment processing.
-- Custody of financial assets.
-- Regulatory compliance for production financial services.
-- Financial advisory functionality.
-- Guaranteed real-time market feeds.
-- Production-grade institutional trading infrastructure.
+- Real-money trading and real order execution.
+- Deposits or withdrawals, dividends, fees as transactions, and a cash
+  balance: a portfolio holds assets only (ADR-003 points 2 and 5).
+- Brokerage accounts, payments and custody of assets.
+- Regulatory compliance and financial advice.
+- External or guaranteed real-time market feeds: prices are simulated
+  (ADR-007).
+- Multiple currencies inside one portfolio (ADR-004 point 12).
+- Self-registration (ADR-005 point 10).
+- A publicly hosted backend (ADR-006 point 2).
 
-Any functionality that could imply real financial transactions must remain clearly simulated.
+Anything that could look like a real financial transaction stays clearly
+simulated.
 
 ---
 
 ## 6. Public Demo Strategy
 
-The public demo is a first-class implementation of the product experience.
+**Status:** `Planned (FE)`
 
-It is **not** intended to be:
-
-- a static mockup;
-- a clickable prototype;
-- a collection of screenshots;
-- a simplified UI with non-functional buttons;
-- a visual representation where only the happy path works.
-
-The public demo must be functionally interactive.
+The demo is a working product, not a mockup, prototype or screenshot set.
+Behavior is specified in `12-demo-mode-spec.md`.
 
 ### 6.1 Functional Requirement of the Demo
 
-The demo must reproduce the expected behavior of the application from the user's perspective, including:
+**Status:** `Planned (FE)`
 
-- navigation;
-- forms;
-- validation;
-- loading states;
-- empty states;
-- error states;
-- success states;
-- warnings;
-- notifications;
-- confirmations;
-- dialogs;
-- filtering;
-- searching;
-- sorting;
-- pagination where applicable;
-- state transitions;
-- simulated mutations;
-- simulated asynchronous operations;
-- simulated background processing;
-- simulated real-time updates;
-- animations;
-- transitions;
-- optimistic or pessimistic UI behavior where applicable;
-- retry behavior;
-- connection states;
-- disabled states;
-- permission-related behavior where applicable.
-
-The implementation may use mocked services, but the user experience must remain functional.
+Primary workflows behave as in the full stack: navigation, forms,
+validation, loading, empty, error and success states, confirmations,
+filtering, sorting, pagination, simulated background processing, realtime
+updates, connection states and role-dependent behavior.
 
 ### 6.2 Mocked Infrastructure
 
-The demo may replace real infrastructure with:
+**Status:** `Planned (B0)` for in-memory repositories; demo wiring `Planned (FE)`; demo data layers and reset `Deferred`.
 
-- static datasets;
-- local JSON data;
-- in-memory state;
-- mock repositories;
-- mock API services;
-- simulated network latency;
-- deterministic error scenarios;
-- simulated WebSocket events;
-- simulated background jobs;
-- seeded datasets.
-
-The mock layer must be separated from presentation logic wherever practical.
-
-The frontend should not contain large amounts of hardcoded business logic directly inside UI components.
+The demo composes `@trading/application` with in-memory implementations of
+the same repository contracts (ADR-001 point 4). The UI reads DTOs through
+the `TradingClient` in-process adapter and the same presenters as the API
+(ADR-002 point 5), so it cannot tell which mode it runs in. Logging uses a
+browser-console adapter (ADR-009 point 1). No network-level API mock is used.
 
 ### 6.3 Deterministic Demo Behavior
 
-The demo should be deterministic enough to provide a reliable experience.
+**Status:** seeded simulator `Planned (B5)`; CSV import failure injection `Planned (FE)`; other failure scenarios `Deferred`.
 
-The implementation should allow predefined scenarios such as:
-
-- successful operation;
-- validation failure;
-- server-like error;
-- timeout;
-- empty result;
-- simulated connection loss;
-- successful retry;
-- background process in progress;
-- completed process;
-- failed process.
-
-This allows the demo to communicate system behavior without relying on unpredictable external services.
+The simulator is deterministic for a given seed (ADR-007 point 7). The demo's
+CSV import has simulated progress and injectable failures (ADR-008 point
+13). Other scripted failure scenarios are not decided (`06-architecture.md`
+§16).
 
 ### 6.4 Simulated Real-Time Data
 
-Real-time market data does not need to come from a paid or external market-data provider.
-
-The demo may use a local market-data simulator capable of generating price updates.
-
-Conceptually:
+**Status:** `Planned (B5)` for the engine; demo adapter `Planned (FE)`.
 
 ```text
-Mock Market Data
+@trading/market-sim (seeded, in the browser)
        ↓
-Simulation Engine
+In-process realtime adapter (same client port as the WebSocket adapter)
        ↓
-WebSocket-like Event Layer
-       ↓
-Client State
-       ↓
-Affected UI
+Client state → affected UI
 ```
 
-The objective is to reproduce the engineering problem of handling frequent state updates rather than providing financially accurate market prices.
+The goal is to handle frequent state updates correctly, not to provide
+accurate market prices (ADR-007 points 7 and 13).
 
 ---
 
 ## 7. Complete Application
 
-The complete implementation represents the actual software system behind the case study.
+**Status:** `Implemented` for the API foundation; later parts as listed.
 
-It should include, where justified by the final architecture:
+Runs locally only (ADR-006 point 1):
 
-- frontend application;
-- backend application;
-- database;
-- API layer;
-- authentication;
-- authorization;
-- domain/business logic;
-- validation;
-- persistence;
-- asynchronous processing;
-- real-time communication;
-- error handling;
-- testing;
-- development tooling;
-- local infrastructure.
+- REST API on Express with request validation, authentication, ownership
+  checks, rate limiting, request IDs and health endpoints. `Implemented`
+- Domain logic in `@trading/domain`; persistence with Prisma on PostgreSQL in
+  `@trading/database`. `Implemented`
+- PostgreSQL in Docker Compose for development. `Implemented`
+- Application layer and shared contracts. `Planned (B0)`
+- Background jobs in process. `Planned (B4)`
+- WebSocket realtime. `Planned (B5)`
+- API container and `full` Compose profile. `Planned (B7)`
+- Web app in real mode. `Planned (FE)`
 
-The complete system must be executable locally.
-
-Docker may be used to simplify local setup and reproduce the required infrastructure consistently.
+The stack is in `04-tech-stack.md`; the structure in `06-architecture.md`.
 
 ---
 
 ## 8. Demo and Full System Relationship
 
-The public demo and full application must share the same conceptual product model.
+**Status:** `Planned (B0)` for the shared application layer; `Planned (FE)` for the web adapters.
 
-They should not become two unrelated applications.
-
-The preferred architecture is to isolate the source of data and infrastructure behind appropriate interfaces.
-
-Conceptually:
+Demo and full stack share one product model and one application layer;
+only the infrastructure behind the ports changes (ADR-001, ADR-002).
 
 ```text
-                    Application UI
+                      Web UI
                          │
-                  Application Logic
-                         │
-                Repository / Services
-                    /          \
+                 TradingClient port
                    /            \
-                  ↓              ↓
-          Mock Implementation   API
-                  │              │
-                  ↓              ↓
-             Mock Data        Backend
-                                 │
-                                 ↓
-                              Database
+         HTTP adapter        In-process adapter
+              │                    │
+          Express API              │
+              │                    │
+         @trading/application ─────┘
+              │
+     Repository contracts (@trading/domain)
+          /               \
+  Prisma + PostgreSQL    In-memory (demo)
 ```
-
-This allows the same user experience and domain concepts to operate against different infrastructure implementations.
-
-The demo therefore represents the real system rather than being a separate visual prototype.
 
 ---
 
 ## 9. External Services and APIs
 
-External services are optional and must never be critical to the public demo.
+**Status:** `Implemented` (none used); any external provider `Deferred`.
 
-The project must not require a paid API to remain functional.
-
-If an external service is eventually introduced, the architecture should provide:
-
-- abstraction around the integration;
-- error handling;
-- rate-limit handling;
-- fallback behavior;
-- local/demo data;
-- environment-based configuration.
-
-The application must continue to provide a meaningful experience if the external service becomes unavailable.
+No external service is required. A future provider would sit behind a port,
+with fallback to the simulator, and needs a new decision
+(`04-tech-stack.md` §47-48).
 
 ---
 
 ## 10. Cost Constraints
 
-The project must be designed with the following constraints:
+**Status:** `Implemented`
 
-### Required
+Required: no mandatory paid API, database, hosting, identity provider or
+monitoring service, and no unavoidable recurring cost.
 
-- No mandatory paid API.
-- No mandatory paid database.
-- No mandatory paid hosting.
-- No mandatory paid authentication provider.
-- No mandatory paid monitoring service.
-- No infrastructure that creates unavoidable recurring costs.
-
-### Preferred
-
-- Static hosting for the public demo.
-- Free-tier services where required for the complete application.
-- Local development using Docker where practical.
-- Mocked external integrations for the public demo.
-
-Infrastructure choices must prioritize:
-
-1. Reliability.
-2. Maintainability.
-3. Technical learning value.
-4. Zero recurring cost.
+Chosen: static hosting for the demo (`Planned (FE)`, ADR-006 point 7) and
+Docker for local infrastructure. Priorities, in order: reliability,
+maintainability, learning value, zero cost.
 
 ---
 
 ## 11. Engineering Principles
 
-The implementation should follow these principles.
+**Status:** `Implemented` for the backend; frontend parts `Planned (FE)`.
 
 ### 11.1 Simplicity Before Complexity
 
-Do not introduce architectural complexity without a demonstrable reason.
-
-Technologies such as microservices, event-driven infrastructure, or distributed systems should only be introduced when they solve a clearly defined problem.
+No microservices, external queues or brokers without a defined problem: jobs
+run in process on a PostgreSQL table (ADR-008 point 4).
 
 ### 11.2 Explicit Boundaries
 
-Responsibilities between:
-
-- UI;
-- application logic;
-- domain logic;
-- infrastructure;
-- persistence;
-- external integrations
-
-should remain clearly separated.
+UI, application, domain, infrastructure and persistence stay separated. The
+domain is framework-free; boundaries are enforced by workspace
+dependencies today and by lint rules from B0 (ADR-001 point 1).
 
 ### 11.3 Type Safety
 
-TypeScript should be used consistently across the frontend and, where applicable, backend.
-
-Domain models and API contracts should be explicitly typed.
+Strict TypeScript everywhere. Request contracts are Zod schemas today;
+request and response contracts move to `@trading/contracts` in B0
+(ADR-002).
 
 ### 11.4 Predictable State Management
 
-Server state, client state, form state, and real-time state should have clearly defined responsibilities.
-
-The project should avoid unnecessary duplication of state.
+Server, client, form and realtime state have distinct owners. On the server
+this is `Implemented`; the frontend libraries are `Deferred`
+(`04-tech-stack.md` §10-11).
 
 ### 11.5 User Feedback Is Part of the System
 
-Loading, success, failure, validation, empty, and transitional states are considered part of the product behavior rather than visual afterthoughts.
+Loading, success, failure, validation, empty and transitional states are
+product behavior (`11-ui-ux-spec.md`).
 
 ### 11.6 Measurable Performance
 
-Performance claims must be supported by actual measurements.
-
-The project must not invent performance metrics for the portfolio.
+Performance claims are measured, never invented
+(`03-non-functional-requirements.md`).
 
 ### 11.7 Accessibility by Design
 
-Accessibility should be considered during implementation rather than treated exclusively as a final audit.
+Accessibility is designed in, not audited at the end (`11-ui-ux-spec.md`).
 
 ### 11.8 Security by Default
 
-Authentication, authorization, validation, secret management, and API protection should be considered from the beginning of implementation.
+Authentication, authorization, validation, secret handling and API
+protection are part of every block (`09-security-spec.md`, ADR-005).
+
+### 11.9 Financial Correctness
+
+Money uses decimal arithmetic and decimal strings on the wire (ADR-002);
+analytics follow one documented methodology with hand-computed tests
+(ADR-004, `16-analytics-spec.md`).
 
 ---
 
 ## 12. Quality Definition
 
-The project is considered successful when it satisfies all of the following dimensions.
+**Status:** engineering quality `Implemented` for the backend foundation; product and demo quality `Planned (FE)`.
 
-### Product Quality
-
-- The application feels coherent.
-- Core workflows are complete.
-- UI states are handled consistently.
-- The demo is fully interactive.
-- The product does not rely on dead-end interactions.
-
-### Engineering Quality
-
-- Architecture is documented.
-- Responsibilities are clearly separated.
-- Core domain logic is testable.
-- API contracts are explicit.
-- Error handling is deliberate.
-- Security considerations are documented.
-- Performance can be measured.
-
-### Demo Quality
-
-A visitor should be able to explore the primary workflows without encountering:
-
-- unfinished screens;
-- non-functional primary actions;
-- unexplained placeholder states;
-- broken navigation;
-- fake buttons;
-- missing feedback after actions.
-
-### Interview Quality
-
-The developer should be able to explain:
-
-- why the architecture was chosen;
-- why specific technologies were selected;
-- what alternatives were considered;
-- what trade-offs were accepted;
-- how the system handles errors;
-- how state is managed;
-- how real-time updates work;
-- how security is handled;
-- how the system could evolve.
+- **Product:** coherent workflows, consistent UI states, no dead-end
+  interactions.
+- **Engineering:** documented architecture, separated responsibilities,
+  testable domain, explicit contracts, deliberate error handling, documented
+  security, measurable performance.
+- **Demo:** no unfinished screens, non-functional primary actions,
+  unexplained placeholders, broken navigation or missing feedback.
+- **Interview:** every architecture and technology choice can be explained
+  with its alternatives and trade-offs, through its ADR.
 
 ---
 
 ## 13. Documentation Strategy
 
-The project documentation will be developed progressively using the following SDD documents:
+**Status:** `Implemented`
 
-```text
-00-overview.md
-01-product-spec.md
-02-functional-requirements.md
-03-non-functional-requirements.md
-04-tech-stack.md
-05-data-model.md
-06-architecture.md
-07-api-spec.md
-08-realtime-spec.md
-09-security-spec.md
-10-testing-strategy.md
-11-ui-ux-spec.md
-12-demo-mode-spec.md
-13-observability-spec.md
-14-deployment-spec.md
-15-implementation-plan.md
-```
+The document map, precedence and status legend live in
+[`README.md`](README.md); this section only summarizes them.
 
-The documents must remain consistent with each other.
+| Set | Contents |
+| --- | --- |
+| ADRs ([`adr/`](adr/README.md)) | One closed decision each; highest precedence. |
+| SDD `00`-`16` | `00-overview.md` to `15-implementation-plan.md`, plus `16-analytics-spec.md` (ADR-004). |
+| `BACKEND-ROADMAP.md` | Backend blocks B0-B7. |
+| `PROGRESS.md` | Working log. |
 
-If an architectural or product decision changes during development, the relevant SDD document must be updated rather than silently diverging from the implementation.
+Every section carries a status: `Implemented`, `Planned (B#)`,
+`Planned (FE)` or `Deferred`.
 
 ---
 
 ## 14. Development and Specification Rule
 
+**Status:** `Implemented`
+
 The SDD is the source of truth for intended behavior and architecture.
+Precedence is ADR > SDD > `BACKEND-ROADMAP.md` > `PROGRESS.md`; code is
+evidence of what exists, not authority on what must exist.
 
-The implementation must not introduce significant functionality that is not reflected in the specification.
-
-However, the specification may evolve when implementation reveals a better solution.
-
-When this occurs:
+- No significant functionality is built without a specification.
+- A new open decision is closed in an ADR before code depends on it.
+- A change that diverges from a document updates that document in the same
+  pull request, and `pnpm docs:check` must pass.
 
 ```text
-Discover problem
-       ↓
-Evaluate alternatives
-       ↓
-Update specification
-       ↓
-Implement change
-       ↓
-Validate result
+Discover problem → Evaluate alternatives → Record decision (ADR) → Update specification → Implement → Validate
 ```
-
-The project should avoid accumulating undocumented technical decisions.
 
 ---
 
 ## 15. Portfolio Representation
 
-Once the project is implemented, the portfolio case study will use the existing project-page content structure:
+**Status:** `Deferred` — written after the frontend stage.
 
-- Summary.
-- Business context.
-- Architecture.
-- System design.
-- Engineering decisions.
-- Implementation highlights.
-- Challenges.
-- Security.
-- Performance.
-- Scalability.
-- Developer experience.
-- Stack.
-- Outcomes.
-- Lessons learned.
-- Future evolution.
-
-This structure is an editorial layer over the implementation.
-
-The final content must be based on the actual system, measured results, and real engineering decisions made during development.
-
-No placeholder claims should remain in the final published case study.
+The case study follows the existing project-page structure (summary,
+context, architecture, decisions, challenges, security, performance, stack,
+outcomes, lessons, future evolution). It uses only the actual system,
+measured results and recorded decisions; no placeholder claims.
 
 ---
 
 ## 16. Success Criteria
 
-The project will be considered complete when:
+**Status:** per criterion.
 
-1. The core product scope is implemented.
-2. The public demo provides a fully functional experience using simulated infrastructure.
-3. Primary workflows work end-to-end within the demo.
-4. Validation, errors, loading, success, empty, and transitional states are implemented.
-5. The complete full-stack implementation runs locally.
-6. The architecture is documented.
-7. Security considerations are implemented and documented.
-8. Relevant automated tests exist.
-9. Performance has been measured rather than estimated.
-10. The project can be demonstrated and defended during a technical interview.
-11. The public demo can remain online without mandatory recurring paid services.
-12. The project documentation accurately reflects the final implementation.
+| # | Criterion | Status |
+| --- | --- | --- |
+| 1 | Core scope (§5.1) implemented. | per §5.1 |
+| 2 | Public demo fully functional on simulated infrastructure. | `Planned (FE)` |
+| 3 | Primary workflows end to end in the demo. | `Planned (FE)` |
+| 4 | Validation, error, loading, success, empty and transitional states. | API `Implemented`; UI `Planned (FE)` |
+| 5 | Full stack runs locally. | API and database `Implemented`; containerized run `Planned (B7)` |
+| 6 | Architecture documented. | `Implemented` |
+| 7 | Security implemented and documented. | foundation `Implemented`; sessions `Planned (B2)`; hardening `Planned (B7)` |
+| 8 | Relevant automated tests, run in CI. | tests `Implemented`; CI `Planned (B0)` |
+| 9 | Performance measured, not estimated. | slow-request and analytics timing `Planned (B3)` (ADR-009 point 8); UI `Planned (FE)` |
+| 10 | Defensible in a technical interview. | `Implemented` through the ADRs |
+| 11 | Demo online without recurring paid services. | `Planned (FE)` |
+| 12 | Documentation matches the implementation. | `Implemented` (`pnpm docs:check`, same-PR rule) |
 
 ---
 
 ## 17. Guiding Principle
 
-The project should ultimately demonstrate the following:
+**Status:** `Implemented`
 
 > **The goal is not to build the largest system possible. The goal is to demonstrate deliberate engineering decisions through a realistic, maintainable, measurable, and fully interactive software system.**

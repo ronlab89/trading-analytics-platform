@@ -75,7 +75,20 @@ Branch `docs/sdd-foundations` (from `develop` after PR #10). Order approved
 (each document exceeds the inline evidence budget), parent structural readback
 plus `pnpm docs:check`.
 
-- [ ] T2.1 `00-overview.md`, `04-tech-stack.md`
+- [x] T2.1 `00-overview.md`, `04-tech-stack.md` — route: delegated writer.
+  - `04` lists the real versions from `pnpm-lock.yaml` and adds supertest, tsx, dotenv-cli, husky and lint-staged.
+  - In `04`, ADR-decided tooling is `Planned (B0/B3/B5/B6/B7/FE)`. The frontend libraries no ADR decides are `Deferred`.
+  - `00` states the backend-first current state and the two ADR-006 targets, with a status per scope area and a doc map that includes `16` and `adr/`.
+  - ADR-008's broken `00-overview.md` §44 reference is fixed to §2.1, route inline.
+  - Open details:
+    - B0: TypeScript 6.0.3 vs 5.9.3 and `@types/node` 22 vs 26 across packages; `docs:check` and `format:check` in CI.
+    - B1: domain `quantity` is a plain `number`.
+    - B5: the `market-sim` path.
+    - B6: how the OpenAPI document is served.
+    - B7: the production build.
+    - FE: API and WebSocket base URLs.
+  - For T5.3: `BACKEND-ROADMAP.md` B7 and B5 contradict ADR-006 and ADR-007.
+  - `pnpm docs:check` and `pnpm lint` pass.
 - [x] T2.2 `05-data-model.md` regenerated against `schema.prisma` — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Section numbers 1-51 kept (cited by code comments); §52 Job, §53 IdempotencyKey, §54 failure-mode review added. Reported, not resolved: `DecisionEvent.payload` prices as JSON numbers vs ADR-002 (pending user decision); backdated transactions vs incremental `Position` (B0); no creation-order column for ADR-003 tiebreak (B0/B4); no status for demo work (Phase 5); `schema.prisma` comment cites `07-realtime-spec.md` instead of `08` (code, B0).
 - [x] T2.3 `06-architecture.md` rewritten (real monorepo + ADR-001) — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Sections 1-66 kept (cited by code and `eslint.config.js` §43); §67 failure-mode review added. Reported: roadmap puts the position-recalculation race in B7 while ADR-001 puts it in B0 (fix in T5.3); the status legend has no ID for frontend, demo or pre-B0 CI work (pending user decision); ADR-007 does not fix the `@trading/market-sim` path (open detail, B5).
 - [x] T2.6 Status legend (approved 2026-10-05). Adds `Planned (FE)` for decided frontend and demo work; the pre-B0 minimal CI of ADR-006 is `Planned (B0)`. The legend is updated in `docs/README.md`, route inline. Reclassifying decided frontend and demo items from `Deferred` to `Planned (FE)` in `05`, `06` and `16` goes to a delegated writer. T5.2 defines the FE block breakdown in `15`. Done: 16 entries reclassified in `06` and `05`; `16` needed no change. `pnpm docs:check` and `pnpm lint` pass. Still `Deferred` because no ADR decides them: demo data layers and reset (`05` §34-37, `06` §14), and frontend routing, state, rendering, charts, shared UI, dependency rules and performance. These are open decisions for the frontend stage and do not block B0.
@@ -156,10 +169,4 @@ plus `pnpm docs:check`.
 
 ## Next step
 
-Phase 2 in progress on `docs/sdd-foundations`. T2.2, T2.3, T2.4 and T2.5 done. Pending user decisions:
-
-1. The status-legend gap.
-2. ADR-004 annualization: √252 or √365.
-3. The B1 open details in `16` §17, including SELL fees larger than the proceeds.
-
-Next: T2.1. Reviews and assessments always use `develop` as base. Apply the failure-mode checklist while writing.
+Phase 2 complete on `docs/sdd-foundations` (T2.1-T2.8). Next: one review of the full PR against `develop`, then the user opens the PR. After that comes Phase 3 (product). PR reviews use `develop` as base; per-commit assessments start from the last reviewed commit. Apply the failure-mode checklist while writing.
