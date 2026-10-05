@@ -79,7 +79,12 @@ plus `pnpm docs:check`.
 - [x] T2.2 `05-data-model.md` regenerated against `schema.prisma` — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Section numbers 1-51 kept (cited by code comments); §52 Job, §53 IdempotencyKey, §54 failure-mode review added. Reported, not resolved: `DecisionEvent.payload` prices as JSON numbers vs ADR-002 (pending user decision); backdated transactions vs incremental `Position` (B0); no creation-order column for ADR-003 tiebreak (B0/B4); no status for demo work (Phase 5); `schema.prisma` comment cites `07-realtime-spec.md` instead of `08` (code, B0).
 - [x] T2.3 `06-architecture.md` rewritten (real monorepo + ADR-001) — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Sections 1-66 kept (cited by code and `eslint.config.js` §43); §67 failure-mode review added. Reported: roadmap puts the position-recalculation race in B7 while ADR-001 puts it in B0 (fix in T5.3); the status legend has no ID for frontend, demo or pre-B0 CI work (pending user decision); ADR-007 does not fix the `@trading/market-sim` path (open detail, B5).
 - [x] T2.5 Close the money-format gap in persisted JSON (approved 2026-10-05), route: inline. ADR-002 amended with decision point 9: money, prices and quantities in JSON columns are decimal strings parsed with `Decimal`, and percentage inputs to money arithmetic are converted to `Decimal` first. Two B0 rows were added to ADR-002 "Deferred detail": `decision-replay.ts` and `scenario-impact.ts`. `05` §12.1 and §15 updated. `BACKEND-ROADMAP.md` has no B0 section yet, so T5.3 carries these rows into it. `pnpm docs:check` passes.
-- [ ] T2.4 New `16-analytics-spec.md` (ADR-004)
+- [x] T2.4 New `16-analytics-spec.md` (ADR-004) — route: delegated writer. The spec has 17 sections, including hand-computed test examples and a failure-mode review in §16. `docs/README.md` now links to it, and `16` was removed from `PLANNED_DOCS` in `check-docs.mjs`. `pnpm docs:check` and `pnpm lint` pass. Reported, not resolved:
+  - ADR-004 contradicts itself on annualization: point 8 says √252, but its Deferred detail allows √365 (decision-level, pending user decision).
+  - FR-031's breakdown by factor vs ADR-004 point 10 (T3.1).
+  - FR-025 periods vs ADR-004 point 5 (T3.1).
+  - The Pulse volatility thresholds assume non-annualized values (B1).
+  - 11 open details assigned to B1.
 
 ### Phase 3 — Product
 

@@ -19,7 +19,8 @@ const DOCS_DIR = join(ROOT, "docs");
 const ADR_DIR = join(DOCS_DIR, "adr");
 
 // Documents decided but not written yet. Remove an entry once its file exists.
-const PLANNED_DOCS = new Map([["16-analytics-spec.md", "ADR-004; written in Phase 2"]]);
+/** @type {Map<string, string>} */
+const PLANNED_DOCS = new Map();
 
 // Wildcard references that intentionally describe a range of documents.
 const ALLOWED_PATTERN_REFS = new Map([["CONTRIBUTING.md", new Set(["00-*.md", "15-*.md"])]]);
