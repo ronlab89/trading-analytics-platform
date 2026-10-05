@@ -386,8 +386,16 @@ order.
 
 ## 12.1 Payload conventions
 
+**Status:** `Implemented` for the shapes below; `Planned (B0)` for the value
+format (ADR-002 decision point 9).
+
 Decision Replay (`projectDecisionReplay`, `packages/domain`) understands these
-shapes. Prices are JSON numbers interpreted in the decision's currency.
+shapes. Prices are interpreted in the decision's currency.
+
+- Today: `price` and `quantity` are JSON numbers, read as JavaScript numbers.
+- B0: `price` and `quantity` are decimal strings (for example `"150.25"`)
+  parsed with `Decimal`. A number or a malformed string is reported as an
+  issue.
 
 ```text
 DECISION_CREATED   {}
@@ -454,6 +462,9 @@ A scenario's variables are part of the `Scenario` entity as
 variable is `{ assetId, percentChange }`: a percentage change to that asset's
 current price, never below -100%, at most one entry per asset. Other change
 kinds (for example allocation changes) are `Deferred`.
+
+`percentChange` stays a JSON number. From B0 it is converted to `Decimal`
+before it is applied to a price (ADR-002 decision point 9).
 
 ---
 

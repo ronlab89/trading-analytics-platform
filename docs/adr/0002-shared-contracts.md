@@ -59,6 +59,16 @@ format shared by the API, the web app and the demo.
    API document.
 8. **Evolution.** All routes stay under `/api/v1`. Within a version only
    additive changes are allowed. A breaking change requires a new version.
+9. **Persisted JSON** (amended 2026-10-05). Money amounts, prices and
+   quantities stored inside JSON columns (`DecisionEvent.payload`, and the
+   `Job` and `IdempotencyKey` payloads of ADR-008) are decimal strings, the
+   same as on the wire. Domain code parses them with `Decimal`; it never reads
+   them as JavaScript numbers. Percentages that are inputs to money
+   arithmetic (`Scenario.changes[].percentChange`) may stay JSON numbers, but
+   are converted to `Decimal` before any arithmetic. Today
+   `decision-replay.ts` reads `price` and `quantity` as numbers, and
+   `scenario-impact.ts` computes `1 + percentChange / 100` in floating point.
+   This rule replaces both in B0.
 
 ## Consequences
 
@@ -96,6 +106,8 @@ specified and tested in the listed block.
 | Item | Resolution | Block |
 |---|---|---|
 | Decimal strings can come out in exponential notation (`decimal.js` `toString` gives `"5e-8"`). | Presenters emit fixed notation, and the response schema enforces a decimal-string pattern. Scale and rounding for computed amounts are defined. | B0 |
+| Decision event payloads store `price` and `quantity` as JSON numbers, and replay reads them as numbers (decision point 9). | Replay parses both with `Decimal`. Its readers accept only decimal strings matching the response pattern; a number or a malformed value is reported as an issue, like any other malformed event. Seed data and test fixtures are rewritten to strings. No legacy numeric data needs converting, because nothing is deployed (ADR-006). | B0 |
+| Scenario impact computes its price factor in floating point (decision point 9). | `applyScenarioChanges` builds the factor as `Decimal(percentChange).div(100).plus(1)`. A test asserts an exact result for a percentage that is not exactly representable in binary, such as `-12.3`. | B0 |
 
 ## Related
 

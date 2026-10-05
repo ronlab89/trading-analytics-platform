@@ -78,7 +78,7 @@ plus `pnpm docs:check`.
 - [ ] T2.1 `00-overview.md`, `04-tech-stack.md`
 - [x] T2.2 `05-data-model.md` regenerated against `schema.prisma` — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Section numbers 1-51 kept (cited by code comments); §52 Job, §53 IdempotencyKey, §54 failure-mode review added. Reported, not resolved: `DecisionEvent.payload` prices as JSON numbers vs ADR-002 (pending user decision); backdated transactions vs incremental `Position` (B0); no creation-order column for ADR-003 tiebreak (B0/B4); no status for demo work (Phase 5); `schema.prisma` comment cites `07-realtime-spec.md` instead of `08` (code, B0).
 - [x] T2.3 `06-architecture.md` rewritten (real monorepo + ADR-001) — route: delegated writer; `pnpm docs:check` and `pnpm lint` pass. Sections 1-66 kept (cited by code and `eslint.config.js` §43); §67 failure-mode review added. Reported: roadmap puts the position-recalculation race in B7 while ADR-001 puts it in B0 (fix in T5.3); the status legend has no ID for frontend, demo or pre-B0 CI work (pending user decision); ADR-007 does not fix the `@trading/market-sim` path (open detail, B5).
-- [ ] T2.5 Close the `DecisionEvent.payload` money-format gap: replay reads `price`/`quantity` as JS numbers (`decision-replay.ts`), against ADR-002. Proposed: ADR-002 rule for money in persisted JSON, `05` §12.1 Planned (B0), B0 roadmap task (pending user approval).
+- [x] T2.5 Close the money-format gap in persisted JSON (approved 2026-10-05), route: inline. ADR-002 amended with decision point 9: money, prices and quantities in JSON columns are decimal strings parsed with `Decimal`, and percentage inputs to money arithmetic are converted to `Decimal` first. Two B0 rows were added to ADR-002 "Deferred detail": `decision-replay.ts` and `scenario-impact.ts`. `05` §12.1 and §15 updated. `BACKEND-ROADMAP.md` has no B0 section yet, so T5.3 carries these rows into it. `pnpm docs:check` passes.
 - [ ] T2.4 New `16-analytics-spec.md` (ADR-004)
 
 ### Phase 3 — Product
@@ -96,7 +96,7 @@ plus `pnpm docs:check`.
 
 - [ ] T5.1 `12`, `13`, `14`
 - [ ] T5.2 `15` (backend-first override), `CONTRIBUTING.md`, `README.md`
-- [ ] T5.3 `PROGRESS.md` (main-branch claim fix), `BACKEND-ROADMAP.md` (add B0)
+- [ ] T5.3 `PROGRESS.md` (main-branch claim fix), `BACKEND-ROADMAP.md` (add B0, including every ADR "Deferred detail" row assigned to B0; move the position-recalculation race from B7 to B0 per ADR-001)
 
 ### Phase 6 — Verification
 
@@ -121,4 +121,4 @@ plus `pnpm docs:check`.
 
 ## Next step
 
-Phase 2 in progress on `docs/sdd-foundations`. T2.2 and T2.3 done. Pending user decision: T2.5 and the status-legend gap. Next: T2.4, T2.1. Reviews and assessments always use `develop` as base. Apply the failure-mode checklist while writing.
+Phase 2 in progress on `docs/sdd-foundations`. T2.2 and T2.3 done. T2.5 done. Pending user decision: the status-legend gap. Next: T2.4, T2.1. Reviews and assessments always use `develop` as base. Apply the failure-mode checklist while writing.
