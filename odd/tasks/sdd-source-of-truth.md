@@ -95,7 +95,7 @@ plus `pnpm docs:check`.
   13. The current Pulse thresholds for performance (±5%), concentration (25/50) and drawdown (−10/−20) are adopted as decided.
   - Done: written to ADR-004 (points 1, 2, 4, 5, 9, 11, 14 and new point 15, with B1 rows in Deferred detail), `16` and `05`. `pnpm docs:check` and `pnpm lint` pass.
   - Volatility thresholds aligned to the strict operators the other Pulse dimensions use (>20, >60).
-  - A new open detail is pending a user decision: a custom range whose `from` is after the last closed day.
+  - Follow-up decided 2026-10-05: a custom range whose `from` is after the last closed day returns 200 with `InsufficientData` and `asOf` (`16` §8). No analytics open detail remains.
 - [x] T2.7 ADR-004 annualization contradiction, decided 2026-10-05 (the user delegated the choice), route: inline.
   - Point 8 now uses √365, which matches the UTC calendar-day series with carry-forward and the simulator's daily candles. A trading-day series was rejected.
   - Point 11 sets the Pulse volatility thresholds on the annualized value: 20% and 60%, replacing the daily placeholders of 1% and 3%.

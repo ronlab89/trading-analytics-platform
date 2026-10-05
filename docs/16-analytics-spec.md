@@ -362,9 +362,12 @@ closes. Test: with the last closed day `2026-03-31`, a request with
 | `from` before the first available data | Clamped to `effectiveFrom` (§5). |
 | `from = to` | Valid single-day period: `TWR` from `r(from)` alone, P/L over one day. |
 
-Open detail (B1): a valid `from ≤ to` where `from` is after the last closed
-day, so the clamped `asOf` precedes `from`. The 2026-10-05 decisions do not
-cover it; see §17.
+`Planned (B1)` (decided 2026-10-05): a valid `from ≤ to` where `from` is
+after the last closed day leaves no closed day in the range once `to` is
+clamped (`asOf < from`). The response is 200 with `InsufficientData` and
+`asOf`, not 400: picking today is a normal request, not a client error.
+Test: last closed day `2026-03-09`, `from = to = 2026-03-10` gives 200,
+`InsufficientData`, `asOf = 2026-03-09`, and no `twrPercent` or P/L value.
 
 ---
 
@@ -713,6 +716,5 @@ The checklist in `docs/README.md` applied to the analytics.
    validation (§8), drawdown minimum and equal peaks (§10), fees in cost
    basis and realized P/L (§12), money-only range attribution and `groupBy`
    (§14), Pulse look-back (§15).
-7. **`from` after the last closed day.** Not covered by the 2026-10-05
-   decisions: a valid `from ≤ to` with `from` later than the last closed
-   day leaves `asOf < from` after the clamp (§8). Open detail (B1).
+7. **`from` after the last closed day.** Resolved 2026-10-05: 200 with
+   `InsufficientData` and `asOf` (§8).
