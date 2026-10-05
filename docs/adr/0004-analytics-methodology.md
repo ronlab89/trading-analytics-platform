@@ -43,10 +43,16 @@ Two further facts shape the decision:
    *Point 1 corrected on 2026-10-04 after a systematic audit:* candles
    previously came from the seed only, so the series stopped at a fixed
    date and recent purchases were valued at a stale carried-forward close.
+   (Amended 2026-10-05: only transactions with status `COMPLETED` count, in
+   the value series, the flows and every metric derived from them.)
 2. **Cash flows.** For day `d`, inflows are
    `B(d) = Σ BUY (quantity × price + fees)` and outflows are
    `S(d) = Σ SELL (quantity × price − fees)`. The net flow is
    `F(d) = B(d) − S(d)`. Fees therefore reduce the return.
+   (Amended 2026-10-05: a `SELL` whose fees exceed its gross proceeds,
+   `fees > quantity × price`, is rejected with a 400 validation error, so
+   every `SELL` term is non-negative and `S(d) ≥ 0` always. Fees equal to
+   the gross proceeds are accepted and give a zero outflow.)
 3. **Daily return.** `r(d) = (V(d) + S(d)) / (V(d−1) + B(d)) − 1`. Inflows
    are treated as occurring at the start of the day and outflows at the end
    of the day, so the denominator can never be negative and a sale is
@@ -68,9 +74,23 @@ Two further facts shape the decision:
 4. **Period return.** Time-weighted return: `TWR = Π (1 + r(d)) − 1`. The
    absolute profit or loss for the period is also reported:
    `P/L = V(end) − V(start) − Σ F(d)`.
+   (Amended 2026-10-05: `TWR` uses the same days as `P/L`: the returns
+   `r(d)` for `d` in `[from, to]`, or in `(effectiveFrom, to]` when the
+   period is clamped. P/L uses `V(from − 1)` and the flows over
+   `[from, to]`; when clamped, `V(effectiveFrom)` and the flows over
+   `(effectiveFrom, to]`. Attribution uses the same boundaries.)
 5. **Periods.** `1W`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL` and a custom
    `from`/`to` range. `1D` comes from `MarketPrice`, as the existing
    `dailyChange` does.
+   (Amended 2026-10-05: preset windows are counted back from `to` in UTC
+   calendar dates. The anchor `to − offset` is the baseline day, so
+   `from = (to − offset) + 1 day` and the period holds exactly the days
+   after the anchor up to `to`. `1W` uses an offset of 7 days. `1M`, `3M`,
+   `6M` and `1Y` use calendar month or year offsets; when the resulting day
+   does not exist, it is clamped to the last day of that month
+   (31 March − 1M = 28 or 29 February). `YTD` starts on 1 January UTC of
+   the year of `to`. `ALL` starts on the first transaction day, the UTC date
+   of the earliest `COMPLETED` transaction.)
 6. **Insufficient history.** A period that starts before the first available
    data is clamped to it, and the response states the `effectiveFrom` date.
    Values are never extrapolated.
@@ -78,17 +98,41 @@ Two further facts shape the decision:
    held on a day has never had a price on or before that day, that range is
    `InsufficientData`.
 8. **Volatility.** Sample standard deviation of the daily TWR returns,
-   annualized with √252, expressed as a percentage. At least 20 daily returns
+   annualized with √365, expressed as a percentage. At least 20 daily returns
    are required; otherwise the result is `UNKNOWN`. The existing calculation
-   is generalized to accept a return series.
+   is generalized to accept a return series. (Amended 2026-10-05: originally
+   √252. The return series is built on UTC calendar days with carry-forward
+   prices (point 7), and the simulator closes a candle every calendar day
+   (ADR-007), so the factor matches the series frequency. A trading-day
+   series was rejected: it needs a holiday calendar per market and treats
+   crypto, which trades every day, differently.)
 9. **Drawdown.** Computed on the cumulative return index (growth of 1), not
    on raw value. Reports maximum drawdown with peak and trough dates, and the
    current drawdown.
+   (Amended 2026-10-05: at least 2 index points are required, the starting
+   point `I = 1` plus at least one day with a return; otherwise the result
+   is `UNKNOWN`. A new peak must be strictly higher than the previous one,
+   so between equal peaks the first is reported, as at asset level.)
 10. **Attribution over a range.** The contribution of each asset in money is
     its value change minus its own flows over the period. Contributions sum
     exactly to the period P/L. No Brinson-style decomposition.
 11. **Pulse.** Uses the portfolio's real volatility and drawdown instead of
-    the current proxy based on the largest position.
+    the current proxy based on the largest position. Volatility thresholds
+    apply to the annualized value of point 8: `HIGH` above 60%, `MODERATE`
+    above 20%, otherwise `LOW` (strict operators, like the other Pulse
+    dimensions). (Amended 2026-10-05: they
+    replace the daily placeholders of 1% and 3%, which annualize with √365 to
+    about 19% and 57%.)
+    (Amended 2026-10-05: volatility and drawdown use a trailing `1Y` window
+    (point 5) ending on the last closed day. With less history the window is
+    clamped as in point 6, and the minimums of points 8 and 9 apply; below
+    them the dimension is `UNKNOWN`. The other thresholds are decided, with
+    the comparison operators of `portfolio-pulse.ts`: performance
+    `POSITIVE` when `unrealizedPnLPercent > 5`, `NEGATIVE` when `< −5`,
+    otherwise `NEUTRAL`; concentration `HIGH` when the largest allocation is
+    `> 50`, `MODERATE` when `> 25`, otherwise `LOW`; drawdown `SEVERE` when
+    the maximum drawdown is `< −20`, `MODERATE` when `< −10`, otherwise
+    `LOW`.)
 12. **Currency.** Version 1 is single-currency. A transaction on an asset
     whose currency differs from the portfolio's base currency is rejected
     with 400. Multi-currency support is `Deferred` until foreign-exchange
@@ -97,6 +141,17 @@ Two further facts shape the decision:
     `groupBy` options until a typed sector field exists.
 14. **Precision.** Values and flows use `Money` (decimal). Returns, ratios
     and percentages are JSON numbers, consistent with ADR-002.
+    (Amended 2026-10-05: returns, ratios and percentages are computed in
+    `Decimal` end to end and converted to a number only in the presenter,
+    consistent with ADR-002 point 9.)
+15. **Fees in cost basis and realized P/L.** (Added 2026-10-05.) `BUY` fees
+    are part of the cost basis: on each `BUY`, `averageEntryPrice` becomes
+    `(heldQuantity × averageEntryPrice + quantity × price + fees) /
+    (heldQuantity + quantity)`; a `SELL` leaves it unchanged. `SELL` fees are subtracted from realized P/L:
+    `realizedPnL = quantity × (price − averageEntryPrice) − fees`. Because
+    the cost basis includes `BUY` fees, unrealized P/L and
+    `unrealizedPnLPercent` are lower by those fees than today, and realized
+    plus unrealized P/L over the whole history equals the `ALL` period P/L.
 
 ## Consequences
 
@@ -137,9 +192,13 @@ specified and tested in the listed block.
 
 | Item | Resolution | Block |
 |---|---|---|
-| `SELL` fees larger than the gross proceeds make `S(d)` negative. | Reject `SELL` fees greater than the gross proceeds, or count the excess as an inflow. | B1 |
-| Period P/L boundaries are undefined, so first-day flows are double-counted. | P/L uses `V(day before from)` and flows over `[from, to]`. When clamped, it uses `V(effectiveFrom)` and flows over `(effectiveFrom, to]`, where `effectiveFrom` is the first day every held asset has a price. Attribution uses the same boundaries. | B1 |
-| Annualization assumes trading days, but candles are calendar days. | Annualize by series frequency (√365 for a calendar-day series), or build the series on trading days only. | B1 |
+| `SELL` fees larger than the gross proceeds make `S(d)` negative. | Point 2 (amended 2026-10-05): transaction validation rejects a `SELL` with `fees > quantity × price` with 400. Tests: fees equal to the gross proceeds are accepted (`S(d) = 0`); fees one unit of the last decimal place above are rejected. | B1 |
+| Period P/L boundaries are undefined, so first-day flows are double-counted. | Point 4 (amended 2026-10-05): P/L uses `V(day before from)` and flows over `[from, to]`. When clamped, it uses `V(effectiveFrom)` and flows over `(effectiveFrom, to]`, where `effectiveFrom` is the first day every held asset has a price. `TWR` and attribution use the same days. Tests: first-day flows counted once, and `TWR` of a clamped period excludes `r(effectiveFrom)`. | B1 |
+| Preset period windows are undefined. | Point 5 (amended 2026-10-05): one pure function maps a preset and `to` to `from`. Tests: `1W` and `1M` from 31 March, `1Y` from 29 February, `YTD` on 1 January, `ALL` from the first `COMPLETED` transaction. | B1 |
+| Current calculations convert to number before dividing (`toNumber()`). | Point 14 (amended 2026-10-05): returns are computed in `Decimal` and converted only in the presenter. Tests compare returns exactly in `Decimal` on the hand-computed examples. | B1 |
+| `averageEntryPrice` excludes `BUY` fees (`position-recalculation.ts`). | Point 15: include `BUY` fees in the weighted average and subtract `SELL` fees from realized P/L. Tests: `BUY 10 @ 10, fees 1` gives `averageEntryPrice = 10.1`; then `SELL 4 @ 11.5, fees 1` realizes `4.6`. | B1 |
+| Pulse thresholds are marked as placeholders in `portfolio-pulse.ts`. | Point 11 (amended 2026-10-05): keep the performance, concentration and drawdown constants and operators, remove the placeholder comment, and add boundary tests at each threshold. | B1 |
+| `calculateVolatility` annualizes with √252, only when `annualize: true`, and accepts 2 returns. | Point 8: always annualize with √365 and require 20 returns. Pulse volatility thresholds become 20% and 60% (point 11). Tests cover 19 vs 20 returns and a hand-computed annualized value. | B1 |
 | Day and `YTD` boundaries have no timezone, so the server and the browser demo can disagree. | Day boundaries are UTC calendar dates everywhere, including the demo and the simulator clock. | B1 |
 
 ## Related

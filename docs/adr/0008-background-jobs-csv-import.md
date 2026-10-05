@@ -6,7 +6,7 @@
 
 ## Context
 
-`00-overview.md` §44 lists asynchronous processing among the project's
+`00-overview.md` §2.1 lists asynchronous processing among the project's
 goals, and the overview mentions background jobs and processes in several
 other places. Yet no functional requirement asks for a specific job:
 FR-069 is conditional ("where the real application uses asynchronous
