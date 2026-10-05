@@ -1,7 +1,7 @@
 # SDD 07 — API Specification
 
 **Project:** Trading Analytics Platform  
-**Status:** §1-§9 reconciled with the code and ADR-002, ADR-005, ADR-009, ADR-010 on 2026-10-05; later sections not yet reconciled  
+**Status:** All sections reconciled with the code and ADRs on 2026-10-05  
 **Version:** 1.1  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`  
 **Decisions:** ADR-002 (`adr/0002-shared-contracts.md`), ADR-005 (`adr/0005-roles-and-authentication.md`), ADR-008 (`adr/0008-background-jobs-csv-import.md`), ADR-009 (`adr/0009-observability-scope.md`), ADR-010 (`adr/0010-v1-product-scope-clarifications.md`)
@@ -1581,522 +1581,380 @@ the server log (`health.database.unavailable`).
 
 # 31. Realtime API
 
-Realtime communication is separate from the HTTP API.
+**Status:** `Planned (B5)` (ADR-007)
 
-The production implementation may use:
+Realtime is separate from the HTTP API. The full protocol lives in
+`08-realtime-spec.md`; §31-§38 only summarize it.
 
-- WebSockets;
-- Server-Sent Events;
-- another appropriate realtime transport.
-
-The client must consume a normalized internal event contract.
+- Transport: WebSocket (`ws`) behind a transport port.
+- Authentication: the access token goes in the first message, never in the
+  URL; a socket not authenticated within 5 seconds is closed.
+- Channels: `market:{assetId}`, `portfolio:{portfolioId}`, `notifications`
+  and `jobs:{jobId}` (ADR-008), each authorized by permission and ownership.
+- Heartbeat: ping/pong every 30 seconds.
+- The demo uses an in-process realtime adapter behind the same client port
+  (`Planned (FE)`).
 
 ---
 
 # 32. Realtime Event Envelope
 
-```text
+**Status:** `Planned (B5)` (ADR-007 point 4)
+
+Defined as Zod schemas in `@trading/contracts`; money follows ADR-002.
+
+```json
 {
-  "id": "event_001",
+  "id": "...",
   "type": "MARKET_PRICE_UPDATED",
-  "timestamp": "...",
+  "channel": "market:...",
   "sequence": 1001,
+  "timestamp": "2026-08-29T14:30:00Z",
   "payload": {}
 }
 ```
+
+Event catalog, version 1: `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`,
+`NOTIFICATION_CREATED`, `ALERT_TRIGGERED`, plus the job events of ADR-008.
+Payloads are specified in `08-realtime-spec.md`.
 
 ---
 
 # 33. Market Price Event
 
-```text
-{
-  "type": "MARKET_PRICE_UPDATED",
-  "payload": {
-    "assetId": "asset_001",
-    "price": 184.22,
-    "previousPrice": 183.90
-  }
-}
-```
+**Status:** `Planned (B5)` (ADR-007 point 6)
+
+`MARKET_PRICE_UPDATED` on `market:{assetId}`. Prices are decimal strings
+(ADR-002), not numbers. Payload: `08-realtime-spec.md`.
 
 ---
 
 # 34. Portfolio Event
 
-Example:
+**Status:** `Planned (B5)` (ADR-007 point 6)
 
-```text
-{
-  "type": "PORTFOLIO_UPDATED",
-  "payload": {
-    "portfolioId": "portfolio_001",
-    "reason": "TRANSACTION_COMPLETED"
-  }
-}
-```
-
-The event does not need to contain the complete portfolio.
-
-The client can fetch or derive the affected state.
+`PORTFOLIO_UPDATED` on `portfolio:{portfolioId}`, emitted only when holdings
+change (after a transaction commits). It does not carry the full portfolio;
+the client refetches through HTTP. `TRANSACTION_CREATED`,
+`TRANSACTION_COMPLETED` and `POSITION_UPDATED` are removed.
 
 ---
 
 # 35. Job Progress Event
 
-```text
-{
-  "type": "JOB_PROGRESS_UPDATED",
-  "payload": {
-    "jobId": "job_001",
-    "status": "PROCESSING",
-    "progress": 75
-  }
-}
-```
+**Status:** `Planned (B5)` (ADR-008 point 11)
+
+`JOB_PROGRESS_UPDATED` and the other job events on `jobs:{jobId}`, for CSV
+import jobs. Job states are those of ADR-008 point 3.
 
 ---
 
 # 36. Notification Event
 
-```text
-{
-  "type": "NOTIFICATION_CREATED",
-  "payload": {
-    "notificationId": "notification_001"
-  }
-}
-```
+**Status:** `Planned (B5)` (ADR-007 point 6)
+
+`NOTIFICATION_CREATED` on `notifications`, scoped to the authenticated user.
+The client fetches the notification through §28.
 
 ---
 
 # 37. Realtime Connection Events
 
-The client should receive normalized connection state:
+**Status:** `Planned (B5)` (ADR-007 point 12)
 
-```text
-CONNECTED
-DISCONNECTED
-RECONNECTING
-RECONNECTED
-FAILED
-```
-
-These are transport/application events and should not be treated as domain entities.
+The client port exposes a normalized connection state (connected,
+reconnecting, disconnected). These are transport states, not domain
+entities. While disconnected, the UI shows a stale-data indicator and
+refetches through HTTP until it reconnects. State names are defined in
+`08-realtime-spec.md`.
 
 ---
 
 # 38. Event Ordering
 
-The client must reject or ignore stale events where:
+**Status:** `Planned (B5)` (ADR-007 point 5)
+
+`sequence` is monotonic per channel. The client ignores events where:
 
 ```text
 incomingSequence <= lastProcessedSequence
 ```
 
-when sequence ordering is available.
-
-This prevents older market events from overwriting newer state.
+On a gap, the client resynchronizes through HTTP. There is no server-side
+replay buffer in version 1.
 
 ---
 
 # 39. Idempotency
 
-Mutations with potentially duplicate execution should support idempotency.
-
-Example:
+**Status:** `Planned (B4)` (ADR-008 point 8)
 
 ```text
 Idempotency-Key: <unique-key>
 ```
 
-Potential candidates:
-
-- transaction creation;
-- deposits;
-- withdrawals;
-- long-running jobs.
-
-The demo should simulate duplicate requests where useful.
+Supported only on `POST /api/v1/portfolios/:portfolioId/transactions` and on
+CSV import creation. Keys are stored per user with a hash of the request and
+the resulting response, for 24 hours, in the same unit of work as the
+mutation. Same key and request returns the stored response; same key with a
+different request returns 409 `CONFLICT`. Deposits and withdrawals do not
+exist in version 1 (ADR-003).
 
 ---
 
 # 40. Pagination
 
-Collection endpoints should support:
+**Status:** `Implemented` (`apps/api/src/schemas/pagination.schema.ts`)
+
+Paginated lists accept:
 
 ```text
-page
-pageSize
+page      integer >= 1, default 1
+pageSize  integer 1-100, default 20
 ```
 
-Default:
+Out-of-range values return 400 `VALIDATION_ERROR`. Responses carry `meta`
+(§4):
 
-```text
-page = 1
-pageSize = 20
+```json
+{
+  "data": [],
+  "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 }
+}
 ```
 
-Maximum page size should be bounded.
+Only `GET /api/v1/assets` and `GET /api/v1/portfolios/:portfolioId/transactions`
+are paginated. Other lists return all items without `meta`; each section
+states its own behavior.
 
 ---
 
 # 41. Filtering
 
-Filtering parameters should use predictable naming.
+**Status:** `Implemented` (per endpoint)
 
-Examples:
-
-```text
-status
-type
-assetId
-dateFrom
-dateTo
-```
-
-Complex filters should not be encoded into arbitrary query strings.
+Filters are flat, named query parameters validated with Zod, for example
+`assetId`, `type`, `direction`, `status`, `dateFrom` and `dateTo`. Each
+endpoint section lists the filters it really accepts; unknown filters are
+not part of the contract. Complex filter expressions are not supported.
 
 ---
 
 # 42. Sorting
 
-Sorting may use:
+**Status:** `Reference` (ADR-010 point 4)
 
-```text
-sort=createdAt
-sort=-createdAt
-```
-
-Multiple sort fields may be supported later.
+No endpoint accepts a `sort` parameter; server-side sorting is `Deferred`.
+Paginated lists keep the API order documented for each endpoint (FR-014).
+The client sorts only lists loaded in full (`Planned (FE)`).
 
 ---
 
 # 43. Date Handling
 
-API timestamps should use ISO 8601.
+**Status:** `Implemented`; contract schemas `Planned (B0)` (ADR-002 point 3)
 
-Example:
+Timestamps are ISO-8601 strings in UTC:
 
 ```text
 2026-08-29T14:30:00Z
 ```
 
-Timezone conversion belongs to the presentation layer unless business rules explicitly require timezone-aware calculations.
+Analytics days are UTC calendar dates (ADR-004). Time zone conversion
+belongs to the presentation layer.
 
 ---
 
 # 44. Monetary Values
 
-Monetary API fields must have predictable precision.
+**Status:** `Implemented` (output); response schemas `Planned (B0)` (ADR-002 point 3)
 
-The API should avoid ambiguous representations.
-
-Possible implementation:
-
-```text
+```json
 {
   "amount": "12345.67",
   "currency": "USD"
 }
 ```
 
-The final representation will be standardized before implementation.
+`amount` is a decimal string, never a JavaScript number; prices and
+quantities are decimal strings too. Requests accept a decimal string or a
+number today. Display rounding happens only in the client (ADR-010 point 9).
 
 ---
 
 # 45. API Security
 
-The API must enforce:
+**Status:** `Implemented`; permission checks in the application layer `Planned (B0)` (ADR-001, ADR-005)
 
-- authentication;
-- authorization;
-- input validation;
-- ownership checks;
-- rate limiting where applicable;
-- safe error responses.
-
-Client-side authorization is not sufficient.
+- Bearer authentication on every `/api/v1` route except auth and health (§9).
+- Role and ownership authorization on the server; client checks are UX only.
+- Zod validation of params, query and body; JSON bodies capped at 100 kB.
+- `helmet` headers and CORS restricted to `CORS_ORIGIN`.
+- Normalized error bodies that never expose stack traces or driver errors.
 
 ---
 
 # 46. Resource Ownership
 
-A user must only access resources they own or are authorized to access.
+**Status:** `Implemented`
 
-Example:
-
-```text
-GET /api/v1/portfolios/:portfolioId
-```
-
-must verify:
+Every portfolio-scoped resource is resolved through its owner. A resource
+of another user returns 404 `NOT_FOUND`, the same as a missing one, so its
+existence is never revealed:
 
 ```text
 authenticatedUser
         ↓
-portfolio.owner
+portfolio.userId === authenticatedUser.id
+        ↓
+resource
 ```
-
-before returning the resource.
 
 ---
 
 # 47. API Rate Limiting
 
-Production APIs should implement reasonable rate limits.
+**Status:** `Implemented` (`apps/api/src/middleware/rate-limit.ts`)
 
-The exact thresholds will be defined during deployment.
+| Limiter | Scope | Limit |
+| --- | --- | --- |
+| General | all `/api/v1` routes | 300 requests per 15 minutes |
+| Login | `POST /api/v1/auth/login` | 5 attempts per 15 minutes |
 
-The demo should not depend on external rate-limiting infrastructure.
-
-A local simulation may reproduce rate-limit responses for demonstration and testing.
+Exceeding a limit returns 429 `RATE_LIMITED` with the normalized error body. Health
+routes are not rate-limited. Realtime inbound limits are `Planned (B5)`
+(ADR-007 point 11).
 
 ---
 
 # 48. API Timeout Behavior
 
-Requests should have defined timeout behavior.
+**Status:** Job timeouts `Planned (B4)` (ADR-008 point 7); HTTP request timeouts not decided
 
-When a dependency times out:
-
-```text
-Dependency Timeout
-      ↓
-Normalize Error
-      ↓
-TIMEOUT / DEPENDENCY_ERROR
-      ↓
-Client Recovery UX
-```
-
-The demo should be capable of simulating this condition.
+The API sets no request timeout today. CSV import jobs move to `TIMED_OUT`
+when they exceed their type's timeout while `QUEUED` or validating; the
+apply stage is exempt.
 
 ---
 
 # 49. Mock API Contract
 
-The mock implementation must expose the same application operations as the production API.
+**Status:** `Planned (FE)` (ADR-001, ADR-002)
 
-Example:
-
-```text
-PortfolioService
-     │
-     ├── MockPortfolioService
-     └── ApiPortfolioService
-```
-
-Both must satisfy the same contract.
+There is no mock API. The demo runs the real application layer
+(`@trading/application`) in the browser through an in-process demo adapter
+that implements the same client-side ports as the HTTP adapter and returns
+the same DTOs (ADR-002 point 5).
 
 ---
 
 # 50. Mock API Behavior
 
-The mock API should simulate:
+**Status:** `Planned (FE)` (ADR-001); simulated latency `Deferred` (ADR-010 point 6)
 
-- asynchronous requests;
-- latency;
-- validation;
-- successful mutations;
-- failed mutations;
-- timeouts;
-- retries;
-- realtime events;
-- background processing.
-
-Example:
-
-```text
-UI
- ↓
-Mock API
- ↓
-Simulated Network Delay
- ↓
-Application Logic
- ↓
-Mock Repository
- ↓
-Domain Calculation
- ↓
-Response
-```
+The demo adapter executes the same use cases, validation and domain
+calculations as the API. Realtime comes from the in-process realtime adapter
+(§31) and CSV import from the in-process job runner (ADR-008 point 13).
+Simulated latency is decided in a frontend-stage ADR.
 
 ---
 
 # 51. Mock API and Real API Parity
 
-The following must remain equivalent:
+**Status:** `Planned (FE)` (ADR-002 point 6)
 
-```text
-Request shape
-Response shape
-Error shape
-Validation behavior
-State transitions
-Domain calculations
-```
-
-Only the infrastructure implementation changes.
+Both adapters share request, response and error shapes, validation, state
+transitions and domain calculations through `@trading/contracts` and
+`@trading/application`. Only infrastructure differs.
 
 ---
 
 # 52. Demo-Only Endpoints
 
-Demo-specific controls should not be part of the production API contract.
+**Status:** `Deferred` (ADR-010 point 6)
 
-Examples may include:
-
-```text
-POST /demo/reset
-POST /demo/simulation/start
-POST /demo/simulation/stop
-POST /demo/failures
-```
-
-These belong to a separate demo controller.
+The demo runs in the browser, so it needs no `/demo/*` HTTP endpoints, and
+none are part of the production contract. Demo controls are decided in the
+frontend-stage ADR.
 
 ---
 
 # 53. Demo Reset
 
-Conceptually:
+**Status:** `Deferred` (ADR-010 point 6)
 
-```text
-POST /demo/reset
-```
-
-Result:
-
-```text
-Seed Data
-    ↓
-Fresh Session
-```
-
-The endpoint is unavailable in production mode.
+Decided in the frontend-stage ADR, with the demo data layers.
 
 ---
 
 # 54. Demo Simulation Controls
 
-Potential operations:
+**Status:** `Deferred` for the demo (ADR-010 point 6); real-mode control `Planned (B5)` (ADR-007 point 10)
 
-```text
-POST /demo/simulation/start
-POST /demo/simulation/pause
-POST /demo/simulation/resume
-POST /demo/simulation/stop
-```
-
-The exact controls may be exposed through a developer/demo panel rather than the primary product UI.
+In real mode, starting, pausing and changing the simulation mode require the
+`simulation:control` permission (`ADMIN`, ADR-005). The endpoints are
+specified in `08-realtime-spec.md`.
 
 ---
 
 # 55. Demo Failure Simulation
 
-Potential categories:
+**Status:** `Deferred` (ADR-010 point 6); CSV import failure injection `Planned (FE)` (ADR-008 point 13)
 
-```text
-API_ERROR
-TIMEOUT
-NETWORK_ERROR
-REALTIME_DISCONNECT
-JOB_FAILURE
-VALIDATION_ERROR
-```
-
-The simulation must never corrupt the seed dataset.
+Scripted failures (API errors, latency, disconnects) wait for the
+frontend-stage ADR. The demo CSV import supports injectable failures
+(FR-069, FR-071). Simulation never corrupts the seed dataset.
 
 ---
 
 # 56. API Contract Testing
 
-The mock implementation should be tested against the same schemas used to validate the production implementation.
+**Status:** `Planned (B0)` (ADR-002 point 6)
 
-Conceptually:
-
-```text
-Shared Contract
-      │
- ┌────┴────┐
- ↓         ↓
-Mock      Real
-API       API
- ↓         ↓
-Contract Tests
-```
-
-This prevents the demo from drifting away from the real application.
+Responses are validated against their `@trading/contracts` schemas in the
+API integration tests and in the demo adapter during development. They are
+not validated at runtime in production.
 
 ---
 
 # 57. API Documentation
 
-The production API should expose machine-readable documentation.
+**Status:** `Planned (B6)` (ADR-002 point 7)
 
-OpenAPI is the preferred candidate.
-
-The specification should define:
-
-- endpoints;
-- parameters;
-- request schemas;
-- response schemas;
-- error schemas;
-- authentication;
-- examples.
-
-The final implementation will determine the exact tooling.
+OpenAPI is generated from the Zod schemas with the `toJSONSchema` function
+of Zod v4. There is no hand-maintained API document; this file stays the
+design spec.
 
 ---
 
 # 58. API Evolution
 
-Breaking changes must require a versioning strategy.
+**Status:** `Reference` (ADR-002 point 8)
 
-Examples:
-
-```text
-v1 → v2
-```
-
-Non-breaking additions should be preferred when possible.
+All routes stay under `/api/v1`. Within a version only additive changes are
+allowed; a breaking change requires a new version.
 
 ---
 
 # 59. API Quality Gates
 
-The API specification is considered acceptable when:
+**Status:** CI `Planned (B0)` (ADR-006 point 10)
 
-- every core product operation has a defined contract;
-- request and response structures are explicit;
-- errors are normalized;
-- validation behavior is predictable;
-- resource ownership is enforced;
-- realtime events have normalized envelopes;
-- mock and production implementations share contracts;
-- asynchronous operations expose lifecycle state;
-- pagination/filtering conventions are consistent;
-- monetary and timestamp handling are explicit;
-- demo-only infrastructure remains isolated.
+One GitHub Actions workflow on pushes and pull requests to `develop` and
+`main`: install with the lockfile, typecheck, lint, and the domain, database
+and API test suites. The contract is acceptable when every endpoint states
+its status, errors are normalized, ownership is enforced, and money and
+timestamps follow ADR-002.
 
 ---
 
 # 60. Final API Principle
 
-The API should represent **application capabilities**, not database tables.
+**Status:** `Reference`
 
-The important question is not:
-
-> “How do we expose this table?”
-
-but:
-
-> “What operation does the product need to perform?”
-
-Therefore the API should remain centered around meaningful capabilities such as:
+The API represents application capabilities, not database tables. The
+question is "what operation does the product need?", not "how do we expose
+this table?":
 
 ```text
 Create Transaction
@@ -2107,33 +1965,29 @@ Analyze Performance
 Track Market Updates
 ```
 
-rather than becoming a thin CRUD mirror of the database.
-
 ---
 
 # 61. Contract Strategy Summary
 
-The final architecture is:
+**Status:** `Reference` (ADR-001, ADR-002)
 
 ```text
-                     Application
-                         │
-                    API Contract
-                         │
-              ┌──────────┴──────────┐
-              │                     │
-         Mock Adapter          Real Adapter
-              │                     │
-        Mock Repository          HTTP API
-              │                     │
-        Simulation Engine       Backend
-              │                     │
-          Seed/Session          Database
-              │
-              └──────────┬──────────┘
-                         ↓
-                   Same Domain
-                    Behavior
+                     Web app
+                        │
+                Client-side ports
+                        │
+              ┌─────────┴─────────┐
+              │                   │
+        Demo adapter         HTTP adapter
+       (in process)               │
+              │               HTTP API
+              │                   │
+              └────────┬──────────┘
+                       ↓
+     @trading/application + @trading/contracts
+                       ↓
+              Same domain behavior
 ```
 
-This guarantees that the public demo remains a legitimate implementation of the product rather than a static prototype.
+The public demo is a real implementation of the product, not a static
+prototype.
