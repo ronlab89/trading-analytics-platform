@@ -134,6 +134,17 @@ needs a product decision is asked to the user, not invented.
 
 - [ ] T3.1 `01`, `02` (acceptance criteria for all P0/P1, status per FR, new FRs)
   - [x] Part 1, `02` (delegated writer; `pnpm docs:check` and `pnpm lint` pass): 86 FRs, every one with a status. 75 of the 79 P0/P1 FRs have testable acceptance criteria; the remaining 4 are Deferred. New FRs FR-080 to FR-086 cover CSV import, job lifecycle, idempotency, session refresh, roles, analytics data boundaries and realtime sessions. FR-025 and FR-031 are aligned with ADR-004. All 79 original headings are kept. Six FRs are pending a user decision: FR-006, FR-015, the demo FRs, FR-052, FR-055 and FR-011.
+  - [x] Six FR decisions approved by the user 2026-10-05, route inline:
+    - New ADR-010 "Version 1 Product Scope Clarifications":
+      - What Changed v1 uses only events with no threshold;
+      - FR-015 is satisfied by the filters;
+      - notifications are `unread`/`read` only;
+      - only fully loaded lists are sorted, in the client;
+      - archived portfolios are read-only (409, B0);
+      - the demo specifics wait for a frontend-stage ADR.
+    - `02` updated: FR-006, 011, 015, 052, 055, the demo FRs and the traceability table.
+    - `05` §42 note added and the ADR index updated.
+    - `pnpm docs:check` passes.
   - [ ] Part 2, `01` aligned with `02`, in 2-3 slices
 - [ ] T3.2 `03` (measurable targets, accepted exceptions)
 - [ ] T3.3 `11` (navigation aligned with wireframe)

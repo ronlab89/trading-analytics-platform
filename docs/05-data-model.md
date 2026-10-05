@@ -959,6 +959,9 @@ There is no soft-delete column. Portfolios are archived through
 `status = ARCHIVED` rather than deleted. Assets referenced by history cannot
 be deleted (`Restrict`).
 
+`Planned (B0)`: an archived portfolio is read-only. Mutations scoped to it
+are rejected with 409 `CONFLICT` (ADR-010 point 5).
+
 ---
 
 # 43. Historical Integrity

@@ -233,13 +233,26 @@ The user switches between their portfolios.
 ## FR-006 — What Changed
 
 **Priority:** P1  
-**Status:** `Deferred` — needs a product decision: no ADR or spec defines the event rules or what makes a change "significant", and no endpoint exists.  
-**Decisions:** —
+**Status:** `Planned (B1)` (API); UI `Planned (FE)`. Significant value change, unusual volatility and allocation changes are `Deferred`.  
+**Decisions:** ADR-010 point 1; ADR-004 point 10
 
-The dashboard identifies meaningful changes affecting the selected portfolio
-(largest contributor and detractor, positions opened or closed, allocation
-changes, unusual volatility, significant value change), derived only from
-real data. Criteria are written when a decision schedules it.
+The dashboard reports what changed in the selected portfolio over the
+selected period, derived only from real data.
+
+### Acceptance criteria
+
+- The events cover the same period and boundaries as performance
+  (`16-analytics-spec.md` §7-§8).
+- The largest contributor and the largest detractor come from range
+  attribution. When every contribution is `≥ 0` there is no detractor, and
+  when every contribution is `≤ 0` there is no contributor. A tie goes to
+  the alphabetically first asset symbol.
+- A position is reported as opened when its quantity goes from 0 to above
+  0, and as closed when its quantity reaches 0. One that opens and closes in
+  the period produces both events, in date order.
+- Alerts triggered in the period are listed.
+- An empty portfolio, or a period with no events, returns an empty list
+  (not an error).
 
 ---
 
@@ -331,8 +344,8 @@ external AI service is used.
 ## FR-011 — Delete Portfolio
 
 **Priority:** P1  
-**Status:** `Implemented` as archive (`POST /api/v1/portfolios/:portfolioId/archive`); hard deletion `Deferred` (`05-data-model.md` §42); UI `Planned (FE)`  
-**Decisions:** `05-data-model.md` §42-§43
+**Status:** `Implemented` as archive (`POST /api/v1/portfolios/:portfolioId/archive`); read-only archived portfolios `Planned (B0)`; hard deletion and unarchiving `Deferred` (`05-data-model.md` §42); UI `Planned (FE)`  
+**Decisions:** ADR-010 point 5; `05-data-model.md` §42-§43
 
 Deleting a portfolio archives it: history is preserved.
 
@@ -343,6 +356,9 @@ Deleting a portfolio archives it: history is preserved.
 - Given an already archived portfolio, when archived again, then the call
   succeeds with `alreadyArchived = true`.
 - Given another user's portfolio, then 404.
+- (B0) Given an archived portfolio, any mutation scoped to it (creating or
+  changing transactions, decisions, scenarios, alerts or CSV import jobs)
+  returns 409 `CONFLICT` and writes nothing. Reads still succeed.
 - (FE) A confirmation is required; cancel sends no request; if the archived
   portfolio was selected, the selection moves to another portfolio or to the
   empty state.
@@ -415,11 +431,12 @@ status.
 ## FR-015 — Search Transactions
 
 **Priority:** P1  
-**Status:** `Deferred` — needs a product decision: transactions have no free-text field, and the supported criteria are the filters of FR-016.  
-**Decisions:** —
+**Status:** satisfied by FR-016 and FR-020 (see their statuses); free-text transaction search `Deferred`  
+**Decisions:** ADR-010 point 2
 
-The user searches transactions by supported criteria. Criteria are written
-when a decision defines what is searched beyond FR-016.
+The user finds transactions with the FR-016 filters and finds assets with
+the FR-020 search. There is no separate search in version 1, so this FR adds
+no acceptance criteria of its own.
 
 ---
 
@@ -1066,8 +1083,8 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-052 — Notification Lifecycle
 
 **Priority:** P1  
-**Status:** unread and read `Implemented` (`POST .../:notificationId/read`, `POST .../read-all`); `dismissed` `Deferred` (no state in the model; needs a product decision)  
-**Decisions:** `05-data-model.md` §21
+**Status:** `Implemented` (`POST .../:notificationId/read`, `POST .../read-all`); UI `Planned (FE)`  
+**Decisions:** ADR-010 point 3 (`unread` and `read` only; no `dismissed` state); `05-data-model.md` §21
 
 ### Acceptance criteria
 
@@ -1107,8 +1124,8 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-055 — Sorting
 
 **Priority:** P1  
-**Status:** client-side sorting of fully loaded lists `Planned (FE)`; server-side sorting of paginated lists `Deferred` (needs a product decision)  
-**Decisions:** —
+**Status:** client-side sorting of fully loaded lists `Planned (FE)`; server-side sort parameters `Deferred`  
+**Decisions:** ADR-010 point 4
 
 ### Acceptance criteria
 
@@ -1355,7 +1372,7 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-071 — Demo Error Scenarios
 
 **Priority:** P1  
-**Status:** CSV import failure injection `Planned (FE)` (ADR-008 point 13); other scripted failures (request failure, timeout, connection loss) `Deferred` — needs a product decision  
+**Status:** CSV import failure injection `Planned (FE)` (ADR-008 point 13); other scripted failures (request failure, timeout, connection loss) `Deferred` until the frontend-stage demo ADR (ADR-010 point 6)  
 **Decisions:** ADR-008 point 13
 
 ### Acceptance criteria
@@ -1370,7 +1387,7 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-072 — Demo Reset
 
 **Priority:** P1  
-**Status:** `Deferred` — demo data layers and reset are undecided (`05-data-model.md` §35); needs a product decision.  
+**Status:** `Deferred` — demo data layers and reset are decided in the frontend-stage demo ADR (ADR-010 point 6; `05-data-model.md` §35).  
 **Decisions:** —
 
 The demo provides a reliable way to restore its initial seeded state
@@ -1738,16 +1755,16 @@ This applies equally to the full stack and to the public demo.
 | FR-003 | `Planned (B2)` | ADR-005 p6-7 | B2, FE |
 | FR-004 | `Implemented`; `Planned (B1)` | ADR-004 p5, 11; `16` §11-15 | B1, FE |
 | FR-005 | `Planned (FE)` | — | FE |
-| FR-006 | `Deferred` | — | — |
+| FR-006 | `Planned (B1)`; UI `Planned (FE)` | ADR-010 p1 | B1, FE |
 | FR-007 | `Implemented`; `Planned (B1)` | ADR-004 p11; `16` §15 | B1 |
 | FR-008 | `Implemented` | ADR-005 p12 | FE |
 | FR-009 | `Implemented`; `Planned (B2)` | ADR-004 p12; ADR-005 p2 | B2, FE |
 | FR-010 | `Implemented` | `05` §43 | FE |
-| FR-011 | `Implemented` (archive) | `05` §42 | FE |
+| FR-011 | `Implemented` (archive); read-only `Planned (B0)` | ADR-010 p5 | B0, FE |
 | FR-012 | `Implemented`; `Planned (B1)`, `Planned (B5)` | ADR-004 p15; ADR-007 | B1, B5, FE |
 | FR-013 | `Implemented` | ADR-001 p6 | FE |
 | FR-014 | `Implemented`; `Planned (B1)` | ADR-003 p4; ADR-004 p15 | B1, FE |
-| FR-015 | `Deferred` | — | — |
+| FR-015 | Satisfied by FR-016 and FR-020 | ADR-010 p2 | — |
 | FR-016 | `Implemented` | ADR-003 p1 | FE |
 | FR-017 | `Implemented`; `Planned (B0)`, `Planned (B4)`, `Planned (B5)` | ADR-001; ADR-003; ADR-007 p6; ADR-008 p8, 12 | B0, B4, B5, FE |
 | FR-018 | `Implemented`; `Planned (B0)`, `Planned (B1)` | ADR-003 p6; ADR-004 p2, 12 | B0, B1 |
@@ -1782,12 +1799,12 @@ This applies equally to the full stack and to the public demo.
 | FR-047 | `Planned (FE)` | ADR-007 p2, 5 | FE |
 | FR-048 | `Planned (B5)` | ADR-005 p2; ADR-007 p7, 10 | B5, FE |
 | FR-049 | `Planned (B5)` | ADR-007 p7-8, 14 | B5 |
-| FR-050 | `Deferred` | ADR-007 p8 | — |
+| FR-050 | `Deferred` | ADR-007 p8, ADR-010 p6 | — |
 | FR-051 | `Implemented`; `Planned (B5)` | ADR-007 p3, 6, 9 | B5, FE |
-| FR-052 | `Implemented`; `dismissed` `Deferred` | `05` §21 | FE |
+| FR-052 | `Implemented` | ADR-010 p3 | FE |
 | FR-053 | `Implemented`; `Planned (B5)` | ADR-007 p9 | B5 |
 | FR-054 | `Deferred` | — | — |
-| FR-055 | `Planned (FE)`; server sort `Deferred` | — | FE |
+| FR-055 | `Planned (FE)`; server sort `Deferred` | ADR-010 p4 | FE |
 | FR-056 | `Implemented` | ADR-002 p2 | FE |
 | FR-057 | `Planned (FE)` | — | FE |
 | FR-058 | `Implemented`; `Planned (FE)` | `16` §2 | FE |
@@ -1799,12 +1816,12 @@ This applies equally to the full stack and to the public demo.
 | FR-064 | `Planned (FE)` | — | FE |
 | FR-065 | `Planned (FE)` | — | FE |
 | FR-066 | `Planned (FE)` | ADR-001 p1, 4; ADR-002 p5; ADR-006 p1, 7 | FE |
-| FR-067 | `Planned (FE)`; reloads `Deferred` | ADR-001 p4 | B0, FE |
-| FR-068 | `Planned (FE)`; latency and failures `Deferred` | ADR-002 p5-6 | FE |
+| FR-067 | `Planned (FE)`; reloads `Deferred` | ADR-001 p4, ADR-010 p6 | B0, FE |
+| FR-068 | `Planned (FE)`; latency and failures `Deferred` | ADR-002 p5-6, ADR-010 p6 | FE |
 | FR-069 | `Planned (FE)` | ADR-008 p3, 13 | FE |
 | FR-070 | `Planned (FE)` | ADR-007 p13 | FE |
-| FR-071 | `Planned (FE)`; other failures `Deferred` | ADR-008 p13 | FE |
-| FR-072 | `Deferred` | — | — |
+| FR-071 | `Planned (FE)`; other failures `Deferred` | ADR-008 p13, ADR-010 p6 | FE |
+| FR-072 | `Deferred` | ADR-010 p6 | FE |
 | FR-073 | `Implemented`; `Planned (B0)` | ADR-003 p6; `05` §8, §32 | B0, FE |
 | FR-074 | `Implemented`; `Planned (B0)`, `Planned (B4)` | ADR-001; ADR-008 p2, 5 | B0, B4 |
 | FR-075 | `Planned (B4)` | ADR-008 p6, 8 | B4, FE |
