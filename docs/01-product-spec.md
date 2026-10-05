@@ -1,7 +1,7 @@
 # SDD 01 — Product Specification
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft; §1-§8 reconciled with `02-functional-requirements.md` and the ADRs on 2026-10-05 (task T3.1)  
+**Status:** Draft; all sections reconciled with `02-functional-requirements.md` and the ADRs on 2026-10-05 (task T3.1)  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`
 
@@ -470,287 +470,197 @@ FR-053.
 
 # 19. States and Feedback
 
-Every major user workflow must define its relevant states.
+**Status:** API states `Implemented` (empty results, error envelope); UI states `Planned (FE)`; connection states `Planned (B5)`; simulated timeouts and connection loss in the demo `Deferred`
 
-At minimum:
+Every major workflow defines its relevant states: loading (FR-057), empty
+(FR-058), error and retry (FR-059, FR-075), success (FR-060), confirmation
+(FR-061), preserved input after a failure (FR-076) and accessible feedback
+(FR-064). Realtime workflows add connection lost and reconnecting (FR-046,
+FR-047); permission denied follows FR-084.
 
-```text
-Initial
-Loading
-Success
-Empty
-Validation Error
-Operation Error
-Retry
-Disabled
-Processing
-Completed
-```
-
-Where relevant, the system should also support:
-
-```text
-Connection Lost
-Reconnecting
-Permission Denied
-Timeout
-Partial Data
-```
-
-The public demo must implement these states through simulated behavior where real infrastructure is unavailable.
+In the demo these states come from the real application layer running in
+process (ADR-001, ADR-002); scripted request failures, timeouts and
+connection loss wait for the frontend-stage demo ADR (FR-071, ADR-010
+point 6).
 
 ---
 
 # 20. Forms and Validation
 
-Forms must provide meaningful client-side validation.
+**Status:** server-side validation `Implemented`; client-side validation and confirmation dialogs `Planned (FE)`
 
-Where applicable, validation should include:
-
-- required fields;
-- data types;
-- valid ranges;
-- business constraints;
-- conflicting values;
-- destructive-action confirmation.
-
-The final validation rules will be specified in `02-functional-requirements.md`.
+Forms validate required fields, types, ranges, business constraints and
+conflicting values, and confirm destructive actions. The rules are those of
+the requirements, not of this document: transaction validation FR-018,
+confirmation dialogs FR-061, preserved input FR-076. Client and server use
+the same `@trading/contracts` schemas (ADR-002).
 
 ---
 
 # 21. Search, Filtering, Sorting, and Navigation
 
-Where datasets justify it, users should be able to:
+**Status:** asset search, transaction filters and pagination `Implemented`; client-side sorting `Planned (FE)`; server-side sorting and global search `Deferred`; UI `Planned (FE)`
 
-- search;
-- filter;
-- sort;
-- paginate;
-- reset filters;
-- preserve relevant context.
+- Search: assets (FR-020); transaction search is covered by filters and
+  asset search (FR-015); global search is parked (FR-054).
+- Filter: transactions (FR-016) and assets (FR-019).
+- Sort: client-side on fully loaded lists only; paginated lists keep the
+  API order (FR-055, ADR-010 point 4).
+- Paginate: assets and transactions (FR-056); other lists return complete
+  results.
 
-These interactions must operate against the mock dataset in the public demo exactly as they would against the real application data.
+The demo runs the same use cases over its seeded data (FR-056, FR-066).
 
 ---
 
 # 22. User Experience
 
-The product should feel:
+**Status:** `Planned (FE)`
 
-- modern;
-- professional;
-- analytical;
-- focused;
-- responsive;
-- trustworthy;
-- information-rich without becoming visually overwhelming.
-
-The interface should avoid the appearance of a generic admin dashboard.
+The product should feel modern, professional, analytical, focused,
+responsive and trustworthy: information-rich without becoming visually
+overwhelming, and never a generic admin dashboard. Screens and interaction
+rules live in `11-ui-ux-spec.md`.
 
 ---
 
 ## 22.1 Visual Principles
 
-The visual design should prioritize:
+**Status:** `Planned (FE)`
 
-- strong hierarchy;
-- controlled information density;
-- contextual detail;
-- progressive disclosure;
-- purposeful motion;
-- clear state communication;
-- consistent interaction patterns;
-- accessible contrast;
-- responsive behavior.
+Strong hierarchy, controlled density, progressive disclosure, clear state
+communication, consistent interaction patterns, accessible contrast and
+responsive layout. See FR-062 (responsive), FR-063 (keyboard) and FR-079
+(consistent feedback).
 
 ---
 
 ## 22.2 Motion
 
-Animations and transitions should communicate:
+**Status:** `Planned (FE)`
 
-- state changes;
-- hierarchy;
-- navigation;
-- temporal progression;
-- data updates;
-- feedback.
-
-Motion should not significantly interfere with usability or accessibility.
+Motion communicates state changes, hierarchy, navigation, temporal
+progression, data updates and feedback, and never blocks usability.
+Reduced motion is honored (FR-065).
 
 ---
 
 # 23. Public Demo Functional Parity
 
-The following principle is mandatory:
+**Status:** `Planned (FE)`
 
-> **If a capability is part of the product specification, the public demo should provide a functional representation of that capability unless explicitly classified as infrastructure-only.**
+> **Every user-facing capability whose status is not `Deferred` works in the
+> public demo.**
 
-For example:
-
-### Real Application
-
-```text
-React
-   ↓
-API
-   ↓
-Backend
-   ↓
-Database
-```
-
-### Public Demo
+The demo is not a separate mock product. It runs the same application layer
+(use cases, domain rules, permission checks) through the in-process
+`TradingClient` adapter, and is published as a static build with no backend
+calls and no secrets (ADR-001, ADR-002, ADR-006; FR-066, FR-068).
 
 ```text
-React
-   ↓
-Mock API / Repository
-   ↓
-In-memory persistence
+Real:  React -> TradingClient (HTTP) -> API -> application -> PostgreSQL
+Demo:  React -> TradingClient (in-process) -> application -> in-memory repositories
 ```
 
-From the user's perspective, both should support equivalent workflows.
+Details belong to `12-demo-mode-spec.md`.
 
 ---
 
 ## 23.1 Demo Persistence
 
-The demo may use:
+**Status:** in-memory persistence within a session `Planned (FE)` (repositories `Planned (B0)`); persistence across reloads `Deferred`
 
-- in-memory state;
-- browser storage;
-- seeded mock repositories;
-- deterministic mock services.
-
-The persistence strategy must be selected later.
-
-The demo should behave as though the user were interacting with a persistent application wherever practical.
+See FR-067. Whether demo data survives a reload is decided in the
+frontend-stage demo ADR (ADR-010 point 6; `05-data-model.md` §34).
 
 ---
 
 ## 23.2 Demo Reset
 
-Because the demo uses simulated persistence, it should provide a reliable way to restore the initial seeded state.
+**Status:** `Deferred`
 
-This may be:
-
-- automatic reset;
-- explicit reset;
-- session reset;
-- demo environment reset.
-
-The final behavior will be specified later.
+The demo should offer a reliable way to restore its seeded state (FR-072).
+The mechanism is decided in the frontend-stage demo ADR (ADR-010 point 6;
+`05-data-model.md` §35).
 
 ---
 
 # 24. Data Simulation Principles
 
-Mock data must be realistic enough to support the full product.
+**Status:** `Planned (FE)`
 
-The dataset should include:
-
-- multiple portfolios;
-- multiple assets;
-- different transaction types;
-- profitable positions;
-- losing positions;
-- historical data;
-- different volatility conditions;
-- decision histories;
-- scenarios;
-- notifications;
-- edge cases.
-
-The dataset should intentionally include data that allows all relevant UI states and analytical features to be demonstrated.
+Seed data is realistic enough to exercise every non-deferred feature and UI
+state: several portfolios and assets, all transaction types, winning and
+losing positions, history, varied volatility, decisions, scenarios,
+notifications and edge cases. Market data comes from the deterministic
+simulator (FR-049). See `05-data-model.md` §33 and §36.
 
 ---
 
 # 25. Error Simulation
 
-The public demo must be capable of reproducing realistic failures.
+**Status:** real-rule errors `Planned (FE)`; CSV import failure injection `Planned (FE)`; other scripted failures `Deferred`
 
-Examples:
-
-```text
-Validation failure
-Server error
-Timeout
-Connection failure
-Empty dataset
-Rejected operation
-Failed background task
-Temporary unavailable service
-```
-
-These scenarios may be triggered:
-
-- naturally through predefined conditions;
-- through a demo control;
-- through specific test data.
-
-The final mechanism will be defined in `12-demo-mode-spec.md`.
+- Validation failures and rejected operations (for example an oversell)
+  occur in the demo through the real rules, without scripting (FR-071).
+- CSV import failures are injectable and produce the job states of FR-081
+  (FR-069, ADR-008 point 13).
+- Scripted request failures, timeouts, connection loss and simulated
+  latency are `Deferred` until the frontend-stage demo ADR (FR-068, FR-071,
+  ADR-010 point 6).
 
 ---
 
 # 26. Product Boundaries
 
-The product must not evolve into:
+**Status:** `Implemented` (scope constraint)
 
-- a brokerage;
-- an exchange;
-- a payment platform;
-- an automated trading system;
-- a financial advisory service;
-- a social trading network.
-
-These boundaries are important both for scope control and product identity.
+The product is not a brokerage, an exchange, a payment platform, an
+automated trading system, a financial advisory service or a social trading
+network.
 
 ---
 
 # 27. Future Product Opportunities
 
-The architecture should leave room for future capabilities without requiring them in the initial implementation.
+**Status:** `Deferred`
 
-Potential future areas include:
-
-- advanced exposure visualization;
-- market replay;
-- trade journal intelligence;
-- strategy sandbox;
-- additional asset classes;
-- advanced analytics;
-- observability;
-- AI-assisted analysis.
-
-These features must not be implemented solely to increase the apparent complexity of the portfolio project.
+Possible later areas: advanced exposure visualization, market replay, trade
+journal intelligence, strategy sandbox, more asset classes, advanced
+analytics and AI-assisted analysis. None is built without a new decision,
+and none is added only to increase apparent complexity.
 
 ---
 
 # 28. Product Success Criteria
 
-The product succeeds when a user can:
+**Status:** per criterion, through the referenced requirements
 
-1. Understand the current state of a portfolio.
-2. Navigate through multiple portfolios.
-3. Manage positions and transactions.
-4. Explore asset information.
-5. Analyze portfolio performance.
-6. Understand what changed.
-7. Understand why performance changed.
-8. Inspect a trading decision through time.
-9. Create and compare hypothetical scenarios.
-10. Experience simulated real-time updates.
-11. Encounter and recover from realistic error states.
-12. Complete workflows without encountering non-functional primary interactions.
+A user can:
 
-The public demo must provide all of these experiences using mock infrastructure.
+1. Understand the current state of a portfolio (FR-004, FR-007).
+2. Navigate multiple portfolios (FR-005, FR-008).
+3. Manage positions and transactions (FR-012 to FR-018).
+4. Explore asset information (FR-019 to FR-021).
+5. Analyze portfolio performance (FR-025 to FR-029).
+6. Understand what changed (FR-006).
+7. Understand why performance changed (FR-030, FR-031).
+8. Inspect a trading decision through time (FR-032 to FR-035).
+9. Create and compare hypothetical scenarios (FR-036 to FR-043).
+10. Experience simulated real-time updates (FR-044, FR-045, FR-070).
+11. Recover from realistic error states (FR-059, FR-075, FR-076).
+12. Complete workflows with no non-functional primary action (FR-078).
+
+The demo provides each criterion whose requirements are not `Deferred`
+(FR-066).
 
 ---
 
 # 29. Product Identity
 
-The product should ultimately communicate three complementary ideas:
+**Status:** `Implemented` (guiding model)
+
+The product communicates three complementary ideas:
 
 ### Observe
 
@@ -763,8 +673,6 @@ The product should ultimately communicate three complementary ideas:
 ### Explore
 
 > **What could happen?**
-
-These principles connect the conventional portfolio-management functionality with the project's differentiated features.
 
 ```text
                  OBSERVE
@@ -787,90 +695,36 @@ These principles connect the conventional portfolio-management functionality wit
               SCENARIO LAB
 ```
 
-This conceptual model should guide future product and UX decisions.
-
 ---
 
 # 30. Relationship With Future SDD Documents
 
-This document defines **what the product is**.
+**Status:** `Implemented`
 
-The following documents will define progressively:
-
-```text
-02-functional-requirements.md
-    ↓
-Exact system behavior
-
-03-non-functional-requirements.md
-    ↓
-Quality attributes and measurable constraints
-
-04-tech-stack.md
-    ↓
-Detailed user journeys
-
-05-data-model.md
-    ↓
-System architecture and boundaries
-
-06-architecture.md
-    ↓
-Domain entities and relationships
-
-07-api-spec.md
-    ↓
-Backend contracts
-
-08-realtime-spec.md
-    ↓
-Frontend structure and state strategy
-
-
-09-security-spec.md
-    ↓
-Security model
-
-10-testing-strategy.md
-    ↓
-Performance strategy and measurements
-
-11-ui-ux-spec.md
-    ↓
-Testing approach
-
-12-demo-mode-spec.md
-    ↓
-Complete public demo behavior
-
-13-observability-spec.md
-    ↓
-Infrastructure and deployment
-
-14-deployment-spec.mdmd
-    ↓
-
-15-implementation-plan.md
-    ↓
-Implementation sequence
-```
-
-No implementation-specific decision in this document should be treated as final if it belongs to one of those later specifications.
+This document defines **what the product is**. Exact behavior, quality
+attributes, technical design and delivery live in the other SDD documents
+(`00`-`16`, including `16-analytics-spec.md`) and in the ADRs (`adr/`);
+[`README.md`](README.md) holds the document map and the precedence rule
+(ADR > SDD > roadmap > progress). When this document disagrees with an ADR
+or with `02-functional-requirements.md`, those win and this document is
+corrected.
 
 ---
 
 ## Product Definition Summary
 
-Trading Analytics Platform is a **fully interactive portfolio analysis workspace** combining familiar portfolio-management capabilities with decision-oriented analytical experiences.
+**Status:** per section above
 
-Its distinguishing capabilities are:
+Trading Analytics Platform is an interactive portfolio analysis workspace
+that combines portfolio management with decision-oriented analysis. Its
+distinguishing capabilities are:
 
 - **What Changed?** — contextual understanding of portfolio changes.
-- **Performance Attribution** — understanding the sources of performance.
-- **Decision Replay** — reconstructing the evolution of trading decisions.
-- **Portfolio Pulse** — interpreting current portfolio conditions.
-- **Scenario Lab** — exploring hypothetical outcomes.
+- **Performance Attribution** — the sources of performance.
+- **Decision Replay** — how a trading decision evolved.
+- **Portfolio Pulse** — current portfolio conditions.
+- **Scenario Lab** — hypothetical outcomes.
 
-The public demo must reproduce the complete product experience using simulated infrastructure and realistic mock data.
-
-The complete implementation must provide the real engineering system behind that experience and remain locally demonstrable and technically defensible.
+The public demo runs the real application layer over simulated
+infrastructure and seeded data; the full system is the real engineering
+behind it, locally runnable and technically defensible.

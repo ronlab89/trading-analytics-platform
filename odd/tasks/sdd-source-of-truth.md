@@ -145,7 +145,7 @@ needs a product decision is asked to the user, not invented.
     - `02` updated: FR-006, 011, 015, 052, 055, the demo FRs and the traceability table.
     - `05` §42 note added and the ADR index updated.
     - `pnpm docs:check` passes.
-  - [ ] Part 2, `01` aligned with `02`, in 2-3 slices
+  - [x] Part 2, `01` aligned with `02` in 3 delegated slices (§1-8, §9-18, §19-end). Each section has a status and references FR IDs. Contradictions fixed: cash transaction types, delete semantics, per-tick analytics, the factor breakdown, `dismissed`, the mock-API demo, and the document chain. Pending user decisions: Settings domain, analytics comparison, and the status for reference sections.
 - [ ] T3.2 `03` (measurable targets, accepted exceptions)
 - [ ] T3.3 `11` (navigation aligned with wireframe)
 
