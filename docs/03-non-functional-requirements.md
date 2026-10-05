@@ -434,86 +434,174 @@ and client tests with a simulated disconnect.
 
 ## NFR-019 — Authentication Security
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** password hashing, login rate limit and access-token expiry
+`Implemented`; refresh sessions `Planned (B2)` (ADR-005); log redaction
+`Planned (B3)` (ADR-009)
 
-Authentication must follow secure implementation practices.
+### Target
 
-Credentials must never be exposed through:
+- Passwords are hashed with `bcryptjs` at cost 10 or higher `(proposed)`;
+  login returns a generic "Invalid credentials." error.
+- Login is limited to 5 attempts per 15 minutes per IP (ADR-005 point 12).
+- Access tokens expire after 900 s (`JWT_EXPIRES_IN_SECONDS`); `JWT_SECRET`
+  has at least 32 characters, or the API refuses to start.
+- Refresh tokens are opaque, stored hashed, rotate on every use, and reuse
+  of a rotated token revokes the family (ADR-005 point 5).
+- Credentials and tokens never appear in URLs, logs, analytics events or
+  error messages (ADR-009 point 4).
 
-- client logs;
-- URLs;
-- analytics events;
-- error messages.
+### Accepted exception
+
+No self-registration; users come from the seed (ADR-005 point 10). An
+issued access token stays valid until expiry, at most 15 minutes, after
+logout (ADR-005 point 6).
+
+### Measurement
+
+`apps/api/src/middleware/rate-limit.test.ts`; startup fails with a short
+`JWT_SECRET` (`apps/api/src/config/env.ts`); B2 refresh rotation and reuse
+tests; B3 redaction unit tests.
 
 ---
 
 ## NFR-020 — Authorization
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** ownership checks `Implemented`; permission matrix `Planned (B2)`
+(ADR-005)
 
-Protected resources must enforce authorization independently of client-side UI restrictions.
+### Target
 
-The frontend must not be considered a security boundary.
+- Every protected route checks ownership server-side; another user's
+  resource returns 404, never 403 (ADR-005 point 12).
+- Every use case receives an `Actor` and checks permission and ownership in
+  the application layer; code checks permissions, never role names
+  (ADR-005 points 2-3).
+- The frontend is not a security boundary.
+
+### Measurement
+
+Cross-user 404 route tests (for example
+`apps/api/src/routes/portfolios.routes.test.ts`); B2 tests for allowed
+role, denied role, cross-user access and escalation attempts
+(`09-security-spec.md` §55).
 
 ---
 
 ## NFR-021 — Input Validation
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** server validation `Implemented`; shared schemas in
+`@trading/contracts` `Planned (B0)` (ADR-002); client validation
+`Planned (FE)`
 
-User-controlled input must be validated at appropriate boundaries.
-
-Validation should exist at:
+### Target
 
 ```text
-Client
-  +
-Server
-  +
-Domain/business layer where required
+Client      UX only, same schemas
+Server      Zod at the HTTP boundary (required)
+Domain      invariants in domain validators
 ```
 
-Client validation must improve UX but must not replace server validation.
+- Every request body, query and path parameter is parsed before reaching a
+  service; invalid input returns 400 with the standard error envelope.
+- JSON bodies are limited to 100 kb (`apps/api/src/app.ts`).
+- Client validation never replaces server validation (ADR-001 point 5).
+
+### Measurement
+
+`apps/api/src/middleware/validate.test.ts` and route tests asserting 400
+for invalid input; B0 contract tests.
 
 ---
 
 ## NFR-022 — Sensitive Data Handling
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Implemented` for errors and health output; token storage
+`Planned (B2)`; log redaction `Planned (B3)`
 
-Sensitive information must not be unnecessarily persisted or exposed.
+### Target
 
-The application should follow least-privilege principles.
+- Unclassified errors return a generic message; details go to server logs
+  only (`apps/api/src/middleware/error-handler.ts`).
+- Health responses expose no connection strings or driver errors.
+- Passwords and refresh tokens are stored only as hashes; logs carry
+  `userId` only, never other personal data (ADR-009 point 3).
+
+### Measurement
+
+Error-handler tests for 500 responses; readiness test with the database
+down; B3 redaction tests.
 
 ---
 
 ## NFR-023 — Secret Management
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Implemented` (API); demo build `Planned (FE)` (ADR-006
+point 7)
 
-Secrets must never be committed to source control.
+### Target
 
-Environment-specific secrets must be provided through appropriate configuration mechanisms.
+- No secret file is tracked: `.env` and `.env.*.local` are ignored; only
+  `*.example` files are committed.
+- Required secrets are validated at startup; invalid configuration exits
+  with code 1 and names the key, never the value.
+- The static demo build contains no secrets.
+
+### Measurement
+
+`git ls-files` lists no `.env` file other than examples; startup test with
+a missing `JWT_SECRET`; FE check that the demo bundle has no API secret
+variable.
 
 ---
 
 ## NFR-024 — Dependency Security
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B7)` (security checklist, `14-deployment-spec.md`
+§78)
 
-Project dependencies should be periodically reviewed for known vulnerabilities.
+### Target
 
-Automated dependency auditing should be incorporated where practical.
+`pnpm audit --prod --audit-level=high` reports 0 high or critical
+advisories `(proposed)`, or each remaining one is recorded with a reason.
+
+### Accepted exception
+
+The minimal CI of ADR-006 point 10 does not run a dependency audit, and no
+automated update bot is configured; the audit is a manual checklist step.
+
+### Measurement
+
+Audit output attached to the B7 checklist.
 
 ---
 
 ## NFR-025 — Secure Headers
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** API headers `Implemented` (`helmet` defaults, `x-powered-by`
+disabled, CORS allow-list from `CORS_ORIGIN`); demo hosting headers
+`Deferred` (ADR-006)
 
-The deployed application should use appropriate security headers.
+### Target
 
-The final header configuration will be defined in the deployment/security specifications.
+Every API response carries the `helmet` default headers and no
+`X-Powered-By`; cross-origin requests are allowed only from `CORS_ORIGIN`.
+
+### Accepted exception
+
+No hosted backend, TLS termination or reverse proxy in version 1
+(ADR-006 point 2); headers of the static demo host are not controlled.
+
+### Measurement
+
+An API test asserting `X-Content-Type-Options: nosniff` and no
+`X-Powered-By` `(proposed)`; no such test exists yet.
 
 ---
 
@@ -521,31 +609,61 @@ The final header configuration will be defined in the deployment/security specif
 
 ## NFR-026 — Client Trust Boundary
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** server enforcement `Implemented` (ownership); application-layer
+enforcement `Planned (B0)`/`Planned (B2)` (ADR-001, ADR-005)
 
-The frontend must assume that all client-side state can be manipulated.
+### Target
 
-Security-sensitive decisions must be enforced server-side in the complete application.
+Every security decision is enforced by the API; hiding a control in the UI
+is never the only protection.
+
+### Accepted exception
+
+The demo runs without a server, so its permission checks (ADR-005
+point 11) give behavior parity, not security.
+
+### Measurement
+
+The NFR-020 tests call the API directly, bypassing the UI.
 
 ---
 
 ## NFR-027 — XSS Prevention
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Planned (FE)`
 
-User-provided or externally sourced content must be safely rendered.
+### Target
 
-Unsafe HTML rendering should be avoided unless explicitly sanitized.
+- User-provided and imported content (notes, CSV fields) renders as text.
+- No `dangerouslySetInnerHTML` or `innerHTML` use without sanitization;
+  0 unsanitized occurrences in `apps/web` `(proposed)`.
+
+### Measurement
+
+A repository search or lint rule over `apps/web` finds 0 unsanitized
+occurrences; a component test renders `<script>` in a note as text.
 
 ---
 
 ## NFR-028 — Token Handling
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B2)` (server); `Planned (FE)` (client) (ADR-005)
 
-Authentication token storage and transmission must follow the selected authentication architecture's security requirements.
+### Target
 
-The implementation must minimize exposure to client-side attacks.
+- The access token lives in memory only, never in `localStorage` or
+  `sessionStorage` (ADR-005 point 4).
+- The refresh cookie is `HttpOnly`, `Secure`, `SameSite=Strict`,
+  `Path=/api/v1/auth`; refresh and logout require a custom request header
+  (ADR-005 points 5 and 7).
+
+### Measurement
+
+B2 tests asserting the cookie attributes and the custom-header check; an
+FE test asserting browser storage holds no token after login.
 
 ---
 
@@ -553,55 +671,72 @@ The implementation must minimize exposure to client-side attacks.
 
 ## NFR-029 — WCAG Alignment
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-The application should target WCAG 2.2 AA principles for core workflows.
+### Target
 
-This includes:
+Core workflows meet WCAG 2.2 AA: keyboard access, semantic structure,
+visible focus, contrast of 4.5:1 for text (3:1 for large text and UI
+components), labelled form fields and announced status changes. Automated
+checks report 0 serious or critical violations on core routes
+`(proposed)`.
 
-- keyboard access;
-- semantic structure;
-- focus visibility;
-- sufficient contrast;
-- accessible forms;
-- meaningful labels;
-- status communication.
+### Measurement
+
+Automated accessibility scan in end-to-end tests of core routes, plus the
+manual checks of NFR-030 and NFR-031.
 
 ---
 
 ## NFR-030 — Keyboard Navigation
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-Core workflows must be fully usable without a mouse.
+### Target
 
-This includes:
+Navigation, forms, dialogs, filters, tables, scenario controls and replay
+controls are completable with the keyboard only; dialogs trap focus and
+return it on close.
 
-- navigation;
-- forms;
-- dialogs;
-- filters;
-- tables;
-- scenario controls;
-- replay controls.
+### Measurement
+
+One keyboard-only end-to-end test per listed workflow.
 
 ---
 
 ## NFR-031 — Screen Reader Compatibility
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-Important application state changes should be communicated appropriately to assistive technologies.
+### Target
+
+Loading, success, error, stale-data and connection-status changes are
+announced through live regions; charts have a text alternative.
+
+### Measurement
+
+Component tests asserting live-region content; a manual screen-reader pass
+on core workflows before the frontend stage closes.
 
 ---
 
 ## NFR-032 — Reduced Motion
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-The application must respect `prefers-reduced-motion`.
+### Target
 
-Motion-dependent experiences must remain understandable without animation.
+With `prefers-reduced-motion: reduce`, non-essential animations and
+transitions are disabled; no information is conveyed by motion alone.
+
+### Measurement
+
+End-to-end test with reduced motion emulated, asserting the affected
+elements have no running animation.
 
 ---
 
@@ -609,72 +744,100 @@ Motion-dependent experiences must remain understandable without animation.
 
 ## NFR-033 — Modular Architecture
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** package structure `Implemented`; application and contracts
+packages `Planned (B0)` (ADR-001, ADR-002)
 
-The system should be organized around coherent domains and responsibilities.
+### Target
 
-The architecture should minimize:
+- Code is grouped by domain in workspace packages; the package graph has
+  no cycles.
+- Business logic exists in one place (NFR-036); no shared mutable module
+  state.
 
-- circular dependencies;
-- duplicated business logic;
-- uncontrolled shared state;
-- large monolithic modules.
+### Measurement
+
+`pnpm typecheck` (`tsc --build` with project references, which rejects
+reference cycles) exits 0. Cycles inside a package are not checked
+automatically.
 
 ---
 
 ## NFR-034 — Separation of Concerns
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Planned (B0)` (ADR-001)
 
-The implementation should maintain clear boundaries between:
+### Target
 
 ```text
-Presentation
-     ↓
-Application
-     ↓
-Domain
-     ↓
-Infrastructure
+apps (Express, web, demo)  ->  @trading/application  ->  @trading/domain
+infrastructure (@trading/database)  ->  domain contracts
 ```
 
-The exact architectural interpretation will be defined later.
+`@trading/application` imports neither Prisma, Express, transport Zod
+schemas nor browser APIs (ADR-001 point 1).
+
+### Measurement
+
+A `no-restricted-imports` lint rule (placeholder today in
+`eslint.config.js`) makes `pnpm lint` fail on a forbidden import.
 
 ---
 
 ## NFR-035 — Reusable Components
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-Common UI behavior should be implemented through reusable components where reuse provides meaningful value.
+### Target
 
-Reuse should not result in artificially generic abstractions.
+Each UI primitive (button, input, dialog, table) is defined once and
+reused; a component is generalized only when it has at least two real
+uses `(proposed)`.
+
+### Measurement
+
+Code review against `11-ui-ux-spec.md`.
 
 ---
 
 ## NFR-036 — Shared Business Logic
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** domain calculations `Implemented` (`@trading/domain`);
+analytics `Planned (B1)` (ADR-004); read models `Planned (B0)` (ADR-001
+point 6)
 
-Business rules must not be duplicated unnecessarily across UI components.
+### Target
 
-Calculations such as:
+Portfolio value, P/L, allocation, attribution and scenario impact are
+computed only in `@trading/domain` or `@trading/application`; the UI
+displays DTOs and does not recompute them (ADR-002).
 
-- portfolio value;
-- P/L;
-- allocation;
-- attribution;
-- scenario impact;
+### Measurement
 
-should have well-defined ownership.
+Each calculation has unit tests in its owning package; FE review finds no
+calculation in `apps/web`.
 
 ---
 
 ## NFR-037 — Explicit Dependencies
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** repository contracts `Implemented` (`@trading/domain`);
+factory injection and composition root `Planned (B0)` (ADR-001 points 2
+and 4)
 
-Modules should depend on explicit interfaces/contracts rather than implementation details wherever appropriate.
+### Target
+
+Services receive their dependencies through factory parameters; only the
+composition roots (`apps/api/src/composition.ts`, the demo root) choose
+implementations.
+
+### Measurement
+
+Application tests build services with in-memory implementations only.
 
 ---
 
@@ -682,48 +845,71 @@ Modules should depend on explicit interfaces/contracts rather than implementatio
 
 ## NFR-038 — Type Safety
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Implemented`
 
-The TypeScript codebase should use strict typing.
+### Target
 
-Avoid unnecessary:
+`strict`, `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` are
+on (`tsconfig.base.json`); `@typescript-eslint/no-explicit-any` is an
+error; DTO types are inferred from `@trading/contracts` schemas, not
+redeclared (ADR-002, `Planned (B0)`).
 
-- `any`;
-- unsafe casts;
-- duplicated type definitions;
-- implicit contracts.
+### Measurement
+
+`pnpm typecheck` and `pnpm lint` exit 0.
 
 ---
 
 ## NFR-039 — Linting
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Implemented` (local); CI `Planned (B0)` (ADR-006 point 10)
 
-The project should use automated linting to detect common problems and maintain consistency.
+### Target
+
+`pnpm lint` exits 0 with no errors on every change.
+
+### Measurement
+
+`pnpm lint`, run by the pre-commit hook (`lint-staged`) and by CI.
 
 ---
 
 ## NFR-040 — Formatting
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Implemented`
 
-Code formatting should be automated and consistent.
+### Target
 
-Formatting should not depend on manual developer discipline.
+All code and docs are formatted by Prettier; formatting never depends on
+manual discipline.
+
+### Measurement
+
+`pnpm format:check` exits 0; the pre-commit hook formats staged files.
 
 ---
 
 ## NFR-041 — Static Analysis
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Implemented` (TypeScript and ESLint)
 
-Static analysis should identify:
+### Target
 
-- code smells;
-- complexity issues;
-- duplicated logic;
-- potential bugs;
-- maintainability problems.
+Type errors, unsafe `any` and common bug patterns are caught by
+`pnpm typecheck` and `pnpm lint`.
+
+### Accepted exception
+
+No dedicated analyzer for code smells, complexity or duplication
+`(proposed)`; these are covered by review (NFR-070).
+
+### Measurement
+
+`pnpm typecheck` and `pnpm lint` exit 0.
 
 ---
 
@@ -731,46 +917,72 @@ Static analysis should identify:
 
 ## NFR-042 — Deterministic Business Logic
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** domain calculations `Implemented`; analytics `Planned (B1)`
+(ADR-004)
 
-Core business calculations should be deterministic and independently testable.
+### Target
 
-Examples:
+P/L, allocation, attribution, portfolio value, scenario calculations and
+pulse classifications are pure functions: same input, same output, no
+clock, randomness or I/O inside.
 
-- P/L;
-- allocation;
-- attribution;
-- portfolio value;
-- scenario calculations;
-- pulse classifications.
+### Measurement
+
+`pnpm --filter @trading/domain test` passes; it needs no database.
 
 ---
 
 ## NFR-043 — Testable Services
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Implemented` (API in-process); application factories
+`Planned (B0)` (ADR-001)
 
-Application services should be testable independently of UI rendering.
+### Target
+
+The API is testable in-process through `createApp()` without binding a
+port; application services are testable without HTTP or UI.
+
+### Measurement
+
+Supertest suites in `apps/api` (`pnpm --filter @trading/api test`); B0
+application tests.
 
 ---
 
 ## NFR-044 — Mockable Infrastructure
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** repository contracts `Implemented`; in-memory implementations
+`Planned (FE)` (ADR-001 point 4)
 
-External infrastructure should be replaceable with mocks or test implementations.
+### Target
 
-This requirement is particularly important for the public demo.
+Every infrastructure dependency sits behind a contract with an in-memory
+implementation; the demo and the API pass the same contract tests
+(ADR-002).
+
+### Measurement
+
+Shared contract tests run against both implementations.
 
 ---
 
 ## NFR-045 — Demo Determinism
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-The demo should provide predictable seeded data and reproducible behavior where required.
+### Target
 
-Randomness must not make important workflows impossible to reproduce.
+The demo starts from a seeded dataset; the same seed produces the same
+initial state and the same simulated series `(proposed)`.
+
+### Measurement
+
+A test runs the demo initialization twice with one seed and compares the
+resulting state.
 
 ---
 
@@ -778,42 +990,56 @@ Randomness must not make important workflows impossible to reproduce.
 
 ## NFR-046 — Local Setup
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Implemented` (`README.md`, `docker-compose.yml`)
 
-A developer should be able to start the project locally using documented steps.
+### Target
 
-The setup should minimize unnecessary manual configuration.
+From a clean clone, the documented steps (install, environment file,
+database, migrate, seed, run) start the API with no undocumented step, in
+15 minutes or less `(proposed)`.
+
+### Measurement
+
+Follow `README.md` on a clean clone; any missing step is a defect.
 
 ---
 
 ## NFR-047 — Environment Configuration
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** API `Implemented` (`apps/api/src/config/env.ts`); `APP_MODE`
+and `VITE_APP_MODE` `Planned (FE)` (ADR-006 point 8; read by the web build, not the API, as in `06-architecture.md` §6.2)
 
-Environment-specific configuration must be clearly separated.
+### Target
 
-At minimum, the project should distinguish:
+- Environments: `development`, `test` and local `production`
+  (ADR-006 point 8). Demo is a mode (`APP_MODE=demo`), not an environment.
+- Configuration is read from environment variables and validated at
+  startup; canonical names: `PORT` (default `7001`),
+  `JWT_EXPIRES_IN_SECONDS`, `APP_MODE`.
 
-- development;
-- test;
-- demo;
-- production.
+### Measurement
+
+Startup test with invalid values; `.env.example` and `.env.test.example`
+list every variable.
 
 ---
 
 ## NFR-048 — Development Documentation
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Implemented`
 
-The repository must contain enough documentation for another developer to understand:
+### Target
 
-- how to run the project;
-- architecture;
-- environment configuration;
-- testing;
-- build process;
-- deployment;
-- important engineering decisions.
+The repository documents how to run, the architecture, environment
+configuration, testing, the build, deployment (local and static demo) and
+decisions (`docs/adr/`).
+
+### Measurement
+
+`pnpm docs:check` exits 0; `README.md` links each listed topic.
 
 ---
 
@@ -821,40 +1047,70 @@ The repository must contain enough documentation for another developer to unders
 
 ## NFR-049 — Structured Logging
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B3)` (ADR-009); today only the error handler and
+readiness check write ad hoc JSON lines
 
-The backend should provide structured logs for relevant application events.
+### Target
 
-Logs should include useful context without exposing sensitive information.
+One JSON line per event on stdout via a `Logger` port (pino adapter), with
+`timestamp`, `level`, `event`, `requestId`, `userId` and, where relevant,
+`durationMs` and `errorCategory`. Passwords, `Authorization`, cookies and
+tokens are never logged (ADR-009 points 1-4).
+
+### Accepted exception
+
+No log files or rotation (ADR-009 point 3).
+
+### Measurement
+
+B3 unit tests for redaction and event names; integration test asserting a
+request's `requestId` appears in its log entries (ADR-009 point 13).
 
 ---
 
 ## NFR-050 — Error Tracking
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B3)` (ADR-009)
 
-Application errors should be identifiable through logs or an appropriate error-tracking mechanism.
+### Target
 
-The initial free deployment may use lightweight or self-hosted approaches.
+Every 5xx produces one `error` log entry with `requestId` and stack trace;
+validation and authentication failures log at `warn`, not-found and
+conflict at `info` (ADR-009 point 6).
 
-No paid observability service is required.
+### Accepted exception
+
+Logs are the only error-tracking mechanism; no paid or hosted service.
+Metrics are `Deferred` (ADR-009 point 10).
+
+### Measurement
+
+B3 error-handler tests per category.
 
 ---
 
 ## NFR-051 — Health Checks
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Implemented`
 
-The backend should expose appropriate health information.
+### Target
 
-Health checks should distinguish, where practical:
+- `GET /health` (liveness) returns 200 without checking dependencies.
+- `GET /health/ready` returns 200 with `checks.database: "ok"`, or 503 with
+  `"unavailable"`, exposing no internal detail.
+- Health routes are never rate-limited.
 
-```text
-Application healthy
-Dependencies healthy
-Application degraded
-Application unavailable
-```
+### Accepted exception
+
+No separate "degraded" state in version 1 `(proposed)`: the only
+dependency is the database.
+
+### Measurement
+
+Health route tests, including readiness with the database down.
 
 ---
 
@@ -862,47 +1118,88 @@ Application unavailable
 
 ## NFR-052 — Free-Tier Compatibility
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** local stack `Implemented` (PostgreSQL via Docker Compose);
+static demo `Planned (FE)` (ADR-006)
 
-The initial production/demo deployment must be designed to operate without paid infrastructure.
+### Target
 
-The architecture should prioritize services with viable free tiers or free self-hosted alternatives.
+Version 1 costs nothing to run: the full stack runs locally and the public
+demo is a static build servable by any free static host.
+
+### Accepted exception
+
+No hosted backend or managed database (ADR-006 point 2); hosting one later
+requires a new ADR.
+
+### Measurement
+
+The deployment inventory lists no paid service.
 
 ---
 
 ## NFR-053 — No Required Paid APIs
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** API `Implemented` (seeded market data, no external API
+calls); demo `Planned (FE)`
 
-The public demo must not require paid external APIs to function.
+### Target
 
-If external market data is eventually supported, it must be optional rather than a hard dependency of the public demo.
+No feature requires a paid external API; the demo makes no backend calls
+(ADR-006 point 7). External market data, if ever added, is optional.
+
+### Measurement
+
+End-to-end test of the demo build asserting 0 requests outside its own
+origin.
 
 ---
 
 ## NFR-054 — Resource Efficiency
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B7)` (resource limits in the security checklist)
 
-The system should minimize unnecessary consumption of:
+### Target
 
-- CPU;
-- memory;
-- bandwidth;
-- database operations;
-- real-time connections.
+- The API runs within a 512 MB container memory limit `(proposed)` in the
+  `full` Compose profile.
+- List endpoints are paginated; each client holds at most one realtime
+  connection `(proposed)`.
 
-This is particularly important for free-tier deployment.
+### Measurement
+
+B7 smoke test passes under the configured container limit.
 
 ---
 
 ## NFR-055 — Deployment Reproducibility
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (B7)` (build and containers); minimal CI
+`Planned (B0)` (ADR-006)
 
-Deployment should be reproducible from the repository configuration.
+### Target
 
-Environment-specific values must not be manually embedded into application code.
+- A clean checkout builds every package to `dist` and runs the API with
+  `node dist/index.js` in a multi-stage, non-root container; startup
+  applies `prisma migrate deploy`; the seed never runs automatically
+  (ADR-006 points 3-5).
+- One GitHub Actions workflow on pushes and pull requests to `develop` and
+  `main` installs from the lockfile, typechecks, lints and runs the
+  domain, database and API suites (ADR-006 point 10).
+- No environment-specific value is hard-coded.
+
+### Accepted exception
+
+Forward-fix only, no rollback (ADR-006 point 6); no continuous deployment
+(ADR-006 point 10); backups not applicable locally (ADR-006 point 9).
+
+### Measurement
+
+B7: `docker compose --profile full up` from a clean checkout passes the
+smoke test; CI run green on a pull request.
 
 ---
 
