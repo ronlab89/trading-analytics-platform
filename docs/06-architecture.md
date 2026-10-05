@@ -14,8 +14,8 @@
 
 This document describes the layers, packages, module boundaries and
 dependency rules of the repository as it exists, and the target structure
-decided by the ADRs. Anything not yet in code is marked `Planned (B#)` with
-its ADR, or `Deferred` (legend in `docs/README.md`).
+decided by the ADRs. Anything not yet in code is marked `Planned (B#)` or
+`Planned (FE)` with its ADR, or `Deferred` (legend in `docs/README.md`).
 
 Section numbers are stable because code comments cite them (§3.3, §10-13,
 §29, §30, §43, §53). Sections whose former content described structure that
@@ -23,8 +23,9 @@ does not exist are kept as short stubs so numbering does not shift.
 
 Block `B0` is the application-layer refactor named by ADR-001, ADR-002 and
 ADR-003; it precedes B1-B7 of `BACKEND-ROADMAP.md`. Frontend and demo work
-has no roadmap block yet; such sections are `Deferred` even when an ADR
-already fixes their shape (same convention as `05-data-model.md` §34).
+that an ADR already fixes is `Planned (FE)`: it is built in the frontend
+stage, after the backend blocks. Frontend topics that no ADR decides are
+`Deferred`.
 
 Each section ends with **Open detail** when an edge case is undecided. Open
 details do not change any ADR decision; each is assigned to a block.
@@ -119,14 +120,14 @@ references to `packages/domain`, `packages/database` and `apps/api`.
 | `packages/application` | `@trading/application` | `Planned (B0)` — ADR-001 |
 | `packages/contracts` | `@trading/contracts` | `Planned (B0)` — ADR-002; folder exists with `.gitkeep` only |
 | `@trading/market-sim` | `@trading/market-sim` | `Planned (B5)` — ADR-007 point 7; path not fixed |
-| `apps/web` | none | `Deferred` — wireframe files only, not a workspace package |
+| `apps/web` | none | `Planned (FE)` — ADR-002 point 5, ADR-006 point 1; wireframe files only, not a workspace package |
 | `packages/config` | none | `Deferred` — `.gitkeep` only; no decision gives it content |
 
 ---
 
 # 5. System Context
 
-**Status:** `Implemented` (local backend); public demo `Deferred`.
+**Status:** `Implemented` (local backend); public demo `Planned (FE)` — ADR-006 points 1, 7.
 
 ```text
 HTTP client (tests, curl) --HTTP--> @trading/api (Express, port 7001) --Prisma--> PostgreSQL 18 (docker-compose)
@@ -142,7 +143,7 @@ backend exists or is planned.
 
 ## 6.1 Demo Mode
 
-**Status:** `Deferred` — decided by ADR-001, ADR-002, ADR-006 point 7; no roadmap block.
+**Status:** `Planned (FE)` — ADR-001 point 4, ADR-002 point 5, ADR-006 point 7.
 
 The demo runs the real `@trading/application` use cases in the browser,
 composed with in-memory repositories, behind the `TradingClient` in-process
@@ -152,7 +153,7 @@ layer (ADR-001, Alternatives).
 
 ## 6.2 Production Mode
 
-**Status:** `Implemented` (local only); `APP_MODE` `Deferred` (frontend).
+**Status:** `Implemented` (local only); `APP_MODE` `Planned (FE)` — ADR-006 point 8.
 
 ADR-006 calls this the real mode (`APP_MODE=real`; `VITE_APP_MODE` in the
 web build). It runs only on the author's machine. `APP_MODE` is not read by
@@ -162,9 +163,9 @@ the API today.
 
 # 7. Frontend Architecture
 
-**Status:** `Deferred` — no roadmap block; `apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md`.
+**Status:** `Planned (FE)` — ADR-002 point 5, ADR-005 point 4, ADR-007 point 13; `apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md`.
 
-Already decided, to apply when the frontend phase starts:
+Already decided, to apply in the frontend stage:
 
 - The UI consumes DTOs only through a `TradingClient` port with an HTTP
   adapter and an in-process adapter (ADR-002 point 5).
@@ -173,7 +174,7 @@ Already decided, to apply when the frontend phase starts:
 - Realtime goes through a client-side port with a WebSocket adapter and an
   in-process adapter fed by `@trading/market-sim` (ADR-007 point 13).
 
-Open detail (frontend phase): workspace location and package name of
+Open detail (FE): workspace location and package name of
 `apps/web`, and how it consumes workspace packages before B7 builds them
 (`BACKEND-ROADMAP.md` §6).
 
@@ -181,7 +182,7 @@ Open detail (frontend phase): workspace location and package name of
 
 # 8. Feature Modules
 
-**Status:** `Deferred` — frontend; see §7.
+**Status:** `Deferred` — frontend; no ADR decides it; see §7.
 
 ---
 
@@ -273,7 +274,7 @@ generic CRUD interfaces.
 
 # 13. Mock Infrastructure
 
-**Status:** `Planned (B0)` for in-memory repositories and `UnitOfWork`; demo wiring `Deferred`.
+**Status:** `Planned (B0)` for in-memory repositories and `UnitOfWork`; demo wiring `Planned (FE)` — ADR-001 point 4.
 
 In-memory implementations of every repository contract and of `UnitOfWork`
 (with rollback) are built for the application unit tests in B0 and become
@@ -306,19 +307,19 @@ process (§6.1).
 
 # 16. Failure Injection
 
-**Status:** `Deferred` — demo; CSV import failure injection is part of ADR-008 point 13.
+**Status:** `Planned (FE)` for CSV import failure injection in the demo — ADR-008 point 13; other demo failure injection `Deferred`.
 
 ---
 
 # 17. State Management Strategy
 
-**Status:** `Deferred` — frontend; see §7.
+**Status:** `Deferred` — frontend; no ADR decides it; see §7.
 
 ---
 
 # 18. State Ownership
 
-**Status:** `Implemented` on the server; client state `Deferred`.
+**Status:** `Implemented` on the server; client state `Planned (FE)` — ADR-002 point 5, ADR-005 point 4.
 
 PostgreSQL is the source of truth for persisted state; derived values
 (metrics, allocation, replay state) are computed on read and never stored
@@ -330,7 +331,10 @@ PostgreSQL is the source of truth for persisted state; derived values
 
 # 19. Server State Synchronization
 
-**Status:** `Deferred` — frontend; transport rules in §20-23.
+**Status:** `Planned (FE)` — ADR-007 points 5, 12; transport rules in §20-23.
+
+On a sequence gap the client resynchronizes through HTTP; while the socket is
+down it shows a stale-data indicator and refetches periodically.
 
 ---
 
@@ -663,13 +667,13 @@ through `AsyncLocalStorage`, `jobId` on jobs and `connectionId` on sockets;
 
 # 40. Frontend Error Boundaries
 
-**Status:** `Deferred` — frontend; see §7.
+**Status:** `Deferred` — frontend; no ADR decides it; see §7.
 
 ---
 
 # 41. Routing Architecture
 
-**Status:** `Deferred` — frontend; API routing is in §24-26.
+**Status:** `Deferred` — frontend; no ADR decides it; API routing is in §24-26.
 
 ---
 
@@ -707,7 +711,7 @@ Rules to enforce with lint in B0 (ADR-001 point 1, ADR-002 point 1):
 
 # 44. Dependency Direction
 
-**Status:** `Implemented` (current graph); target graph `Planned (B0)` and `Planned (B5)`.
+**Status:** `Implemented` (current graph); target graph `Planned (B0)` and `Planned (B5)`; web edge `Planned (FE)`.
 
 Current:
 
@@ -724,7 +728,7 @@ application  --> domain
 contracts    --> domain (types, enums), zod
 database     --> domain
 market-sim   --> domain
-web (demo)   --> application, contracts, market-sim, in-memory repositories   [Deferred]
+web (demo)   --> application, contracts, market-sim, in-memory repositories   [Planned (FE)]
 ```
 
 The domain depends on nothing internal.
@@ -733,7 +737,7 @@ The domain depends on nothing internal.
 
 # 45. Configuration
 
-**Status:** `Implemented`; `LOG_LEVEL` `Planned (B3)`; `APP_MODE` `Deferred`.
+**Status:** `Implemented`; `LOG_LEVEL` `Planned (B3)`; `APP_MODE` `Planned (FE)` — ADR-006 point 8.
 
 `apps/api/src/config/env.ts` validates `NODE_ENV` (`development`, `test`,
 `production`), `PORT` (default `7001`), `JWT_SECRET` (32+ characters),
@@ -751,7 +755,7 @@ with `dotenv-cli`. Canonical names are fixed by ADR-006 point 8.
 
 # 47. Demo Mode Boundary
 
-**Status:** `Deferred` — decided by ADR-001, ADR-005 point 11, ADR-006 point 7; no roadmap block.
+**Status:** `Planned (FE)` — ADR-001 point 4, ADR-005 point 11, ADR-006 point 7.
 
 The demo replaces only repositories and adapters. It runs the same
 permission checks with a demo identity and role selector, calls no backend
@@ -850,13 +854,13 @@ adds a slow-request warning and separate timing of the analytics series
 
 # 55. Rendering Strategy
 
-**Status:** `Deferred` — frontend.
+**Status:** `Deferred` — frontend; no ADR decides it.
 
 ---
 
 # 56. Chart Architecture
 
-**Status:** `Deferred` — frontend.
+**Status:** `Deferred` — frontend; no ADR decides it.
 
 ---
 
@@ -871,7 +875,7 @@ horizontal scaling or separate workers require a new ADR.
 
 # 58. Deployment Architecture
 
-**Status:** `Implemented` (local development); production build and containers `Planned (B7)`; demo hosting `Deferred`.
+**Status:** `Implemented` (local development); production build and containers `Planned (B7)`; demo hosting `Planned (FE)` — ADR-006 points 1, 7.
 
 Today: `docker-compose.yml` runs PostgreSQL only; the API runs with
 `tsx watch`. The production build does not run: `@trading/domain`,

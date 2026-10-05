@@ -56,7 +56,8 @@ Every spec section carries one status:
 | Status | Meaning |
 | --- | --- |
 | `Implemented` | Matches the code on `develop`. |
-| `Planned (B#)` | Decided; built in the named roadmap block. |
+| `Planned (B#)` | Decided; built in the named backend roadmap block. Work that must land before B0 starts (for example the minimal CI of ADR-006) is `Planned (B0)`. |
+| `Planned (FE)` | Decided; built in the frontend stage (web app and demo mode), after the backend blocks. Its breakdown into blocks is defined in `15-implementation-plan.md`. |
 | `Deferred` | Out of current scope; not built until a new decision. |
 
 Sections are annotated as each document is aligned with the ADRs (Phases 2-5

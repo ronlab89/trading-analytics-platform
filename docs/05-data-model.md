@@ -14,8 +14,8 @@
 
 This document defines the persisted data model and the derived models built
 on it. Persisted entities are documented exactly as they exist in
-`schema.prisma`; anything not yet in the schema is marked `Planned (B#)` or
-`Deferred` (legend in `docs/README.md`). Section numbers are stable because
+`schema.prisma`; anything not yet in the schema is marked `Planned (B#)`,
+`Planned (FE)` or `Deferred` (legend in `docs/README.md`). Section numbers are stable because
 code comments cite them.
 
 Reading the field tables:
@@ -825,9 +825,9 @@ Watchlist entries are not seeded.
 
 # 34. Demo Data Layers
 
-**Status:** `Deferred` — the demo runs after the backend blocks and has no
-roadmap block yet (`BACKEND-ROADMAP.md` §6); behavior is owned by
-`12-demo-mode-spec.md`.
+**Status:** `Deferred` — no ADR decides the demo data layers; behavior is
+owned by `12-demo-mode-spec.md`. The demo itself is `Planned (FE)` (ADR-006
+point 1).
 
 ```text
 Seed data (immutable) ─► Session state (demo mutations) ─► Derived state
