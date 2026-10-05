@@ -1,92 +1,87 @@
 # SDD 07 — API Specification
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft  
-**Version:** 1.0  
-**Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`
+**Status:** §1-§9 reconciled with the code and ADR-002, ADR-005, ADR-009, ADR-010 on 2026-10-05; later sections not yet reconciled  
+**Version:** 1.1  
+**Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`  
+**Decisions:** ADR-002 (`adr/0002-shared-contracts.md`), ADR-005 (`adr/0005-roles-and-authentication.md`), ADR-008 (`adr/0008-background-jobs-csv-import.md`), ADR-009 (`adr/0009-observability-scope.md`), ADR-010 (`adr/0010-v1-product-scope-clarifications.md`)
 
 ---
 
 # 1. Purpose
 
-This document defines the API contract for Trading Analytics Platform.
+**Status:** `Reference`
 
-The API must support:
+This document defines the HTTP API contract for Trading Analytics Platform:
+authentication, portfolios, positions, transactions, assets, market data,
+analytics, decisions, decision replay, scenarios, watchlists, alerts,
+notifications and background operations.
 
-- authentication;
-- portfolios;
-- positions;
-- transactions;
-- assets;
-- market data;
-- analytics;
-- decisions;
-- decision replay;
-- scenarios;
-- watchlists;
-- alerts;
-- notifications;
-- background operations.
-
-The API contract must be implementation-independent.
-
-The public demo will implement the same contracts through mock adapters.
+Request and response schemas in `@trading/contracts` (ADR-002) are the source
+of truth; this document describes them. The demo does not call a mock HTTP
+API: it consumes the same DTOs through an in-process adapter (ADR-002
+point 5), `Planned (FE)`.
 
 ---
 
 # 2. API Principles
 
-The API follows these principles:
+**Status:** `Reference`; per-principle status below.
 
-1. Resource-oriented HTTP APIs for standard operations.
-2. Explicit DTOs rather than exposing database models.
-3. Consistent response structures.
-4. Consistent error structures.
-5. Explicit validation.
-6. Pagination for potentially large collections.
-7. Filtering and sorting where required.
-8. Idempotency for operations where duplicate execution is dangerous.
-9. Versionable contracts.
-10. Realtime events are separate from standard HTTP responses.
+| # | Principle | Status |
+| --- | --- | --- |
+| 1 | Resource-oriented HTTP APIs. | `Implemented` |
+| 2 | Explicit DTOs built by presenters, never database or domain objects (ADR-002 point 4). | `Planned (B0)` |
+| 3 | Consistent response structure (§4). | `Implemented` |
+| 4 | Consistent error structure (§5). | `Implemented` |
+| 5 | Explicit validation with Zod at the route boundary. | `Implemented`; schemas move to `@trading/contracts` `Planned (B0)` |
+| 6 | Pagination for large collections. | `Implemented` |
+| 7 | Filtering and sorting where required. | `Implemented` per endpoint |
+| 8 | `Idempotency-Key` where duplicates are dangerous (ADR-008 point 8). | `Planned (B4)` |
+| 9 | Versioned contracts, additive changes only within a version (ADR-002 point 8); OpenAPI generated from the schemas (ADR-002 point 7). | `Implemented` for versioning; OpenAPI `Planned (B6)` |
+| 10 | Realtime events are separate from HTTP responses (`08-realtime-spec.md`). | `Planned (B5)` |
+
+Wire format (ADR-002 point 3), `Implemented` for money and dates; enforced by
+response schemas `Planned (B0)`:
+
+- Money: `{ "amount": "<decimal string>", "currency": "USD" }`, never a number.
+- Dates: ISO-8601 strings in UTC.
+- Percentages and ratios: JSON numbers, display only.
+- Identifiers: strings.
 
 ---
 
 # 3. API Versioning
 
-Initial version:
+**Status:** `Implemented` (ADR-002 point 8)
+
+Every business endpoint is under:
 
 ```text
 /api/v1
 ```
 
-All production endpoints should be versioned.
-
-Example:
-
-```text
-GET /api/v1/portfolios
-```
-
-The mock API should expose the same logical version.
+Within `v1` only additive changes are allowed; a breaking change requires a
+new version. Unversioned routes are operational only: `GET /health` and
+`GET /health/ready` (not rate-limited), and `GET /`.
 
 ---
 
 # 4. Base Response Model
 
-Successful responses should use a consistent structure where appropriate.
+**Status:** `Implemented`; response schemas `Planned (B0)` (ADR-002 point 2)
 
-Example:
+Successful responses wrap the payload in `data`:
 
-```text
+```json
 {
-  "data": {},
-  "meta": {}
+  "data": {}
 }
 ```
 
-For collections:
+Paginated collections add `meta`:
 
-```text
+```json
 {
   "data": [],
   "meta": {
@@ -98,62 +93,77 @@ For collections:
 }
 ```
 
-Not every endpoint requires `meta`.
+Only paginated endpoints return `meta`.
 
 ---
 
 # 5. Error Response
 
-All application errors should use a normalized structure.
+**Status:** `Implemented` (`apps/api/src/middleware/error-handler.ts`, ADR-002 point 2)
 
-```text
+Every error, including 404 for unknown routes and 429, uses one envelope:
+
+```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "The request contains invalid fields.",
-    "details": [],
-    "requestId": "..."
+    "requestId": "...",
+    "details": []
   }
 }
 ```
+
+- `requestId` is always present and equals the `X-Request-ID` header (§8).
+- `details` is optional. Errors raised as `AppError` include it (an empty
+  array when there are none); body-parser, domain, rate-limit and unexpected
+  errors omit it.
+- `message` is English and meant for logs. Clients map `code` to a localized
+  message (ADR-010 point 8).
+- Unexpected errors return 500 `INTERNAL_ERROR` with a generic message; stack
+  traces and internal details are never returned.
 
 ---
 
 # 6. Error Codes
 
-Initial error categories:
+**Status:** `Implemented` (`AppErrorCode` in `apps/api/src/errors/app-error.ts`)
 
-```text
-VALIDATION_ERROR
-UNAUTHORIZED
-FORBIDDEN
-NOT_FOUND
-CONFLICT
-RATE_LIMITED
-TIMEOUT
-DEPENDENCY_ERROR
-INTERNAL_ERROR
-```
+Codes are stable within `v1`; adding a code is an additive change.
 
-Feature-specific error codes may be added when required.
+| Code | HTTP | Raised today |
+| --- | --- | --- |
+| `VALIDATION_ERROR` | 400 (413 for an oversized body) | Request validation, malformed JSON, `Invalid*Error` and `Insufficient*Error` domain errors |
+| `UNAUTHORIZED` | 401 | Missing or invalid Bearer token, invalid credentials |
+| `FORBIDDEN` | 403 | Declared, not raised |
+| `NOT_FOUND` | 404 | Unknown route; missing resource or another user's resource (never 403, ADR-005 point 12) |
+| `CONFLICT` | 409 | Conflicting state changes |
+| `RATE_LIMITED` | 429 | Rate limiters (§9) |
+| `TIMEOUT` | — | Declared, not raised |
+| `DEPENDENCY_ERROR` | — | Declared, not raised |
+| `INTERNAL_ERROR` | 500 | Unexpected errors |
+
+`FORBIDDEN` for a missing permission on an own resource is `Planned (B2)`
+(ADR-005 point 2).
 
 ---
 
 # 7. Validation Error
 
-Validation errors should identify the affected fields.
+**Status:** `Implemented` (`apps/api/src/middleware/validate.ts`)
 
-Example:
+A validation failure returns 400 `VALIDATION_ERROR` with one `details` entry
+per issue. `field` is the dot-joined path:
 
-```text
+```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Invalid transaction.",
+    "message": "The request contains invalid fields.",
+    "requestId": "...",
     "details": [
       {
         "field": "quantity",
-        "code": "MIN_VALUE",
         "message": "Quantity must be greater than zero."
       }
     ]
@@ -161,25 +171,53 @@ Example:
 }
 ```
 
+Invalid query parameters use the message
+`The request contains invalid query parameters.`. A per-detail `code` exists
+in the type but is not emitted.
+
 ---
 
 # 8. Request Correlation
 
-Every API request should receive a request identifier.
+**Status:** `Implemented` for the header; log propagation `Planned (B3)` (ADR-009 point 5)
 
-Example:
+Every response carries:
 
 ```text
 X-Request-ID
 ```
 
-The identifier should appear in logs and relevant error responses.
+A client-supplied value matching `^[a-zA-Z0-9-]{1,64}$` is reused; otherwise
+the API generates a UUID. The same value is the `requestId` of every error
+envelope (§5). Propagation to every log line through `AsyncLocalStorage` is
+`Planned (B3)`.
 
 ---
 
 # 9. Authentication
 
+**Status:** `Implemented` for login and current user; refresh, logout and roles `Planned (B2)` (ADR-005)
+
+There is no self-registration; users come from the seed (ADR-005 point 10).
+Protected endpoints require `Authorization: Bearer <accessToken>`; every
+failure returns the same 401 `UNAUTHORIZED` `Authentication required.`.
+
+Rate limits (ADR-005 point 12), `Implemented`, in memory per process, with
+draft-7 `RateLimit` and `RateLimit-Policy` headers:
+
+- All routes except health: 300 requests per 15 minutes per IP.
+- `POST /api/v1/auth/login`: additionally 5 attempts per 15 minutes per IP.
+
+| Endpoint | Status |
+| --- | --- |
+| `POST /api/v1/auth/login` | `Implemented`; ADR-005 response shape `Planned (B2)` |
+| `GET /api/v1/auth/me` | `Implemented` |
+| `POST /api/v1/auth/refresh` | `Planned (B2)` |
+| `POST /api/v1/auth/logout` | `Planned (B2)` |
+
 ## Login
+
+**Status:** `Implemented`; response shape change `Planned (B2)`
 
 ```text
 POST /api/v1/auth/login
@@ -187,41 +225,75 @@ POST /api/v1/auth/login
 
 Request:
 
-```text
+```json
 {
   "email": "user@example.com",
   "password": "..."
 }
 ```
 
-Response:
+Response today (200). `token` is a JWT carrying `sub` and `role`, valid for
+`JWT_EXPIRES_IN_SECONDS` (default 900, 15 minutes):
 
-```text
+```json
 {
   "data": {
-    "user": {},
-    "session": {}
+    "user": { "id": "...", "email": "...", "displayName": "...", "role": "USER" },
+    "session": { "token": "..." }
   }
 }
 ```
+
+Errors: 400 `VALIDATION_ERROR` (invalid email or empty password); 401
+`UNAUTHORIZED` `Invalid credentials.` for every credential failure, so
+accounts cannot be enumerated; 429 `RATE_LIMITED`.
+
+`Planned (B2)` (ADR-005 points 1, 5 and 8): the response becomes
+`{ user, session: { accessToken, expiresAt } }`, login sets the refresh-token
+cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`), and
+roles become `VIEWER`, `TRADER`, `ADMIN`.
 
 ---
 
 ## Current User
 
+**Status:** `Implemented`
+
 ```text
 GET /api/v1/auth/me
 ```
 
-Returns the authenticated user.
+Requires a Bearer token. Reads the user from the database on every call and
+returns `{ "data": { "user": { id, email, displayName, role } } }`. Returns
+401 `UNAUTHORIZED` when the token is invalid or the user no longer exists.
+
+---
+
+## Refresh
+
+**Status:** `Planned (B2)` (ADR-005 points 5-7)
+
+```text
+POST /api/v1/auth/refresh
+```
+
+Reads the refresh-token cookie and requires a custom request header (CSRF
+defence). Issues a new access token and rotates the refresh token; reusing a
+rotated token revokes the whole token family.
 
 ---
 
 ## Logout
 
+**Status:** `Planned (B2)` (ADR-005 points 6-7)
+
 ```text
 POST /api/v1/auth/logout
 ```
+
+Requires the custom request header. Revokes the session and clears the
+refresh cookie. An access token already issued stays valid until it expires
+(at most 15 minutes).
 
 ---
 

@@ -166,6 +166,15 @@ needs a product decision is asked to the user, not invented.
 
 ### Phase 4 — Contracts
 
+Branch `docs/sdd-contracts` (from `develop` after PR #12, 2026-10-05). Route:
+delegated writers in slices of 300-500 lines, one commit per slice.
+
+- `07` (1715 lines, 62 real routes) is split into 5 slices: §1-9, §10-16,
+  §17-24, §25-30 and §31-61.
+- `08`, `09` and `10` get 3 slices each.
+
+Product decisions that no ADR covers are asked to the user in batches.
+
 - [ ] T4.1 `07-api-spec.md` full reconciliation with per-endpoint status
 - [ ] T4.2 `08`, `09`, `10`
 
