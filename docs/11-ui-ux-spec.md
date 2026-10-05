@@ -542,9 +542,9 @@ Interactions must remain responsive with large datasets.
 
 # 26. Analytics UX
 
-Analytics should support progressive exploration.
+**Status:** `Planned (FE)`; Analytics view shown in the wireframe
 
-A recommended flow:
+Analytics (FR-025-FR-031) supports progressive exploration:
 
 ```text
 Overview
@@ -556,17 +556,19 @@ Breakdown
 Detailed Data
 ```
 
-The user should not need to understand the underlying data model to use analytics.
+The user should not need to understand the underlying data model to use analytics. Metric definitions live in `16-analytics-spec.md`.
 
 ---
 
 # 27. Empty States
 
-Empty states should explain:
+**Status:** `Planned (FE)`; empty states shown in the wireframe
+
+Behavior is defined by FR-058. An empty state explains:
 
 1. what is missing;
 2. why it matters;
-3. what the user can do next.
+3. what the user can do next (hidden for `VIEWER` when the action is a mutation, §7).
 
 Example structure:
 
@@ -579,11 +581,15 @@ portfolio analytics.
 [ Add Transaction ]
 ```
 
+An empty portfolio (valid, zeroed) looks different from `InsufficientData` or `UNKNOWN` (FR-058).
+
 ---
 
 # 28. Error States
 
-Errors should be contextual and recoverable when possible.
+**Status:** `Planned (FE)`
+
+Behavior is defined by FR-059. Errors are contextual: network failures and 5xx offer retry; a 400 offers correction next to the fields, not retry; valid user state is preserved (FR-076). Messages exist in English and Spanish (ADR-010 point 8).
 
 Structure:
 
@@ -606,9 +612,15 @@ Transaction could not be completed.
 Review the highlighted fields.
 ```
 
+Reconnection follows ADR-007 (§14).
+
 ---
 
 # 29. Loading States
+
+**Status:** `Planned (FE)`; skeletons shown in the wireframe
+
+Behavior is defined by FR-057. Targets: visible feedback within 100 ms of every action (NFR-061); a loading indicator whenever a view is not ready within 300 ms (NFR-002).
 
 Use the appropriate loading pattern:
 
@@ -618,83 +630,67 @@ For content-heavy layouts where the structure is known.
 
 ### Spinner
 
-For localized short operations.
+For localized short operations, such as a pending mutation control (disabled while pending, FR-057).
 
 ### Progress
 
-For operations with measurable progress.
+For CSV import jobs, from the job's `{ processed, total }` progress (FR-081, §30).
 
 ### Optimistic feedback
 
-Only when the action can safely be represented before server confirmation.
+Only when the action can safely be represented before server confirmation; it is rolled back on failure (NFR-061).
 
-Avoid showing generic full-screen spinners for normal navigation.
+Avoid generic full-screen spinners for normal navigation.
 
 ---
 
 # 30. Background Process UX
 
-Long-running operations should not block the entire interface.
+**Status:** `Planned (FE)`
 
-Use:
+The only background process in version 1 is the CSV transaction import job (FR-080, FR-081, ADR-008). It does not block the interface:
 
 ```text
 Start
  ↓
-Background Processing
+QUEUED / PROCESSING
  ↓
-Progress / Status
+Progress { processed, total }
  ↓
-Completion
+COMPLETED / FAILED / CANCELLED / TIMED_OUT
 ```
 
-The user should be able to continue using unrelated parts of the application where technically safe.
+- Progress is a field of the job, updated by `jobs:{jobId}` events (B5) or by reading the job (ADR-008).
+- Retry is offered only where FR-081 allows it and returns the job to `QUEUED`; cancel is offered while `QUEUED` or validating and requires confirmation (FR-061).
+- Simulated progress exists only in the demo (ADR-008).
+
+The user can keep using unrelated parts of the application while a job runs.
 
 ---
 
 # 31. Process Center
 
-The product should provide a lightweight way to inspect active and recent processes.
-
-Information may include:
-
-- process name;
-- status;
-- progress;
-- elapsed time;
-- started time;
-- completion time;
-- error state;
-- retry action.
+**Status:** `Deferred` — no FR or ADR defines a cross-process center; version 1 shows import job state, progress, `attempt`, failure reason and retry/cancel inside the import flow (FR-081, §30).
 
 ---
 
 # 32. Notifications
 
-Notifications should communicate meaningful events.
+**Status:** `Planned (FE)`; bell, unread badge, dropdown and "Mark all as read" shown in the wireframe
 
-Examples:
+Behavior is defined by FR-051 and FR-052. A notification is `unread` or `read`; there is no dismissed state (ADR-010 point 3). The user marks one or all as read.
 
-- transaction completed;
-- alert triggered;
-- background process completed;
-- realtime connection restored;
-- important system warning.
+In version 1 a notification is created when an alert triggers (FR-053); it arrives in realtime with `NOTIFICATION_CREATED` (ADR-007). Transient feedback uses toasts (§33), not notifications.
 
-Avoid notification spam.
+Avoid notification spam: an alert fires only on a false-to-true transition (FR-053).
 
 ---
 
 # 33. Toasts
 
-Toasts should be used for transient feedback.
+**Status:** `Planned (FE)`; toast system (success, error, warning, info) shown in the wireframe
 
-Good candidates:
-
-- saved successfully;
-- copied;
-- action completed;
-- temporary connection state.
+Toasts give transient feedback, such as the success confirmations of FR-060 and temporary connection state. They are announced to assistive technology (FR-064); the wireframe container is `aria-live="polite"`.
 
 Critical information must not exist only inside a toast.
 
@@ -702,35 +698,32 @@ Critical information must not exist only inside a toast.
 
 # 34. Alerts
 
-Alerts represent persistent or important conditions.
+**Status:** `Planned (FE)`; active alerts count shown in the wireframe status bar
 
-Examples:
+Alerts are user-configured conditions of type `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION` or `VOLATILITY` (FR-053). Evaluation is `Planned (B5)`.
 
-```text
-Risk Threshold Exceeded
-Unusual Portfolio Movement
-Data Delayed
-Process Failed
-```
+- A configured alert stays listed until the user deletes it; deletion requires confirmation (FR-061).
+- A triggered alert creates a notification (§32), which stays discoverable until read.
+- System conditions such as delayed data or a failed import are shown by the freshness indicator (§13) and the import flow (§30), not as alerts.
 
-Alerts should remain discoverable until resolved, dismissed, or acknowledged according to their severity.
+Where alerts are configured is not decided (§7).
 
 ---
 
 # 35. Alert Severity
 
-Use a small controlled severity system:
+**Status:** `Planned (FE)`; matching toast variants shown in the wireframe
+
+Notifications use the `NotificationSeverity` enum (`05-data-model.md` §21):
 
 ```text
-Info
-Success
-Warning
-Critical
+INFO
+SUCCESS
+WARNING
+ERROR
 ```
 
-Do not rely on color alone.
-
-Severity should also use:
+Do not rely on color alone (NFR-029). Severity also uses:
 
 - iconography;
 - text;
@@ -741,39 +734,45 @@ Severity should also use:
 
 # 36. Modal and Dialog Behavior
 
-Dialogs must:
+**Status:** `Planned (FE)`; not in the wireframe
+
+Confirmation dialogs are defined by FR-061; dismissing one sends no request. Dialogs must (NFR-030, FR-064):
 
 - trap focus;
 - provide accessible labels;
-- support Escape where appropriate;
+- close with Escape;
 - return focus to the triggering element;
 - prevent accidental background interaction.
 
-Dialogs should not be used for normal navigation.
+Dialogs are not used for normal navigation.
 
 ---
 
 # 37. Tooltips
 
-Tooltips should clarify unfamiliar interface elements.
+**Status:** `Planned (FE)`; rail tooltips shown in the wireframe
 
-They should not contain essential information that cannot otherwise be accessed.
+Tooltips clarify unfamiliar interface elements. They never hold essential information that cannot otherwise be accessed, and they are reachable by keyboard focus (FR-063).
 
-On touch devices, tooltip-dependent information must have an alternative interaction.
+On touch devices, tooltip-dependent information has an alternative interaction.
 
 ---
 
 # 38. Search and Filters
 
-Search/filter interactions should:
+**Status:** `Planned (FE)`; filter bars shown in the wireframe
+
+Transactions are filtered with FR-016; assets are searched with FR-020; there is no separate transaction search (FR-015). Global search is `Deferred` (FR-054). Sorting of fully loaded lists is client-side (FR-055, ADR-010 point 4).
+
+Search/filter interactions:
 
 - preserve selected criteria;
 - communicate active filters;
-- allow easy reset;
-- provide empty filtered states;
-- avoid unnecessary full-page reloads.
+- reset to the unfiltered first page (FR-016);
+- provide empty filtered states (FR-058);
+- avoid full-page reloads.
 
-A clear distinction should exist between:
+A clear distinction exists between:
 
 ```text
 No data
@@ -789,9 +788,9 @@ No results for current filters
 
 # 39. Motion Design
 
-Motion is part of the product language.
+**Status:** `Reference`
 
-It should communicate:
+Motion is part of the product language. It communicates:
 
 - state change;
 - hierarchy;
@@ -799,13 +798,15 @@ It should communicate:
 - feedback;
 - causality.
 
-Motion must never be required to understand the interface.
+Motion is never required to understand the interface, and every rule below yields to reduced motion (§44).
 
 ---
 
 # 40. Animation Principles
 
-Animations should be:
+**Status:** `Reference`
+
+Animations are:
 
 - purposeful;
 - short;
@@ -820,41 +821,40 @@ Avoid excessive simultaneous animations.
 
 # 41. Microinteractions
 
-Useful microinteractions include:
+**Status:** `Planned (FE)`
+
+Microinteractions provide the visible feedback within 100 ms of NFR-061:
 
 - button feedback;
 - successful save;
-- copied state;
 - toggles;
 - expanding details;
 - row updates;
 - connection changes;
 - notification appearance.
 
-They should reinforce user actions rather than distract from the main task.
+They reinforce user actions rather than distract from the main task, and are removed under reduced motion (§44).
 
 ---
 
 # 42. Page Transitions
 
-Page transitions may use lightweight motion.
+**Status:** `Planned (FE)`
 
-Transitions should:
+Page transitions may use lightweight motion. They:
 
+- never delay the visible response of NFR-002 (100 ms);
 - preserve spatial continuity;
-- avoid delaying interaction;
-- respect reduced-motion preferences;
+- are disabled under reduced motion (FR-065);
 - remain performant.
 
 ---
 
 # 43. Realtime Animation
 
-Realtime financial values may use subtle numeric transitions.
+**Status:** `Planned (FE)`
 
-Do not animate every update with a long duration.
-
-The visual response should communicate:
+Realtime values (ADR-007) may use subtle numeric transitions, never long ones. The visual response communicates:
 
 ```text
 New value
@@ -864,52 +864,53 @@ Direction
 Recency
 ```
 
-without creating visual noise.
+without creating visual noise. Under reduced motion, direction and recency stay visible as static text or icons (FR-065).
 
 ---
 
 # 44. Reduced Motion
 
-The application must respect:
+**Status:** `Planned (FE)`; `prefers-reduced-motion` handling shown in the wireframe
+
+Behavior is defined by FR-065. The application respects:
 
 ```text
 prefers-reduced-motion
 ```
 
-When enabled:
+and the reduced-motion preference in Settings (FR-087). When enabled:
 
-- non-essential motion should be reduced or removed;
-- transitions should be shortened;
-- realtime decorative animations should be minimized;
-- functionality must remain unchanged.
+- non-essential animation is disabled;
+- transitions are removed or shortened;
+- realtime decorative animations are removed;
+- Decision Replay remains usable step by step;
+- functionality is unchanged.
 
 ---
 
 # 45. Accessibility
 
-Accessibility is a product requirement.
+**Status:** `Planned (FE)`
 
-The interface should target WCAG 2.2 AA principles where applicable.
+Accessibility is a product requirement. Core workflows meet WCAG 2.2 AA, with 0 serious or critical automated violations on core routes (NFR-029).
 
-Key requirements include:
+Key requirements:
 
-- keyboard access;
-- semantic HTML;
+- keyboard access (FR-063, NFR-030);
+- semantic HTML and logical heading hierarchy;
 - visible focus;
-- accessible names;
-- sufficient contrast;
-- proper form labeling;
-- meaningful error messages;
-- logical heading hierarchy;
-- screen-reader compatible state changes.
+- accessible names and proper form labeling;
+- contrast of 4.5:1 for text and 3:1 for large text and UI components (NFR-029);
+- meaningful error messages (FR-059);
+- state changes announced to screen readers (FR-064, NFR-031).
 
 ---
 
 # 46. Keyboard Navigation
 
-All primary actions must be accessible through keyboard interaction.
+**Status:** `Planned (FE)`
 
-Keyboard users must be able to:
+Behavior is defined by FR-063 and NFR-030. Keyboard users can:
 
 - navigate;
 - open controls;
@@ -919,73 +920,81 @@ Keyboard users must be able to:
 - change filters;
 - access notifications.
 
-Focus must never become trapped unintentionally.
+Focus is never trapped unintentionally; only open dialogs trap focus (§36).
 
 ---
 
 # 47. Focus Management
 
-Focus must be intentionally managed after:
+**Status:** `Planned (FE)`
 
-- opening dialogs;
-- closing dialogs;
+Focus is intentionally managed (FR-064, NFR-030) after:
+
+- opening dialogs (focus moves in);
+- closing dialogs (focus returns to the trigger);
 - navigation;
 - form errors;
 - dynamic content changes where necessary.
 
-The user's position in the interface should remain understandable.
+The user's position in the interface remains understandable.
 
 ---
 
 # 48. Screen Reader Considerations
 
-Dynamic events should be announced selectively.
+**Status:** `Planned (FE)`
+
+Behavior is defined by FR-064 and NFR-031: loading, success, error, stale-data and connection-status changes are announced through live regions; charts have a text alternative.
 
 Examples:
 
 ```text
-Transaction completed
+Transaction recorded
 Connection lost
 Connection restored
-Process completed
+Import completed
 ```
 
-High-frequency market updates should not be announced individually to screen readers.
+High-frequency market updates are not announced individually.
 
 ---
 
 # 49. Color Usage
 
-Color must not be the only indicator of meaning.
+**Status:** `Planned (FE)`; profit, loss, warning and info color tokens shown in the wireframe
 
-For example:
+Color is never the only indicator of meaning (NFR-029). For example:
 
 ```text
 Profit
 Loss
 Warning
-Critical
+Error
 ```
 
-should combine color with:
+combine color with:
 
 - symbols;
 - labels;
 - icons;
 - directional indicators.
 
+Contrast meets 4.5:1 for text and 3:1 for large text and UI components (NFR-029).
+
 ---
 
 # 50. Typography
 
-Typography should prioritize:
+**Status:** `Reference`; monospaced tabular numerals shown in the wireframe
+
+Typography prioritizes:
 
 - readability;
 - numerical clarity;
 - hierarchy;
 - consistent rhythm.
 
-Financial numbers should use formatting that makes magnitude and precision easy to scan.
+Financial numbers use tabular numerals and the formatting of §51, so magnitude and precision are easy to scan.
 
 ---
 
