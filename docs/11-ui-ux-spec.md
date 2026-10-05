@@ -1000,9 +1000,16 @@ Financial numbers use tabular numerals and the formatting of §51, so magnitude 
 
 # 51. Number Formatting
 
-Values should use consistent formatting.
+**Status:** `Planned (FE)`; display precision per value type `Deferred` until decided (rounding is a UI concern, ADR-002 point 3)
 
-Examples:
+Numbers are formatted only at display time, with the active locale through `Intl` (ADR-010 point 8, NFR-066). Calculations never use the formatted text.
+
+- **Money** arrives as a decimal string with its currency (ADR-002). It stays a decimal string until it is formatted; the currency symbol and placement come from the locale and the DTO currency, never a hard-coded `$`.
+- **Percentages** arrive as numbers in percentage points (`twrPercent`, `unrealizedPnLPercent`; ADR-004, `16-analytics-spec.md` §2) and are rounded only for display.
+- **Missing values** (`null`, `InsufficientData`) show an explicit "not available" label, never `0` or `0%`.
+- **Sign**: positive and negative values carry an explicit sign and the color rules of §49.
+
+Examples (`en` locale; `es` uses its own separators):
 
 ```text
 $125,430.25
@@ -1011,37 +1018,33 @@ $125,430.25
 1,250 units
 ```
 
-Formatting should account for:
-
-- currency;
-- percentage;
-- decimal precision;
-- positive/negative values;
-- locale.
-
 ---
 
 # 52. Date and Time Formatting
 
-Dates and times should be presented consistently.
+**Status:** `Planned (FE)`
 
-Realtime information should expose enough context to understand freshness.
+Dates and times are formatted with the active locale through `Intl` (ADR-010 point 8, NFR-066). Two kinds of value are shown differently:
 
-Examples:
+- **Timestamps** (for example `executedAt`, notification times) are shown in the user's local time zone. Realtime information shows relative freshness, with the exact timestamp available on demand.
+- **Analytics days** (series points, `from`, `to`, `asOf`) are UTC calendar dates (ADR-004; `16-analytics-spec.md` §2). A UTC day is labeled as that calendar date, formatted with the locale and the UTC time zone, with no time of day and no shift to local time. When `asOf` differs from the requested `to`, the UI states the `asOf` date.
+
+Examples (`en` locale):
 
 ```text
 Just now
 2 min ago
 Aug 31, 13:24
+Aug 31, 2026 (UTC day)
 ```
-
-Exact timestamps may be available when precision matters.
 
 ---
 
 # 53. Responsive Strategy
 
-The product should use a responsive-first approach.
+**Status:** `Planned (FE)` (FR-062)
+
+Layouts reorganize content by priority rather than scaling the desktop layout down, and every P0 workflow works without horizontal page scrolling (FR-062).
 
 Primary layout modes:
 
@@ -1052,15 +1055,13 @@ Desktop
 Large Desktop
 ```
 
-Responsive behavior should prioritize content rather than device-specific decoration.
-
 ---
 
 # 54. Mobile Experience
 
-Mobile should not be treated as a reduced desktop.
+**Status:** `Planned (FE)` (FR-062); a 560 px layout is shown in the wireframe
 
-Priorities:
+Mobile is not a reduced desktop. Priorities:
 
 - essential metrics;
 - portfolio context;
@@ -1076,41 +1077,33 @@ Secondary analytical detail can move behind progressive disclosure.
 
 # 55. Tablet Experience
 
-Tablet layouts should support analytical workflows without requiring desktop-only assumptions.
+**Status:** `Planned (FE)` (FR-062); a 900 px layout is shown in the wireframe
 
-Two-column layouts may collapse selectively.
-
-Navigation may transition to a more compact form.
+Tablet layouts support analytical workflows without desktop-only assumptions. Two-column layouts may collapse selectively, and navigation may become more compact.
 
 ---
 
 # 56. Desktop Experience
 
-Desktop should take advantage of available space for:
+**Status:** `Planned (FE)` (FR-062)
 
-- analytical comparisons;
-- multi-column layouts;
-- detailed tables;
-- charts;
-- activity panels.
-
-Whitespace should still be maintained around dense data.
+Desktop uses the available space for analytical comparisons, multi-column layouts, detailed tables, charts and activity panels, while keeping whitespace around dense data.
 
 ---
 
 # 57. Responsive Breakpoint Philosophy
 
-Breakpoints should be based on layout requirements rather than specific device names.
+**Status:** `Reference`; the wireframe sketches two breakpoints (`max-width: 900px` and `max-width: 560px`)
 
-The implementation should define a small number of consistent breakpoints and avoid unnecessary breakpoint fragmentation.
+Breakpoints follow layout needs, not device names, and stay few and consistent. The final breakpoint values and the minimum supported viewport width are not decided yet (FR-062 delegates them to this document).
 
 ---
 
 # 58. Design Tokens
 
-The interface should centralize design decisions through reusable tokens.
+**Status:** `Planned (FE)`; color, spacing, radius, typography, duration and easing tokens shown in the wireframe
 
-Token categories include:
+Design decisions are centralized in reusable tokens. Categories:
 
 ```text
 Colors
@@ -1123,13 +1116,13 @@ Z-index
 Breakpoints
 ```
 
-Components should consume tokens rather than duplicating arbitrary values.
+Components consume tokens instead of duplicating arbitrary values.
 
 ---
 
 # 59. Component System
 
-The UI should be built from reusable primitives and composed product components.
+**Status:** `Reference` (NFR-035)
 
 Conceptual hierarchy:
 
@@ -1145,15 +1138,15 @@ Feature Components
 Pages
 ```
 
-This structure should support reuse without creating premature abstraction.
+Each primitive is defined once and generalized only with at least two real uses (NFR-035).
 
 ---
 
 # 60. Component States
 
-Interactive components should explicitly define their states.
+**Status:** `Planned (FE)` (FR-057, FR-059, FR-060)
 
-Example:
+Interactive components define their applicable states intentionally:
 
 ```text
 Default
@@ -1166,204 +1159,118 @@ Success
 Error
 ```
 
-Not every component requires every state, but applicable states must be intentional.
-
 ---
 
 # 61. Buttons
 
-Buttons should communicate:
+**Status:** `Planned (FE)`
 
-- action;
-- importance;
-- current state.
-
-Primary actions should be visually distinct.
-
-Destructive actions should use appropriate semantic treatment.
-
-Loading buttons must prevent duplicate submissions.
+Buttons communicate action, importance and current state. Primary actions are visually distinct; destructive actions use semantic treatment and confirmation (FR-061). A loading button prevents duplicate submissions.
 
 ---
 
 # 62. Inputs
 
-Inputs should support:
+**Status:** `Planned (FE)` (FR-059, FR-064, NFR-029)
 
-- clear labels;
-- validation;
-- focus state;
-- disabled state;
-- loading state where relevant;
-- error state;
-- helper text.
-
-Placeholder text must not replace labels.
+Inputs have visible labels, focus, disabled, loading (where relevant) and error states, and helper text. Validation errors appear next to their field (FR-059). Placeholder text never replaces a label.
 
 ---
 
 # 63. Data Density
 
-The interface should support high information density while preserving hierarchy.
+**Status:** `Reference`
 
-Techniques include:
-
-- compact secondary metadata;
-- grouping;
-- progressive disclosure;
-- consistent alignment;
-- restrained decoration.
-
-Do not solve information overload by simply making everything smaller.
+High information density is supported through compact secondary metadata, grouping, progressive disclosure, consistent alignment and restrained decoration, not by making everything smaller.
 
 ---
 
 # 64. Visual Differentiation
 
-The product should feel original through:
+**Status:** `Reference`
 
-- distinctive dashboard composition;
-- custom information hierarchy;
-- scenario-driven interactions;
-- realtime visual language;
-- process/activity visualization;
-- meaningful motion;
-- thoughtful empty/error states.
-
-The goal is not to imitate a known trading product.
+The product feels original through its dashboard composition, information hierarchy, scenario-driven interactions, realtime visual language, process visualization, meaningful motion and considered empty and error states. It does not imitate a known trading product.
 
 ---
 
 # 65. Unique Product Features
 
-The unique features defined in the product specification should be visually integrated into the core workflow rather than presented as isolated gimmicks.
+**Status:** `Reference`
 
-Examples may include:
-
-- scenario/simulation controls;
-- explainable portfolio changes;
-- contextual activity streams;
-- intelligent alert visualization;
-- operational process feedback.
-
-The final implementation must prioritize useful differentiation over novelty for its own sake.
+The unique features of `01-product-spec.md` (for example Decision Replay and Scenario Lab) are integrated into the core workflow, not presented as isolated gimmicks. Useful differentiation takes priority over novelty.
 
 ---
 
 # 66. Demo UX
 
-The public demo must expose the product experience without requiring real infrastructure.
+**Status:** `Planned (FE)` (FR-066); a "DEMO DATA" badge and demo notice are shown in the wireframe
 
-The visitor should be able to understand immediately:
+The demo is the same application: it runs the real application layer in process through the `TradingClient` adapter, as a static build with no backend and no secrets (ADR-001, ADR-002 point 5, ADR-006; FR-066). Every non-`Deferred` user-facing requirement works in it.
 
-- what the product does;
-- what data is simulated;
-- what is interactive;
-- where realtime behavior occurs;
-- which actions can be executed.
-
-A concise demo entry experience should reduce friction.
+The visitor can tell immediately that data is simulated (a persistent demo indicator) and what is interactive. Seed data is not translated (ADR-010 point 8).
 
 ---
 
 # 67. Demo Guidance
 
-The demo may provide contextual hints for advanced functionality.
+**Status:** `Deferred` — no FR or ADR defines contextual demo hints; decide in the frontend-stage demo ADR (ADR-010 point 6)
 
-Guidance must be:
-
-- dismissible;
-- unobtrusive;
-- useful for first-time visitors.
-
-Avoid turning the product into a guided-tour-only experience.
+If added, guidance is dismissible, unobtrusive and never turns the product into a guided-tour-only experience.
 
 ---
 
 # 68. Demo Reset
 
-The demo should provide a clear reset mechanism.
+**Status:** `Deferred` (FR-072) — demo data layers and reset are decided in the frontend-stage demo ADR (ADR-010 point 6); a "Reset demo data" control is sketched in the wireframe but not specified
 
-Reset should restore:
-
-```text
-Mock State
-Simulation State
-Notifications
-Active Processes
-User Context
-```
-
-to a known initial state.
-
-Reset must require confirmation only if accidental reset could cause meaningful confusion.
+The scope of a reset (seed data, simulation, notifications, jobs, preferences) and whether it needs confirmation are decided by that ADR.
 
 ---
 
 # 69. Error UX in Demo
 
-The demo should intentionally expose realistic failure scenarios.
+**Status:** real-rule errors and CSV import failure injection `Planned (FE)` (FR-071, FR-069, ADR-008 point 13); other scripted failures (request failure, timeout, connection loss) and simulated latency `Deferred` (ADR-010 point 6, FR-068); a "Simulate connection issue" control is sketched in the wireframe but `Deferred`
 
-The UI must make these scenarios feel authentic without implying that the portfolio demo is actually connected to financial infrastructure.
-
-Example:
+- Validation errors and rejected operations (for example an oversell) occur through the real rules, without scripting (FR-071).
+- An injected import failure produces the same job states and failure reasons as in the real mode (FR-069, FR-081), with the same retry path:
 
 ```text
-Simulation
+Import job
    ↓
-Network Failure
+Injected failure
    ↓
-Error State
+FAILED state
    ↓
 Retry
    ↓
-Recovered
+QUEUED
 ```
+
+Demo errors must not imply that the demo is connected to real financial infrastructure.
 
 ---
 
 # 70. UX Performance
 
-Visual quality must not come at the expense of performance.
+**Status:** `Planned (FE)` (NFR-001, NFR-003, NFR-008, NFR-062)
 
-Avoid:
-
-- unnecessary large DOM trees;
-- excessive animation;
-- expensive blur effects;
-- continuous layout recalculation;
-- rendering all large datasets at once.
-
-Performance-sensitive UI should use:
-
-- virtualization where appropriate;
-- memoization where justified;
-- lazy loading;
-- efficient state subscriptions.
+Targets: LCP ≤ 2.5 s, CLS ≤ 0.1 and INP ≤ 200 ms (NFR-001, NFR-003); large chart datasets per NFR-008. Avoid unnecessary large DOM trees, excessive animation, expensive blur, continuous layout recalculation and rendering large datasets at once. Use virtualization, justified memoization, lazy loading and narrow state subscriptions where they help meet those targets.
 
 ---
 
 # 71. Perceived Performance
 
-The interface should optimize perceived responsiveness.
+**Status:** `Planned (FE)` (NFR-061, NFR-002, FR-057)
 
-Use:
-
-- immediate interaction feedback;
-- skeletons;
-- optimistic updates where safe;
-- progressive rendering;
-- background processing.
-
-The user should understand what the system is doing even when an operation takes time.
+Every action shows feedback within 100 ms (NFR-061); a view not ready within 300 ms shows a loading indicator (NFR-002). Skeletons, optimistic updates (rolled back on failure) and progressive rendering reflect real application state.
 
 ---
 
 # 72. UX Error Recovery
 
-Recoverable errors should expose the next logical action.
+**Status:** `Planned (FE)` (FR-059, FR-060)
 
-Examples:
+Recoverable errors expose the next logical action. Network failures and 5xx offer retry; a 400 offers correction; valid user state is preserved (FR-059). Recoverable failures never require reloading the application.
 
 ```text
 Retry
@@ -1374,17 +1281,13 @@ Dismiss
 Review
 ```
 
-Do not force users to reload the entire application for recoverable failures.
-
 ---
 
 # 73. UX Consistency Rules
 
-Equivalent states must use equivalent patterns.
+**Status:** `Planned (FE)`
 
-For example:
-
-All asynchronous API operations should consistently communicate:
+Equivalent states use equivalent patterns. Every asynchronous operation communicates its outcome the same way (FR-057, FR-059, FR-060):
 
 ```text
 Loading → Success
@@ -1392,44 +1295,33 @@ Loading → Error
 Loading → Retry
 ```
 
-All dialogs should follow the same focus and close behavior.
-
-All notifications should use the same severity conventions.
+All dialogs share focus and close behavior (§36, §47), and all notifications share severity conventions.
 
 ---
 
 # 74. UI/UX Acceptance Criteria
 
-The UI/UX implementation is considered complete when:
+**Status:** `Planned (FE)`
 
-- the application has a coherent visual system;
-- navigation is consistent;
-- responsive behavior is defined;
-- major workflows have intentional states;
-- forms provide clear validation;
-- tables support required analytical interactions;
-- charts are readable and interactive;
-- realtime changes are understandable without visual noise;
-- background processes expose progress and errors;
-- notifications are meaningful;
-- dialogs manage focus correctly;
-- reduced-motion behavior exists;
-- keyboard navigation works for critical flows;
-- accessibility requirements are addressed;
-- demo mode feels like the same real product;
-- no major screen exists only as static decoration.
+The UI/UX implementation is complete when the referenced requirements pass:
+
+- **Layout:** FR-062 at the supported breakpoints (§57) on the browsers of NFR-063.
+- **States and feedback:** FR-057, FR-058, FR-059, FR-060, FR-061; NFR-002, NFR-061.
+- **Accessibility:** FR-063, FR-064, FR-065; NFR-029, NFR-030, NFR-031, NFR-032.
+- **Performance:** NFR-001, NFR-003, NFR-008.
+- **Localization and formatting:** NFR-066 and §51-§52.
+- **Demo:** FR-066 to FR-071 within their non-`Deferred` scope.
+- **Reuse:** NFR-035; no major screen exists only as static decoration.
 
 ---
 
 # 75. UX Philosophy Summary
 
-The product should feel:
+**Status:** `Reference`
 
 > **Complex under the hood, simple in the hands of the user.**
 
-The interface should demonstrate that strong engineering and strong product design are not separate concerns.
-
-The final experience must combine:
+Strong engineering and strong product design are not separate concerns. The experience combines:
 
 ```text
 Architecture
