@@ -132,7 +132,7 @@ T3.1 (`02` first, the 79 FRs are the contract; then `01` aligned with `02`)
 FR-031 factor breakdown follow ADR-004); any FR without an ADR basis that
 needs a product decision is asked to the user, not invented.
 
-- [ ] T3.1 `01`, `02` (acceptance criteria for all P0/P1, status per FR, new FRs)
+- [x] T3.1 `01`, `02` (acceptance criteria for all P0/P1, status per FR, new FRs)
   - [x] Part 1, `02` (delegated writer; `pnpm docs:check` and `pnpm lint` pass): 86 FRs, every one with a status. 75 of the 79 P0/P1 FRs have testable acceptance criteria; the remaining 4 are Deferred. New FRs FR-080 to FR-086 cover CSV import, job lifecycle, idempotency, session refresh, roles, analytics data boundaries and realtime sessions. FR-025 and FR-031 are aligned with ADR-004. All 79 original headings are kept. Six FRs are pending a user decision: FR-006, FR-015, the demo FRs, FR-052, FR-055 and FR-011.
   - [x] Six FR decisions approved by the user 2026-10-05, route inline:
     - New ADR-010 "Version 1 Product Scope Clarifications":
@@ -145,7 +145,11 @@ needs a product decision is asked to the user, not invented.
     - `02` updated: FR-006, 011, 015, 052, 055, the demo FRs and the traceability table.
     - `05` §42 note added and the ADR index updated.
     - `pnpm docs:check` passes.
-  - [x] Part 2, `01` aligned with `02` in 3 delegated slices (§1-8, §9-18, §19-end). Each section has a status and references FR IDs. Contradictions fixed: cash transaction types, delete semantics, per-tick analytics, the factor breakdown, `dismissed`, the mock-API demo, and the document chain. Pending user decisions: Settings domain, analytics comparison, and the status for reference sections.
+  - [x] Part 2, `01` aligned with `02` in 3 delegated slices (§1-8, §9-18, §19-end). Each section has a status and references FR IDs. Contradictions fixed: cash transaction types, delete semantics, per-tick analytics, the factor breakdown, `dismissed`, the mock-API demo, and the document chain. Three follow-up decisions, approved by the user on 2026-10-05 and applied inline:
+    - FR-087 User Preferences documents the existing API.
+    - Benchmark comparison is `Deferred` (ADR-010 point 7).
+    - The legend gains a `Reference` status, applied to the purpose, principles, boundary, policy and traceability sections in `01` and `02`.
+  - [x] T3.1 complete.
 - [ ] T3.2 `03` (measurable targets, accepted exceptions)
 - [ ] T3.3 `11` (navigation aligned with wireframe)
 

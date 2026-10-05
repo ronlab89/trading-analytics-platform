@@ -54,6 +54,9 @@ requirements that no ADR or spec defines precisely enough to build or test:
    scripted failures are decided in a frontend-stage ADR before the demo is
    built. They stay `Deferred` until then and do not block B0-B7. The demo
    itself remains decided (ADR-001, ADR-006).
+7. **Benchmark comparison** (added 2026-10-05). Comparing portfolio
+   performance with a market index or benchmark is `Deferred`. The system
+   has no benchmark data, and no FR asks for it.
 
 ## Consequences
 

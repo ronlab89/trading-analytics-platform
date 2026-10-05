@@ -10,7 +10,7 @@
 
 # 1. Purpose
 
-**Status:** `Implemented`
+**Status:** `Reference`
 
 This document is the functional contract of Trading Analytics Platform. Each
 requirement (FR-NNN) states observable behavior, its status, the decisions it
@@ -35,7 +35,7 @@ overrides the roadmap and the progress log. Code is evidence of what exists.
 
 # 2. Requirement Structure
 
-**Status:** `Implemented`
+**Status:** `Reference`
 
 Each requirement has:
 
@@ -1692,9 +1692,35 @@ into a portfolio as a background job.
 
 ---
 
+## FR-087 — User Preferences
+
+**Priority:** P1  
+**Status:** `Implemented` (`GET` and `PATCH /api/v1/preferences`); settings UI `Planned (FE)`  
+**Decisions:** `05-data-model.md` §23; `07-api-spec.md` §29
+
+The user reads and updates their own preferences: theme, language, default
+portfolio, reduced motion and notification preferences.
+
+### Acceptance criteria
+
+- Given a user with no stored preferences, `GET` returns `null` (not 404)
+  and writes nothing; the client applies the application defaults.
+- `PATCH` with at least one field creates the row on first use (atomic
+  upsert) or updates it, and returns the stored preferences.
+- `PATCH` with no field, an empty `theme` or an empty `language` returns
+  400 `VALIDATION_ERROR`.
+- `defaultPortfolioId` set to another user's portfolio, or to one that does
+  not exist, returns 404 and changes nothing; `null` clears it.
+- Preferences are always the caller's: there is no user identifier in the
+  route.
+- (FE) `reducedMotion` disables non-essential motion (FR-065); `theme` and
+  `language` apply without reloading the page.
+
+---
+
 # 26. Requirement Traceability
 
-**Status:** `Implemented` (table below); test traceability per
+**Status:** `Reference` (table below); test traceability per
 `10-testing-strategy.md`
 
 Each requirement maps to its decisions, implementing block and tests:
@@ -1719,7 +1745,7 @@ and the backend blocks B0-B7 are closed (`BACKEND-ROADMAP.md` §2).
 
 # 28. Requirement Change Policy
 
-**Status:** `Implemented`
+**Status:** `Reference`
 
 A requirement changes when implementation reveals an invalid assumption, a
 better behavior, a technical constraint, a usability problem or unnecessary
@@ -1731,7 +1757,7 @@ needs a new ADR first. IDs are never reused or deleted.
 
 # 29. Functional Guiding Principle
 
-**Status:** `Implemented`
+**Status:** `Reference`
 
 A feature is implemented when the whole path works, not when its UI exists:
 
@@ -1746,7 +1772,7 @@ This applies equally to the full stack and to the public demo.
 
 # 30. Traceability Table
 
-**Status:** `Implemented`
+**Status:** `Reference`
 
 | FR | Status | Decisions / spec | Block |
 | --- | --- | --- | --- |
@@ -1836,6 +1862,7 @@ This applies equally to the full stack and to the public demo.
 | FR-084 | `Implemented`; `Planned (B0)`, `Planned (B2)` | ADR-005 p1-3, 10-12 | B0, B2 |
 | FR-085 | `Planned (B1)` | ADR-004 p1, 4, 6-7; `16` §2, §5, §8 | B1 |
 | FR-086 | `Planned (B5)` | ADR-007 p2-3, 11 | B5 |
+| FR-087 | `Implemented`; UI `Planned (FE)` | `05` §23, `07` §29 | FE |
 
 ---
 

@@ -13,7 +13,7 @@ repeating acceptance criteria.
 
 ## 1. Product Definition
 
-**Status:** `Implemented`
+**Status:** `Reference`
 
 Trading Analytics Platform is a personal trading analysis workspace that
 helps independent traders understand:
@@ -32,7 +32,7 @@ understanding, and exploration**.
 
 # 2. Product Principles
 
-**Status:** `Implemented` (principles); demo parity `Planned (FE)`
+**Status:** `Reference` (principles); demo parity `Planned (FE)`
 
 ### 2.1 Familiar Core
 
@@ -88,7 +88,7 @@ infrastructure.
 
 ## 3.1 Primary User
 
-**Status:** `Implemented`
+**Status:** `Reference`
 
 ### Independent Trader
 
@@ -118,6 +118,7 @@ Settings
 ```
 
 Each domain has a clear purpose and does not exist merely to add screens.
+Settings covers the user's preferences (FR-087).
 
 ---
 
@@ -305,7 +306,7 @@ FR-022, FR-023 and FR-024.
 
 # 11. Analytics
 
-**Status:** allocation `Implemented`; `1D` change `Implemented`; period performance, historical series, portfolio drawdown and volatility `Planned (B1)`; charts `Planned (FE)`; sector allocation, exposure and benchmark comparison `Deferred`
+**Status:** allocation `Implemented`; `1D` change `Implemented`; period performance, historical series, portfolio drawdown and volatility `Planned (B1)`; charts `Planned (FE)`; sector allocation and exposure `Deferred`; benchmark comparison `Deferred` (ADR-010 point 7)
 
 Analytics explain portfolio behavior over a period: time-weighted return and
 P/L (FR-025), historical performance (FR-026), allocation (FR-027), drawdown
@@ -613,7 +614,7 @@ simulator (FR-049). See `05-data-model.md` §33 and §36.
 
 # 26. Product Boundaries
 
-**Status:** `Implemented` (scope constraint)
+**Status:** `Reference` (scope constraint)
 
 The product is not a brokerage, an exchange, a payment platform, an
 automated trading system, a financial advisory service or a social trading
@@ -658,7 +659,7 @@ The demo provides each criterion whose requirements are not `Deferred`
 
 # 29. Product Identity
 
-**Status:** `Implemented` (guiding model)
+**Status:** `Reference` (guiding model)
 
 The product communicates three complementary ideas:
 
@@ -699,7 +700,7 @@ The product communicates three complementary ideas:
 
 # 30. Relationship With Future SDD Documents
 
-**Status:** `Implemented`
+**Status:** `Reference`
 
 This document defines **what the product is**. Exact behavior, quality
 attributes, technical design and delivery live in the other SDD documents

@@ -59,6 +59,7 @@ Every spec section carries one status:
 | `Planned (B#)` | Decided; built in the named backend roadmap block. Work that must land before B0 starts (for example the minimal CI of ADR-006) is `Planned (B0)`. |
 | `Planned (FE)` | Decided; built in the frontend stage (web app and demo mode), after the backend blocks. Its breakdown into blocks is defined in `15-implementation-plan.md`. |
 | `Deferred` | Out of current scope; not built until a new decision. |
+| `Reference` | Guiding or structural content (purpose, principles, boundaries, policies, traceability tables); nothing is built from it directly. |
 
 Sections are annotated as each document is aligned with the ADRs (Phases 2-5
 of `odd/tasks/sdd-source-of-truth.md`). An unannotated section is not yet
