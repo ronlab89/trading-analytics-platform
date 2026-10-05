@@ -284,326 +284,187 @@ the public demo (ADR-001).
 
 # 9. Assets
 
-The asset domain represents instruments tracked by the platform.
+**Status:** API `Implemented` (list, search, detail, current price, history); UI `Planned (FE)`; asset volatility, portfolio exposure and related positions in the detail `Deferred`
 
-An asset may contain:
-
-- symbol;
-- name;
-- asset class;
-- currency;
-- current price;
-- price change;
-- historical data;
-- volatility;
-- relevant portfolio exposure.
-
-The product does not require real market data for the public demo.
+The asset domain represents the instruments tracked by the platform: symbol,
+name, asset class, currency, current price, price change and price history.
+Prices are synthetic and produced by the market simulator; the product does
+not require real market data (ADR-007). See FR-019, FR-020 and FR-021.
 
 ---
 
 # 10. Watchlist
 
-Users can maintain a watchlist of assets.
+**Status:** API `Implemented` (add, remove); live price updates `Planned (B5)`; UI `Planned (FE)`
 
-The watchlist should support:
-
-- adding assets;
-- removing assets;
-- viewing current mock prices;
-- viewing price changes;
-- navigating to asset details.
-
-Updates may be simulated in real time.
+Users keep a watchlist of assets: they add and remove assets, see current
+simulated prices and price changes, and navigate to asset details. See
+FR-022, FR-023 and FR-024.
 
 ---
 
 # 11. Analytics
 
-Analytics provide deeper insight into portfolio behavior.
+**Status:** allocation `Implemented`; `1D` change `Implemented`; period performance, historical series, portfolio drawdown and volatility `Planned (B1)`; charts `Planned (FE)`; sector allocation, exposure and benchmark comparison `Deferred`
 
-The initial analytics domain should include:
-
-- portfolio performance;
-- historical performance;
-- allocation;
-- P/L;
-- drawdown;
-- volatility;
-- exposure;
-- contribution;
-- comparison.
-
-The exact calculations and formulas will be defined in later specifications.
+Analytics explain portfolio behavior over a period: time-weighted return and
+P/L (FR-025), historical performance (FR-026), allocation (FR-027), drawdown
+(FR-028), volatility (FR-029) and contribution (§12). Periods, formulas and
+data boundaries are defined by ADR-004 and `16-analytics-spec.md`
+(FR-085). Period analytics cover closed days only.
 
 ---
 
 # 12. Performance Attribution
 
-Performance Attribution explains how portfolio performance was produced.
+**Status:** current-state attribution `Implemented`; range attribution and money contribution per asset `Planned (B1)`; factor breakdown `Deferred` (ADR-004 point 10)
 
-Instead of presenting only:
-
-```text
-Portfolio
-+ $1,240
-```
-
-the system should allow the user to understand the contributing factors.
-
-Example:
+Performance Attribution explains which assets produced a result, instead of
+showing only a portfolio total:
 
 ```text
-Total Performance
-+ $1,240
-
-BTC
-+ $820
-
-ETH
-+ $310
-
-AAPL
-+ $180
-
-Fees
-- $70
+Total Performance   + $1,240
+BTC                 + $820
+ETH                 + $310
+AAPL                + $180
 ```
 
-The attribution system should support progressive exploration into the factors contributing to a result.
-
-This capability may be reused by:
-
-- Dashboard;
-- Portfolio Analytics;
-- Decision Replay;
-- Scenario Lab;
-- What Changed?
+Version 1 reports the money contribution of each asset (FR-030, FR-031). A
+breakdown by factor (price movement, position size, fees, realized results)
+is not part of version 1 (ADR-004 point 10).
 
 ---
 
 # 13. Decision Center
 
-The Decision Center contains the product's primary differentiated analytical experiences.
+**Status:** see §14 and §15
 
-It consists initially of:
-
-- Decision Replay;
-- Scenario Lab.
-
-These experiences should operate on the same underlying portfolio and market concepts used by the rest of the application.
+The Decision Center groups the product's differentiated analytical
+experiences, Decision Replay and Scenario Lab. Both operate on the same
+portfolio and market concepts as the rest of the application.
 
 ---
 
 # 14. Decision Replay
 
-Decision Replay allows users to reconstruct and inspect the evolution of a trading decision.
+**Status:** API `Implemented` (list, detail, replay); decision write endpoints `Deferred`; UI `Planned (FE)`
 
-A decision may contain:
+Decision Replay reconstructs the evolution of a trading decision so the user
+can navigate its timeline:
 
 ```text
-Market context
-      ↓
-Decision thesis
-      ↓
-Entry
-      ↓
-Position evolution
-      ↓
-Exit
-      ↓
-Outcome
+Market context → Decision thesis → Entry → Position evolution → Exit → Outcome
 ```
 
-The user should be able to navigate through the decision timeline.
+See FR-032, FR-033 and FR-034. Decisions are read-only in version 1.
 
 ---
 
 ## 14.1 Replay Interaction
 
-The replay experience may provide:
+**Status:** replay payload `Implemented`; playback UI `Planned (FE)`
 
-- play;
-- pause;
-- previous event;
-- next event;
-- timeline navigation;
-- playback speed;
-- contextual market information;
-- position evolution;
-- decision annotations.
-
-Animations and transitions should communicate temporal progression rather than exist purely as decoration.
+The replay lets the user play, pause, step between events, navigate the
+timeline and change playback speed, with market context, position evolution
+and decision annotations (FR-034). Animations communicate temporal
+progression, not decoration.
 
 ---
 
 ## 14.2 Expected vs Actual
 
-Where sufficient data exists, the replay should distinguish between:
+**Status:** `Deferred` (FR-035)
 
-```text
-Expected
-vs
-Actual
-```
-
-This may include:
-
-- expected direction;
-- expected target;
-- expected risk;
-- actual movement;
-- actual outcome.
-
-The purpose is analytical reflection rather than financial advice.
+Comparing expected direction, target and risk with the actual outcome is
+parked until scheduled. Its purpose is analytical reflection, not financial
+advice.
 
 ---
 
 # 15. Scenario Lab
 
-Scenario Lab allows users to explore hypothetical changes to their portfolio.
+**Status:** API `Implemented` (create, per-asset price change, recalculate value and unrealized P/L, reset, save, compare, delete); UI `Planned (FE)`; other variables and outputs `Deferred`
 
-The user should be able to modify selected variables and observe their calculated impact without changing the baseline portfolio.
-
-Example:
+Scenario Lab lets users apply hypothetical per-asset price changes to a
+portfolio and observe the calculated impact without changing the baseline:
 
 ```text
-Baseline
+Baseline        Scenario
+BTC   +8%   →   BTC   -12%
+ETH   +4%   →   ETH   +2%
+AAPL  +3%   →   AAPL  +5%
 
-BTC    +8%
-ETH    +4%
-AAPL   +3%
-
-        ↓
-
-Scenario
-
-BTC    -12%
-ETH    +2%
-AAPL   +5%
-
-        ↓
-
-Impact
-
-Portfolio Value
-Risk
-Allocation
-Performance
+Impact: portfolio value, unrealized P/L
 ```
+
+See FR-036, FR-037 and FR-038. Position size, allocation and exposure
+variables, and allocation, risk and exposure outputs, are `Deferred`.
 
 ---
 
 ## 15.1 Scenario Isolation
 
-Running a scenario must not modify the user's baseline portfolio.
+**Status:** `Implemented`
 
-The scenario should operate against an isolated state.
+Running a scenario never modifies the user's baseline portfolio; it operates
+on an isolated state (FR-038).
 
 ---
 
 ## 15.2 Scenario Comparison
 
-Users should be able to compare:
+**Status:** API `Implemented`; UI `Planned (FE)`
 
-```text
-Baseline
-vs
-Scenario A
-vs
-Scenario B
-```
-
-The comparison should expose meaningful differences rather than only displaying separate charts.
+Users compare a baseline with one or more scenarios, and the comparison
+exposes the differences rather than separate charts (FR-042).
 
 ---
 
 ## 15.3 Scenario Lifecycle
 
-The system should support, where appropriate:
+**Status:** create, modify, reset, save, compare, delete `Implemented`; duplicate `Deferred`; UI `Planned (FE)`
 
-- create;
-- modify;
-- reset;
-- save;
-- duplicate;
-- compare;
-- delete.
-
-The final supported lifecycle will be defined by the functional requirements.
+See FR-036 to FR-043. Duplicate is parked (FR-041).
 
 ---
 
 # 16. Real-Time Experience
 
-Real-time behavior is an important product capability.
+**Status:** `Planned (B5)`; client `Planned (FE)`
 
-The platform should support simulated market updates.
-
-For example:
-
-```text
-BTC
-112,450.20
-      ↓
-112,451.80
-      ↓
-112,449.60
-      ↓
-112,453.10
-```
-
-Updates may affect:
-
-- asset prices;
-- positions;
-- portfolio value;
-- P/L;
-- charts;
-- analytics;
-- portfolio pulse;
-- relevant alerts.
-
-The UI should update without requiring a page refresh.
+The platform pushes simulated market updates and the UI updates without a
+page refresh (ADR-007). On each price event the client recomputes position
+value, unrealized P/L, portfolio value, `1D` change, current allocation and
+Portfolio Pulse; committed transactions trigger a refetch; alerts are
+evaluated on the server. Period analytics do not change per tick: they
+change when a day closes (FR-045). Sessions, subscriptions, connection state
+and reconnection: FR-044, FR-046, FR-047 and FR-086.
 
 ---
 
 # 17. Market Simulation
 
-The public demo should include a market simulation engine capable of producing deterministic or controlled market activity.
+**Status:** engine and control `Planned (B5)`; demo controls `Planned (FE)`; demo isolation `Deferred`
 
-Possible modes:
-
-- normal activity;
-- high activity;
-- market spike;
-- market decline;
-- connection interruption.
-
-The exact simulation architecture will be defined later.
-
-The simulator exists to reproduce the behavior of a real-time system without requiring paid market-data services.
+A deterministic market simulator (`@trading/market-sim`) reproduces a
+real-time system without paid market-data services; the API and the demo
+use the same engine (ADR-007). Its modes are defined in
+`12-demo-mode-spec.md` §37-§40; controlling it requires `ADMIN`. In real
+mode the simulator persists prices and daily candles by design. See FR-048,
+FR-049 and FR-050.
 
 ---
 
 # 18. Notifications and Alerts
 
-The platform should provide meaningful feedback to users.
+**Status:** notifications API `Implemented` (list, unread filter, mark read, mark all read); alert configuration `Implemented`; alert evaluation and realtime notification events `Planned (B5)`; UI `Planned (FE)`
 
-Notification types may include:
-
-- transaction completed;
-- transaction failed;
-- scenario completed;
-- significant portfolio change;
-- simulated market event;
-- validation issue;
-- connection issue;
-- background process status.
-
-Notifications should not become generic UI decoration.
-
-They must correspond to actual application events.
+Notifications correspond to actual application events, never decoration. A
+notification is `unread` or `read`; there is no `dismissed` state (ADR-010
+point 3). Users configure alerts of type `PRICE`, `PORTFOLIO_CHANGE`,
+`ALLOCATION` and `VOLATILITY`; an alert fires when its condition becomes
+true, not on every tick, and creates a notification. See FR-051, FR-052 and
+FR-053.
 
 ---
 
