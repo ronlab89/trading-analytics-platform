@@ -78,9 +78,14 @@ Two further facts shape the decision:
    held on a day has never had a price on or before that day, that range is
    `InsufficientData`.
 8. **Volatility.** Sample standard deviation of the daily TWR returns,
-   annualized with √252, expressed as a percentage. At least 20 daily returns
+   annualized with √365, expressed as a percentage. At least 20 daily returns
    are required; otherwise the result is `UNKNOWN`. The existing calculation
-   is generalized to accept a return series.
+   is generalized to accept a return series. (Amended 2026-10-05: originally
+   √252. The return series is built on UTC calendar days with carry-forward
+   prices (point 7), and the simulator closes a candle every calendar day
+   (ADR-007), so the factor matches the series frequency. A trading-day
+   series was rejected: it needs a holiday calendar per market and treats
+   crypto, which trades every day, differently.)
 9. **Drawdown.** Computed on the cumulative return index (growth of 1), not
    on raw value. Reports maximum drawdown with peak and trough dates, and the
    current drawdown.
@@ -88,7 +93,11 @@ Two further facts shape the decision:
     its value change minus its own flows over the period. Contributions sum
     exactly to the period P/L. No Brinson-style decomposition.
 11. **Pulse.** Uses the portfolio's real volatility and drawdown instead of
-    the current proxy based on the largest position.
+    the current proxy based on the largest position. Volatility thresholds
+    apply to the annualized value of point 8: `LOW` below 20%, `MODERATE`
+    from 20% to below 60%, `HIGH` from 60%. (Amended 2026-10-05: they
+    replace the daily placeholders of 1% and 3%, which annualize with √365 to
+    about 19% and 57%.)
 12. **Currency.** Version 1 is single-currency. A transaction on an asset
     whose currency differs from the portfolio's base currency is rejected
     with 400. Multi-currency support is `Deferred` until foreign-exchange
@@ -139,7 +148,7 @@ specified and tested in the listed block.
 |---|---|---|
 | `SELL` fees larger than the gross proceeds make `S(d)` negative. | Reject `SELL` fees greater than the gross proceeds, or count the excess as an inflow. | B1 |
 | Period P/L boundaries are undefined, so first-day flows are double-counted. | P/L uses `V(day before from)` and flows over `[from, to]`. When clamped, it uses `V(effectiveFrom)` and flows over `(effectiveFrom, to]`, where `effectiveFrom` is the first day every held asset has a price. Attribution uses the same boundaries. | B1 |
-| Annualization assumes trading days, but candles are calendar days. | Annualize by series frequency (√365 for a calendar-day series), or build the series on trading days only. | B1 |
+| `calculateVolatility` annualizes with √252, only when `annualize: true`, and accepts 2 returns. | Point 8: always annualize with √365 and require 20 returns. Pulse volatility thresholds become 20% and 60% (point 11). Tests cover 19 vs 20 returns and a hand-computed annualized value. | B1 |
 | Day and `YTD` boundaries have no timezone, so the server and the browser demo can disagree. | Day boundaries are UTC calendar dates everywhere, including the demo and the simulator clock. | B1 |
 
 ## Related

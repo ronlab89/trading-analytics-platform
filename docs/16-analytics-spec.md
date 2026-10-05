@@ -306,7 +306,7 @@ Open detail (B1):
 # 9. Volatility
 
 **Status:** asset-level `Implemented` (`volatility.ts`); portfolio-level `Planned (B1)`.  
-**Decisions:** ADR-004 point 8, Deferred detail (annualization).  
+**Decisions:** ADR-004 point 8 (√365, amended 2026-10-05).  
 **Requirements:** FR-029.
 
 ```text
@@ -315,14 +315,15 @@ n      = |R|, required n ≥ 20, otherwise UNKNOWN
 mean   = Σ R / n
 σ      = sqrt( Σ (r − mean)² / (n − 1) )          (sample standard deviation)
 volatilityPercent = σ × A × 100
-A      = √252 per ADR-004 point 8 (see Open detail)
+A      = √365 per ADR-004 point 8 (calendar-day series, §5)
 ```
 
 `Implemented` today: `calculateVolatility` takes one asset's candles,
 computes close-to-close returns, requires at least 3 prices (2 returns) and
 throws `InsufficientDataError` below that, and annualizes with √252 only when
 `annualize: true` (default daily). ADR-004 point 8 generalizes it to accept
-a return series, raises the minimum to 20 returns and always annualizes.
+a return series, raises the minimum to 20 returns and always annualizes
+with √365.
 
 Edge cases:
 
@@ -333,9 +334,10 @@ Edge cases:
 | Days with no return | Excluded from `R` and from `n`. |
 | Gaps filled by carry-forward | Produce zero price-change returns for held assets; they are samples. |
 
-Open detail (B1, ADR-004 Deferred detail): candles are calendar days while
-√252 assumes trading days; annualize by series frequency (√365 for a
-calendar-day series) or build the series on trading days only. See §17.
+Test (B1): 20 alternating returns of `+0.01` and `−0.01` give
+`σ = sqrt(20 × 0.0001 / 19) ≈ 0.0102598` and
+`volatilityPercent ≈ 0.0102598 × √365 × 100 ≈ 19.601`. 19 returns give
+`UNKNOWN`.
 
 ---
 
@@ -532,10 +534,12 @@ Thresholds are placeholders, not product decisions.
 §10). `UNKNOWN` when §9 has fewer than 20 returns. Exposure and liquidity are
 `Deferred` (`05-data-model.md` §29).
 
-Open detail (B1): the placeholder volatility thresholds (1% and 3%) were set
-against daily, non-annualized asset volatility; ADR-004 point 8 annualizes,
-so the thresholds must be re-set for the new scale. The look-back period of
-the Pulse inputs is also unfixed.
+`Planned (B1)`: volatility thresholds apply to the annualized value
+(ADR-004 point 11): `LOW` below 20%, `MODERATE` from 20% to below 60%,
+`HIGH` from 60%. Boundary tests: 19.99 is `LOW`, 20 is `MODERATE`, 60 is
+`HIGH`.
+
+Open detail (B1): the look-back period of the Pulse inputs is unfixed.
 
 ---
 
@@ -558,7 +562,7 @@ The checklist in `docs/README.md` applied to the analytics.
 | Boundary math and data edges | Negative denominator | Impossible given non-negative holdings and `S(d) ≥ 0` (§3, §4). | B0, B1 |
 | Boundary math and data edges | Same-timestamp transactions | No effect on daily sums (§3); tiebreak matters for validation only. | B0 |
 | Boundary math and data edges | Single data point, fewer than 20 returns, empty portfolio | §5, §7, §9 edge tables. | B1 |
-| Boundary math and data edges | Weekend and offline gaps; calendar vs trading days | Carry-forward (§5); annualization open detail (§9). | B1 |
+| Boundary math and data edges | Weekend and offline gaps; calendar vs trading days | Carry-forward (§5); √365 matches the calendar-day series (§9). | B1 |
 | Boundary math and data edges | UTC day boundary in demo and server | UTC everywhere (§2). | B1 |
 | Boundary math and data edges | Mixed currencies | 400 on write (§2); today 500. | B1 |
 | Partial failure | Some held assets lack prices | Series: `InsufficientData` for the range or clamp (§5). `1D`: partial result with `excludedAssetIds` (§11). | B1, Implemented |
@@ -569,16 +573,16 @@ The checklist in `docs/README.md` applied to the analytics.
 
 **Status:** reported, not resolved.
 
-1. **Annualization.** ADR-004 point 8 decides √252; its Deferred detail
-   allows √365 or a trading-day series. The constant depends on that B1
-   resolution.
+1. **Annualization.** Resolved 2026-10-05: ADR-004 point 8 now decides
+   √365 (§9).
 2. **FR-031 factors.** FR-031 asks to distinguish price movement, position
    size, fees and realized results. ADR-004 point 10 decides a single money
    contribution per asset with no decomposition; the factor breakdown is not
    decided. Align in T3.1.
 3. **FR-025 periods.** FR-025 still says periods are "defined later" and
    omits `YTD` and `ALL`; ADR-004 point 5 settles them. Align in T3.1.
-4. **Pulse thresholds.** Placeholder volatility thresholds do not fit an
-   annualized value (§15).
+4. **Pulse thresholds.** Volatility resolved 2026-10-05: 20% and 60%,
+   annualized (ADR-004 point 11, §15). The performance, concentration and
+   drawdown thresholds are still placeholders in `portfolio-pulse.ts`.
 5. **Decision replay money.** `decision-replay.ts` reads payload prices as
    numbers, against ADR-002 (task T2.5).
