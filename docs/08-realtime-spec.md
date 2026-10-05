@@ -9,71 +9,71 @@
 
 # 1. Purpose
 
-This document defines the real-time communication architecture for Trading Analytics Platform.
+**Status:** `Reference`
 
-Realtime functionality is a core product capability.
+This document owns the realtime protocol of Trading Analytics Platform:
+transport, handshake, channels, envelope, event catalog, ordering,
+reconnection and limits. `07-api-spec.md` §31-§38 only summarize it.
+Nothing here is implemented yet; the server side is built in B5 (ADR-007)
+and the client side in the frontend stage.
 
-The system must support:
+Realtime covers:
 
-- live market price updates;
-- portfolio metric updates;
-- background job progress;
-- notifications;
-- connection state;
-- reconnection;
-- event ordering;
-- stale-event protection;
-- selective state updates;
-- simulated realtime behavior in Demo Mode.
+- live market prices from the shared simulator (ADR-007 point 7);
+- portfolio changes after a transaction commits;
+- CSV import job progress (ADR-008 point 11);
+- notifications and triggered alerts;
+- connection state, reconnection, ordering and stale-event protection.
 
-The public demo must reproduce these behaviors without requiring an external realtime provider.
+The demo reproduces the same contract in process, without an external
+realtime provider (ADR-007 point 13).
 
 ---
 
 # 2. Realtime Technology
 
-The production implementation will use:
+**Status:** `Planned (B5)` (ADR-007 point 1)
 
-```text
-WebSockets
-```
+The server uses WebSocket through the `ws` library, behind a transport port
+so no other code depends on it. Socket.IO and Server-Sent Events are
+rejected (ADR-007, Alternatives Considered).
 
-The frontend communicates with the realtime layer through a dedicated adapter.
-
-The UI must never depend directly on the WebSocket implementation.
-
-Architecture:
+The UI never depends on the WebSocket implementation:
 
 ```text
 UI
  ↓
-Realtime Client
+Realtime Client (client port)
  ↓
 Realtime Adapter
  ↓
-WebSocket Transport
+WebSocket Transport | In-process demo adapter
 ```
 
 ---
 
 # 3. Realtime Principles
 
-The realtime system must follow these principles:
+**Status:** `Reference`
 
 1. Transport is infrastructure.
-2. Events use application-defined contracts.
-3. Raw WebSocket messages must never leak into feature modules.
-4. Events must be validated before entering application state.
-5. Events must be ordered where ordering information exists.
-6. Stale events must not overwrite newer state.
-7. Reconnection must be automatic.
-8. Realtime failure must degrade gracefully.
-9. Unrelated UI must not re-render.
-10. Demo Mode must reproduce the same event contract.
+2. Events use the contracts in `@trading/contracts` (ADR-002).
+3. Raw WebSocket messages never leak into feature modules.
+4. Events are validated before entering application state.
+5. `sequence` orders events per channel.
+6. Stale events never overwrite newer state.
+7. Reconnection is automatic.
+8. Realtime failure degrades to HTTP refetching (ADR-007 point 12).
+9. Unrelated UI does not re-render.
+10. Demo Mode reproduces the same event contract.
+11. An event carries only what the client cannot derive itself; valuations
+    are recomputed on the client from prices (ADR-007).
 
 ---
 
 # 4. Realtime Architecture
+
+**Status:** `Planned (FE)`
 
 ```text
                   ┌──────────────────────┐
@@ -110,44 +110,34 @@ The realtime system must follow these principles:
 
 # 5. Transport Abstraction
 
-The application must depend on a transport-independent interface.
+**Status:** client port `Planned (FE)`; server transport port `Planned (B5)` (ADR-007 points 1 and 13)
 
-Conceptually:
+The client depends on a transport-independent port:
 
 ```text
 RealtimeTransport
+  connect()
+  disconnect()
+  subscribe(channel)
+  unsubscribe(channel)
+  send(message)
+  getConnectionState()
 ```
 
-The interface should support:
+Implementations:
 
 ```text
-connect()
-disconnect()
-subscribe()
-unsubscribe()
-send()
-getConnectionState()
+WebSocketRealtimeTransport   real mode
+InProcessRealtimeTransport   demo, fed by @trading/market-sim in the browser
 ```
 
-The concrete implementation may be:
-
-```text
-WebSocketRealtimeTransport
-```
-
-Demo Mode may use:
-
-```text
-MockRealtimeTransport
-```
-
-Both must satisfy the same contract.
+Both satisfy the same contract. Adapter class names are decided in FE.
 
 ---
 
 # 6. Connection States
 
-The realtime client exposes the following states:
+**Status:** `Planned (FE)`
 
 ```text
 DISCONNECTED
@@ -157,51 +147,38 @@ RECONNECTING
 FAILED
 ```
 
-Optional transient states may be introduced if implementation requires them.
+`CONNECTED` means the socket is open and authenticated (§9). These are
+client transport states, not domain entities (`07-api-spec.md` §37).
 
 ---
 
 # 7. Connection Lifecycle
 
-Normal lifecycle:
+**Status:** client transitions `Planned (FE)`; heartbeat and limits `Planned (B5)` (ADR-007 points 2 and 11)
+
+Client transitions:
 
 ```text
-DISCONNECTED
-      ↓
-CONNECTING
-      ↓
-CONNECTED
+DISCONNECTED → CONNECTING → CONNECTED
+CONNECTING   → RECONNECTING → CONNECTED
+RECONNECTING → FAILED
+FAILED       → CONNECTING        (manual retry)
 ```
 
-Connection failure:
+Server rules:
 
-```text
-CONNECTING
-      ↓
-RECONNECTING
-      ↓
-CONNECTED
-```
-
-Persistent failure:
-
-```text
-RECONNECTING
-      ↓
-FAILED
-```
-
-Manual retry:
-
-```text
-FAILED
-      ↓
-CONNECTING
-```
+- Heartbeat: WebSocket ping/pong every 30 seconds.
+- Limits: a maximum number of subscriptions per connection, an inbound
+  message rate limit, and bounded memory per connection. The numeric values
+  and the missed-pong policy are decided in B5.
+- The server closes a socket not authenticated within 5 seconds, or whose
+  token expired without re-authentication (§9).
 
 ---
 
 # 8. Initial Connection
+
+**Status:** `Planned (FE)`
 
 When an authenticated session starts:
 
@@ -210,304 +187,312 @@ Application Bootstrap
         ↓
 Initialize Realtime Client
         ↓
-Connect
+Open socket
         ↓
-Authenticate Connection
+Authenticate (first message, within 5 s)
         ↓
-Subscribe Required Channels
+Subscribe required channels
 ```
 
-The application must not assume the connection is immediately available.
+The application never assumes the connection is immediately available.
 
 ---
 
 # 9. Authentication
 
-The realtime connection must be associated with the authenticated user.
+**Status:** `Planned (B5)` (ADR-007 point 2, ADR-005)
 
-The exact authentication mechanism will be defined by the backend implementation.
+- The first client message carries the access token; the token is never
+  put in the URL.
+- A socket not authenticated within 5 seconds is closed.
+- The socket is bound to the expiry of the token it authenticated with.
+- After a token refresh (ADR-005) the client re-authenticates over the same
+  socket, which extends the bound. If the token expires without
+  re-authentication, the server closes the socket.
+- Every re-authentication reloads role and ownership and drops any
+  subscription the actor may no longer hold, so role changes take effect
+  within the same 15-minute window as HTTP.
+- Re-authentication with another user's token (`sub` changes) is rejected
+  and the socket is closed (ADR-007 Deferred detail, B5).
 
-The realtime layer must not duplicate authentication logic already handled by the application.
+Authentication message, shape only:
+
+```json
+{ "type": "AUTHENTICATE", "accessToken": "..." }
+```
+
+Client message names, acknowledgements, error messages and close codes are
+decided in B5, as Zod schemas in `@trading/contracts`.
 
 ---
 
 # 10. Channel Model
 
-The system should use logical channels rather than exposing infrastructure-specific subscriptions to features.
+**Status:** `Planned (B5)` (ADR-007 point 3, ADR-008 point 11)
 
-Examples:
+| Channel | Scope | Authorization |
+|---|---|---|
+| `market:{assetId}` | One asset's prices | Any authenticated actor |
+| `portfolio:{portfolioId}` | One portfolio | Ownership |
+| `notifications` | The authenticated user | Implicit; no id in the name |
+| `jobs:{jobId}` | One CSV import job | Ownership |
 
-```text
-user:{userId}
-portfolio:{portfolioId}
-market:{assetId}
-jobs:{jobId}
-notifications:{userId}
+Every subscription is authorized in the application layer by permission and
+ownership (ADR-001, ADR-005); an unauthorized or unknown channel is refused.
+`user:{userId}` and `notifications:{userId}` are removed.
+
+Subscription messages, shape only:
+
+```json
+{ "type": "SUBSCRIBE", "channel": "market:asset_001" }
 ```
 
-Feature modules request subscriptions through the realtime client.
+```json
+{ "type": "UNSUBSCRIBE", "channel": "market:asset_001" }
+```
+
+Feature modules subscribe through the realtime client, never directly.
 
 ---
 
 # 11. Market Data Channel
 
-Market updates are grouped by asset or market subscription.
+**Status:** `Planned (B5)` (ADR-007 points 3 and 7)
 
-Example:
-
-```text
-market:asset_001
-```
-
-The client subscribes only to assets currently required by the application.
-
-The system should avoid subscribing to every available asset by default.
+`market:{assetId}` carries `MARKET_PRICE_UPDATED` (§16) from the shared
+simulator. The client subscribes only to the assets it currently shows, not
+to every asset.
 
 ---
 
 # 12. Portfolio Channel
 
-A portfolio-specific channel may publish events relevant to:
+**Status:** `Planned (B5)` (ADR-007 points 3 and 6)
 
-- positions;
-- portfolio metrics;
-- transaction processing;
-- analytics;
-- alerts.
-
-Example:
-
-```text
-portfolio:portfolio_001
-```
+`portfolio:{portfolioId}` carries only `PORTFOLIO_UPDATED` (§18), emitted
+when holdings change after a transaction commits. Price-driven valuation
+changes are not pushed; the client recomputes them from market events.
 
 ---
 
 # 13. Job Channel
 
-Long-running operations can expose a dedicated job channel.
+**Status:** `Planned (B5)` (ADR-008 point 11)
 
-Example:
-
-```text
-jobs:job_001
-```
-
-This allows the UI to receive progress updates without polling continuously.
+`jobs:{jobId}` carries the CSV import job events (§20), so the UI follows
+progress without polling. A job can finish before the subscription exists;
+the client then reads the final state through `GET /api/v1/jobs/:jobId`
+(ADR-007 Deferred detail).
 
 ---
 
 # 14. Event Envelope
 
-All application realtime events use a normalized envelope.
+**Status:** `Planned (B5)` (ADR-007 points 4 and 5, ADR-002)
 
-```text
+```json
 {
   "id": "event_001",
   "type": "MARKET_PRICE_UPDATED",
-  "timestamp": "2026-08-29T14:30:00Z",
+  "channel": "market:asset_001",
   "sequence": 1024,
+  "timestamp": "2026-08-29T14:30:00Z",
   "payload": {}
 }
 ```
 
-Required properties:
-
-```text
-id
-type
-timestamp
-payload
-```
-
-`sequence` is required for event streams where ordering is relevant.
+- All six fields are required on every server event.
+- `sequence` is a monotonic integer per channel (§24).
+- `timestamp` is an ISO-8601 UTC string; money and prices are decimal
+  strings (ADR-002).
+- Defined as Zod schemas in `@trading/contracts`.
+- A per-process epoch field, so clients reset their baseline after a server
+  restart, is added in B5 (ADR-007 Deferred detail).
 
 ---
 
 # 15. Event Types
 
-Initial event catalog:
+**Status:** `Planned (B5)` (ADR-007 point 6, ADR-008 point 11)
 
-```text
-MARKET_PRICE_UPDATED
-PORTFOLIO_UPDATED
-POSITION_UPDATED
-TRANSACTION_CREATED
-TRANSACTION_COMPLETED
-JOB_CREATED
-JOB_PROGRESS_UPDATED
-JOB_COMPLETED
-JOB_FAILED
-NOTIFICATION_CREATED
-ALERT_TRIGGERED
-```
+Catalog, version 1:
 
-Additional events may be introduced when justified by product requirements.
+| Type | Channel |
+|---|---|
+| `MARKET_PRICE_UPDATED` | `market:{assetId}` |
+| `PORTFOLIO_UPDATED` | `portfolio:{portfolioId}` |
+| `JOB_PROGRESS_UPDATED` | `jobs:{jobId}` |
+| `JOB_COMPLETED` | `jobs:{jobId}` |
+| `JOB_FAILED` | `jobs:{jobId}` |
+| `NOTIFICATION_CREATED` | `notifications` |
+| `ALERT_TRIGGERED` | `notifications` (open decision 1, §22) |
+
+Removed: `POSITION_UPDATED`, `TRANSACTION_CREATED` and
+`TRANSACTION_COMPLETED` (ADR-007 point 6), and `JOB_CREATED` (not in
+ADR-008 point 11). A new event requires a new decision.
 
 ---
 
 # 16. Market Price Event
 
-Example:
+**Status:** `Planned (B5)` (ADR-007 points 6 and 14, ADR-002)
 
-```text
+```json
 {
   "id": "event_001",
   "type": "MARKET_PRICE_UPDATED",
-  "timestamp": "...",
+  "channel": "market:asset_001",
   "sequence": 1201,
+  "timestamp": "2026-08-29T14:30:00Z",
   "payload": {
     "assetId": "asset_001",
-    "price": 184.22,
-    "previousPrice": 183.90,
-    "change": 0.32,
-    "changePercent": 0.17
+    "price": "184.22",
+    "previousPrice": "182.10",
+    "change": "2.12",
+    "changePercent": "1.16",
+    "tickChange": "0.32"
   }
 }
 ```
+
+- All numeric payload fields are decimal strings.
+- `previousPrice`, `change` and `changePercent` match `MarketPrice`: they
+  are measured against the last closed daily candle, never the previous
+  tick (ADR-007 point 14).
+- `tickChange` is the tick-to-tick delta, which exists only in this event.
 
 ---
 
 # 17. Position Update Event
 
-```text
-{
-  "type": "POSITION_UPDATED",
-  "payload": {
-    "portfolioId": "portfolio_001",
-    "positionId": "position_001",
-    "reason": "MARKET_PRICE_UPDATED"
-  }
-}
-```
+**Status:** `Deferred` (removed by ADR-007 point 6)
 
-The event may contain only the identifiers and reason.
-
-The client should not receive unnecessarily large payloads.
+`POSITION_UPDATED` is not emitted. Position values follow from market
+events (§16), and holdings changes from `PORTFOLIO_UPDATED` (§18).
 
 ---
 
 # 18. Portfolio Update Event
 
-```text
+**Status:** server event `Planned (B5)`; client reaction `Planned (FE)` (ADR-007 point 6)
+
+```json
 {
   "type": "PORTFOLIO_UPDATED",
+  "channel": "portfolio:portfolio_001",
   "payload": {
     "portfolioId": "portfolio_001",
-    "reason": "POSITION_UPDATED"
+    "reason": "TRANSACTION_COMMITTED"
   }
 }
 ```
 
-The application decides whether to:
-
-- update cached data;
-- invalidate a query;
-- calculate a derived value;
-- fetch additional information.
+Envelope fields `id`, `sequence` and `timestamp` are omitted from this and
+the following examples. Emitted only after a transaction commits. It does
+not carry the portfolio; the client invalidates and refetches it through
+HTTP.
 
 ---
 
 # 19. Transaction Events
 
-Transaction lifecycle:
+**Status:** `Deferred` (removed by ADR-007 point 6 and ADR-008 point 12)
 
-```text
-CREATED
-   ↓
-PROCESSING
-   ↓
-COMPLETED
-```
-
-Failure:
-
-```text
-PROCESSING
-   ↓
-FAILED
-```
-
-Relevant events:
-
-```text
-TRANSACTION_CREATED
-TRANSACTION_COMPLETED
-```
+Transactions are created synchronously; the HTTP response is the result.
+There is no asynchronous transaction lifecycle and no `TRANSACTION_CREATED`
+or `TRANSACTION_COMPLETED` event. Deposits and withdrawals do not exist
+(ADR-003), so they emit no events.
 
 ---
 
 # 20. Background Job Events
 
-A job may emit:
+**Status:** `Planned (B5)` (ADR-008 points 3, 6 and 11)
 
-```text
-JOB_CREATED
-JOB_PROGRESS_UPDATED
-JOB_COMPLETED
-JOB_FAILED
-```
+Events on `jobs:{jobId}` for CSV import jobs:
 
-Example:
+| Type | When | Payload |
+|---|---|---|
+| `JOB_PROGRESS_UPDATED` | Progress changes while `PROCESSING` | `jobId`, `status`, `progress` |
+| `JOB_COMPLETED` | Job reaches `COMPLETED` | `jobId`, `status` |
+| `JOB_FAILED` | Job reaches `FAILED` | `jobId`, `status`, `reason` |
 
-```text
+```json
 {
   "type": "JOB_PROGRESS_UPDATED",
+  "channel": "jobs:job_001",
   "payload": {
     "jobId": "job_001",
     "status": "PROCESSING",
-    "progress": 75,
-    "message": "Updating analytics."
+    "progress": { "processed": 60, "total": 100 }
   }
 }
 ```
+
+- `status` uses the job states of ADR-008 point 3: `QUEUED`, `PROCESSING`,
+  `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`.
+- Progress is the `{ processed, total }` field, not a percentage
+  (`07-api-spec.md` §15).
+- `reason` is one of `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`,
+  `APPLY_REJECTED`.
+- `CANCELLED` and `TIMED_OUT` have no event yet (open decision 2, §22).
 
 ---
 
 # 21. Notification Events
 
-New notifications may be pushed through:
+**Status:** server event `Planned (B5)`; client fetch `Planned (FE)` (ADR-007 point 9, ADR-010 point 9)
 
-```text
-NOTIFICATION_CREATED
-```
-
-Example:
-
-```text
+```json
 {
   "type": "NOTIFICATION_CREATED",
+  "channel": "notifications",
   "payload": {
     "notificationId": "notification_001"
   }
 }
 ```
 
-The client may then retrieve the complete notification through the HTTP API.
+Sources: a triggered alert (`WARNING`), and a CSV import job reaching
+`COMPLETED` (`SUCCESS`), `FAILED` or `TIMED_OUT` (`ERROR`). `CANCELLED` jobs
+and connection changes create none. The client fetches the notification
+through `07-api-spec.md` §28.
 
 ---
 
 # 22. Alert Events
 
-When a configured alert condition is satisfied:
+**Status:** `Planned (B5)` (ADR-007 point 9)
 
-```text
-ALERT_TRIGGERED
-```
-
-Example:
-
-```text
+```json
 {
   "type": "ALERT_TRIGGERED",
+  "channel": "notifications",
   "payload": {
     "alertId": "alert_001",
     "assetId": "asset_001",
-    "triggerValue": 200,
-    "condition": "ABOVE"
+    "condition": "ABOVE",
+    "threshold": "200.00",
+    "price": "200.15"
   }
 }
 ```
+
+- Edge-triggered: fires when the condition changes from false to true, and
+  re-arms when it becomes false again; never on every tick (FR-053).
+- Each trigger also creates a `WARNING` notification and emits
+  `NOTIFICATION_CREATED`.
+- `threshold` and `price` are decimal strings.
+
+Open decisions for B5 (none changes ADR-007):
+
+1. The channel of `ALERT_TRIGGERED`. `notifications` is assumed because
+   alerts are user-scoped and ADR-007 point 3 names no alert channel.
+2. Whether `CANCELLED` and `TIMED_OUT` jobs emit a realtime event; ADR-008
+   point 11 lists only three job events.
+3. Client message names (`AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`),
+   acknowledgements, errors and close codes.
+4. Numeric limits and the missed-pong policy of §7.
 
 ---
 
