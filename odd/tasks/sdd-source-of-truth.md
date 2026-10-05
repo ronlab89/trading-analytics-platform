@@ -156,7 +156,13 @@ needs a product decision is asked to the user, not invented.
   - The user decided that v1 ships in English and Spanish: ADR-010 point 8, NFR-066, FR-087, and the `05` language column. API language validation is B0; translations are FE.
   - Parent fixes: NFR-011 lint boundary is `Planned (B0)` (ADR-001); `APP_MODE` is `Planned (FE)`.
   - For T5.3: roadmap B7 says CI was rejected and B4 lists open decisions that ADR-008 settled.
-- [ ] T3.3 `11` (navigation aligned with wireframe)
+- [x] T3.3 `11` (navigation aligned with wireframe), done in 3 delegated slices plus one closing edit.
+  - Navigation now matches the real wireframe: icon rail, top bar, status bar.
+  - Each destination is mapped to its FR, and the gaps are listed.
+  - Every section has a status, and the approved NFR targets are applied.
+  - The user approved the UI decisions on 2026-10-05, recorded as ADR-010 point 9 and applied to `11` and to FR-051, 052, 053, 062 and 081.
+  - The initial language is English; Spanish applies only when the user selects it (ADR-010 point 8, corrected).
+  - For the frontend stage: fix `lang="es"` in the wireframe and update `WIREFRAME-PLAN.md`.
 
 ### Phase 4 — Contracts
 

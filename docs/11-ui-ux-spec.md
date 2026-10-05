@@ -15,7 +15,7 @@ This document defines the UI/UX principles, interaction model, visual behavior, 
 
 The frontend is not built yet. Behavior described here is `Planned (FE)`. The HTML prototype `apps/web/wireframe.html` is the visual reference; "shown in the wireframe" means the prototype already sketches it, not that the product implements it. Acceptance criteria live in `02-functional-requirements.md`; this document references FR IDs instead of repeating them.
 
-Every user-facing string (labels, navigation, validation and error messages, toasts) exists in English and Spanish (ADR-010 point 8, FR-087).
+Every user-facing string (labels, navigation, validation and error messages, toasts) exists in English and Spanish (ADR-010 point 8, FR-087). The initial language is always English; Spanish is active only after the user selects it, which stores the `language` preference. The browser language is not used, and before login, or in the demo without a stored preference, the UI is in English (ADR-010 point 8).
 
 The interface must communicate:
 
@@ -171,9 +171,9 @@ Top-level destinations, in wireframe order:
 | 2 | Portfolios (list, detail with Positions) | Rail | Yes | FR-008-FR-012 |
 | 3 | Transactions | Rail | Yes | FR-014, FR-016-FR-018 |
 | 4 | Analytics | Rail | Yes | FR-025-FR-031 |
-| 5 | Markets (tabs Watchlist, All Assets) | Rail | Yes | FR-019-FR-024 |
+| 5 | Markets (tabs Watchlist, All Assets, Alerts) | Rail | Yes (Alerts tab not yet) | FR-019-FR-024, FR-053 |
 | 6 | Decision Center (tabs Replay, Scenario Lab) | Rail | Yes | FR-032-FR-043 |
-| 7 | Activity | Rail | Yes | None (decision pending) |
+| 7 | Activity | — | Yes | `Deferred` (ADR-010 point 9); Notifications and Transactions cover its content |
 | 8 | Settings | Rail, bottom | Yes | FR-087 |
 | 9 | Profile, Log out | Avatar menu, bottom of rail | Yes | FR-003, FR-087 |
 | — | Notifications | Top bar dropdown, not a view | Yes | FR-051, FR-052 |
@@ -184,7 +184,7 @@ Required by FRs but not yet in the wireframe:
 - Position detail (FR-013), reached from the Positions table;
 - Asset detail (FR-021), reached from Markets;
 - CSV transaction import with job progress (FR-080, FR-081), reached from Transactions;
-- Alert configuration (FR-053), location not decided;
+- Alert configuration (FR-053): an Alerts tab under Markets listing every alert, plus "Create alert" on asset detail (ADR-010 point 9);
 - Settings fields for language, theme, default portfolio, reduced motion and notification preferences (FR-087); the wireframe Settings shows only profile fields.
 
 Positions and Assets are not top-level destinations: Positions live in the portfolio detail and Assets under Markets. There is no Admin view (ADR-005).
@@ -474,6 +474,8 @@ Tables support where relevant:
 - pagination (FR-056);
 - responsive adaptation (FR-062).
 
+Configurable columns and row selection are `Deferred` (ADR-010 point 9).
+
 ---
 
 # 22. Table UX
@@ -680,7 +682,7 @@ The user can keep using unrelated parts of the application while a job runs.
 
 Behavior is defined by FR-051 and FR-052. A notification is `unread` or `read`; there is no dismissed state (ADR-010 point 3). The user marks one or all as read.
 
-In version 1 a notification is created when an alert triggers (FR-053); it arrives in realtime with `NOTIFICATION_CREATED` (ADR-007). Transient feedback uses toasts (§33), not notifications.
+In version 1 a notification is created when an alert triggers (FR-053) or when a CSV import job reaches `COMPLETED` or `FAILED` (FR-081); it arrives in realtime with `NOTIFICATION_CREATED` (ADR-007). Connection changes create no notification; they appear only in the status bar (FR-046, §14). Transient feedback uses toasts (§33), not notifications (ADR-010 point 9).
 
 Avoid notification spam: an alert fires only on a false-to-true transition (FR-053).
 
@@ -706,7 +708,7 @@ Alerts are user-configured conditions of type `PRICE`, `PORTFOLIO_CHANGE`, `ALLO
 - A triggered alert creates a notification (§32), which stays discoverable until read.
 - System conditions such as delayed data or a failed import are shown by the freshness indicator (§13) and the import flow (§30), not as alerts.
 
-Where alerts are configured is not decided (§7).
+Alerts are managed in an Alerts tab under Markets, which lists every alert; asset detail also offers "Create alert" (ADR-010 point 9, §7). Neither is in the wireframe yet.
 
 ---
 
@@ -714,7 +716,7 @@ Where alerts are configured is not decided (§7).
 
 **Status:** `Planned (FE)`; matching toast variants shown in the wireframe
 
-Notifications use the `NotificationSeverity` enum (`05-data-model.md` §21):
+There is no separate alert severity. Notifications use the `NotificationSeverity` enum (`05-data-model.md` §21; ADR-010 point 9):
 
 ```text
 INFO
@@ -722,6 +724,12 @@ SUCCESS
 WARNING
 ERROR
 ```
+
+| Source | Severity |
+| --- | --- |
+| Triggered alert | `WARNING` |
+| CSV import job `COMPLETED` | `SUCCESS` |
+| CSV import job `FAILED` | `ERROR` |
 
 Do not rely on color alone (NFR-029). Severity also uses:
 
@@ -1000,13 +1008,14 @@ Financial numbers use tabular numerals and the formatting of §51, so magnitude 
 
 # 51. Number Formatting
 
-**Status:** `Planned (FE)`; display precision per value type `Deferred` until decided (rounding is a UI concern, ADR-002 point 3)
+**Status:** `Planned (FE)`; display precision per value type decided in ADR-010 point 9 (rounding is a UI concern, ADR-002 point 3)
 
 Numbers are formatted only at display time, with the active locale through `Intl` (ADR-010 point 8, NFR-066). Calculations never use the formatted text.
 
 - **Money** arrives as a decimal string with its currency (ADR-002). It stays a decimal string until it is formatted; the currency symbol and placement come from the locale and the DTO currency, never a hard-coded `$`.
 - **Percentages** arrive as numbers in percentage points (`twrPercent`, `unrealizedPnLPercent`; ADR-004, `16-analytics-spec.md` §2) and are rounded only for display.
 - **Missing values** (`null`, `InsufficientData`) show an explicit "not available" label, never `0` or `0%`.
+- **Displayed decimals** (ADR-010 point 9), applied at display time only: money uses the currency's minor units through `Intl` (2 for USD); prices use 2 decimals when ≥ 1 and up to 8 when < 1; quantities show up to 8 decimals without trailing zeros; percentages use 2 decimals.
 - **Sign**: positive and negative values carry an explicit sign and the color rules of §49.
 
 Examples (`en` locale; `es` uses its own separators):
@@ -1027,7 +1036,7 @@ $125,430.25
 Dates and times are formatted with the active locale through `Intl` (ADR-010 point 8, NFR-066). Two kinds of value are shown differently:
 
 - **Timestamps** (for example `executedAt`, notification times) are shown in the user's local time zone. Realtime information shows relative freshness, with the exact timestamp available on demand.
-- **Analytics days** (series points, `from`, `to`, `asOf`) are UTC calendar dates (ADR-004; `16-analytics-spec.md` §2). A UTC day is labeled as that calendar date, formatted with the locale and the UTC time zone, with no time of day and no shift to local time. When `asOf` differs from the requested `to`, the UI states the `asOf` date.
+- **Analytics days** (series points, `from`, `to`, `asOf`) are UTC calendar dates (ADR-004; `16-analytics-spec.md` §2). A UTC day is labeled as that calendar date, formatted with the locale and the UTC time zone, with no time of day and no shift to the user's time zone (ADR-010 point 9). When `asOf` differs from the requested `to`, the UI states the `asOf` date.
 
 Examples (`en` locale):
 
@@ -1046,14 +1055,15 @@ Aug 31, 2026 (UTC day)
 
 Layouts reorganize content by priority rather than scaling the desktop layout down, and every P0 workflow works without horizontal page scrolling (FR-062).
 
-Primary layout modes:
+Primary layout modes (ADR-010 point 9):
 
 ```text
-Mobile
-Tablet
-Desktop
-Large Desktop
+Mobile    360-560 px
+Tablet    561-900 px
+Desktop   > 900 px
 ```
+
+The minimum supported viewport width is 360 px.
 
 ---
 
@@ -1093,9 +1103,9 @@ Desktop uses the available space for analytical comparisons, multi-column layout
 
 # 57. Responsive Breakpoint Philosophy
 
-**Status:** `Reference`; the wireframe sketches two breakpoints (`max-width: 900px` and `max-width: 560px`)
+**Status:** `Reference`; breakpoints `max-width: 900px` and `max-width: 560px` shown in the wireframe
 
-Breakpoints follow layout needs, not device names, and stay few and consistent. The final breakpoint values and the minimum supported viewport width are not decided yet (FR-062 delegates them to this document).
+Breakpoints follow layout needs, not device names, and stay few and consistent. The breakpoints are 900 px and 560 px (`max-width`), and the minimum supported viewport width is 360 px (ADR-010 point 9, FR-062).
 
 ---
 

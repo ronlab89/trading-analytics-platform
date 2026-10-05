@@ -1069,7 +1069,7 @@ dataset, and demo sessions should be resettable (FR-072).
 
 **Priority:** P1  
 **Status:** API `Implemented` (`GET /api/v1/notifications`, `unreadOnly`); `NOTIFICATION_CREATED` `Planned (B5)`; UI `Planned (FE)`  
-**Decisions:** ADR-007 points 3, 6, 9
+**Decisions:** ADR-007 points 3, 6, 9; ADR-010 point 9
 
 ### Acceptance criteria
 
@@ -1077,6 +1077,9 @@ dataset, and demo sessions should be resettable (FR-072).
   unread ones.
 - (B5) A triggered alert creates a notification and emits
   `NOTIFICATION_CREATED` on the user's `notifications` channel.
+- Notifications come only from triggered alerts and from CSV import jobs
+  reaching `COMPLETED` or `FAILED`; connection changes appear only in the
+  status bar (ADR-010 point 9).
 
 ---
 
@@ -1084,13 +1087,16 @@ dataset, and demo sessions should be resettable (FR-072).
 
 **Priority:** P1  
 **Status:** `Implemented` (`POST .../:notificationId/read`, `POST .../read-all`); UI `Planned (FE)`  
-**Decisions:** ADR-010 point 3 (`unread` and `read` only; no `dismissed` state); `05-data-model.md` §21
+**Decisions:** ADR-010 point 3 (`unread` and `read` only; no `dismissed` state), point 9 (sources and severity); `05-data-model.md` §21
 
 ### Acceptance criteria
 
 - Marking a notification read sets `readAt`; another user's notification is
   404.
 - Mark-all-read returns 204 and leaves no unread notification for the user.
+- Severity uses `NotificationSeverity` only, with no separate alert
+  severity: triggered alert `WARNING`, import completed `SUCCESS`, import
+  failed `ERROR` (ADR-010 point 9).
 
 ---
 
@@ -1098,7 +1104,7 @@ dataset, and demo sessions should be resettable (FR-072).
 
 **Priority:** P2  
 **Status:** alert configuration `Implemented` (`/api/v1/alerts`, types `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION`, `VOLATILITY`); evaluation `Planned (B5)`  
-**Decisions:** ADR-007 point 9 and Deferred detail
+**Decisions:** ADR-007 point 9 and Deferred detail; ADR-010 point 9
 
 ### Acceptance criteria
 
@@ -1108,6 +1114,8 @@ dataset, and demo sessions should be resettable (FR-072).
   `NOTIFICATION_CREATED`.
 - Persisted armed state, hysteresis and the initial state are specified in
   B5 (ADR-007 Deferred detail).
+- (FE) Alerts are managed in an Alerts tab under Markets that lists every
+  alert, and asset detail offers "Create alert" (ADR-010 point 9).
 
 ---
 
@@ -1238,7 +1246,7 @@ dataset, and demo sessions should be resettable (FR-072).
 
 **Priority:** P0  
 **Status:** `Planned (FE)`  
-**Decisions:** `11-ui-ux-spec.md` (breakpoints, task T3.3)
+**Decisions:** ADR-010 point 9; `11-ui-ux-spec.md` §53-§57
 
 ### Acceptance criteria
 
@@ -1246,6 +1254,8 @@ dataset, and demo sessions should be resettable (FR-072).
   can be completed without horizontal page scrolling.
 - Layouts reorganize content by priority instead of scaling the desktop
   layout down.
+- Breakpoints are 900 px and 560 px (`max-width`), and the minimum
+  supported viewport width is 360 px (ADR-010 point 9).
 
 ---
 
@@ -1548,7 +1558,7 @@ into a portfolio as a background job.
 
 **Priority:** P1  
 **Status:** `Planned (B4)`; `jobs:{jobId}` events `Planned (B5)`; UI `Planned (FE)`  
-**Decisions:** ADR-008 points 3, 5, 6, 7, 9, 11 and Deferred detail
+**Decisions:** ADR-008 points 3, 5, 6, 7, 9, 11 and Deferred detail; ADR-010 point 9
 
 ### Acceptance criteria
 
@@ -1574,6 +1584,9 @@ into a portfolio as a background job.
   not `COMPLETED`, and startup resume and enqueue never run a job twice.
 - (B5) `jobs:{jobId}` carries `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED` and
   `JOB_FAILED`.
+- (B4) A job reaching `COMPLETED` creates a `SUCCESS` notification and a job
+  reaching `FAILED` creates an `ERROR` notification for its owner (ADR-010
+  point 9).
 
 ---
 
@@ -1717,9 +1730,9 @@ portfolio, reduced motion and notification preferences.
   route.
 - (FE) `reducedMotion` disables non-essential motion (FR-065); `theme` and
   `language` apply without reloading the page.
-- (FE) The whole UI is available in English and Spanish (NFR-066). Without
-  a stored preference, a Spanish browser language selects Spanish; any other
-  selects English.
+- (FE) The whole UI is available in English and Spanish (NFR-066). The
+  initial language is English; Spanish applies only after the user selects
+  it. The browser language is ignored.
 
 ---
 
@@ -1831,9 +1844,9 @@ This applies equally to the full stack and to the public demo.
 | FR-048 | `Planned (B5)` | ADR-005 p2; ADR-007 p7, 10 | B5, FE |
 | FR-049 | `Planned (B5)` | ADR-007 p7-8, 14 | B5 |
 | FR-050 | `Deferred` | ADR-007 p8, ADR-010 p6 | — |
-| FR-051 | `Implemented`; `Planned (B5)` | ADR-007 p3, 6, 9 | B5, FE |
-| FR-052 | `Implemented` | ADR-010 p3 | FE |
-| FR-053 | `Implemented`; `Planned (B5)` | ADR-007 p9 | B5 |
+| FR-051 | `Implemented`; `Planned (B5)` | ADR-007 p3, 6, 9; ADR-010 p9 | B5, FE |
+| FR-052 | `Implemented` | ADR-010 p3, 9 | FE |
+| FR-053 | `Implemented`; `Planned (B5)` | ADR-007 p9; ADR-010 p9 | B5, FE |
 | FR-054 | `Deferred` | — | — |
 | FR-055 | `Planned (FE)`; server sort `Deferred` | ADR-010 p4 | FE |
 | FR-056 | `Implemented` | ADR-002 p2 | FE |
@@ -1842,7 +1855,7 @@ This applies equally to the full stack and to the public demo.
 | FR-059 | `Implemented`; `Planned (FE)` | ADR-002 p2; ADR-009 p6 | FE |
 | FR-060 | `Planned (FE)` | — | FE |
 | FR-061 | `Planned (FE)` | — | FE |
-| FR-062 | `Planned (FE)` | `11` | FE |
+| FR-062 | `Planned (FE)` | ADR-010 p9; `11` | FE |
 | FR-063 | `Planned (FE)` | — | FE |
 | FR-064 | `Planned (FE)` | — | FE |
 | FR-065 | `Planned (FE)` | — | FE |
@@ -1861,7 +1874,7 @@ This applies equally to the full stack and to the public demo.
 | FR-078 | `Planned (FE)` | — | FE |
 | FR-079 | `Planned (FE)` | — | FE |
 | FR-080 | `Planned (B4)` | ADR-008 p1-2, 4, 9-10, 13; ADR-003 p6; ADR-004 p12 | B4, FE |
-| FR-081 | `Planned (B4)` | ADR-008 p3, 5-7, 9, 11 | B4, B5, FE |
+| FR-081 | `Planned (B4)` | ADR-008 p3, 5-7, 9, 11; ADR-010 p9 | B4, B5, FE |
 | FR-082 | `Planned (B4)` | ADR-008 p8 | B4 |
 | FR-083 | `Planned (B2)` | ADR-005 p4-7, 9; ADR-009 p9 | B2, FE |
 | FR-084 | `Implemented`; `Planned (B0)`, `Planned (B2)` | ADR-005 p1-3, 10-12 | B0, B2 |

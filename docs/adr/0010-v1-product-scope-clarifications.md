@@ -59,9 +59,10 @@ requirements that no ADR or spec defines precisely enough to build or test:
    has no benchmark data, and no FR asks for it.
 8. **Languages** (added 2026-10-05). Version 1 ships in English (`en`) and
    Spanish (`es`), and every user-facing string exists in both:
-   - The active language is the user's `language` preference (FR-087).
-     Without a stored preference, the client uses the browser language when
-     it is Spanish, and otherwise English.
+   - The initial language is always English. Spanish is active only after
+     the user selects it, which stores the `language` preference (FR-087).
+     The browser language is not used. Before login, and in the demo
+     without a stored preference, the UI is in English.
    - `UserPreference.language` accepts only `en` or `es`; any other value is
      400 `VALIDATION_ERROR`.
    - The API keeps returning stable error `code` values with an English
@@ -72,6 +73,32 @@ requirements that no ADR or spec defines precisely enough to build or test:
    - Seed and simulated data (asset names, symbols) are not translated.
 
    Further languages are `Deferred`.
+9. **User interface scope** (added 2026-10-05, from the `11-ui-ux-spec.md`
+   reconciliation):
+   - The wireframe's Activity view is `Deferred`. Notifications and
+     Transactions cover its content.
+   - Alerts (FR-053) are managed in an Alerts tab under Markets, which
+     lists every alert. Asset detail also offers "Create alert".
+   - Configurable table columns and row selection are `Deferred`.
+   - Notifications are created by triggered alerts and by a CSV import job
+     reaching `COMPLETED` or `FAILED` (FR-081). Connection changes create no
+     notification; they appear only in the status bar (FR-046).
+   - There is no separate alert severity. Notifications use
+     `NotificationSeverity`: a triggered alert is `WARNING`, a completed
+     import is `SUCCESS`, a failed import is `ERROR`.
+   - The breakpoints are 900 px and 560 px (max-width), and the minimum
+     supported viewport width is 360 px.
+   - Displayed decimals, applied at display time only (ADR-002 keeps exact
+     values on the wire):
+     - money amounts use the currency's minor units through `Intl` (2 for
+       USD);
+     - prices use 2 decimals when ≥ 1, and up to 8 decimals when < 1;
+     - quantities show up to 8 decimals without trailing zeros;
+     - percentages use 2 decimals.
+   - An analytics day (a UTC calendar date, ADR-004) is shown as that
+     calendar date, formatted with the UTC time zone and no time of day, so
+     it never shifts with the user's time zone. Timestamps such as
+     `executedAt` are shown in the user's local time zone.
 
 ## Consequences
 
