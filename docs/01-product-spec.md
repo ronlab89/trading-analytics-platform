@@ -1,15 +1,22 @@
 # SDD 01 — Product Specification
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft  
+**Status:** Draft; §1-§8 reconciled with `02-functional-requirements.md` and the ADRs on 2026-10-05 (task T3.1)  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`
+
+This document describes the product. The testable contract is
+`02-functional-requirements.md`; each section cites its FR IDs instead of
+repeating acceptance criteria.
 
 ---
 
 ## 1. Product Definition
 
-Trading Analytics Platform is a personal trading analysis workspace focused on helping independent traders understand:
+**Status:** `Implemented`
+
+Trading Analytics Platform is a personal trading analysis workspace that
+helps independent traders understand:
 
 - the current state of their portfolios;
 - what changed over time;
@@ -17,29 +24,25 @@ Trading Analytics Platform is a personal trading analysis workspace focused on h
 - how individual decisions evolved;
 - how hypothetical scenarios could affect their portfolios.
 
-The product is not intended to execute trades or replace a brokerage platform.
-
-Its primary value is **analysis, understanding, and exploration**.
-
-The product should combine familiar portfolio-management functionality with a differentiated analytical experience.
+It does not execute trades or replace a brokerage platform. A portfolio is a
+set of holdings with no cash balance (ADR-003). Its value is **analysis,
+understanding, and exploration**.
 
 ---
 
 # 2. Product Principles
 
-The product must follow these principles.
+**Status:** `Implemented` (principles); demo parity `Planned (FE)`
 
 ### 2.1 Familiar Core
 
-The platform should provide the functionality users reasonably expect from a modern portfolio analytics application.
-
-Users should understand the basic product without having to learn an unconventional interaction model.
+The platform provides the functionality users expect from a portfolio
+analytics application, without an unconventional interaction model.
 
 ### 2.2 Differentiated Experience
 
-The product should not be a visual clone of an existing trading dashboard.
-
-Differentiation should come from:
+The product is not a visual clone of an existing trading dashboard.
+Differentiation comes from:
 
 - information hierarchy;
 - contextual interactions;
@@ -51,17 +54,14 @@ Differentiation should come from:
 
 ### 2.3 Functional Depth
 
-Every important interaction must represent a real product behavior.
-
-A UI element should not exist solely for visual purposes if it implies functionality.
+Every interaction that implies functionality represents a real product
+behavior.
 
 ### 2.4 Full Demo Parity
 
-The public demo must expose the **complete product experience** defined by this specification.
-
-The demo is not a reduced MVP, static prototype, visual mockup, or collection of simulated screenshots.
-
-The difference between the public demo and the complete application is primarily the infrastructure implementation.
+The public demo exposes the complete product experience defined here, with
+the same business rules (ADR-001). It differs from the full system only in
+infrastructure.
 
 ```text
                     SAME PRODUCT
@@ -84,19 +84,25 @@ The difference between the public demo and the complete application is primarily
 
 # 3. Product Users
 
+**Status:** `Implemented` (authenticated user, FR-001); roles `Planned (B2)` (ADR-005)
+
 ## 3.1 Primary User
+
+**Status:** `Implemented`
 
 ### Independent Trader
 
-A user who manages one or more personal portfolios and wants to understand portfolio behavior, trading decisions, and hypothetical outcomes.
+A user who manages one or more personal portfolios and wants to understand
+portfolio behavior, trading decisions, and hypothetical outcomes.
 
-The user may track multiple asset classes and strategies.
+Access is governed by the roles `VIEWER`, `TRADER` and `ADMIN` (ADR-005).
+Users come from the seed; registration is out of scope (ADR-005 point 10).
 
 ---
 
 # 4. Product Domains
 
-The platform is organized around the following product domains.
+**Status:** per domain, in the sections below
 
 ```text
 Dashboard
@@ -111,15 +117,16 @@ Notifications
 Settings
 ```
 
-Each domain should have a clear purpose and should not exist merely to increase the number of screens.
+Each domain has a clear purpose and does not exist merely to add screens.
 
 ---
 
 # 5. Dashboard
 
-The dashboard is the primary overview of the user's financial workspace.
+**Status:** API `Implemented` (overview, pulse); What Changed `Planned (B1)`; UI `Planned (FE)`
 
-It should answer three questions:
+The dashboard is the primary overview of the selected portfolio (FR-004,
+FR-005). It answers three questions:
 
 1. **How am I doing?**
 2. **What changed?**
@@ -129,54 +136,38 @@ It should answer three questions:
 
 ## 5.1 Portfolio Overview
 
-The dashboard should provide an overview of:
+**Status:** API `Implemented`; period performance `Planned (B1)`; portfolio selection and UI `Planned (FE)`
 
-- total portfolio value;
-- daily change;
-- overall performance;
-- allocation;
-- major contributors;
-- current exposure;
-- relevant portfolio conditions.
+The overview shows total value, daily change, performance, allocation,
+positions and main contributors of the selected portfolio. See FR-004 and,
+for portfolio selection, FR-005.
 
 ---
 
 ## 5.2 What Changed?
 
-The dashboard should provide a contextual summary of meaningful changes.
+**Status:** `Planned (B1)` (API); UI `Planned (FE)`; threshold-based events `Deferred`
 
-Examples:
+A summary of meaningful changes in the selected period, derived only from
+real data. Version 1 reports only events that need no threshold (ADR-010
+point 1):
 
-- largest positive contributor;
-- largest negative contributor;
-- significant allocation change;
-- newly opened position;
-- closed position;
-- unusual volatility;
-- significant performance change.
+- largest contributor and largest detractor;
+- positions opened and closed;
+- alerts triggered in the period.
 
-The purpose is not to generate generic text.
-
-The information should be derived from actual application data.
+Significant value change, unusual volatility and allocation changes are
+`Deferred`. See FR-006.
 
 ---
 
 ## 5.3 Portfolio Pulse
 
-The dashboard should provide a concise interpretation of the current portfolio state.
+**Status:** `Implemented`; volatility and drawdown inputs `Planned (B1)`; exposure and liquidity `Deferred`
 
-Possible dimensions include:
-
-- performance;
-- volatility;
-- concentration;
-- exposure;
-- liquidity;
-- drawdown.
-
-The system may classify these conditions using deterministic rules.
-
-For example:
+A deterministic, explainable classification of the portfolio state, with no
+external AI service (ADR-004 point 11). Each dimension shows its
+classification and the value behind it, so the user understands why.
 
 ```text
 Performance    Positive
@@ -185,123 +176,87 @@ Volatility     Increasing
 Drawdown       Moderate
 ```
 
-The system should also provide enough context for the user to understand why a condition received its classification.
+See FR-007 and `16-analytics-spec.md` §15.
 
 ---
 
 # 6. Portfolio Management
 
-Users can manage multiple portfolios.
+**Status:** API `Implemented`; read-only archived portfolios `Planned (B0)`; UI `Planned (FE)`
 
-Examples:
-
-- Main Portfolio;
-- Long-term;
-- Crypto;
-- Experimental.
-
-Each portfolio should maintain its own:
-
-- positions;
-- transactions;
-- performance;
-- allocation;
-- analytics;
-- historical state.
+Users can manage multiple portfolios (for example Main, Long-term, Crypto,
+Experimental). Each portfolio keeps its own positions, transactions,
+performance, allocation, analytics and history. See FR-008.
 
 ---
 
 ## 6.1 Portfolio Creation
 
-Users can create a portfolio by providing the required information.
+**Status:** API `Implemented`; permission check `Planned (B2)`; UI `Planned (FE)`
 
-The interface must handle:
-
-- valid submission;
-- validation errors;
-- duplicate or conflicting data;
-- loading state;
-- successful creation;
-- operation failure;
-- retry.
+Users create a portfolio with its required information. The interface
+handles validation errors, conflicts, loading, success, failure and retry.
+See FR-009.
 
 ---
 
 ## 6.2 Portfolio Editing
 
-Users can modify editable portfolio information.
+**Status:** API `Implemented`; UI `Planned (FE)`
 
-Changes must provide appropriate feedback.
+Users modify editable portfolio information, with feedback. See FR-010.
 
 ---
 
 ## 6.3 Portfolio Deletion
 
-Deletion must be treated as a destructive action.
+**Status:** `Implemented` as archive; read-only archived portfolios `Planned (B0)`; hard deletion and unarchiving `Deferred`; UI `Planned (FE)`
 
-The product should provide:
-
-- explicit confirmation;
-- clear consequences;
-- cancellation;
-- processing state;
-- success feedback;
-- error handling.
+Deleting a portfolio archives it and preserves its history. An archived
+portfolio is read-only: any mutation scoped to it is rejected and reads
+still succeed (ADR-010 point 5). The action needs explicit confirmation and
+can be cancelled. See FR-011.
 
 ---
 
 # 7. Positions
 
-Positions represent the user's current exposure to assets.
+**Status:** API `Implemented`; fees in average entry price `Planned (B1)`; live current price `Planned (B5)`; UI `Planned (FE)`
 
-A position should expose information such as:
-
-- asset;
-- quantity;
-- average entry price;
-- current price;
-- current value;
-- unrealized P/L;
-- realized P/L where applicable;
-- portfolio allocation;
-- performance.
+Positions represent the user's current holdings. A position shows asset,
+quantity, average entry price, current price, current value, unrealized P/L,
+allocation and performance. Realized P/L is reported per `SELL` (ADR-003
+point 4). See FR-012.
 
 ---
 
 ## 7.1 Position Interaction
 
-Users should be able to navigate from a position into relevant analytical information without losing the current context unnecessarily.
+**Status:** API `Implemented`; composed view `Planned (FE)`
 
-Related information may include:
-
-- transactions;
-- price history;
-- performance contribution;
-- decision history;
-- scenarios.
+From a position, users reach its transactions, price history and decision
+history without losing context. See FR-013.
 
 ---
 
 # 8. Transactions
 
-Users can register and review portfolio transactions.
+**Status:** `Implemented` (create, list, filter); UI `Planned (FE)`; free-text search `Deferred`
 
-Supported transaction types may include:
+Users register and review portfolio transactions. Version 1 supports `BUY`
+and `SELL` only; fees are part of the transaction. There is no cash balance
+and no cash validation (ADR-003 points 1-2). `DEPOSIT`, `WITHDRAWAL`,
+`DIVIDEND` and `FEE` are future types (ADR-003 point 5).
 
-- Buy;
-- Sell;
-- Deposit;
-- Withdrawal;
-- Fee;
-- Adjustment.
-
-The final transaction model will be defined in `05-data-model.md`.
+Listing and filtering: FR-014, FR-016. Search is satisfied by the filters
+plus asset search (FR-015, ADR-010 point 2). Validation: FR-018. The data
+model is in `05-data-model.md`.
 
 ---
 
 ## 8.1 Transaction Workflow
 
-A transaction workflow must include:
+**Status:** `Implemented` (validate, persist, recalculate position); `PORTFOLIO_UPDATED` event `Planned (B5)`; UI and demo `Planned (FE)`
 
 ```text
 Open form
@@ -321,7 +276,9 @@ Recalculate analytics
 Notify user
 ```
 
-The complete workflow must work in the public demo using simulated persistence and business logic.
+Creation is synchronous and atomic: the transaction and its position are
+written in one unit of work, or nothing is (FR-017). The same rules apply in
+the public demo (ADR-001).
 
 ---
 
