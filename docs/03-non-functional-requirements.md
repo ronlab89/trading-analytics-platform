@@ -1207,53 +1207,69 @@ smoke test; CI run green on a pull request.
 
 ## NFR-056 — Infrastructure Substitution
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** application layer and `TradingClient` port `Planned (B0)`
+(ADR-001, ADR-002); in-process demo adapter `Planned (FE)` (ADR-002 point 5)
 
-The demo must be able to substitute real infrastructure with mock implementations without requiring significant UI rewrites.
+### Target
 
-Conceptually:
+The demo replaces infrastructure without touching the UI: the web app
+consumes data only through the `TradingClient` port, with an HTTP adapter
+(real mode) and an in-process adapter that calls `@trading/application`
+(demo mode). The UI cannot tell which mode it runs in (ADR-002 point 5).
 
 ```text
-                Application
-                     │
-              Repository/API
-                     │
-             ┌───────┴───────┐
-             ↓               ↓
-        Real Adapter      Mock Adapter
+UI -> TradingClient port -+-> HTTP adapter -> API -> application -> Prisma
+                          +-> in-process adapter -> application -> in-memory
 ```
+
+### Measurement
+
+0 UI components differ between modes: switching `VITE_APP_MODE` changes
+only the composition root, and the same UI tests pass in both modes.
 
 ---
 
 ## NFR-057 — Same Contracts
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** domain repository interfaces `Implemented`
+(`packages/domain/src/repositories`); application layer and DTO contracts
+`Planned (B0)` (ADR-001, ADR-002); in-memory implementations `Planned (FE)`
 
-Where practical, mock implementations should conform to the same contracts/interfaces expected by real implementations.
+### Target
 
-This ensures that:
+Real and in-memory implementations satisfy the same domain repository
+interfaces and return the same `@trading/contracts` DTOs through the same
+presenters (ADR-001 point 4; ADR-002 point 5).
 
-```text
-UI
- ↓
-Application logic
- ↓
-Contract
- ↓
-Real / Mock implementation
-```
+### Measurement
 
-remains consistent.
+`pnpm typecheck` passes with both implementations typed against the same
+interfaces; application services are unit-tested with in-memory
+repositories (ADR-001 point 7).
 
 ---
 
 ## NFR-058 — Demo Isolation
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** import boundary `Planned (B0)` (ADR-001 point 1; the rule in
+`eslint.config.js` is a placeholder today); demo composition root
+`Planned (FE)`
 
-Demo-specific behavior must not contaminate the production architecture.
+### Target
 
-Mock generators, seeded data, simulation controls, and failure injection should be isolated.
+- `@trading/application` imports no Prisma, Express, Zod transport schema
+  or browser API, enforced by lint rules (ADR-001 point 1).
+- Demo-only code (in-memory repositories, simulation controls, failure
+  injection) lives only behind the demo composition root (ADR-001 point 4);
+  the API build contains 0 demo modules `(proposed)`.
+
+### Measurement
+
+`pnpm lint` fails on a forbidden import; a check of the API `dist` finds no
+demo module.
 
 ---
 
@@ -1261,41 +1277,44 @@ Mock generators, seeded data, simulation controls, and failure injection should 
 
 ## NFR-059 — Realistic Dataset
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** real-mode seed `Implemented` (`packages/database/src/seed`);
+deterministic simulator `Planned (B5)` (ADR-007 point 7); demo dataset
+`Deferred` (ADR-010 point 6)
 
-Mock data must represent realistic relationships.
+### Target
 
-For example:
+- Every seeded record references existing parents (portfolio, positions,
+  assets, transactions, decisions, scenarios), enforced by database
+  foreign keys.
+- The simulator is deterministic: the same seed and clock produce the same
+  price series (ADR-007 point 7).
 
-```text
-Portfolio
- ├── Positions
- │     └── Assets
- │
- ├── Transactions
- │
- ├── Decisions
- │
- └── Scenarios
-```
+### Measurement
 
-Relationships must remain internally consistent.
+`pnpm --filter @trading/database db:seed` completes against the migrated
+schema with no constraint violation; a `@trading/market-sim` test asserts
+identical output for identical seed and clock.
 
 ---
 
 ## NFR-060 — Edge Cases
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Deferred` — demo data is decided in the frontend-stage demo
+ADR (ADR-010 point 6)
 
-The mock dataset must contain sufficient edge cases to exercise:
+### Target
 
-- empty states;
-- negative performance;
-- positive performance;
-- extreme values;
-- missing optional data;
-- large datasets;
-- failed operations.
+When that ADR lands, the dataset covers at least one case of each: empty
+state, negative performance, positive performance, extreme values, missing
+optional data, a large dataset (at least 1,000 transactions `(proposed)`)
+and a failed operation.
+
+### Measurement
+
+A checklist in `12-demo-mode-spec.md` maps each edge case to a seeded
+record or scenario.
 
 ---
 
@@ -1303,32 +1322,37 @@ The mock dataset must contain sufficient edge cases to exercise:
 
 ## NFR-061 — Perceived Performance
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-The product should provide immediate feedback even when operations take time.
+### Target
 
-Appropriate techniques may include:
+- Every user action shows visible feedback within 100 ms `(proposed)`.
+- Loading states (skeletons, optimistic updates, progressive rendering)
+  reflect real application state; an optimistic update is rolled back on
+  failure.
 
-- optimistic updates;
-- skeleton states;
-- progressive rendering;
-- contextual loading;
-- transitions.
+### Measurement
 
-These should only be used when they accurately represent application behavior.
+UI tests assert the loading state and the rollback path; manual check with
+Chrome DevTools at 4x CPU throttling.
 
 ---
 
 ## NFR-062 — Motion Performance
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-Animations should avoid causing unnecessary layout recalculation or excessive main-thread work.
+### Target
 
-Motion should prioritize performant properties such as:
+Animations change only `transform` and `opacity`; no animation triggers
+layout.
 
-- transform;
-- opacity.
+### Measurement
+
+A Chrome DevTools Performance recording of the main flows shows no layout
+during animations; animated properties are checked in review.
 
 ---
 
@@ -1336,18 +1360,23 @@ Motion should prioritize performant properties such as:
 
 ## NFR-063 — Modern Browser Support
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-The application should support current versions of major modern browsers.
+### Target
 
-At minimum:
+The last 2 major versions `(proposed)` of Chrome/Chromium, Firefox, Safari
+and Edge.
 
-- Chrome/Chromium;
-- Firefox;
-- Safari;
-- Edge.
+### Accepted exception
 
-Exact supported versions may be refined during implementation.
+No legacy browser support or polyfills (ADR-007 rejects transports a modern
+browser target does not need).
+
+### Measurement
+
+The build `browserslist` matches the target; the end-to-end suite runs on
+Chromium, Firefox and WebKit.
 
 ---
 
@@ -1355,24 +1384,38 @@ Exact supported versions may be refined during implementation.
 
 ## NFR-064 — Public Project Pages
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-Public-facing project pages should provide appropriate:
+### Target
 
-- metadata;
-- semantic structure;
-- social sharing information;
-- canonical URLs where required.
+The demo entry page has a title, description, Open Graph tags, a canonical
+URL, one `h1` and semantic landmarks.
+
+### Accepted exception
+
+SEO is limited to the static demo entry (ADR-006 point 1); there is no
+server rendering and no public backend (ADR-006 point 2).
+
+### Measurement
+
+Lighthouse SEO score of at least 90 `(proposed)` on the demo build.
 
 ---
 
 ## NFR-065 — Private Application Surface
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Planned (FE)`
 
-Authenticated application screens should not be treated as primary SEO content.
+### Target
 
-The public portfolio project page and the application demo should have clearly separated purposes.
+Screens behind login are not indexed; the public project page and the demo
+have separate purposes.
+
+### Measurement
+
+Application routes carry `noindex`, asserted by an end-to-end test.
 
 ---
 
@@ -1380,11 +1423,23 @@ The public portfolio project page and the application demo should have clearly s
 
 ## NFR-066 — Localization Support
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** string separation `Planned (FE)`; additional languages
+`Deferred`
 
-The application architecture should allow future support for multiple languages without duplicating application logic.
+### Target
 
-User-facing strings should not be tightly coupled to business logic.
+User-facing strings live outside domain and application code; those layers
+return codes and data, never display text.
+
+### Accepted exception
+
+Version 1 ships in English only; translations need a new decision.
+
+### Measurement
+
+0 user-facing string literals in `@trading/domain` and
+`@trading/application` `(proposed)`, checked in review.
 
 ---
 
@@ -1392,33 +1447,41 @@ User-facing strings should not be tightly coupled to business logic.
 
 ## NFR-067 — Zero Required Operating Cost
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Implemented` (local stack, seeded data, no paid dependency);
+demo `Planned (FE)` (ADR-006)
 
-The initial project must be operable without recurring paid services.
+### Target
 
-The architecture must therefore avoid hard dependencies on:
+No hard dependency on paid market data, databases, authentication,
+observability, AI APIs or real-time infrastructure.
 
-- paid market data;
-- paid databases;
-- paid authentication providers;
-- paid observability;
-- paid AI APIs;
-- paid real-time infrastructure.
+### Accepted exception
+
+No paid infrastructure and no hosted backend (ADR-006 point 2); market data
+is simulated (ADR-007 point 7).
+
+### Measurement
+
+The dependency and deployment inventory lists no paid service (NFR-052,
+NFR-053).
 
 ---
 
 ## NFR-068 — Graceful Free-Tier Degradation
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Reference` — version 1 uses no free-tier service with usage
+limits (ADR-006 points 1-2)
 
-If a selected free service has usage limits, the application should degrade gracefully rather than fail unexpectedly.
+### Target
 
-Examples:
+If a limited free service is ever added, it degrades (lower update rate,
+smaller dataset, cached data) instead of failing.
 
-- reduced real-time frequency;
-- limited seeded dataset;
-- controlled demo sessions;
-- cached information.
+### Measurement
+
+Not applicable until a new ADR adds such a service.
 
 ---
 
@@ -1426,185 +1489,116 @@ Examples:
 
 ## NFR-069 — Defensible Architecture
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Implemented` (`docs/adr/`, ADR-001 to ADR-010)
 
-Architectural decisions must have a documented rationale.
+### Target
 
-Each significant decision should answer:
+Every significant decision has an ADR with context, decision, consequences
+and alternatives considered (`docs/adr/template.md`).
 
-```text
-Problem
-↓
-Options considered
-↓
-Decision
-↓
-Trade-offs
-↓
-Result
-```
+### Measurement
 
-This documentation should support technical interview discussion.
+Every decision cited by an SDD document resolves to an accepted ADR;
+`pnpm docs:check` passes.
 
 ---
 
 ## NFR-070 — Avoid Artificial Complexity
 
-**Priority:** P0
+**Priority:** P0  
+**Status:** `Reference` (applied in code and ADRs, for example ADR-008 and
+ADR-009)
 
-The system must not introduce:
+### Target
 
-- microservices;
-- event buses;
-- distributed systems;
-- advanced infrastructure;
-- unnecessary libraries;
+No microservices, event buses, distributed systems, advanced
+infrastructure or libraries without a concrete requirement.
 
-solely to appear more senior.
+### Measurement
 
-Complexity must correspond to an actual requirement.
+Each new dependency or infrastructure component cites the requirement or
+ADR that needs it.
 
 ---
 
 ## NFR-071 — Evolution Readiness
 
-**Priority:** P1
+**Priority:** P1  
+**Status:** `Reference`
 
-The architecture should make reasonable future evolution possible without requiring premature implementation.
+### Target
 
-Potential evolution includes:
+Ports allow later evolution without building it now: simulated to real
+market data, one instance to several, local to production observability,
+basic to advanced analytics.
 
-```text
-Mock Market Data
-      ↓
-Optional Real Market Data
+### Measurement
 
-Single Instance
-      ↓
-Multiple Instances
-
-Local/Free Observability
-      ↓
-Production Observability
-
-Basic Analytics
-      ↓
-Advanced Analytics
-```
+Each evolution path needs a new adapter and an ADR, not a domain rewrite.
 
 ---
 
 # 27. Quality Gates
 
-The initial release should not be considered complete unless the following quality gates are satisfied.
+**Status:** per gate below. Only gates marked `Implemented` run today.
 
-### Performance
+| Gate | Where | Status |
+| --- | --- | --- |
+| `eslint --fix` and `prettier --write` on staged files | Husky pre-commit (lint-staged) | `Implemented` |
+| `pnpm lint`, `pnpm typecheck`, `pnpm format:check` | Manual | `Implemented` |
+| `pnpm test` (domain, database and API suites) | Manual | `Implemented` |
+| `pnpm docs:check` | Manual | `Implemented` |
+| Lockfile install, typecheck, lint, domain, database and API suites on pushes and pull requests to `develop` and `main` | GitHub Actions | `Planned (B0)` (ADR-006 point 10) |
+| Application import boundary rule | `pnpm lint` | `Planned (B0)` (ADR-001 point 1) |
+| Security checklist; smoke test under container limits | B7 | `Planned (B7)` |
+| Accessibility, performance and end-to-end checks of the web app and demo | Frontend stage | `Planned (FE)` |
 
-- No obvious blocking performance problems.
-- Core interactions remain responsive.
-- Real-time updates do not cause uncontrolled rendering.
+### Release criteria
 
-### Security
-
-- No secrets committed.
-- Input validation implemented.
-- Authorization enforced server-side.
-- Sensitive data appropriately handled.
-
-### Accessibility
-
-- Core flows keyboard accessible.
-- Focus states visible.
-- Forms accessible.
-- Important dynamic feedback communicated appropriately.
-- Reduced-motion behavior implemented.
-
-### Maintainability
-
-- Clear domain boundaries.
-- Strict TypeScript.
-- Automated linting/formatting.
-- No significant duplicated business logic.
-
-### Reliability
-
-- Recoverable failures handled.
-- Retry paths available where appropriate.
-- Dependent state remains consistent.
-
-### Demo
-
-- Complete functional experience.
-- Mock infrastructure isolated.
-- Realistic seeded data.
-- Reproducible error states.
-- Reset capability.
-- No required paid services.
+Version 1 is complete when every P0 NFR meets its measurement and every
+gate above runs. Demo-specific criteria (reproducible error states, reset)
+are `Deferred` until the frontend-stage demo ADR (ADR-010 point 6).
 
 ---
 
 # 28. Non-Functional Success Criteria
 
-The system should demonstrate that it can be:
+**Status:** `Reference`
 
-```text
-Fast
-  +
-Reliable
-  +
-Secure
-  +
-Accessible
-  +
-Maintainable
-  +
-Testable
-  +
-Observable
-  +
-Cost-efficient
-```
+The system should show that it is fast, reliable, secure, accessible,
+maintainable, testable, observable and cost-efficient without unnecessary
+infrastructure complexity.
 
-without relying on unnecessary infrastructure complexity.
-
-The target is not to demonstrate the largest possible system.
-
-The target is to demonstrate **sound engineering judgment**.
+The target is not the largest possible system; it is **sound engineering
+judgment**.
 
 ---
 
 # 29. Engineering Quality Model
 
-The project should optimize for:
+**Status:** `Reference`
 
 ```text
               PRODUCT VALUE
                    ▲
-                   │
-                   │
        ┌───────────┼───────────┐
-       │           │           │
    UX QUALITY   ENGINEERING   RELIABILITY
-       │           │           │
        └───────────┼───────────┘
-                   │
              SUSTAINABILITY
 ```
 
-A technically sophisticated architecture that produces a poor user experience is not considered successful.
-
-Likewise, an attractive interface built on fragile architecture is not considered successful.
-
-The system must balance both.
+A sophisticated architecture with a poor user experience is not a success;
+neither is an attractive interface on a fragile architecture. The system
+must balance both.
 
 ---
 
 # 30. Final Principle
 
-Non-functional requirements exist to constrain engineering decisions, not to justify complexity.
+**Status:** `Reference`
 
-The project should consistently ask:
+Non-functional requirements constrain engineering decisions; they do not
+justify complexity.
 
 > **What problem are we solving, what constraint does it create, and what is the simplest architecture that solves it well?**
-
-This principle should guide the architecture, implementation, testing, deployment, and future evolution of Trading Analytics Platform.
