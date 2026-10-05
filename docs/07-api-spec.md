@@ -686,49 +686,74 @@ user fixes the file and creates a new import). Cancel is allowed while
 
 # 17. Asset API
 
+**Status:** `Implemented` (FR-019 to FR-021); asset volatility, exposure and related positions in the detail `Deferred` (FR-021)
+
+Assets are shared reference data: every endpoint requires a Bearer token
+(§9) but has no ownership check. Prices are `Money`
+(`{ amount, currency }`, ADR-002); payloads are serialized entities today,
+presenters `Planned (B0)` (ADR-002).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/assets` | `Implemented` |
+| `GET /api/v1/assets/:assetId` | `Implemented` |
+| `GET /api/v1/assets/:assetId/price` | `Implemented` |
+| `GET /api/v1/assets/:assetId/history` | `Implemented` (§18) |
+
 ## List Assets
+
+**Status:** `Implemented` (FR-019, FR-020)
 
 ```text
 GET /api/v1/assets
 ```
 
-Filters:
+Query (all optional):
 
 ```text
-search
-assetType
-exchange
-currency
-status
-page
-pageSize
+search      1-100 characters
+assetType   STOCK | ETF | CRYPTO | FOREX
+exchange    1-50 characters
+currency    3-letter code, uppercased
+status      ACTIVE | INACTIVE
+page        integer ≥ 1, default 1
+pageSize    integer 1-100, default 20
 ```
+
+Returns 200 `{ "data": [asset], "meta": { page, pageSize, total, totalPages } }`.
+Errors: 400 `VALIDATION_ERROR`.
 
 ---
 
 ## Get Asset
 
+**Status:** `Implemented` (FR-021)
+
 ```text
 GET /api/v1/assets/:assetId
 ```
+
+Returns 200 `{ "data": asset }`. Errors: 404 `NOT_FOUND`.
 
 ---
 
 ## Asset Price
 
+**Status:** `Implemented` (FR-021); change semantics against the last closed candle `Planned (B5)` (ADR-007 point 14)
+
 ```text
 GET /api/v1/assets/:assetId/price
 ```
 
-Response:
+Response (200):
 
-```text
+```json
 {
   "data": {
     "assetId": "...",
-    "price": 184.22,
-    "previousPrice": 181.40,
-    "change": 2.82,
+    "price": { "amount": "184.22", "currency": "USD" },
+    "previousPrice": { "amount": "181.40", "currency": "USD" },
+    "change": { "amount": "2.82", "currency": "USD" },
     "changePercent": 1.55,
     "timestamp": "...",
     "source": "MOCK"
@@ -736,248 +761,278 @@ Response:
 }
 ```
 
+`source` is `MOCK` or `EXTERNAL`. Errors: 404 `NOT_FOUND` when the asset
+does not exist, and also when it exists but has no current price (different
+messages; assets have no ownership to protect).
+
 ---
 
 # 18. Historical Market Data
+
+**Status:** `Implemented` (FR-021); daily candle closing by the simulator `Planned (B5)` (ADR-007 point 8)
 
 ```text
 GET /api/v1/assets/:assetId/history
 ```
 
-Parameters:
+Query:
 
 ```text
-from
-to
-interval
+from        date, required
+to          date, required, from ≤ to
+interval    1d (default); the only value accepted
 ```
 
-Example intervals:
-
-```text
-1m
-5m
-15m
-1h
-1d
-```
+Returns 200 `{ "data": [candle] }`, daily candles in the range, each
+`{ assetId, timestamp, open, high, low, close, volume }` with
+`open`/`high`/`low`/`close` as `Money` and `volume` a number. An empty range
+returns `[]`. Errors: 400 `VALIDATION_ERROR` (missing dates, `from > to`,
+another `interval`); 404 `NOT_FOUND` (asset). Intraday intervals
+(`1m`, `5m`, `15m`, `1h`) are `Deferred`: only daily candles exist.
 
 ---
 
 # 19. Market Data Batch Endpoint
 
-For dashboards displaying multiple assets:
+**Status:** `Implemented`; realtime updates (FR-044) `Planned (B5)` (§31-§33)
 
 ```text
-GET /api/v1/market/prices
+GET /api/v1/market/prices?assetIds=id1,id2
 ```
 
-Parameters:
-
-```text
-assetIds
-```
-
-This avoids excessive individual requests.
+`assetIds` is a comma-separated list of 1 to 50 ids. Returns 200
+`{ "data": [marketPrice] }` with the §17 price shape. Unknown ids and assets
+without a current price are omitted, never 404. Errors: 400
+`VALIDATION_ERROR`.
 
 ---
 
 # 20. Analytics API
 
+**Status:** allocation `Implemented` (FR-027); performance and risk `Planned (B1)` (FR-025, FR-026, FR-028, FR-029, FR-085; ADR-004)
+
+All endpoints require a Bearer token and portfolio ownership (another
+user's portfolio returns 404 `NOT_FOUND`). Money fields are `Money`;
+returns and percentages are unrounded numbers in percentage points
+(`16-analytics-spec.md` §2).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/analytics/allocation` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/analytics/performance` | `Planned (B1)` |
+| `GET /api/v1/portfolios/:portfolioId/analytics/risk` | `Planned (B1)` |
+| `GET /api/v1/portfolios/:portfolioId/analytics/attribution` | §22 |
+
 ## Portfolio Performance
+
+**Status:** `Planned (B1)` (FR-025, FR-026, FR-085; `16-analytics-spec.md` §5, §7, §8); `1D` `Implemented` as `dailyChange` in §11
 
 ```text
 GET /api/v1/portfolios/:portfolioId/analytics/performance
 ```
 
-Optional:
+Query: `period` (`1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`) or a
+custom `from` / `to` (UTC dates, inclusive). Response fields decided in
+`16`:
 
 ```text
-from
-to
-interval
+asOf            effective end date (to clamped to the last closed day)
+effectiveFrom   first day on which every held asset has a price (§5 clamp)
+twrPercent      number, percentage points, unrounded; null when TWR has no value
+P/L             Money over the same days as TWR
+series          daily value series (FR-026, 16 §3)
 ```
+
+Errors: 400 `VALIDATION_ERROR` when `from > to`. A valid range with no
+closed day (`asOf < from`) returns 200 with `InsufficientData` and `asOf`,
+not 400 (`16` §8). Benchmark comparison is `Deferred` (ADR-010 point 7).
+Money-weighted return is not reported.
 
 ---
 
 ## Allocation
 
+**Status:** `Implemented` (FR-027; `16-analytics-spec.md` §13); sector `Deferred` (ADR-004 point 13)
+
 ```text
 GET /api/v1/portfolios/:portfolioId/analytics/allocation
 ```
 
-Optional grouping:
+Query: `groupBy` = `asset` (default) | `assetType` | `currency`.
 
-```text
-asset
-assetType
-currency
-sector
+Response (200):
+
+```json
+{
+  "data": {
+    "groupBy": "asset",
+    "groups": [
+      {
+        "key": "asset_001",
+        "label": "AAPL",
+        "marketValue": { "amount": "1842.20", "currency": "USD" },
+        "percentage": 61.4
+      }
+    ]
+  }
+}
 ```
+
+An empty portfolio returns `groups: []`. Errors: 400 `VALIDATION_ERROR`;
+404 `NOT_FOUND`. Mixed currencies surface as 500 today; 400 on the
+transaction is `Planned (B1)` (`16` §2).
 
 ---
 
 ## Risk
 
+**Status:** `Planned (B1)` (FR-028, FR-029; `16-analytics-spec.md` §9, §10)
+
 ```text
 GET /api/v1/portfolios/:portfolioId/analytics/risk
 ```
 
-Potential response:
+Portfolio-level volatility and drawdown on the daily series over the
+requested period (same query, `asOf` and `effectiveFrom` as performance):
 
 ```text
-{
-  "data": {
-    "volatility": 14.2,
-    "maxDrawdown": -8.4,
-    "concentration": 0.32,
-    "riskLevel": "MODERATE"
-  }
-}
+volatilityPercent   annualized (√365), percentage points; UNKNOWN when fewer than 20 returns
+maxDrawdown         negative percentage, with peak and trough dates; UNKNOWN when fewer than 2 index points
+currentDrawdown     drawdown on the last day of the period
 ```
+
+Errors: as performance. A composite `riskLevel` and a `concentration`
+score are not decided (concentration is a Pulse dimension, §21).
 
 ---
 
 # 21. Portfolio Pulse API
 
-```text
-GET /api/v1/portfolios/:portfolioId/pulse
-```
+**Status:** `Implemented` inside the overview (§11, FR-007); standalone `GET /api/v1/portfolios/:portfolioId/pulse` `Deferred`; portfolio-series inputs and volatility thresholds `Planned (B1)` (ADR-004 point 11; `16-analytics-spec.md` §15)
 
-Response:
+The Pulse is returned as `pulse` in `GET /api/v1/portfolios/:portfolioId/overview`.
+There is no standalone endpoint. Shape:
 
-```text
+```json
 {
-  "data": {
-    "overall": "HEALTHY",
-    "dimensions": {
-      "performance": {},
-      "concentration": {},
-      "volatility": {},
-      "drawdown": {},
-      "exposure": {}
-    },
-    "explanations": []
-  }
+  "performance":   { "classification": "POSITIVE", "value": 7.2, "explanation": "..." },
+  "concentration": { "classification": "MODERATE", "value": 41.0, "explanation": "..." },
+  "volatility":    { "classification": "UNKNOWN", "value": null, "explanation": "..." },
+  "drawdown":      { "classification": "LOW", "value": -4.1, "explanation": "..." }
 }
 ```
 
-The pulse must remain explainable.
+Every dimension carries its value and explanation, so the Pulse stays
+explainable. `Implemented`: volatility and drawdown come from the largest
+position's candles, and the volatility thresholds are code placeholders.
+`Planned (B1)`: both come from the portfolio series over a trailing `1Y`
+window, volatility `HIGH` above 60 and `MODERATE` above 20. Exposure, an
+`overall` classification and a separate `explanations` list are `Deferred`.
 
 ---
 
 # 22. Attribution API
 
+**Status:** current-state `Implemented` (FR-030); range attribution `Planned (B1)` (FR-030, FR-031; ADR-004 point 10; `16-analytics-spec.md` §14)
+
 ```text
 GET /api/v1/portfolios/:portfolioId/analytics/attribution
 ```
 
-Optional parameters:
+`Implemented`: no query parameters. Each position's contribution to the
+portfolio's unrealized P/L. Response (200):
 
-```text
-from
-to
-groupBy
+```json
+{
+  "data": {
+    "totalUnrealizedPnL": { "amount": "120.00", "currency": "USD" },
+    "items": [
+      {
+        "assetId": "asset_001",
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "contribution": { "amount": "90.00", "currency": "USD" },
+        "percentageOfTotal": 75
+      }
+    ]
+  }
+}
 ```
 
-Possible grouping:
+`percentageOfTotal` is `0` when the total is `0`. Errors: 404 `NOT_FOUND`.
 
-```text
-asset
-assetType
-sector
-```
+`Planned (B1)`: `period` or `from` / `to` as in §20, with `asOf` and
+`effectiveFrom`, and `groupBy` = `asset` | `assetType`. Each group reports
+its contribution in `Money` only, with no percentage; contributions sum
+exactly to the period P/L. Sector and the FR-031 factor breakdown are
+`Deferred`. Errors: 400 `VALIDATION_ERROR` when `from > to`.
 
 ---
 
 # 23. Decision API
 
+**Status:** read `Implemented` (FR-032, FR-033); create, update and close `Deferred`
+
+All endpoints require a Bearer token; a portfolio or decision of another
+user returns 404 `NOT_FOUND`. Prices are `Money`.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/decisions` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/decisions/:decisionId` | `Implemented` |
+| `POST /api/v1/portfolios/:portfolioId/decisions` | `Deferred` |
+| `PATCH /api/v1/portfolios/:portfolioId/decisions/:decisionId` | `Deferred` |
+| `POST /api/v1/portfolios/:portfolioId/decisions/:decisionId/close` | `Deferred` |
+
 ## List Decisions
+
+**Status:** `Implemented` (FR-032)
 
 ```text
 GET /api/v1/portfolios/:portfolioId/decisions
 ```
 
-Filters:
-
-```text
-assetId
-direction
-dateFrom
-dateTo
-```
-
-> **Implementation note (diverges from the original spec).** `outcome`,
-> `page` and `pageSize` are not implemented. A portfolio holds a small
-> number of decisions, `outcome` is a free-form string with no useful
-> filter semantics yet, and `DecisionRepository.listByPortfolioId`
-> returns a plain array. The response is `{ "data": [...] }` without
-> `meta`. Revisit if decision volume or an enumerated outcome justifies
-> it (NFR-070).
+Query (all optional): `assetId`, `direction` (a `DecisionDirection`
+value), `dateFrom`, `dateTo` (dates). Returns 200 `{ "data": [decision] }`,
+not paginated, with no `meta`. Errors: 400 `VALIDATION_ERROR`; 404
+`NOT_FOUND`. `outcome`, `page` and `pageSize` are `Deferred`: a portfolio
+holds few decisions and `outcome` is free-form.
 
 ---
 
 ## Get Decision
 
+**Status:** `Implemented` (FR-033)
+
 ```text
 GET /api/v1/portfolios/:portfolioId/decisions/:decisionId
 ```
 
----
-
-> **Deferred (not implemented).** Create, Update and Close Decision
-> (the three endpoints below) are intentionally deferred. No functional
-> requirement asks for them (FR-032/033/034 are read and replay only),
-> and decision events cannot be generated honestly by the service: there
-> is no `DECISION_CLOSED` event type, `POSITION_CLOSED` needs an exit
-> price the close endpoint does not receive, and `Decision` has no link
-> to `Transaction` from which position events could be derived. Writing
-> decisions properly also requires extending `UnitOfWork` so a decision
-> and its events are created atomically (FR-074). Decisions currently
-> come from seed/demo data. If the frontend needs to create decisions,
-> design this together with an event journal endpoint
-> (`POST .../decisions/:decisionId/events`) once the screen exists.
-
-## Create Decision
-
-```text
-POST /api/v1/portfolios/:portfolioId/decisions
-```
-
-Request:
-
-```text
-{
-  "assetId": "asset_001",
-  "title": "Breakout setup",
-  "thesis": "Price structure suggests...",
-  "direction": "LONG",
-  "entryPrice": 180,
-  "targetPrice": 195,
-  "stopPrice": 174,
-  "riskLevel": "MODERATE"
-}
-```
+Returns 200 `{ "data": decision }`. Errors: 404 `NOT_FOUND` (missing
+decision, decision of another portfolio, or portfolio of another user).
 
 ---
 
-## Update Decision
+## Create, Update and Close Decision
+
+**Status:** `Deferred`
 
 ```text
+POST  /api/v1/portfolios/:portfolioId/decisions
 PATCH /api/v1/portfolios/:portfolioId/decisions/:decisionId
+POST  /api/v1/portfolios/:portfolioId/decisions/:decisionId/close
 ```
 
----
-
-## Close Decision
-
-```text
-POST /api/v1/portfolios/:portfolioId/decisions/:decisionId/close
-```
+No FR asks for them (FR-032 to FR-034 are read and replay). Writing
+decisions needs decision events created atomically with the decision
+(FR-074) and a link to transactions that does not exist. Decisions come
+from seed and demo data. Expected vs actual (FR-035) is also `Deferred`.
 
 ---
 
 # 24. Decision Replay API
+
+**Status:** `Implemented` (FR-034); event payload prices as decimal strings `Planned (B0)` (ADR-002 point 9)
 
 ## Get Replay Timeline
 
@@ -985,9 +1040,9 @@ POST /api/v1/portfolios/:portfolioId/decisions/:decisionId/close
 GET /api/v1/decisions/:decisionId/replay
 ```
 
-Response:
+Response (200):
 
-```text
+```json
 {
   "data": {
     "decision": {},
@@ -998,17 +1053,15 @@ Response:
 }
 ```
 
-The client controls playback.
+`events` are in chronological order. `currency` is the asset's currency;
+event payload prices are plain numbers in it today (decimal strings
+`Planned (B0)`). `initialState` is the projection before the first event
+(`currentIndex = -1`); the client advances by folding events with the same
+pure `projectDecisionReplay` from `@trading/domain` that the server uses.
 
-> **Implementation note.** `events` are returned in chronological order.
-> `currency` is the asset's currency: event payload prices are plain
-> numbers interpreted in it, so a client folding the timeline needs it.
-> `initialState` is the projection before the first event
-> (`currentIndex = -1`). The client advances by folding events with the
-> same pure `projectDecisionReplay` function from `@trading/domain`
-> that the server uses, which keeps the public demo identical.
-> Ownership is resolved decision → portfolio → user; a missing decision
-> and another user's decision both return the same 404.
+Ownership is resolved decision → portfolio → user. Errors: 404 `NOT_FOUND`
+(missing decision or another user's); 500 `INTERNAL_ERROR` if the
+decision's asset is missing (data integrity).
 
 ---
 
