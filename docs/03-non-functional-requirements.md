@@ -492,7 +492,8 @@ role, denied role, cross-user access and escalation attempts
 ## NFR-021 — Input Validation
 
 **Priority:** P0  
-**Status:** server validation `Implemented`; shared schemas in
+**Status:** body and query validation `Implemented`; route (path)
+parameter validation `Planned (B0)` (ADR-002 point 10); shared schemas in
 `@trading/contracts` `Planned (B0)` (ADR-002); client validation
 `Planned (FE)`
 
@@ -506,6 +507,10 @@ Domain      invariants in domain validators
 
 - Every request body, query and path parameter is parsed before reaching a
   service; invalid input returns 400 with the standard error envelope.
+  Today only body and query are parsed; path parameters are `Planned (B0)`.
+  A malformed path parameter returns 400 `VALIDATION_ERROR`; a well-formed
+  but unknown or not-owned resource returns 404 `NOT_FOUND` (ADR-002
+  point 10).
 - JSON bodies are limited to 100 kb (`apps/api/src/app.ts`).
 - Client validation never replaces server validation (ADR-001 point 5).
 

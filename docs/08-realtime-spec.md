@@ -175,9 +175,11 @@ Server rules (ADR-007 point 15):
 | Subscriptions per connection | 50 |
 | Inbound messages per connection | 20 per second |
 | Outbound buffer per connection | 1 MB |
+| Concurrent connections per authenticated user (not per IP) | 5, `Planned (B5)` (ADR-005 point 13, ADR-007 point 16); numeric value tuned in B5 |
 
 - When the server closes a socket for exceeding a limit, it uses close
-  code `4008` (§9).
+  code `4008` (§9). An excess connection beyond the per-user cap of 5 is
+  closed with `4008` (ADR-005 point 13).
 - The server closes a socket not authenticated within 5 seconds (`4001`),
   or whose token expired without re-authentication (`4002`) (§9).
 
@@ -245,7 +247,7 @@ Protocol (ADR-007 point 15), defined as Zod schemas in `@trading/contracts`:
 |---|---|
 | `4001` | Unauthenticated or invalid token, including the 5-second authentication timeout |
 | `4002` | Token expired without re-authentication |
-| `4008` | Limit exceeded (§7) |
+| `4008` | Limit exceeded (§7), including an excess connection beyond the per-user cap of 5 (`Planned (B5)`) |
 | `1001` | Server going away |
 
 Open detail (B5): the `ACK` and `ERROR` field shapes and the set of `ERROR`

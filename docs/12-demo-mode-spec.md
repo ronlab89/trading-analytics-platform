@@ -1700,7 +1700,7 @@ initialized
  ↓
 running
  ↓
-paused
+halted
  ↓
 resumed
  ↓
