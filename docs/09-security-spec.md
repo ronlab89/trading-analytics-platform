@@ -546,297 +546,495 @@ Open detail (B5) owned by `08-realtime-spec.md` §9.
 
 # 18. Input Validation
 
-All external input must be validated.
+**Status:** body, query, headers and environment `Implemented` (`apps/api/src/middleware/validate.ts`, `apps/api/src/schemas/`, `apps/api/src/config/env.ts`); route parameters `Planned (B0)` (NFR-021); schemas in `@trading/contracts` `Planned (B0)` (ADR-002 points 1-2); WebSocket messages `Planned (B5)` (ADR-007 points 4 and 15); CSV files `Planned (B4)` (ADR-008 point 10)
 
-Sources include:
+All external input is validated before it reaches a service (NFR-021).
 
-- request body;
-- query parameters;
-- route parameters;
-- headers;
-- WebSocket events;
-- environment variables.
+| Source | Validation | Status |
+| --- | --- | --- |
+| Request body | Zod schema per route, `validate(schema, "body")` | `Implemented` |
+| Query parameters | Zod schema per route, `validate(schema, "query")` | `Implemented` |
+| Route parameters | Ownership-scoped lookup; no schema | `Planned (B0)` |
+| JSON syntax and size | `express.json({ limit: "100kb" })` (§27) | `Implemented` |
+| Headers | `Authorization` parsed by `authenticate` (§16); `X-Request-ID` checked against an allowlist (§30) | `Implemented` |
+| Environment variables | Zod schema at startup; invalid configuration stops the process | `Implemented` |
+| WebSocket messages | Zod schemas for `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE` (§33) | `Planned (B5)` |
+| CSV import files | Bounded file size and row count; every row validated | `Planned (B4)` |
 
-Zod will be used for schema validation where appropriate.
+Code today: request schemas live in `apps/api/src/schemas/`. ADR-002
+moves them to `@trading/contracts` in B0, so the API, the demo adapter and
+the client share one set.
+
+Code today: `validate` accepts only `query` and `body`; controllers read
+route parameters such as `:portfolioId` as plain strings. NFR-021 and
+`07-api-spec.md` §45 require path parameters to be parsed too. An unknown
+or malformed ID already returns 404, because every lookup is parameterized
+and scoped to the owner (§15, §21), so the gap is a validation
+inconsistency, not an access risk.
+
+> Open detail (B0): whether a malformed path parameter returns 400
+> `VALIDATION_ERROR` from a schema or keeps returning 404 from the lookup.
+> The choice is recorded in `07-api-spec.md` with the contracts move.
 
 ---
 
 # 19. Validation Strategy
 
-The validation pipeline is:
+**Status:** boundary and domain validation `Implemented`; application layer `Planned (B0)` (ADR-001 points 1 and 5); validation detail `code` `Planned (B0)` (ADR-002 point 10)
+
+Validation runs in three layers (ADR-001 point 5):
 
 ```text
-External Input
+External input
       ↓
-Schema Validation
+Boundary schema (Zod)                         → 400 VALIDATION_ERROR
       ↓
-Normalized Input
+Typed, normalized input (coerced, defaults applied)
       ↓
-Application Service
+Application use case (permission, ownership)  → 403 / 404 / 409
       ↓
-Domain Validation
+Domain validators (invariants, rules)         → 400 VALIDATION_ERROR
 ```
 
-Transport validation must not replace business-rule validation.
+| Layer | Owns | Never owns |
+| --- | --- | --- |
+| Boundary | Shape, types, ranges, formats, enums | Business rules |
+| Application | Permission, ownership, cross-entity state | Zod transport schemas, Express (ADR-001 point 1) |
+| Domain | Invariants and business rules (§20) | Transport, persistence |
 
-Both are required.
+Transport validation does not replace business-rule validation; both run.
+Client validation uses the same schemas for UX only and never replaces
+server validation (NFR-021, `Planned (FE)`).
+
+Code today: `validate` stores the parsed output on `req.validated`;
+controllers pass it to the services in `apps/api/src/services/`, which call
+the domain validators. ADR-001 moves the services into
+`@trading/application` in B0 without changing this split.
+
+Code today: each validation `details` entry is `{ field, message }`.
+ADR-002 point 10 requires `{ field, code, message }`, where `code` is the
+Zod issue code, in B0 (`07-api-spec.md` §7).
 
 ---
 
 # 20. Domain Validation
 
-Business rules must remain inside the application/domain layer.
+**Status:** `Implemented` (`packages/domain/src/entities/`, `packages/domain/src/calculations/position-recalculation.ts`; mapping in `apps/api/src/middleware/error-handler.ts`)
 
-Example:
-
-A request may be structurally valid:
-
-```text
-quantity = 100
-price = 150
-```
-
-but still be invalid because:
+Business rules live in `@trading/domain`, never only in a controller. A
+request can be structurally valid and still break a rule:
 
 ```text
-portfolio does not have sufficient available balance
+SELL quantity = 100, held quantity = 40
+→ InsufficientPositionQuantityError
+→ 400 VALIDATION_ERROR
 ```
 
-Such rules must not be implemented only inside the controller.
+Portfolios hold no cash balance (ADR-003 point 2), so there is no
+"insufficient balance" rule; overselling a position is the equivalent
+check.
+
+- Domain errors are named `Invalid*Error` (invariant violated) or
+  `Insufficient*Error` (business rule broken by client input). The error
+  handler maps both to 400 `VALIDATION_ERROR` with the domain message and
+  no `details`.
+- Application errors such as `NotFoundError` and `ConflictError` are
+  transport-free and mapped by each delivery mechanism; domain validation
+  errors keep the mapping above (ADR-001 point 3, `Planned (B0)`).
+- Money, prices and quantities are `Decimal` in domain code, and amounts
+  in persisted JSON are decimal strings, never JavaScript numbers (ADR-002
+  points 3 and 9). The remaining floating-point reads in
+  `decision-replay.ts` and `scenario-impact.ts` are replaced in B0.
 
 ---
 
 # 21. Injection Protection
 
-The application must protect against:
+**Status:** `Implemented` (Prisma parameterized queries, `packages/database/src/repositories/`); wildcard escaping in asset search `Planned (B7)` (`BACKEND-ROADMAP.md` B7, `PROGRESS.md` §7)
 
-- SQL injection;
-- command injection;
-- NoSQL injection where applicable;
-- header injection;
-- unsafe dynamic queries.
+| Vector | Control | Status |
+| --- | --- | --- |
+| SQL injection | All access through the Prisma client. The only raw query is the input-free tagged template `` $queryRaw`SELECT 1` `` in `apps/api/src/services/health.service.ts` | `Implemented` |
+| Command injection | The API spawns no processes or shells | `Implemented` (no surface) |
+| NoSQL injection | Not applicable: PostgreSQL only | — |
+| Header injection | `X-Request-ID` is echoed only when it matches the allowlist (§30); no other request value is written to a header | `Implemented` |
+| Pattern wildcards | Asset `search` passes `%` and `_` unescaped to Prisma `contains` | Known debt, `Planned (B7)` |
 
-Parameterized/type-safe database access through Prisma must be used.
+Rules:
 
-Raw SQL should only be introduced when necessary and must use safe parameterization.
+- Raw SQL is added only when Prisma cannot express a query, and only as
+  a tagged-template `$queryRaw` or `$executeRaw`. `$queryRawUnsafe` and
+  `$executeRawUnsafe` are never called with interpolated input.
+- Imported CSV fields are data: they are validated per row and stored
+  through the same repositories (ADR-008 point 10, `Planned (B4)`).
+
+Code today: `prisma-asset-repository.ts` passes the search term to
+`contains` unescaped. Prisma still parameterizes the query, so there is
+no injection risk; a term containing `%` or `_` matches as a pattern
+instead of literal text. `PROGRESS.md` §7 also names transaction filters,
+but no other `contains` filter exists in the code.
 
 ---
 
 # 22. XSS Protection
 
-User-controlled content must not be rendered as executable HTML.
+**Status:** `Planned (FE)` (NFR-027); API side `Implemented` (JSON-only responses, `helmet` headers, §25)
 
-The frontend must avoid unnecessary use of:
+- User-provided and imported content (portfolio names, notes, decision
+  text, CSV fields) renders as text through React's escaping.
+- No `dangerouslySetInnerHTML` or `innerHTML` without sanitization by a
+  maintained library; 0 unsanitized occurrences in `apps/web` (NFR-027).
+- The access token lives in memory, never in browser storage, so an
+  injected script cannot read it from storage (§8, NFR-028).
+- The API returns JSON only and sends `X-Content-Type-Options: nosniff`
+  (§25), so a browser never interprets a response as HTML.
+- Encoding happens at render time. The API stores text fields as
+  received and does not strip HTML.
 
-```text
-dangerouslySetInnerHTML
-```
-
-If HTML rendering becomes necessary, content must be sanitized using an appropriate maintained library.
+Code today: `apps/web` contains only a wireframe; there is no client code
+yet. Measurement: a repository search or lint rule over `apps/web`, and a
+component test that renders `<script>` in a note as text (NFR-027).
 
 ---
 
 # 23. CSRF
 
-The CSRF strategy depends on the authentication transport.
+**Status:** `Planned (B2)` (ADR-005 point 7; NFR-028); no exposure today (the API sets no cookie)
 
-If authentication uses cookies, the application must implement appropriate CSRF protection for state-changing requests.
+The CSRF exposure follows the token transport (§8):
 
-SameSite cookie policies should provide an additional defense layer.
+| Request | Credential | CSRF control |
+| --- | --- | --- |
+| Every protected route | `Authorization: Bearer` header from client memory | None needed: a browser never attaches it automatically |
+| `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout` | Refresh cookie | `SameSite=Strict`, `Path=/api/v1/auth`, required custom request header |
+
+A cross-site form or link cannot set a custom header. A cross-origin
+script that tries to set one triggers a CORS preflight, which the API
+refuses for origins outside `CORS_ORIGIN` (§24). A request without the
+header is rejected, and logout without it revokes nothing (§9).
+
+The header name is an Open detail (B2), §8.
 
 ---
 
 # 24. CORS
 
-The API must use an explicit CORS allowlist.
+**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`; NFR-025); credentialed CORS for the refresh cookie `Planned (B2)` (ADR-005 Consequences)
 
-Development and production origins must be configurable.
+- Allowed origins come from `CORS_ORIGIN`, a comma-separated list
+  (default `http://localhost:5173`), set per environment (ADR-006
+  point 8).
+- `Access-Control-Allow-Origin: *` is never used.
+- CORS limits which browser origins may call the API. It is not
+  authentication; non-browser clients ignore it (§16).
+- The public demo calls no backend (ADR-006 point 7), so its origin needs
+  no entry.
 
-The application must not use unrestricted:
-
-```text
-Access-Control-Allow-Origin: *
-```
-
-for authenticated production endpoints.
+Code today: `cors({ origin: env.CORS_ORIGIN })` without `credentials`, so
+browsers send no cookies cross-origin. B2 enables credentials for the web
+origin so the refresh cookie reaches `/api/v1/auth` (Open detail (B2),
+§8).
 
 ---
 
 # 25. HTTP Security Headers
 
-The backend should provide appropriate security headers.
+**Status:** API `Implemented` (`helmet()` defaults and `app.disable("x-powered-by")` in `apps/api/src/app.ts`; NFR-025); header test `Planned (B7)` (`BACKEND-ROADMAP.md` B7); demo host headers `Deferred` (ADR-006 point 2)
 
-Relevant protections include:
+`helmet` runs first in the middleware stack, so every response carries
+its default headers, including error and 429 responses:
 
-- Content Security Policy;
-- X-Content-Type-Options;
-- Referrer-Policy;
-- frame protection;
-- strict transport security in HTTPS environments.
+| Protection | Header (helmet 8 default) |
+| --- | --- |
+| Content Security Policy | `Content-Security-Policy` |
+| MIME sniffing | `X-Content-Type-Options: nosniff` |
+| Referrer leakage | `Referrer-Policy: no-referrer` |
+| Framing | `X-Frame-Options: SAMEORIGIN`, CSP `frame-ancestors 'self'` |
+| Transport | `Strict-Transport-Security` |
+| Cross-origin isolation | `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy` |
 
-A maintained security middleware may be used where appropriate.
+- `X-Powered-By` is disabled.
+- `Strict-Transport-Security` has no effect over plain HTTP. The local
+  stack has no HTTPS; HSTS becomes meaningful only with a public backend,
+  which is `Deferred` (ADR-006 point 2, §3).
+- Headers of the static demo host are not controlled (NFR-025 accepted
+  exception).
+
+Code today: no test asserts the headers. NFR-025 requires one asserting
+`X-Content-Type-Options: nosniff` and no `X-Powered-By`.
 
 ---
 
 # 26. Rate Limiting
 
-Sensitive and abuse-prone endpoints should have rate limiting.
+**Status:** `Implemented` (`apps/api/src/middleware/rate-limit.ts`, `apps/api/src/app.ts`); realtime limits `Planned (B5)` (ADR-007 points 11 and 15, §35)
 
-Priority endpoints include:
+| Limiter | Scope | Limit | Status |
+| --- | --- | --- | --- |
+| General | Every route except health | 300 requests per 15 minutes per IP | `Implemented` |
+| Login | `POST /api/v1/auth/login`, in addition to the general limiter | 5 attempts per 15 minutes per IP | `Implemented` (ADR-005 point 12) |
+| Realtime inbound | Per connection | 20 messages per second | `Planned (B5)` |
 
-- authentication;
-- login;
-- password-related operations;
-- expensive analytics operations;
-- administrative endpoints.
+- Exceeding a limit returns 429 `RATE_LIMITED` in the normal error
+  envelope (§29) with standard `RateLimit` headers (draft 7); the legacy
+  `X-RateLimit-*` headers are off.
+- Health routes are registered before the limiter and never return 429
+  (`14-deployment-spec.md` §50-51).
+- The store is in memory and per process, which fits the single local API
+  (ADR-006 points 1-2). Several instances would each count separately.
+- Limiters are skipped under `NODE_ENV=test`; `rate-limit.test.ts`
+  verifies the 429 and its body on an isolated limiter.
 
-The rate-limiting strategy must remain compatible with free-tier deployment.
+Coverage of the abuse-prone endpoints:
+
+| Endpoint | Limit |
+| --- | --- |
+| Login | Dedicated limiter |
+| Password-related operations | None exist: no self-registration or reset (§52-53, ADR-005 point 10) |
+| Analytics | General limiter |
+| `POST /api/v1/auth/refresh` (`Planned (B2)`) | General limiter |
+| Simulation control (`Planned (B5)`, `simulation:control`) | General limiter |
+
+> Open detail (B2): whether `POST /api/v1/auth/refresh` also gets a
+> dedicated limiter. ADR-005 fixes only the login limit.
 
 ---
 
 # 27. Request Size Limits
 
-The API must define reasonable limits for:
+**Status:** JSON body, pagination and list parameters `Implemented` (`apps/api/src/app.ts`, `apps/api/src/schemas/`, `apps/api/src/middleware/error-handler.ts`); CSV limits `Planned (B4)` (ADR-008 point 10); realtime limits `Planned (B5)` (ADR-007 point 15)
 
-- request body size;
-- query length;
-- pagination parameters;
-- batch operations.
+| Input | Limit | Over the limit | Status |
+| --- | --- | --- | --- |
+| JSON body | 100 kB (`JSON_BODY_LIMIT`) | 413 `VALIDATION_ERROR` `The request body is too large.` | `Implemented` |
+| Malformed JSON | — | 400 `VALIDATION_ERROR` `The request body is not valid JSON.` | `Implemented` |
+| `pageSize` | 1-100, default 20 (`pagination.schema.ts`) | 400 `VALIDATION_ERROR` | `Implemented` |
+| `assetIds` batch | 1-50 ids (`market.schema.ts`, `07-api-spec.md` §19) | 400 `VALIDATION_ERROR` | `Implemented` |
+| Text filters | For example `search` ≤ 100 characters (`asset.schema.ts`) | 400 `VALIDATION_ERROR` | `Implemented` |
+| Query string | No explicit limit; Node.js caps the request line and headers | 431 from Node.js | Runtime default |
+| CSV import | File size and row count, values fixed in B4 | Job rejected | `Planned (B4)` |
+| Realtime | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer (§35) | `4008` close | `Planned (B5)` |
 
-This reduces unnecessary resource consumption and denial-of-service exposure.
+> Open detail (B5): the maximum inbound WebSocket message size. ADR-007
+> point 11 requires bounded memory per connection, but the `ws` library
+> accepts messages up to 100 MiB unless `maxPayload` is set.
 
 ---
 
 # 28. API Error Security
 
-Errors returned to clients must not expose:
+**Status:** `Implemented` (`apps/api/src/middleware/error-handler.ts`, `apps/api/src/controllers/health.controller.ts`, `apps/api/src/config/env.ts`); structured category logging `Planned (B3)` (ADR-009 points 2 and 6)
 
-- stack traces;
-- database connection details;
-- filesystem paths;
-- environment variables;
-- secrets;
-- internal service information.
+Responses never expose stack traces, database or driver errors,
+connection details, filesystem paths, environment variables, secrets,
+internal service details, the existence of another user's resource
+(§15), or which authorization check failed (§17).
 
-Production responses should expose safe error messages.
+| Error | Client sees |
+| --- | --- |
+| Unexpected exception | 500 `INTERNAL_ERROR` `An unexpected error occurred.` |
+| Body-parser error | A fixed message per type (§27) |
+| Domain validation error | 400 with the domain message, which describes the input, not internals (§20) |
+| `AppError` | Its code and a message written for the client |
+
+- The handler has no environment-specific verbose mode; responses are the
+  same in development and production.
+- Health endpoints expose no connection strings or raw driver errors.
+- Invalid configuration at startup logs only which keys failed, never
+  their values.
+
+Code today: an unexpected error is logged server-side as one JSON line
+through `console.error`, with `requestId`, `errorName` and `message` and
+no stack trace. ADR-009 replaces this in B3 with `pino`, levels by error
+category, and the stack trace at `error` level (points 2 and 6), with the
+redaction list of §49 (point 4).
 
 ---
 
 # 29. Error Structure
 
-The API should use a consistent error format.
+**Status:** `Implemented` (`apps/api/src/middleware/error-handler.ts`, `apps/api/src/middleware/rate-limit.ts`; ADR-002 point 2); envelope schema in `@trading/contracts` and detail `code` `Planned (B0)` (ADR-002 points 2 and 10)
 
-Example:
+`07-api-spec.md` §5-7 owns the error contract. Every error, including 404
+for unknown routes and 429, uses one envelope:
 
-```text
+```json
 {
   "error": {
-    "code": "RESOURCE_NOT_FOUND",
+    "code": "NOT_FOUND",
     "message": "The requested resource could not be found.",
-    "requestId": "req_123"
+    "requestId": "3f0c2a9e-...",
+    "details": []
   }
 }
 ```
 
-Internal logs may contain additional diagnostic information.
+- `code` comes from `AppErrorCode` (`07-api-spec.md` §6). The codes are
+  stable and coarse, so they reveal no internal state.
+- `message` is English and meant for logs; clients map `code` to a
+  localized message (ADR-010 point 8).
+- `details` describes only the client's own invalid input (§19).
+- Internal logs may carry more diagnostic information (§28).
 
 ---
 
 # 30. Request IDs
 
-Each API request should receive a request identifier.
+**Status:** header and error envelope `Implemented` (`apps/api/src/middleware/request-id.ts`); log propagation `Planned (B3)` (ADR-009 point 5); realtime `connectionId` `Planned (B5)` (ADR-009 point 5)
 
-Example:
+- Every response carries `X-Request-ID`. The middleware runs before the
+  rate limiter and the routes, so 429 and error responses carry it too.
+- A client-supplied value matching `^[a-zA-Z0-9-]{1,64}$` is reused;
+  anything else is replaced by a generated UUID. The allowlist keeps the
+  value safe to log and to echo in a header (§21).
+- A request ID is a correlation handle, not a secret, and grants nothing.
+- The same value is the `requestId` of every error envelope (§29).
 
-```text
-requestId
-```
-
-The identifier should be available in:
-
-- logs;
-- error responses;
-- diagnostic tooling.
-
-This allows failures to be traced without exposing sensitive information.
+Code today: the ID reaches the error envelope and the unexpected-error
+log line only. ADR-009 point 5 propagates it to every log line of a
+request through `AsyncLocalStorage` in B3; jobs carry `jobId` and realtime
+connections `connectionId`. The correlation strategy is
+`13-observability-spec.md` §9.
 
 ---
 
 # 31. Realtime Security
 
-WebSocket connections must be authenticated.
+**Status:** `Planned (B5)` (ADR-007 points 2-3 and 15, ADR-005 points 3 and 12; FR-086, NFR-020, NFR-026)
 
-After connection:
+This section is the security view of the realtime protocol, which
+`08-realtime-spec.md` owns (§9, §10, §55).
 
 ```text
-WebSocket
+WebSocket connection (no token in the URL)
    ↓
-Authenticate
+AUTHENTICATE { accessToken } within 5 s       → otherwise close 4001
    ↓
-Establish Identity
+Actor { userId, role } loaded from the database
    ↓
-Authorize Subscription
+SUBSCRIBE { channel } → application-layer check → ACK | ERROR (§32)
+   ↓
+Token expires without re-authentication       → close 4002
 ```
 
-The client must not be allowed to subscribe to arbitrary channels.
+- The token is never put in the URL, where it would reach logs, browser
+  history and proxies.
+- The socket is bound to the expiry of its token. Re-authenticating after
+  a refresh extends the bound and reloads role and ownership, dropping any
+  subscription the actor may no longer hold (`08-realtime-spec.md` §9).
+- Re-authenticating with another user's token is rejected and the socket
+  is closed (`08-realtime-spec.md` §9, ADR-007 Deferred detail).
+- Tokens are never logged (`08-realtime-spec.md` §58, ADR-009 point 4).
+- The local stack uses `ws://`; WSS is `Deferred` with the public backend
+  (ADR-006 point 2, §3).
+- The demo has no token handshake; its in-process adapter runs the same
+  application-layer checks for behavior parity, not security
+  (`08-realtime-spec.md` §56).
+
+The socket authenticates with a message, not a cookie, so a page on
+another origin that opens a socket gains no ambient credential.
+
+> Open detail (B5): whether the server also checks the `Origin` header of
+> the upgrade request against `CORS_ORIGIN`.
 
 ---
 
 # 32. Channel Authorization
 
-Example:
+**Status:** `Planned (B5)` (ADR-007 point 3, ADR-008 point 11, ADR-005 points 3 and 12; FR-086, NFR-020)
+
+Knowing a channel name never grants access. Every `SUBSCRIBE` is
+authorized by an application-layer use case, by permission (§13) and
+ownership (§14), so the API and the demo run the same check
+(`08-realtime-spec.md` §10):
+
+| Channel | Authorization |
+| --- | --- |
+| `market:{assetId}` | Any authenticated actor (`market:read`) |
+| `portfolio:{portfolioId}` | `portfolio:read` and ownership of the portfolio |
+| `notifications` | The authenticated user only; no ID in the name (`notification:read`) |
+| `jobs:{jobId}` | Ownership of the job |
 
 ```text
-portfolio:portfolio_123
+User A → SUBSCRIBE portfolio:{portfolio of User B} → ERROR, no events
 ```
 
-The server must verify that the authenticated user is allowed to access that portfolio.
-
-Knowing the channel name must not grant access.
+- A refused subscription to another user's channel is indistinguishable
+  from an unknown channel, so existence is not revealed (ADR-005
+  point 12, `08-realtime-spec.md` §55).
+- `user:{userId}` and `notifications:{userId}` are removed; no channel
+  name carries a user ID.
+- `ALERT_TRIGGERED` is delivered on `notifications`, because alerts are
+  user-scoped (ADR-007 point 15).
+- Authorization is re-evaluated on every re-authentication (§31).
 
 ---
 
 # 33. Realtime Event Validation
 
-Incoming realtime events must be validated.
+**Status:** server `Planned (B5)`; client `Planned (FE)` (ADR-007 points 4 and 15, ADR-002 points 1 and 6)
 
-The server must not trust:
+Clients never publish events. The only client messages are
+`AUTHENTICATE`, `SUBSCRIBE` and `UNSUBSCRIBE`, so the server never trusts
+a client-supplied event `type`, `payload` or metadata.
 
-```text
-event.type
-event.payload
-event.metadata
-```
+| Direction | Validation | On failure |
+| --- | --- | --- |
+| Client → server | Every message parsed with its `@trading/contracts` Zod schema; unknown `type` or malformed `channel` refused | `ERROR` reply with a `code` |
+| Server → client | Envelope `{ id, type, channel, sequence, timestamp, payload }` built from the contract schemas; only catalog types (`08-realtime-spec.md` §14-15) | Covered by contract tests (ADR-002 point 6) |
+| Client receives | Envelope, `type`, `payload` and channel checked (`08-realtime-spec.md` §23) | Event dropped and logged; `sequence` not advanced |
 
-without validation.
-
-Invalid events should be rejected.
+Every inbound message, valid or not, counts toward the inbound rate
+limit (§35). The `ERROR` code set is an Open detail (B5) of
+`08-realtime-spec.md` §9.
 
 ---
 
 # 34. Realtime Event Integrity
 
-Events should contain enough metadata to support:
+**Status:** server `sequence` `Planned (B5)`; client checks `Planned (FE)` (ADR-007 points 4-5; NFR-018)
 
-- deduplication;
-- ordering;
-- replay detection;
-- consistency checks.
+| Need | Mechanism | Reference |
+| --- | --- | --- |
+| Ordering | `sequence` monotonic per channel | `08-realtime-spec.md` §24 |
+| Deduplication and replay detection | Apply only `incomingSequence > lastProcessedSequence`; anything else is discarded | `08-realtime-spec.md` §24, §47 |
+| Gap detection | `incomingSequence > lastProcessedSequence + 1` triggers an HTTP resynchronization | `08-realtime-spec.md` §25-26 |
+| Consistency | HTTP stays the source of truth after gaps and reconnects | `08-realtime-spec.md` §26 |
+| Identification | Envelope `id` for logs and diagnostics | `08-realtime-spec.md` §47 |
 
-Sequence numbers and event IDs should be validated according to the realtime specification.
+- There is no server replay buffer in version 1, so a missed event is
+  never replayed (ADR-007 point 5).
+- Events carry no signature. Integrity rests on the authenticated socket
+  and the server being the only publisher (§33).
+- A per-process epoch lets clients reset their baseline after a server
+  restart (`08-realtime-spec.md` §14, ADR-007 Deferred detail, B5).
+
+The scope and format of the envelope `id` are an Open detail (B5) of
+`08-realtime-spec.md` §47.
 
 ---
 
 # 35. Realtime Rate Protection
 
-High-frequency event streams must have controlled limits.
+**Status:** `Planned (B5)` (ADR-007 points 2, 11 and 15)
 
-The backend should prevent a client from:
+Server limits per connection (`08-realtime-spec.md` §7, §48):
 
-- creating unlimited subscriptions;
-- opening excessive connections;
-- sending uncontrolled messages;
-- subscribing to unnecessary channels.
+| Abuse | Limit | Enforcement |
+| --- | --- | --- |
+| Unauthenticated sockets | 5 s to send `AUTHENTICATE` | Close `4001` |
+| Unlimited subscriptions | 50 per connection | `ERROR` reply or close `4008` (Open detail (B5), `08-realtime-spec.md` §7) |
+| Uncontrolled messages | 20 inbound messages per second | Close `4008` |
+| Slow consumers | 1 MB outbound buffer | Drop or close `4008` (Open detail (B5), `08-realtime-spec.md` §48) |
+| Dead sockets | Ping every 30 s; close after 2 missed pongs (about 60 s) | Close code is an Open detail (B5), `08-realtime-spec.md` §7 |
+| Unnecessary channels | Only catalog channels are authorized (§32); the client unsubscribes when no view needs a channel | `08-realtime-spec.md` §52 |
+
+Exceeding a limit closes the socket with `4008` (`08-realtime-spec.md`
+§7, §9).
+
+> Pending decision: a limit on concurrent connections per user or per
+> IP. ADR-007 fixes limits per connection only; unauthenticated sockets
+> are bounded by the 5-second timeout, authenticated ones by nothing.
 
 ---
 
