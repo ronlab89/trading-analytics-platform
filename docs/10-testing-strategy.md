@@ -9,6 +9,8 @@
 
 # 1. Purpose
 
+**Status:** `Reference`
+
 This document defines the testing strategy for Trading Analytics Platform.
 
 Testing must verify not only that individual functions work, but that the complete product behaves correctly across:
@@ -30,9 +32,13 @@ Testing must verify not only that individual functions work, but that the comple
 
 The public demo must be fully functional despite using mock infrastructure.
 
+Each section carries a status (see [`README.md`](README.md#status-legend)). Today only the backend has tests: Vitest in `@trading/domain`, `@trading/database` and `@trading/api`. There is no frontend, so everything about components, forms, UI states and demo mode is `Planned (FE)` or `Deferred`. Backend blocks B0-B7 come first (ADR-001, `15-implementation-plan.md`).
+
 ---
 
 # 2. Testing Philosophy
+
+**Status:** `Reference`
 
 The project follows a risk-based testing strategy.
 
@@ -49,9 +55,13 @@ The objective is not maximum test count.
 
 The objective is **high confidence in important product behavior**.
 
+There is no coverage threshold today and none is decided (no coverage provider is configured in any Vitest config). A numeric target is `Deferred`; risk decides where tests are added, not a percentage.
+
 ---
 
 # 3. Testing Pyramid
+
+**Status:** unit and integration levels `Implemented` (backend); component and E2E levels `Planned (FE)`; their tooling `Deferred` (`04-tech-stack.md` §33)
 
 The project should follow:
 
@@ -81,9 +91,13 @@ Most tests should exist at the unit and component levels.
 
 A smaller number of integration and E2E tests should validate complete system behavior.
 
+Current shape, by file count: domain unit tests 28 files, database repository tests 17 files, API HTTP integration tests 14 files. The backend therefore leans on integration tests more than the pyramid asks, because application services do not exist as a separate layer yet (§6, ADR-001 point 7). The names "Playwright", "React" and "Testing Library" in this document are working assumptions: `04-tech-stack.md` §33 leaves component and end-to-end tooling `Deferred` until the frontend stage.
+
 ---
 
 # 4. Testing Layers
+
+**Status:** layers 1, 2 and 4 `Implemented` (backend); layers 3 and 5 `Planned (FE)`; specialized testing follows the sections named below
 
 The project uses five primary testing layers:
 
@@ -101,9 +115,19 @@ Additional specialized testing covers:
 - performance;
 - simulation determinism.
 
+| Specialized testing | Section | Status |
+| --- | --- | --- |
+| Security | `09-security-spec.md` §55 and later sections of this document | partial `Implemented` (ownership, auth, rate limit); rest by block |
+| Accessibility | later sections of this document | `Planned (FE)` |
+| Realtime | §21 and later | `Planned (B5)` |
+| Performance | later sections of this document | `Deferred` unless a block names it |
+| Simulation determinism | §20 | `Planned (B5)` |
+
 ---
 
 # 5. Static Verification
+
+**Status:** local checks `Implemented`; CI gate `Planned (B0)` (ADR-006 point 10)
 
 Every change should pass:
 
@@ -126,9 +150,29 @@ Required checks:
 
 Static checks should run before automated behavioral tests in CI.
 
+What exists:
+
+| Check | Command | Where it runs today |
+| --- | --- | --- |
+| TypeScript | `pnpm typecheck` (`tsc --build`) | manual |
+| ESLint | `pnpm lint` | manual; `eslint --fix` on staged `*.{ts,tsx,js,jsx}` in the husky pre-commit hook |
+| Prettier | `pnpm format:check` | manual; `prettier --write` on staged files in the pre-commit hook |
+| Build | `pnpm build` (`pnpm -r build`, `tsc --build`) | manual |
+| Docs | `pnpm docs:check` | manual |
+
+The pre-commit hook (`.husky/pre-commit`, `lint-staged`) formats and lints staged files only. It does not type-check or run tests.
+
+Code vs ADR:
+
+- No CI workflow exists (`.github/` holds only the pull request template). ADR-006 point 10 decides one GitHub Actions workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, typecheck, lint, and the domain, database and API test suites, the latter two against a PostgreSQL service container. It is `Planned (B0)`.
+- ADR-006 does not list the Prettier check or the build in that workflow, and "production build" does not yet run as a deployable artifact (`node dist/index.js` fails on extensionless imports; fixed in B7, ADR-006 point 3). The list above is therefore the target for local runs. Adding `format:check` and `build` to CI is not decided (`Deferred`).
+- The domain-boundary lint rule is commented out in `eslint.config.js` (`06-architecture.md` §43); it is `Planned (B0)` with the lint-enforced boundaries of ADR-002.
+
 ---
 
 # 6. Unit Testing
+
+**Status:** domain `Implemented`; application services with in-memory fakes `Planned (B0)` (ADR-001 point 7); web utilities `Planned (FE)`
 
 Vitest is the primary unit testing framework.
 
@@ -147,9 +191,15 @@ Priority areas:
 - state transformations;
 - event normalization.
 
+Today `packages/domain/src` holds 28 test files (about 250 cases) next to the code (`*.test.ts`), run by `vitest run` in the `node` environment (`packages/domain/vitest.config.ts`). They need no database and no environment file.
+
+Code vs ADR: services in `apps/api/src/services` call Prisma repositories directly and are exercised only through HTTP (§16). ADR-001 moves them to `@trading/application`, unit-tested with in-memory fake repositories, in B0. Permission rules (ADR-005) are `Planned (B0)`/`Planned (B2)` and have no tests yet. Simulation logic is `Planned (B5)` (§20). Formatting utilities and state transformations belong to the frontend (`Planned (FE)`).
+
 ---
 
 # 7. Domain Testing
+
+**Status:** `Implemented`, with one gap
 
 Domain logic must have strong unit-test coverage.
 
@@ -168,9 +218,15 @@ Scenario calculations
 
 Domain tests should not require React, Express, PostgreSQL, or browser APIs.
 
+Covered today: entities (16 files), `Money`, and calculations for allocation, attribution, drawdown, volatility, portfolio metrics, portfolio pulse, daily change, position metrics, scenario impact and comparison, and decision replay. These tests import nothing but the domain.
+
+Gap: `calculatePositionAfterTransaction` (`position-recalculation.ts`, the oversell and average-cost rule) has no domain unit test; it is covered only through `transactions.routes.test.ts`. A unit test for it, including the chronological rule of ADR-003 point 6, is `Planned (B0)` because B0 moves that logic into the application layer and fixes the lost-update race (ADR-001 Deferred detail). The two B0 rows of ADR-002 (`decision-replay.ts` string money, and `scenario-impact.ts` exact percentage factor with an exact-result test for `-12.3`) also add domain tests in B0.
+
 ---
 
 # 8. Business Rule Testing
+
+**Status:** `Implemented` through API tests and entity tests; chronological validation `Planned (B0)` (ADR-003 point 6)
 
 Business rules should be tested through explicit examples.
 
@@ -178,11 +234,10 @@ Example:
 
 ```text
 Given:
-  portfolio balance = 10,000
-  transaction value = 8,000
+  portfolio holds 10 units of asset A
 
 When:
-  transaction is created
+  a SELL of 6 units is created
 
 Then:
   transaction is accepted
@@ -192,21 +247,24 @@ And:
 
 ```text
 Given:
-  portfolio balance = 10,000
-  transaction value = 12,000
+  portfolio holds 10 units of asset A
 
 When:
-  transaction is created
+  a SELL of 12 units is created
 
 Then:
-  transaction is rejected
+  transaction is rejected (InsufficientPositionQuantityError)
 ```
 
 Both valid and invalid paths must be tested.
 
+Code vs ADR: the previous example compared a transaction value with a "portfolio balance". ADR-003 point 3 removes cash from version 1 (no balance, no "insufficient cash" validation); the equivalent rule is oversell, as above. A backdated `SELL` that would make an earlier historical holding negative must also be rejected (ADR-003 point 6); the code checks only the current position, so this case is `Planned (B0)` and needs its own test.
+
 ---
 
 # 9. Boundary Testing
+
+**Status:** `Implemented` for money and metrics; the rest `Planned` with the block that owns the calculation
 
 Important calculations must test boundary values.
 
@@ -215,17 +273,21 @@ Examples:
 - zero;
 - minimum allowed value;
 - maximum allowed value;
-- exact available balance;
-- value above available balance;
+- exact available quantity;
+- quantity above available holding;
 - empty datasets;
 - one item;
 - large datasets;
 - negative values where prohibited;
 - decimal precision.
 
+"Exact available balance" now reads "exact available quantity" (ADR-003). Decimal precision uses `decimal.js` (`Money` and ADR-002 point 9). Analytics edge cases (first and last day, one price point, zero denominators, rounding) are specified in `16-analytics-spec.md` and tested in B1 (ADR-004).
+
 ---
 
 # 10. Component Testing
+
+**Status:** `Planned (FE)`; tooling `Deferred` (`04-tech-stack.md` §33)
 
 Testing Library should be used for React component behavior.
 
@@ -247,9 +309,13 @@ confirm
 
 The test should verify the resulting user-visible behavior.
 
+No `apps/web` code or component test setup exists (`apps/web` holds only wireframe files). React and Testing Library are the intended choice but are not recorded in an ADR; the frontend stage confirms them.
+
 ---
 
 # 11. Component Test Priorities
+
+**Status:** `Planned (FE)`
 
 High-value components include:
 
@@ -268,9 +334,13 @@ High-value components include:
 
 Purely visual primitives do not require exhaustive individual tests when their behavior is already covered through composed components.
 
+The list follows `11-ui-ux-spec.md` and is refined when the frontend blocks are defined in `15-implementation-plan.md`.
+
 ---
 
 # 12. Form Testing
+
+**Status:** `Planned (FE)`
 
 Forms must test:
 
@@ -304,9 +374,15 @@ Success / Error
 UI Feedback
 ```
 
+"Server validation errors" are shaped by the API contract: `VALIDATION_ERROR` with `{ field, message }` details (ADR-002 point 10, `07-api-spec.md`). The backend half of this list (invalid formats, boundaries, required fields) is already tested through `validate.test.ts` and the route tests.
+
+"Duplicate submissions" on the server side relates to idempotency, which exists only for CSV import (ADR-008, `Planned (B4)`).
+
 ---
 
 # 13. Error State Testing
+
+**Status:** server-side error responses `Implemented` (401, 403, 404, 409, 429 paths in route tests); UI states `Planned (FE)`
 
 Every major asynchronous operation should have tests for:
 
@@ -333,9 +409,13 @@ Network Offline
 
 The UI must provide an intentional experience for each state.
 
+Backend today: `rate-limit.test.ts`, `auth.routes.test.ts` and the ownership tests cover Unauthorized, Forbidden-as-404 (ADR-005, `09` §14-15), Conflict and Rate Limited responses. The API has no server timeout (ADR-002 point 10), so "Timeout" is a client-side state only (`Planned (FE)`). "Network Offline" and "Retrying" are frontend states; the realtime reconnect states are tested under §21 (`Planned (B5)`).
+
 ---
 
 # 14. Loading State Testing
+
+**Status:** `Planned (FE)`
 
 Loading states must be tested as behavior.
 
@@ -348,9 +428,13 @@ Examples:
 - stale data behavior remains intentional;
 - loading state clears after success or failure.
 
+The only backend-driven progress is the CSV import job (`progress` in ADR-008, `Planned (B4)`), whose polling and realtime updates are tested with the job.
+
 ---
 
 # 15. Empty State Testing
+
+**Status:** `Planned (FE)`
 
 The application must distinguish between:
 
@@ -366,9 +450,13 @@ Data failed to load
 
 Empty-state tests should verify that the correct message and action are displayed.
 
+The backend side of this distinction is already testable: a list endpoint returns an empty `data` array with `200`, while a failure returns the error envelope. Route tests cover empty lists for the main resources; the frontend tests assert how each case is shown.
+
 ---
 
 # 16. API Integration Testing
+
+**Status:** `Implemented`; `@trading/contracts` contract tests `Planned (B0)` (ADR-002 point 6)
 
 API integration tests should verify the interaction between:
 
@@ -394,9 +482,21 @@ Tests should cover:
 - business errors;
 - persistence behavior.
 
+Today 14 files in `apps/api/src` (`app.test.ts`, `middleware/*.test.ts`, `routes/*.routes.test.ts`) run Supertest against `createApp()` and a real PostgreSQL database. They sign tokens with the test `JWT_SECRET`, create users and portfolios through `test-utils/fixtures.ts` and clean up after themselves. `pnpm test` in `apps/api` loads `.env.test.local` through `dotenv-cli`.
+
+Code vs ADR:
+
+- The "Application Service" step is the current `apps/api/src/services` code. ADR-001 replaces it with the shared application layer in B0; ADR-001 point 7 keeps these HTTP tests as they are.
+- ADR-002 point 6 turns the same tests into contract tests that validate responses against the `@trading/contracts` Zod schemas. Until B0 they assert shape by hand.
+- Route-parameter validation, `VALIDATION_ERROR` for a malformed ID and `404` for an unknown or foreign ID are `Planned (B0)` (ADR-002 point 10); tests are added with them.
+- Authorization tests today check ownership and the roles `USER` and `ADMIN`; permission-based roles are `Planned (B0)` and `Planned (B2)` (ADR-005), with their tests.
+- Tests that need a database cannot run without PostgreSQL and `.env.test.local`; the CI service container is `Planned (B0)` (ADR-006 point 10).
+
 ---
 
 # 17. Repository Testing
+
+**Status:** `Implemented`
 
 Repositories should be tested independently from application services.
 
@@ -409,9 +509,15 @@ When using PostgreSQL:
 
 Repository tests must not depend on production data.
 
+Today 17 files in `packages/database/src` (one per Prisma repository plus `prisma-unit-of-work.test.ts`) run against the PostgreSQL instance named by `.env.test.local`. Each test creates and removes its own rows. `pnpm test` in `packages/database` loads that file through `dotenv-cli`.
+
+Code vs ADR: ADR-001 requires the `UnitOfWork` contract to guarantee isolation for position updates, with a concurrent-`SELL` test (two `SELL` of 6 on a holding of 10 must not both succeed). That test does not exist; it is `Planned (B0)`. Applying migrations before the suite is a manual step today (`pnpm --filter @trading/database db:test:migrate`); the CI service container applies them automatically (`Planned (B0)`).
+
 ---
 
 # 18. Mock Repository Testing
+
+**Status:** `Planned (B0)` for the in-memory fakes and the shared contract suite; demo use `Planned (FE)`
 
 Mock repositories must implement the same contracts as production repositories.
 
@@ -435,9 +541,15 @@ MockRepository
 
 The frontend must not need different business logic because the repository is mocked.
 
+No in-memory repository exists yet. ADR-001 decides that the fakes written for application-service tests (point 7) are the starting point for the demo's mock repositories (point 4, its own composition root), and that `UnitOfWork` also gets an in-memory implementation with rollback. Behavioral equivalence is checked by one repository contract suite that runs against both the Prisma and the in-memory implementation; the Prisma side is already covered by §17 tests, so the suite is extracted from them in B0.
+
+Code vs ADR: the in-memory `UnitOfWork` must serialize units or roll back only its own writes, so an interleaved rollback cannot erase another unit's committed write (ADR-001 Deferred detail, B0, with its own test).
+
 ---
 
 # 19. Demo Mode Testing
+
+**Status:** `Planned (FE)`
 
 The public demo is a first-class application mode.
 
@@ -461,9 +573,13 @@ Demo Mode must support:
 - transitions;
 - notifications.
 
+The demo runs the application layer in process on in-memory repositories (ADR-001, ADR-006 point 7), so it is tested with the same application-service tests as the backend plus frontend component and end-to-end tests. Demo data layers and reset are not decided (`Deferred`, `05-data-model.md` §34-37; ADR-007 point 15 leaves reset to the frontend-stage demo ADR). The demo scope itself is in `12-demo-mode-spec.md`.
+
 ---
 
 # 20. Demo Simulation Testing
+
+**Status:** `Planned (B5)` for the shared engine; demo wiring `Planned (FE)`
 
 The simulation engine must be deterministic when a seed is supplied.
 
@@ -480,6 +596,8 @@ Event Sequence A
 Running again with the same seed should produce the same sequence where deterministic behavior is expected.
 
 This makes simulations reproducible during testing and interviews.
+
+No simulation engine exists. ADR-007 point 7 decides a pure `@trading/market-sim` package with a seeded pseudo-random generator and an injected clock, shared by real and demo modes, so one test suite covers both. Determinism tests belong to that package in B5: same seed and clock give the same event sequence; different seeds differ; sequence numbers per asset are gapless and restart correctly from persisted state (ADR-007 Deferred detail).
 
 ---
 
