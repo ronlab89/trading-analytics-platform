@@ -603,6 +603,8 @@ No simulation engine exists. ADR-007 point 7 decides a pure `@trading/market-sim
 
 # 21. Realtime Testing
 
+**Status:** server `Planned (B5)`; client `Planned (FE)` (ADR-007, `08-realtime-spec.md` §59)
+
 Realtime behavior must be tested independently from visual rendering.
 
 Tests should cover:
@@ -619,9 +621,26 @@ Tests should cover:
 - stale events;
 - unauthorized subscriptions.
 
+No realtime code exists yet: there is no `ws` dependency, no WebSocket server and no realtime client, so none of these cases has a test. The detailed case list lives in `08-realtime-spec.md` §59 (realtime view) and `09-security-spec.md` §55 (security view). This section maps the list above to them:
+
+| Topic | Rule under test | Block |
+| --- | --- | --- |
+| Connection, heartbeat, limits | Ping every 30 s, close after 2 missed pongs; 50 subscriptions and 20 inbound messages per second per connection; 1 MB outbound buffer; at most 5 connections per user; a limit breach closes with `4008` (ADR-007 points 11 and 15-16, ADR-005 point 13) | B5 |
+| Authentication | Token in the first `AUTHENTICATE` message, never in the URL; no authentication within 5 s closes `4001`; expired token without re-authentication closes `4002`; re-authentication with another `sub` closes the socket (ADR-007 point 2 and Deferred detail) | B5 |
+| Subscription | `SUBSCRIBE` and `UNSUBSCRIBE` answered with `ACK` or `ERROR` (with a `code`) on `market:{assetId}`, `portfolio:{portfolioId}`, `jobs:{jobId}` and `notifications` (ADR-007 points 3 and 15, ADR-008 point 11) | B5 |
+| Unauthorized subscription | Refused like an unknown channel, so existence is not revealed, and logged as `authz.denied` (ADR-005 point 12, ADR-009 point 9) | B5 |
+| Event validation | Every event matches its `@trading/contracts` schema; money is a decimal string (ADR-002, ADR-007 point 4) | B5 server; FE client drops invalid events |
+| Ordering, gaps | `sequence` is monotonic per channel; a gap or an epoch change triggers HTTP resynchronization; there is no replay buffer (ADR-007 point 5) | B5 server; FE client |
+| Deduplication, stale events | Events with an already-seen `sequence` are discarded (NFR-018) | FE |
+| Disconnection, reconnection | §23 | FE, server close codes B5 |
+
+Event names are those of the version 1 catalog: `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED` (ADR-007 point 6) and `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` (ADR-008 point 11). There is no transaction or position event to test. Tests use the injected clock and the seeded engine, never wall time (`08-realtime-spec.md` §59).
+
 ---
 
 # 22. Realtime UI Testing
+
+**Status:** `Planned (FE)` (NFR-004, NFR-005, NFR-006)
 
 The UI should react correctly to realtime events.
 
@@ -641,88 +660,107 @@ Visible Update
 
 Tests should verify that the correct data changes without requiring a full page reload.
 
+What the tests assert, through the realtime transport test double (`08-realtime-spec.md` §42-43):
+
+- A `MARKET_PRICE_UPDATED` event re-renders only components that show that asset or a value derived from it, counted with render counting (NFR-005).
+- The client recomputes valuations from prices; the server pushes no valuation per tick (ADR-007 point 6). `PORTFOLIO_UPDATED` arrives only after a transaction commits.
+- A burst of 100 events in 1 s is applied in at most one render per animation frame (NFR-006); the new price is visible within 100 ms of receipt (NFR-004, §40).
+- Update highlights are disabled under reduced motion (`08-realtime-spec.md` §49, NFR-032).
+
+The component test tooling is `Deferred` (`04-tech-stack.md` §33).
+
 ---
 
 # 23. Reconnection Testing
 
+**Status:** client `Planned (FE)`; server close codes and heartbeat `Planned (B5)` (NFR-018, `08-realtime-spec.md` §7 and §26-30)
+
 The application must recover from temporary realtime failures.
 
-Test scenario:
+Test scenario, using the client connection states of `08-realtime-spec.md` §6-7:
 
 ```text
-Connected
+CONNECTED
+   ↓  socket lost without a close code, or closed with 1001
+RECONNECTING  (backoff 1 s, 2 s, 4 s ... capped at 30 s, with jitter)
    ↓
-Connection Lost
+CONNECTED     (AUTHENTICATE first, each subscription restored once)
    ↓
-Reconnecting
-   ↓
-Retry
-   ↓
-Connected
-   ↓
-Resynchronize State
+Resynchronize state through HTTP
+
+RECONNECTING → FAILED → CONNECTING   (manual retry)
+CONNECTED    → DISCONNECTED          (intentional close: no reconnection)
 ```
 
 The user should receive appropriate feedback.
+
+Feedback is the stale-data indicator of `08-realtime-spec.md` §28: subtle while `CONNECTING`, `RECONNECTING` or `DISCONNECTED`, and a persistent warning with a retry action in `FAILED`. Connection changes create no notification (ADR-010 point 9). While the socket is down the client polls HTTP every 10 s and stops on reconnect (ADR-007 points 12 and 15).
+
+Further cases: a `4002` close refreshes the token and then reconnects (`08-realtime-spec.md` §54); a sequence gap or a new epoch after a server restart triggers resynchronization (§26 of that spec). The previous diagram used ad hoc state names and had no `FAILED` path.
 
 ---
 
 # 24. Background Process Testing
 
+**Status:** job runner `Planned (B4)`; job events `Planned (B5)`; demo jobs `Planned (FE)` (ADR-008)
+
 Background processes should be tested through state transitions.
 
-Example:
+The only background job in version 1 is the CSV transaction import (ADR-008 point 1). Its states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT`; progress is a field, not a state (ADR-008 point 3). No job code or `jobs` table exists yet.
+
+Success path:
 
 ```text
-Queued
+QUEUED
  ↓
-Running
+PROCESSING   (validate every row, progress { processed, total }; then apply in one UnitOfWork)
  ↓
-Progress
- ↓
-Completed
+COMPLETED    (set in the same database transaction as the imported rows)
 ```
 
 Failure paths:
 
 ```text
-Queued
- ↓
-Running
- ↓
-Failed
+PROCESSING (validation) → FAILED, reason VALIDATION_FAILED   (nothing written; not retryable)
+PROCESSING (apply)      → FAILED, reason APPLY_REJECTED or APPLY_ERROR
+server restart          → PROCESSING becomes FAILED, reason INTERRUPTED; QUEUED jobs resume
 ```
 
-Timeout paths:
+Timeout and cancellation paths:
 
 ```text
-Running
- ↓
-Timeout
- ↓
-Recovery / Failed
+QUEUED or validating → TIMED_OUT    (timeout per attempt; the apply stage is exempt)
+QUEUED or validating → CANCELLED    (never during apply)
+TIMED_OUT, CANCELLED, FAILED (INTERRUPTED, APPLY_ERROR, APPLY_REJECTED)
+                     → retry → QUEUED, attempt + 1
 ```
 
 The exact states must follow the realtime and functional requirements.
+
+Tests in B4 also cover: retry or cancel in a state that does not allow it returns 409 `CONFLICT` and changes nothing (ADR-008 point 6); creating an import on an archived portfolio returns 409 (ADR-010 point 5); `COMPLETED` creates a `SUCCESS` notification, `FAILED` and `TIMED_OUT` an `ERROR` one, `CANCELLED` none; every transition is a compare-and-set (ADR-008 Deferred detail). In B5, only `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED` and `JOB_FAILED` are emitted on `jobs:{jobId}`; `CANCELLED` and `TIMED_OUT` emit no event (ADR-007 point 15).
+
+`Idempotency-Key` on transaction and import creation is tested independently of jobs (ADR-008 point 8, `Planned (B4)`): same key and request return the stored response; same key with another request returns 409.
+
+Code vs ADR: the previous diagrams used `Running`, a `Progress` state and a `Timeout → Recovery` path. ADR-008 has no recovery state: `TIMED_OUT` is final until a retry returns the job to `QUEUED`.
 
 ---
 
 # 25. Progress Testing
 
+**Status:** `Planned (B4)`; progress display `Planned (FE)` (ADR-008 points 2-3)
+
 Progress values must be validated.
 
-Expected behavior:
+Expected behavior, with `total` known once the file is parsed:
 
 ```text
-0%
+{ processed: 0, total: 100 }
  ↓
-25%
+{ processed: 25, total: 100 }
  ↓
-50%
+...
  ↓
-75%
- ↓
-100%
+{ processed: 100, total: 100 }
 ```
 
 The system must prevent:
@@ -732,9 +770,13 @@ The system must prevent:
 - impossible state transitions;
 - completion before required work is finished.
 
+Progress is `{ processed, total }`, not a percentage (`08-realtime-spec.md` §20); the UI may derive one. The rules above become: `0 ≤ processed ≤ total`, `processed` never decreases within an attempt, and `JOB_PROGRESS_UPDATED` is emitted only while `PROCESSING`. A job reaches `COMPLETED` only inside the apply transaction (ADR-008 point 5), so completion cannot precede the work. ADR-008 point 2 reports progress during validation; whether the apply stage also reports progress is an Open detail (B4).
+
 ---
 
 # 26. Notification Testing
+
+**Status:** read state, ownership and persistence `Implemented`; creation from alerts `Planned (B5)` and from jobs `Planned (B4)`; realtime delivery `Planned (B5)`; client `Planned (FE)`
 
 Notifications should be tested for:
 
@@ -746,9 +788,24 @@ Notifications should be tested for:
 - realtime delivery;
 - persistence where applicable.
 
+| Case | Status |
+| --- | --- |
+| Read/unread: list with `unreadOnly`, mark one read, mark all read | `Implemented` (`notifications.routes.test.ts`, `prisma-notification-repository.test.ts`) |
+| Another user's notification: 404, left unread; mark-all touches only the caller's | `Implemented` (`notifications.routes.test.ts`) |
+| Persistence (repository create with and without metadata) | `Implemented` (`prisma-notification-repository.test.ts`) |
+| Ordering | Gap: the repository orders by `createdAt` descending, but no test asserts it |
+| Creation by a triggered alert (`WARNING`) | `Planned (B5)` (ADR-007 point 9) |
+| Creation by an import job (`SUCCESS`, `ERROR`; none for `CANCELLED`) | `Planned (B4)` (ADR-008 point 6) |
+| Duplicate prevention: edge-triggered alerts, no notification per tick, no re-fire after restart | `Planned (B5)` (ADR-007 point 9 and Deferred detail) |
+| Realtime delivery: `NOTIFICATION_CREATED` and `ALERT_TRIGGERED` on `notifications` | `Planned (B5)` (ADR-007 point 15) |
+
+Code vs ADR: dismissal is removed from version 1; a notification is only `unread` or `read` (ADR-010 point 3), so there is no dismissal test. Today no endpoint creates notifications; they come from the seed. Connection changes never create one (ADR-010 point 9).
+
 ---
 
 # 27. Table Testing
+
+**Status:** `Planned (FE)`; table library `Deferred` (`04-tech-stack.md` §12)
 
 TanStack Table implementations should test:
 
@@ -763,9 +820,17 @@ TanStack Table implementations should test:
 
 The test should focus on user-visible outcomes rather than TanStack Table internals.
 
+TanStack Table is a candidate, not a decision (`04-tech-stack.md` §12). Scope limits from ADR-010:
+
+- Sorting happens in the client, only for lists loaded in full; paginated lists keep the API order of FR-014 (point 4). A paginated table has no sort test.
+- Column visibility and row selection are `Deferred` (point 9), so they are not tested in version 1.
+- Large datasets follow §41.
+
 ---
 
 # 28. Chart Testing
+
+**Status:** calculated values `Implemented` in domain tests (§7); chart tests `Planned (FE)`; chart library `Deferred` (`04-tech-stack.md` §16)
 
 Charts should be tested primarily through:
 
@@ -780,9 +845,17 @@ Charts should be tested primarily through:
 
 Pixel-perfect chart snapshots should not be the primary testing strategy.
 
+The values a chart plots are computed in `@trading/domain` and the API and are already tested there (drawdown, volatility, allocation, attribution). Chart tests add:
+
+- Period analytics charts change when a daily candle closes, not on every tick (FR-045, `08-realtime-spec.md` §50); only charts that plot ticks react to `MARKET_PRICE_UPDATED`, at most once per frame.
+- Every chart has a text alternative (NFR-031).
+- 5-year daily series meet NFR-008 (§41).
+
 ---
 
 # 29. Authentication Testing
+
+**Status:** login and token checks `Implemented`; expired token, refresh and logout `Planned (B2)`; login timing `Planned (B0)`; client lifecycle `Planned (FE)` (ADR-005)
 
 Authentication tests must include:
 
@@ -806,9 +879,31 @@ Authentication tests must include:
 - cache cleanup;
 - realtime disconnect.
 
+| Case | Status |
+| --- | --- |
+| Valid credentials return a token that `GET /api/v1/auth/me` accepts | `Implemented` (`auth.routes.test.ts`) |
+| Wrong password and unknown email return the same generic 401 | `Implemented` (`auth.routes.test.ts`) |
+| Missing and malformed token on `/auth/me` return 401 | `Implemented` (`auth.routes.test.ts`) |
+| Login rate limit (5 per 15 minutes) returns 429 with the error envelope | `Implemented` (`rate-limit.test.ts`, on an isolated limiter: the real limiters are disabled under `NODE_ENV=test`) |
+| Expired token, wrong algorithm, unknown role return 401 | `Planned (B2)` |
+| Missing account takes comparable time to a wrong password (dummy hash) | `Planned (B0)` (ADR-005 point 13) |
+| Login response `{ user, session: { accessToken, expiresAt } }` | `Planned (B2)` (ADR-005 point 8) |
+| Refresh rotation, reuse detection, parallel refresh, lost response | `Planned (B2)` (ADR-005 points 5-6 and Deferred detail) |
+| Logout revokes the session and clears the cookie; custom header required | `Planned (B2)` (ADR-005 points 6-7) |
+| Client clears cached data and closes the socket on logout | `Planned (FE)` (`08-realtime-spec.md` §54) |
+
+Code vs ADR:
+
+- Only `POST /api/v1/auth/login` and `GET /api/v1/auth/me` exist. There is no refresh and no logout endpoint, and no server-side session: "session creation" means issuing a 15-minute JWT returned as `token`. Sessions, refresh and logout are `Planned (B2)`; until then the logout flow of §33 cannot run.
+- `jwt.verify` already rejects expired tokens, but no test proves it.
+- After logout the access token stays valid until it expires (at most 15 minutes, ADR-005 point 6). The test asserts that the refresh family is revoked and that the client closes the socket, not that the access token stops working.
+- Registration is out of scope (ADR-005 point 10).
+
 ---
 
 # 30. Authorization Testing
+
+**Status:** ownership `Implemented`; roles and permissions `Planned (B0)` (enforcement point) and `Planned (B2)` (role model) (ADR-005)
 
 Authorization tests must include:
 
@@ -828,12 +923,27 @@ Request Portfolio B
   ↓
 Ownership Check
   ↓
-403
+404 (never 403)
 ```
+
+Another user's resource returns 404, never 403, so its existence is not revealed (ADR-005 point 12). The previous diagram showed 403. Cross-user tests are `Implemented` in the `portfolios`, `alerts`, `decisions`, `notifications`, `preferences`, `scenarios` and `watchlist` route tests, and assert that nothing changed. Gap: `transactions.routes.test.ts` has no cross-user case (listing or creating transactions in another user's portfolio).
+
+Roles: the code has `USER` and `ADMIN` (`UserRole`, default `USER`), and no route checks a role. ADR-005 replaces them with `VIEWER`, `TRADER` and `ADMIN`, checked as permissions in the application layer. Planned cases:
+
+| Case | Expected | Block |
+| --- | --- | --- |
+| Allowed role | `TRADER` mutates own resources | B2 |
+| Denied role | `VIEWER` mutating domain data gets 403 | B2 |
+| `VIEWER` self-service | `VIEWER` may update its preferences and mark its notifications read (ADR-005 point 13) | B2 |
+| Administrative access | `ADMIN` has only `simulation:control` beyond `TRADER`; start, pause and mode change need it | B5 |
+| Escalation | A token with an unknown role is rejected with 401; role changes apply at the next refresh, within 15 minutes (ADR-005 point 9) | B2 |
+| Same rules in API and demo | Use-case tests with an `Actor` run once for both (ADR-005 point 3) | B0 |
 
 ---
 
 # 31. Security Testing
+
+**Status:** partial `Implemented` (authentication, ownership, validation, rate limit); the rest by block, as listed in `09-security-spec.md` §55
 
 Security behavior from `09-security-spec.md` must have automated coverage.
 
@@ -848,9 +958,23 @@ At minimum:
 - sensitive error exposure;
 - session isolation.
 
+`09-security-spec.md` §55 is the authoritative case list with a status per case. Mapping of the list above:
+
+| Item | Status |
+| --- | --- |
+| Authentication bypass, malformed tokens | `Implemented` for missing and malformed tokens; expired token, wrong algorithm and unknown role `Planned (B2)` (§29) |
+| Unauthorized resource access | `Implemented` (cross-user 404, §30) |
+| Invalid input | `Implemented` (`validate.test.ts`, route tests); malformed path parameters and unexpected fields `Planned (B0)`; CSV input `Planned (B4)` |
+| Permission escalation | `Planned (B2)` (§30) |
+| Unauthorized realtime subscription | `Planned (B5)` (§21) |
+| Sensitive error exposure | `Planned (B3)` (generic 500, redaction, ADR-009 points 4, 6 and 13) |
+| Session isolation | `Planned (FE)` (`09-security-spec.md` §10) |
+
 ---
 
 # 32. End-to-End Testing
+
+**Status:** `Planned (FE)`; tooling `Deferred` (`04-tech-stack.md` §33)
 
 Playwright will be used for critical user journeys.
 
@@ -870,9 +994,13 @@ Database / Mock Infrastructure
 
 depending on the test environment.
 
+No frontend and no E2E suite exist. Playwright is a working assumption, not a decision (`04-tech-stack.md` §33). There is no public backend (ADR-006 point 2), so the two E2E environments are the local production stack (browser → web → API → PostgreSQL) and the static demo, where the application layer runs in the browser on in-memory repositories (ADR-001, ADR-006 point 7) and there is no API.
+
 ---
 
 # 33. Critical E2E Flows
+
+**Status:** `Planned (FE)`; logout depends on `Planned (B2)`, realtime on `Planned (B5)`
 
 The following flows should have E2E coverage:
 
@@ -946,9 +1074,18 @@ Retry
 Success
 ```
 
+Notes against the ADRs:
+
+- **Authentication:** the logout step needs the B2 logout endpoint (§29).
+- **Transaction:** creation is synchronous (ADR-008 point 12): the updated position is visible as soon as the request returns, with no job. A `SELL` above the held quantity, or an earlier date that would make history negative, fails validation (ADR-003 point 6). Any mutation on an archived portfolio returns 409 (ADR-010 point 5).
+- **Realtime:** the market update arrives as `MARKET_PRICE_UPDATED` and the client recomputes values (ADR-007 point 6).
+- **Failure recovery:** realtime failure shows the stale-data indicator, not an error page (`08-realtime-spec.md` §57).
+
 ---
 
 # 34. Demo-Specific E2E Flows
+
+**Status:** `Planned (FE)`; reset and scripted failures `Deferred` (ADR-010 point 6)
 
 Because the public demo is central to the portfolio, it requires additional E2E coverage.
 
@@ -967,9 +1104,26 @@ At minimum:
 - notifications;
 - logout/reset.
 
+How each item maps to the decisions:
+
+| Item | Decision | Status |
+| --- | --- | --- |
+| Demo entry, simulated login | Controlled demo identity, no registration (ADR-005 points 10-11) | `Planned (FE)` |
+| Demo user selection | Role selector `Viewer`, `Trader`, `Admin`, through the same permission checks as the API (ADR-005 points 3 and 11) | `Planned (FE)` |
+| Portfolio switching, market simulation, realtime price changes | `@trading/market-sim` in the browser, behind the same client-side realtime port (ADR-007 points 7 and 13) | `Planned (FE)` |
+| Alerts | Edge-triggered: one trigger per false-to-true change (ADR-007 point 9) | `Planned (FE)` |
+| Background process execution | The CSV import use case in process, with simulated progress (ADR-008 point 13) | `Planned (FE)` |
+| Intentional failure scenario, retry/recovery | Injectable job failures exist (ADR-008 point 13); scripted failures and simulated latency are `Deferred` | partly `Deferred` |
+| Notifications | `unread` or `read` only; no dismissal (ADR-010 point 3) | `Planned (FE)` |
+| Logout/reset | Logout `Planned (FE)`; reset `Deferred` | partly `Deferred` |
+
+Demo data layers, reset, simulated latency and scripted failures wait for the frontend-stage demo ADR (ADR-010 point 6); their E2E flows are written with it.
+
 ---
 
 # 35. E2E Test Data
+
+**Status:** backend test data `Implemented`; E2E data `Planned (FE)`
 
 E2E tests must use controlled test data.
 
@@ -983,9 +1137,13 @@ Tests should not depend on:
 
 The test environment must be reproducible.
 
+Today the API and database tests create their own data through `apps/api/src/test-utils/fixtures.ts` and the repositories, against a local PostgreSQL test database (`.env.test.example`); nothing calls an external service. All market data is synthetic (ADR-007 point 8): the seed is `MOCK` data with dates relative to the seed run, so E2E assertions must not depend on fixed calendar dates. E2E runs fix the simulator seed and the injected clock (ADR-007 point 7) so price sequences repeat.
+
 ---
 
 # 36. Accessibility Testing
+
+**Status:** `Planned (FE)` (NFR-029 to NFR-032); scanning tool `Deferred` (`04-tech-stack.md` §33)
 
 Accessibility is part of product quality.
 
@@ -1003,9 +1161,13 @@ Tests should cover:
 
 Automated accessibility checks should complement manual keyboard testing.
 
+Targets and measurements come from the NFRs: WCAG 2.2 AA with 0 serious or critical automated violations on core routes (NFR-029); one keyboard-only E2E test per listed workflow, with focus trapped in dialogs and returned on close (NFR-030); live-region assertions for loading, error, stale-data and connection-status changes, and a text alternative for charts (NFR-031); an E2E test with reduced motion emulated (NFR-032). Error announcements use the localized message mapped from the error `code`, in English and Spanish (ADR-010 point 8).
+
 ---
 
 # 37. Responsive Testing
+
+**Status:** `Planned (FE)` (ADR-010 point 9)
 
 Critical user flows should be tested across representative viewport sizes.
 
@@ -1021,9 +1183,13 @@ The goal is not to test every possible resolution.
 
 Priority should be given to layout breakpoints where behavior changes.
 
+The breakpoints are 900 px and 560 px (max-width), and the minimum supported width is 360 px (ADR-010 point 9). Representative widths are therefore one above 900 px, one between 561 px and 900 px, and 360 px.
+
 ---
 
 # 38. Animation Testing
+
+**Status:** `Planned (FE)` (NFR-032)
 
 Animations should not be tested by exact timing unless timing itself is functional.
 
@@ -1037,9 +1203,13 @@ Instead, verify:
 
 Animation timing should remain tolerant to CI execution differences.
 
+With `prefers-reduced-motion: reduce`, non-essential animations, including realtime update highlights, are disabled, and no information is conveyed by motion alone (NFR-032, `08-realtime-spec.md` §49).
+
 ---
 
 # 39. Performance Testing
+
+**Status:** client `Planned (FE)`; server realtime limits `Planned (B5)`; slow-request logging `Planned (B3)`; no performance test exists today
 
 Performance testing should focus on known risk areas.
 
@@ -1054,9 +1224,23 @@ Priority scenarios:
 - background simulation;
 - reconnection.
 
+Each scenario has a measurable target in `03-non-functional-requirements.md`:
+
+| Scenario | Target |
+| --- | --- |
+| Initial load, route navigation | LCP ≤ 2.5 s, CLS ≤ 0.1, INP ≤ 200 ms; navigation response within 100 ms (NFR-001, NFR-002) |
+| Filtering, portfolio switching, dashboard interaction | INP ≤ 200 ms, no main-thread task over 200 ms (NFR-003) |
+| Large historical chart datasets, large tables | §41 (NFR-008) |
+| Frequent realtime updates | §40 (NFR-004 to NFR-006) |
+| Background simulation, reconnection | Server limits and heartbeat (ADR-007 points 11 and 15), tested in B5 |
+
+On the server, requests slower than 500 ms are logged at `warn` (ADR-009 point 8, NFR-017); there is no load test and metrics are `Deferred` (ADR-009 point 10).
+
 ---
 
 # 40. Realtime Performance Tests
+
+**Status:** client `Planned (FE)`; server limits `Planned (B5)` (NFR-004, NFR-005, NFR-006)
 
 Realtime tests should measure whether frequent updates cause unacceptable rendering behavior.
 
@@ -1068,6 +1252,13 @@ The system should demonstrate:
 - stable UI under sustained simulation.
 
 The target of sub-100ms UI updates defined in the product specification should be validated under controlled test conditions.
+
+The targets are those of the NFRs, which replace the product-specification wording:
+
+- A price update is visible within 100 ms of the client receiving the event. This covers application propagation only, not market-data latency (NFR-004).
+- One `MARKET_PRICE_UPDATED` event re-renders only the affected components (NFR-005).
+- A burst of 100 events within 1 s keeps INP ≤ 200 ms and is applied in at most one render per animation frame (NFR-006).
+- The steady load is one tick per second (ADR-007 point 15), driven by the injected clock so the run is repeatable.
 
 ---
 
