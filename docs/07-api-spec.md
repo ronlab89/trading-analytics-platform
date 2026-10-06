@@ -1805,7 +1805,8 @@ number today. Display rounding happens only in the client (ADR-010 point 9).
 
 - Bearer authentication on every `/api/v1` route except auth and health (§9).
 - Role and ownership authorization on the server; client checks are UX only.
-- Zod validation of params, query and body; JSON bodies capped at 100 kB.
+- Zod validation of query and body `Implemented`; of route params `Planned
+  (B0)` (ADR-002 point 10). JSON bodies capped at 100 kB.
 - `helmet` headers and CORS restricted to `CORS_ORIGIN`.
 - Normalized error bodies that never expose stack traces or driver errors.
 
@@ -1922,11 +1923,12 @@ In real mode, starting, pausing and changing the simulation mode require the
 
 Request for `PUT /api/v1/simulation/mode`: `{ "mode": "<wire id>" }`, one
 of `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH`. The lifecycle is
-only `RUNNING <-> PAUSED`; there is no stop and no seed reset.
+only `RUNNING <-> HALTED` (ADR-007 point 16); there is no stop and no
+seed reset.
 
 Errors: 400 `VALIDATION_ERROR` for an unknown mode; 403 `FORBIDDEN` without
-`simulation:control` (ADR-002 point 10). Success bodies and the `PAUSED`
-mode overlap are open details in `08-realtime-spec.md` §40-§41.
+`simulation:control` (ADR-002 point 10). Success bodies and the behavior
+of the `PAUSED` mode are open details in `08-realtime-spec.md` §40-§41.
 
 ---
 

@@ -788,8 +788,9 @@ others). Wire identifiers are SCREAMING_SNAKE_CASE (ADR-007 point 15):
 | Modes | `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH` |
 | Scenarios | `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY` |
 
-The `PAUSED` mode shares its identifier with the `PAUSED` lifecycle state
-(§40); their relation is an Open detail (B5) of §40.
+`PAUSED` is only a mode wire identifier; the lifecycle state is `HALTED`
+(§40, ADR-007 point 16). What the `PAUSED` mode does is an Open detail (B5)
+of §40.
 
 ---
 
@@ -826,7 +827,7 @@ series (NFR-045). After a server restart the engine resumes from persisted
 **Status:** `Planned (B5)` (ADR-007 points 8, 10 and 15)
 
 ```text
-RUNNING <-> PAUSED
+RUNNING <-> HALTED
 ```
 
 - The server simulator runs with the API process; on startup it backfills
@@ -836,10 +837,13 @@ RUNNING <-> PAUSED
   `STARTING` or `STOPPING` state. Reset belongs to the frontend-stage demo
   ADR (ADR-010 point 6).
 
-Open detail (B5): `PAUSED` is both this lifecycle state and a mode wire
-identifier (§37). Whether `PUT /api/v1/simulation/mode` with `PAUSED` is
-the same as `POST /api/v1/simulation/pause` or is rejected, and which mode
-`start` resumes, are not decided (ADR-007 Deferred detail).
+The internal lifecycle state is `HALTED`; `PAUSED` stays only as a mode
+wire identifier (§37, ADR-007 point 16). `POST /api/v1/simulation/pause`
+moves `RUNNING` to `HALTED` and `start` moves it back.
+
+Open detail (B5): whether `PUT /api/v1/simulation/mode` with `PAUSED` stops
+ticking like `pause`, and which mode `start` resumes, are not decided
+(ADR-007 Deferred detail).
 
 ---
 
@@ -858,7 +862,7 @@ Real mode: each endpoint requires the `simulation:control` permission
 
 - Errors follow ADR-002 point 10: 400 `VALIDATION_ERROR` for an unknown
   mode; 403 `FORBIDDEN` without `simulation:control`.
-- The lifecycle is only `RUNNING <-> PAUSED` (§40).
+- The lifecycle is only `RUNNING <-> HALTED` (§40).
 
 Demo: the simulation panel, reset, speed, simulated disconnect and
 simulated errors are decided in the frontend-stage demo ADR (ADR-010

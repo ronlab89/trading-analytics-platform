@@ -420,6 +420,7 @@ market data and assets are shared reference data with no owner.
 | `watchlist:read`, `alert:read` | Own | ✅ | ✅ | ✅ |
 | `watchlist:write`, `alert:write` | Own | — | ✅ | ✅ |
 | `notification:read` | Own | ✅ | ✅ | ✅ |
+| `preference:write`, `notification:update` (mark read) | Own | ✅ | ✅ | ✅ |
 | `market:read`, `asset:read` | Shared | ✅ | ✅ | ✅ |
 | `simulation:control` | Global | — | — | ✅ |
 
@@ -427,16 +428,12 @@ market data and assets are shared reference data with no owner.
 `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode`
 (ADR-007 points 10 and 15, `Planned (B5)`).
 
-> Pending decision: whether a `VIEWER` may change its own preferences
-> (`PATCH /api/v1/preferences`) and notification read state. These are
-> user-scoped self-service mutations; ADR-005 point 2 denies a `VIEWER`
-> "every mutation" without addressing them. Until decided, the matrix
-> omits `preference:write` and `notification:update`.
-
-> Pending decision: ADR-005 point 2 grants `ADMIN` "administrative"
-> permissions, but no administrative endpoint exists or is planned besides
-> simulation control. The matrix lists only `simulation:control` until one
-> is defined.
+Decided (ADR-005 point 13, approved 2026-10-06): a `VIEWER` may update
+its own preferences (`PATCH /api/v1/preferences`) and mark its own
+notifications read; it may not mutate any domain data. `ADMIN` has no
+permission beyond `TRADER` plus `simulation:control` in version 1;
+adding an administrative permission needs a new ADR. Status `Planned
+(B2)`: no permission check exists yet.
 
 > Open detail (B2): the exact permission names per endpoint are fixed with
 > the B2 authorization tests (§55); renaming a permission does not change
@@ -549,7 +546,7 @@ Open detail (B5) owned by `08-realtime-spec.md` §9.
 
 # 18. Input Validation
 
-**Status:** body, query, headers and environment `Implemented` (`apps/api/src/middleware/validate.ts`, `apps/api/src/schemas/`, `apps/api/src/config/env.ts`); route parameters `Planned (B0)` (NFR-021); schemas in `@trading/contracts` `Planned (B0)` (ADR-002 points 1-2); WebSocket messages `Planned (B5)` (ADR-007 points 4 and 15); CSV files `Planned (B4)` (ADR-008 point 10)
+**Status:** body, query, headers and environment `Implemented` (`apps/api/src/middleware/validate.ts`, `apps/api/src/schemas/`, `apps/api/src/config/env.ts`); route parameters `Planned (B0)` (ADR-002 point 10, NFR-021); schemas in `@trading/contracts` `Planned (B0)` (ADR-002 points 1-2); WebSocket messages `Planned (B5)` (ADR-007 points 4 and 15); CSV files `Planned (B4)` (ADR-008 point 10)
 
 All external input is validated before it reaches a service (NFR-021).
 
@@ -557,7 +554,7 @@ All external input is validated before it reaches a service (NFR-021).
 | --- | --- | --- |
 | Request body | Zod schema per route, `validate(schema, "body")` | `Implemented` |
 | Query parameters | Zod schema per route, `validate(schema, "query")` | `Implemented` |
-| Route parameters | Ownership-scoped lookup; no schema | `Planned (B0)` |
+| Route parameters | Zod schema per route (ADR-002 point 10); today an ownership-scoped lookup with no schema | `Planned (B0)` |
 | JSON syntax and size | `express.json({ limit: "100kb" })` (§27) | `Implemented` |
 | Headers | `Authorization` parsed by `authenticate` (§16); `X-Request-ID` checked against an allowlist (§30) | `Implemented` |
 | Environment variables | Zod schema at startup; invalid configuration stops the process | `Implemented` |
@@ -569,15 +566,15 @@ moves them to `@trading/contracts` in B0, so the API, the demo adapter and
 the client share one set.
 
 Code today: `validate` accepts only `query` and `body`; controllers read
-route parameters such as `:portfolioId` as plain strings. NFR-021 and
-`07-api-spec.md` §45 require path parameters to be parsed too. An unknown
-or malformed ID already returns 404, because every lookup is parameterized
-and scoped to the owner (§15, §21), so the gap is a validation
-inconsistency, not an access risk.
+route parameters such as `:portfolioId` as plain strings. NFR-021 requires
+path parameters to be parsed too, and `07-api-spec.md` §45 lists them as
+`Planned (B0)`. An unknown or malformed ID returns 404 today, because
+every lookup is parameterized and scoped to the owner (§15, §21), so the
+gap is a validation inconsistency, not an access risk.
 
-> Open detail (B0): whether a malformed path parameter returns 400
-> `VALIDATION_ERROR` from a schema or keeps returning 404 from the lookup.
-> The choice is recorded in `07-api-spec.md` with the contracts move.
+Decided (ADR-002 point 10, approved 2026-10-06): route parameters are
+schema-validated in B0. A malformed value returns 400 `VALIDATION_ERROR`;
+a well-formed ID that does not exist or is not owned still returns 404.
 
 ---
 
@@ -1035,9 +1032,11 @@ Server limits per connection (`08-realtime-spec.md` §7, §48):
 Exceeding a limit closes the socket with `4008` (`08-realtime-spec.md`
 §7, §9).
 
-> Pending decision: a limit on concurrent connections per user or per
-> IP. ADR-007 fixes limits per connection only; unauthenticated sockets
-> are bounded by the 5-second timeout, authenticated ones by nothing.
+Decided (ADR-005 point 13, ADR-007 point 16, approved 2026-10-06):
+concurrent connections are capped per authenticated user, not per IP. The
+v1 value is 5 per user, and an excess connection closes with `4008`.
+Status `Planned (B5)`. Numeric tuning is an Open detail (B5).
+Unauthenticated sockets stay bounded by the 5-second timeout.
 
 ---
 
@@ -1110,24 +1109,24 @@ any value in `.env` overrides. They protect a local-only database
 
 # 38. Least Privilege
 
-**Status:** environment separation `Implemented` (`packages/database/package.json`, `PROGRESS.md` §2.3); non-root API container `Planned (B7)` (ADR-006 point 4); database role privileges Pending decision
+**Status:** environment separation `Implemented` (`packages/database/package.json`, `PROGRESS.md` §2.3); non-root API container `Planned (B7)` (ADR-006 point 4); separate runtime database role `Planned (B0)` (ADR-005 point 13)
 
 | Concern | Today | Target |
 | --- | --- | --- |
 | Development vs test data | Separate databases: `.env` for development, `.env.test.local` for tests (`db:test:migrate`, `test` scripts) | `Implemented` |
 | Development vs local production | One local stack (ADR-006 points 1 and 8) | `production` values set in the `full` profile, `Planned (B7)` |
 | API process | Runs as the developer's user | Non-root user in the multi-stage Dockerfile (ADR-006 point 4), `Planned (B7)` |
-| Database role | The Compose `POSTGRES_USER`, which the PostgreSQL image creates as a superuser; the test database is owned by the same role | See the pending decision below |
+| Database role | The Compose `POSTGRES_USER`, which the PostgreSQL image creates as a superuser; the test database is owned by the same role | A separate non-superuser runtime role with data access only; DDL stays with the migration role, `Planned (B0)` |
 
 Code today: the API, the migrations and the tests connect with the same
 role. `prisma migrate dev` needs to create a shadow database, and startup
 applies `prisma migrate deploy` (ADR-006 point 5), so the role that runs
 migrations needs DDL rights.
 
-> Pending decision: whether the API connects at runtime with a separate
-> role limited to data access, keeping DDL rights for the migration role
-> only. No ADR addresses database role privileges; ADR-006 keeps the
-> database local only.
+Decided (ADR-005 point 13, approved 2026-10-06): the API connects at
+runtime with a separate non-superuser role limited to data access, and
+only the migration role keeps DDL rights. `Planned (B0)`. ADR-006 keeps
+the database local only.
 
 ---
 
@@ -1444,9 +1443,10 @@ Code today: an unknown email returns without running a `bcrypt`
 comparison, so it responds measurably faster than a wrong password for an
 existing account. The message is identical; the timing is not.
 
-> Pending decision: whether login equalizes timing, for example by
-> comparing against a fixed dummy hash when the user or credential is
-> missing. ADR-005 and NFR-019 require the generic message only.
+Decided (ADR-005 point 13, approved 2026-10-06): login equalizes timing.
+When the user does not exist, it runs a `bcryptjs` verification against a
+fixed dummy hash, so a missing account and a wrong password take
+comparable time. `Planned (B0)`.
 
 ---
 

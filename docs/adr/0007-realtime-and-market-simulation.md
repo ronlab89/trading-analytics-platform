@@ -125,7 +125,8 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
       `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode` with
       body `{ "mode": "<wire id>" }`, all requiring `simulation:control`.
       Errors follow ADR-002 point 10.
-    - **Real-mode lifecycle.** Only `RUNNING <-> PAUSED`. Real mode has no
+    - **Real-mode lifecycle.** Only `RUNNING <-> HALTED` (renamed from
+      `PAUSED` by point 16). Real mode has no
       stop and no seed reset; reset belongs to the frontend-stage demo ADR
       (ADR-010 point 6).
     - **Timing.** The simulator ticks every 1 second. While the socket is
@@ -134,6 +135,18 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
       `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH`. Scenarios:
       `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`,
       `SHARP_DRAWDOWN`, `RECOVERY`.
+16. **Lifecycle state name and connection cap** (added 2026-10-06, approved
+    by the user, from the `09-security-spec.md` and `08-realtime-spec.md`
+    reconciliation):
+    - **`HALTED`.** The internal lifecycle state is `HALTED`, not `PAUSED`.
+      `PAUSED` stays only as a mode wire identifier (point 15), so the two
+      no longer share a name. The lifecycle is `RUNNING <-> HALTED`.
+      `POST /api/v1/simulation/pause` moves `RUNNING` to `HALTED` and
+      `POST /api/v1/simulation/start` moves `HALTED` to `RUNNING`; the
+      endpoint paths are unchanged.
+    - **Connection cap.** Concurrent WebSocket connections are capped per
+      authenticated user, not per IP (ADR-005 point 13; v1 value 5, tuned
+      in B5).
 
 ## Consequences
 
@@ -191,7 +204,7 @@ specified and tested in the listed block.
 | Alert armed/triggered state is not persisted (re-fires after restart), oscillation around the threshold fires repeatedly, and the initial state of a new, already-true alert is undefined. | Persist `armed` and `lastTriggeredAt` in the same transaction as the notification. Re-arm only past a hysteresis band or after a cooldown. Define the initial state. | B5 |
 | After a restart the simulator restarts from the seed state and `MarketEvent.sequence` restarts. | Initialize the engine from persisted `MarketPrice` and `MAX(sequence)` per asset. Make `(assetId, sequence)` unique. | B5 |
 | Re-authentication on the same socket with another user's token keeps the previous user's `notifications` subscription. | Reject re-authentication when `sub` changes and close the socket. | B5 |
-| `PAUSED` names both a mode and a lifecycle state (point 15), so `PUT /api/v1/simulation/mode` with `PAUSED` overlaps `POST /api/v1/simulation/pause`, and the mode `start` resumes into is unstated. | Define whether the `PAUSED` mode is the lifecycle state or is rejected by the mode endpoint, and which mode `start` resumes. | B5 |
+| What the `PAUSED` mode does (point 16 renamed the lifecycle state to `HALTED`): whether `PUT /api/v1/simulation/mode` with `PAUSED` stops ticking like `POST /api/v1/simulation/pause`, and which mode `start` resumes into. | Define the `PAUSED` mode's behavior relative to `HALTED`, and which mode `start` resumes. | B5 |
 
 ## Related
 

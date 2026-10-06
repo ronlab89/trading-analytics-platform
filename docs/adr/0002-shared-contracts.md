@@ -70,7 +70,7 @@ format shared by the API, the web app and the demo.
    `scenario-impact.ts` computes `1 + percentChange / 100` in floating point.
    This rule replaces both in B0.
 10. **API contract details** (added 2026-10-05, from the `07-api-spec.md`
-    reconciliation):
+    reconciliation; route parameters added 2026-10-06):
     - **Error codes.** `DEPENDENCY_ERROR` returns 503 when the database is
       unreachable. `FORBIDDEN` returns 403 and is used by role checks from
       B2. `TIMEOUT` is removed from `AppErrorCode` in B0.
@@ -93,6 +93,11 @@ format shared by the API, the web app and the demo.
       is `1M`.
     - **Theme.** `UserPreference.theme` accepts `light`, `dark` or
       `system` (default `system`); other values are 400. Implemented in B0.
+    - **Route parameters.** Route parameters (for example `:portfolioId`)
+      are validated with a Zod schema, like body and query (NFR-021). A
+      malformed value returns 400 `VALIDATION_ERROR`; a well-formed ID that
+      does not exist or is not owned still returns 404 (ADR-005 point 12).
+      `Planned (B0)`: today `validate` accepts only `query` and `body`.
 
 ## Consequences
 

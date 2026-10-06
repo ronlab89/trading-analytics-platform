@@ -41,10 +41,11 @@ live there rather than only in Express middleware.
 2. **Permissions.** An explicit permission matrix (for example
    `portfolio:read`, `transaction:create`, `simulation:control`). Roles are
    sets of permissions. Code checks permissions, never role names.
-   - `VIEWER`: read permissions on own resources.
+   - `VIEWER`: read permissions on own resources, plus the self-service
+     exceptions of point 13.
    - `TRADER`: `VIEWER` plus every supported mutation on own resources.
-   - `ADMIN`: `TRADER` plus administrative and simulation-control
-     permissions.
+   - `ADMIN`: `TRADER` plus `simulation:control` (point 13 fixes the v1
+     scope).
    The full matrix is maintained in `09-security-spec.md`.
 3. **Enforcement point.** The application layer. Every use case receives an
    `Actor { userId, role }` and checks both permission and ownership. The API
@@ -76,6 +77,26 @@ live there rather than only in Express middleware.
 12. **Existing behavior recorded.** Passwords are hashed with `bcryptjs`.
     Login is rate-limited to 5 attempts per 15 minutes. Access to another
     user's resource returns 404, never 403, so existence is not revealed.
+13. **Security details** (added 2026-10-06, approved by the user, from the
+    `09-security-spec.md` reconciliation):
+    - **`VIEWER` self-service.** A `VIEWER` may update its own preferences
+      and mark its own notifications read. It may not mutate any domain
+      data. This is the only exception to point 2's "no mutations" rule for
+      `VIEWER`.
+    - **`ADMIN` scope.** In version 1, `ADMIN` has no permission beyond
+      `TRADER` plus `simulation:control`. Adding an administrative
+      permission needs a new ADR.
+    - **WebSocket connection cap.** Per authenticated user, not per IP. The
+      v1 value is 5 concurrent connections per user; numeric tuning is a
+      deferred detail (B5). It complements the per-connection limits of
+      ADR-007 points 11 and 15, and an excess connection closes with `4008`.
+    - **Runtime database role.** The API connects at runtime with a
+      separate non-superuser role limited to data access. Only the
+      migration role keeps DDL rights. `Planned (B0)`.
+    - **Login timing.** When the user does not exist, login still runs a
+      `bcryptjs` verification against a fixed dummy hash, so a missing
+      account and a wrong password take comparable time. The generic
+      message of point 12 is unchanged. `Planned (B0)`.
 
 ## Consequences
 
@@ -125,6 +146,7 @@ specified and tested in the listed block.
 | The refresh token family and its cookie have no lifetime. | An idle timeout and an absolute family lifetime (`expiresAt` in the sessions table, cookie `Max-Age`). | B2 |
 | `USER` → `TRADER` enum migration: Prisma's generated migration recreates the enum and fails on existing rows, `@default(USER)` breaks, and old JWTs carry `role: "USER"`. | A hand-written migration with `RENAME VALUE 'USER' TO 'TRADER'` and `ADD VALUE 'VIEWER'`, an updated default, and unknown roles rejected with 401. | B2 |
 | The `Secure` cookie on the local production stack has no HTTPS. | Serve on `localhost`, which browsers treat as secure, and document it; or make `Secure` environment-dependent. | B2 |
+| The numeric value of the per-user WebSocket connection cap (point 13). | Start at 5 concurrent connections per user; tune against real usage. | B5 |
 
 ## Related
 
