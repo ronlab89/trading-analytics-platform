@@ -185,7 +185,13 @@ Product decisions that no ADR covers are asked to the user in batches.
   - Simulator control routes are left to `08`.
 - [ ] T4.2 `08`, `09`, `10`
   - [x] `08` slice A (§1-22, `5f0d43e`) and slice B (§23-41) done.
-  - [ ] `08` slice C (§42-62).
+  - [x] `08` slice C (§42-62), route: delegated writer; `pnpm docs:check` and `pnpm lint` pass.
+    - All 21 sections have a status. Nothing is `Implemented`: no realtime code exists yet.
+    - No new product decisions. Open details went to B5 (5 items) and FE (3 items).
+    - Follow-up: §7 has no transition out of `CONNECTED`; §42 assumes `RECONNECTING`.
+    - For T5.3: `BACKEND-ROADMAP.md` B5 predates ADR-007 (`notifications:{userId}`, "eleven events", settled open decisions, stale §47-51 citations).
+    - Mismatch: `06` §20 says job events are `Planned (B4)`, while `08` §13 and §20 say B5.
+    - `12` and `13` will need their realtime event names and disconnect scenarios aligned (T5.1).
   - [ ] User decision on the pending `08` items, one batch:
     - the `ALERT_TRIGGERED` channel;
     - whether `CANCELLED` and `TIMED_OUT` jobs emit events;
@@ -237,13 +243,12 @@ Product decisions that no ADR covers are asked to the user in batches.
 Paused 2026-10-05 by the user. Phase 4 is in progress on `docs/sdd-contracts`:
 
 - T4.1 (`07`) is done.
-- T4.2: `08` slices A and B are done.
+- T4.2: `08` slices A, B and C are done (2026-10-06).
 
 Resume with:
 
-1. `08` slice C (§42-62).
-2. Present the `08` decision table to the user.
-3. `09` in 3 slices, then `10` in 3 slices.
-4. Close Phase 4: `pr-body.md` and the `gh` command, which the user runs.
+1. Present the `08` decision table to the user and apply the answers, together with the §7 `CONNECTED` transition and the `06` §20 B4/B5 mismatch.
+2. `09` in 3 slices, then `10` in 3 slices.
+3. Close Phase 4: `pr-body.md` and the `gh` command, which the user runs.
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.
