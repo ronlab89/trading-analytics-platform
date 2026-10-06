@@ -203,7 +203,10 @@ Product decisions that no ADR covers are asked to the user in batches.
     - whether real mode has stop or seed reset;
     - the tick interval and the HTTP polling interval while the socket is down;
     - wire identifiers for modes and scenarios.
-  - [ ] `09` in 3 slices.
+  - [x] `09` in 3 slices (2026-10-06), route: delegated writer per slice; `pnpm docs:check` and `pnpm lint` pass each time. A §1-17 `3ad8727`, B §18-35 `4982b6e`, C §36-58 (this commit). Each stop-hook candidate (base `d55fce2`) was declined by the user.
+    - Every section has a status; code-vs-ADR differences are recorded per block (roles `USER`/`ADMIN` vs ADR-005, no refresh/logout, params not schema-validated, `{ field, message }` details, superuser DB role, unbound Postgres port, `DATABASE_URL` not validated, login timing).
+    - Pending user decisions: (1) `VIEWER` self-service mutations (preferences, mark notifications read); (2) `ADMIN` permissions beyond `simulation:control`; (3) WebSocket connection cap per user or IP; (4) separate runtime DB role; (5) login timing equalization; (6) confirm route-param validation in B0.
+    - For later tasks: `BACKEND-ROADMAP.md` B2 (`requireRole`, settled decisions) and B7 (CI) are stale (T5.3); `07` §45 and NFR-021 claim params are validated; NFR-019/022/023 name missing tests; `13` names `auth.logout`, which ADR-009 lacks (T5.1); `PROGRESS.md` §7 search debt is assets only (T5.3).
   - [ ] `10` in 3 slices.
 
 ### Phase 5 — Operations and living docs
@@ -244,12 +247,12 @@ Product decisions that no ADR covers are asked to the user in batches.
 Paused 2026-10-05 by the user. Phase 4 is in progress on `docs/sdd-contracts`:
 
 - T4.1 (`07`) is done.
-- T4.2: `08` slices A, B and C are done (2026-10-06).
+- T4.2: `08` (slices A-C plus ADR-007 point 15) and `09` (slices A-C) are done (2026-10-06). Paused by the user after `09`.
 
 Resume with:
 
-1. User decision on the `PAUSED` mode vs lifecycle overlap (ADR-007 Deferred detail).
-2. `09` in 3 slices, then `10` in 3 slices — only when the user says to continue.
+1. User decisions: the `PAUSED` mode vs lifecycle overlap (ADR-007 Deferred detail) and the six `09` items above.
+2. `10` in 3 slices — only when the user says to continue.
 3. Close Phase 4: `pr-body.md` and the `gh` command, which the user runs.
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.

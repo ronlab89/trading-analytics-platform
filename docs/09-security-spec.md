@@ -1040,432 +1040,631 @@ Exceeding a limit closes the socket with `4008` (`08-realtime-spec.md`
 
 # 36. Database Security
 
-Database access must occur only through backend infrastructure.
+**Status:** `Implemented` (`packages/database/src/client.ts`, `packages/database/src/repositories/`; ADR-001); use cases behind the application layer `Planned (B0)` (ADR-001 point 1); public demo without a database `Planned (FE)` (ADR-006 points 1-2 and 7)
 
-The frontend must never connect directly to PostgreSQL.
-
-Architecture:
+Only backend infrastructure reaches PostgreSQL. The browser never
+connects to it, and the public demo has no database at all (ADR-006
+point 7).
 
 ```text
-Browser
-  X
-  │
-  └── PostgreSQL
+Browser ──X──> PostgreSQL
 
 Browser
   ↓
-API
+API (Express)
   ↓
-Repository
+Application use case        ← Planned (B0)
   ↓
-Prisma
+Repository (@trading/database)
+  ↓
+Prisma client
   ↓
 PostgreSQL
 ```
+
+- `packages/database/src/client.ts` is the only module that imports the
+  generated Prisma client; every repository uses its shared `prisma`
+  instance.
+- Services in `apps/api/src/services/` import repository classes from
+  `@trading/database`, never the Prisma client. The only direct client
+  call is the input-free health query (§21).
+- All queries are parameterized through Prisma (§21).
+
+Code today: the Compose file publishes PostgreSQL on host port
+`${DATABASE_PORT:-5432}` without a bind address, so it listens on every
+host interface, not only `localhost`.
+
+> Open detail (B7): whether the Compose port binds to `127.0.0.1` only.
+> ADR-006 point 4 keeps PostgreSQL in the default profile; the binding is a
+> hardening detail of that profile.
 
 ---
 
 # 37. Database Credentials
 
-Database credentials must exist only on the server.
+**Status:** `Implemented` (`.gitignore`, `packages/database/prisma/schema.prisma`, `apps/api/src/controllers/health.controller.ts`; NFR-022, NFR-023); demo build `Planned (FE)` (ADR-006 point 7)
 
-They must never be:
+Database credentials exist only on the server, in `DATABASE_URL`, which
+Prisma reads from the environment (`env("DATABASE_URL")`).
 
-- committed;
-- returned through an API;
-- embedded into frontend builds;
-- included in mock data;
-- written to logs.
+| Never | Control | Status |
+| --- | --- | --- |
+| Committed | `.env`, `.env.local` and `.env.*.local` are ignored; only `*.example` files are tracked (§43) | `Implemented` |
+| Returned by the API | Health reports `database: "ok"` or `unavailable`, never a connection string or driver error (§28) | `Implemented` |
+| Embedded in the frontend build | The demo build has no backend and no secrets (ADR-006 point 7) | `Planned (FE)` |
+| Included in mock or seed data | Seed data holds no infrastructure credentials (§42) | `Implemented` |
+| Written to logs | The health log line carries `errorName` only; redaction list (§49) | `Implemented`; redaction `Planned (B3)` |
+
+Code today: `docker-compose.yml` carries development defaults for
+`DATABASE_USER` and `DATABASE_PASSWORD` (`trading_dev_password`), which
+any value in `.env` overrides. They protect a local-only database
+(ADR-006 point 1) and are not secrets of a deployed system.
+
+> Open detail (B7): whether the `full` Compose profile (ADR-006 point 4)
+> keeps these committed defaults or requires the values from `.env`.
 
 ---
 
 # 38. Least Privilege
 
-Infrastructure credentials should have only the permissions they require.
+**Status:** environment separation `Implemented` (`packages/database/package.json`, `PROGRESS.md` §2.3); non-root API container `Planned (B7)` (ADR-006 point 4); database role privileges Pending decision
 
-The application database user should not automatically have unrestricted administrative privileges.
+| Concern | Today | Target |
+| --- | --- | --- |
+| Development vs test data | Separate databases: `.env` for development, `.env.test.local` for tests (`db:test:migrate`, `test` scripts) | `Implemented` |
+| Development vs local production | One local stack (ADR-006 points 1 and 8) | `production` values set in the `full` profile, `Planned (B7)` |
+| API process | Runs as the developer's user | Non-root user in the multi-stage Dockerfile (ADR-006 point 4), `Planned (B7)` |
+| Database role | The Compose `POSTGRES_USER`, which the PostgreSQL image creates as a superuser; the test database is owned by the same role | See the pending decision below |
 
-Development and production credentials must be separated.
+Code today: the API, the migrations and the tests connect with the same
+role. `prisma migrate dev` needs to create a shadow database, and startup
+applies `prisma migrate deploy` (ADR-006 point 5), so the role that runs
+migrations needs DDL rights.
+
+> Pending decision: whether the API connects at runtime with a separate
+> role limited to data access, keeping DDL rights for the migration role
+> only. No ADR addresses database role privileges; ADR-006 keeps the
+> database local only.
 
 ---
 
 # 39. Sensitive Data
 
-The system should minimize stored sensitive information.
+**Status:** `Implemented` (`packages/database/prisma/schema.prisma`, `apps/api/src/services/auth.service.ts`; NFR-022); sessions `Planned (B2)` (ADR-005 point 5); job input and idempotency records `Planned (B4)` (ADR-008 points 4 and 8)
 
-The application does not need real financial account credentials or real banking information.
+The system stores as little sensitive data as its features need. It holds
+no real financial account data (§40).
 
-The demo must use synthetic data.
+| Data | Storage | Exposure rule | Status |
+| --- | --- | --- | --- |
+| Password | `Credential.passwordHash`, a `bcryptjs` hash in its own table (`05-data-model.md` §5.2) | Never returned or logged (§52) | `Implemented` |
+| Email, display name | `User` (`05-data-model.md` §5) | Returned only to the user themself (`GET /auth/me`); logs carry `userId` only (ADR-009 point 3) | `Implemented`; logs `Planned (B3)` |
+| Refresh token | Sessions table, hash only (`05-data-model.md` §5.3) | Cookie only (§8) | `Planned (B2)` |
+| Successor refresh token | Encrypted at rest for the grace window only, then cleared (ADR-005 Deferred detail) | Never logged | `Planned (B2)` |
+| CSV import input | The `jobs` row, bounded in size (`05-data-model.md` §52) | Owner only (ADR-008 point 9); never logged (ADR-009 Deferred detail) | `Planned (B4)` |
+| Idempotency records | Request hash and stored response per user, 24 hours (ADR-008 point 8) | Replayed only to the same user | `Planned (B4)` |
+| Portfolio and transaction data | Domain tables | Owner only (§14, §15) | `Implemented` |
+
+The demo uses synthetic data only (§42).
+
+> Open detail (B2): the encryption key and algorithm for the successor
+> refresh token, and how the key is provided (§43). ADR-005 requires
+> encryption at rest without fixing either.
 
 ---
 
 # 40. Financial Data Boundary
 
-Trading Analytics Platform is a portfolio engineering project.
+**Status:** `Implemented` (no surface: `packages/database/prisma/schema.prisma` has no credential, account or payment field besides `Credential.passwordHash`; ADR-003, ADR-006 point 2)
 
-It must not store or process real brokerage credentials.
+Trading Analytics Platform is a portfolio engineering project. It never
+stores, requests or processes:
 
-No real:
+- broker or exchange API keys;
+- bank, brokerage or payment credentials;
+- real trading account information.
 
-- API keys;
-- bank credentials;
-- brokerage credentials;
-- payment credentials;
-- private trading account information
+- Portfolios are sets of holdings with no cash balance and no link to any
+  external account (ADR-003 point 2). Transactions are recorded by the
+  user, not executed.
+- Market data comes from the internal simulator (ADR-007), not a real
+  market API, so the system needs no provider key.
+- CSV import reads a file the user uploads; it never connects to a broker
+  (ADR-008 point 1).
 
-should be required by the demo.
+Adding any external financial integration requires a new ADR.
 
 ---
 
 # 41. Demo Mode Security
 
-Demo Mode must operate using synthetic identities and data.
+**Status:** `Planned (FE)` (ADR-005 point 11, ADR-006 point 7, ADR-001); demo data layers, reset and failure scripting `Deferred` (ADR-010 point 6)
 
-The demo should never request real:
+The public demo is a static build of `apps/web` that runs the application
+in process with demo adapters (ADR-001, ADR-006 point 1).
 
-- passwords;
-- financial credentials;
-- API keys;
-- brokerage tokens.
+- Identity: a controlled demo identity with a role selector (Viewer,
+  Trader, Admin). It never asks for a real password, financial
+  credential, API key or brokerage token (ADR-005 point 11,
+  `12-demo-mode-spec.md` §55).
+- Same rules: demo use cases run the same permission and ownership checks
+  as the API (§2 principle 13, `12-demo-mode-spec.md` §57). Because the
+  demo has no server, these checks give behavior parity, not security
+  (NFR-026).
+- Separation: no calls to any backend, no secrets in the build, and
+  namespaced browser storage (ADR-006 point 7). The demo never falls back
+  to real infrastructure (`12-demo-mode-spec.md` §59).
 
-The simulation environment must be clearly separated from production infrastructure.
+Code today: `apps/web` contains only a wireframe.
+
+ADR-010 point 6 leaves the demo data layers, reset, simulated latency and
+scripted failures to a frontend-stage ADR. `12-demo-mode-spec.md` is not
+reconciled yet; where it conflicts with an ADR, the ADR wins.
 
 ---
 
 # 42. Mock Data
 
-Mock data must contain no real personal information.
+**Status:** seed data `Implemented` (`packages/database/src/seed/data/`); demo datasets `Deferred` (ADR-010 point 6)
 
-Examples should use synthetic:
+Seed and demo data contain no real personal information. Users,
+portfolios, transactions, assets, notifications and market events are
+synthetic.
 
-```text
-users
-portfolios
-transactions
-assets
-notifications
-market events
-```
+- The seed creates one demo user (`demo@trading-analytics.dev`) with
+  synthetic portfolios and history (`seed/data/user.ts`,
+  `seed-users-and-portfolios.ts`).
+- Identifiers are generated (`cuid()`), not copied from real systems.
+- Asset symbols and names are fictional or public market symbols with
+  simulated prices (ADR-007); they are not translated (ADR-010 point 8).
 
-Identifiers should also be synthetic.
+Code today: `seed/data/credential.ts` documents the demo user's plaintext
+password on purpose, next to its pre-computed `bcryptjs` hash. The
+password is synthetic and protects only local seed data; the seed never
+runs automatically (ADR-006 point 5).
 
 ---
 
 # 43. Secrets Management
 
-Secrets must be provided through environment configuration.
+**Status:** `Implemented` (`apps/api/src/config/env.ts`, `.gitignore`; NFR-023); `DATABASE_URL` startup validation `Planned (B7)`; demo build `Planned (FE)` (ADR-006 point 7)
 
-Example:
+Secrets come from environment configuration only.
 
-```text
-JWT_SECRET
-DATABASE_URL
-```
+| Variable | Secret | Validation | Status |
+| --- | --- | --- | --- |
+| `JWT_SECRET` | Yes | At least 32 characters; otherwise the API exits with code 1 | `Implemented` |
+| `DATABASE_URL` | Yes | Read by Prisma; not part of the API schema | Startup check `Planned (B7)` |
+| `PORT`, `JWT_EXPIRES_IN_SECONDS`, `CORS_ORIGIN`, `NODE_ENV` | No | Zod schema with defaults | `Implemented` |
+| `APP_MODE` / `VITE_APP_MODE` | No | `real` or `demo` (ADR-006 point 8) | `Planned (FE)` |
 
-Environment files containing secrets must not be committed.
+- `.env`, `.env.local` and `.env.*.local` are ignored. Only
+  `.env.example` and `.env.test.example` are tracked, and they hold
+  placeholders only.
+- Invalid configuration logs which keys failed, never their values
+  (`env.ts`, §28).
+- Only `VITE_`-prefixed variables reach the web build, and none of them
+  is a secret (ADR-006 point 7).
 
-A safe example configuration may be committed:
+Code today: `env.ts` does not validate `DATABASE_URL`. A missing or
+malformed value surfaces at the first query, through readiness, instead
+of at startup as NFR-023 requires for required secrets.
 
-```text
-.env.example
-```
-
-but must contain placeholders only.
+> Open detail (B7): adding `DATABASE_URL` to the startup schema, with the
+> canonical variable list of ADR-006 point 8.
 
 ---
 
 # 44. Dependency Security
 
-Dependencies should be:
+**Status:** lockfile and build-script allowlist `Implemented` (`pnpm-lock.yaml`, `pnpm-workspace.yaml`); frozen-lockfile install in CI `Planned (B0)` (ADR-006 point 10); audit `Planned (B7)` (NFR-024)
 
-- actively maintained;
-- from trusted sources;
-- kept reasonably current;
-- reviewed before introduction.
+| Control | Mechanism | Status |
+| --- | --- | --- |
+| Reproducible installs | `pnpm-lock.yaml` committed; `packageManager` pinned in `package.json` | `Implemented` |
+| Install scripts | `allowBuilds` in `pnpm-workspace.yaml` lists the only packages allowed to run build scripts (Prisma, esbuild) | `Implemented` |
+| Clean-checkout install | One GitHub Actions workflow installs with the lockfile (ADR-006 point 10) | `Planned (B0)` |
+| Vulnerability check | `pnpm audit --prod --audit-level=high` reports 0 high or critical advisories, or each is recorded with a reason (NFR-024) | `Planned (B7)` |
 
-Security updates should be prioritized.
+Dependencies are actively maintained, come from the npm registry, are
+reviewed before they are added (§45), and are kept reasonably current.
+Security updates take priority over feature work.
 
-The project should periodically run dependency vulnerability checks.
+Accepted exception (NFR-024): the minimal CI does not run the audit and no
+automated update bot is configured; the audit is a manual step of the
+`14-deployment-spec.md` §78 checklist.
+
+Code today: `.github/` holds only `PULL_REQUEST_TEMPLATE.md`; there is no
+workflow yet.
 
 ---
 
 # 45. Dependency Policy
 
-A dependency should not be introduced only because it provides a convenient shortcut around understanding the security boundary.
+**Status:** `Reference`; explicit tests per mechanism as listed in §55
 
-Security-critical behavior should remain understandable and testable.
+A dependency is never added as a shortcut around understanding a security
+boundary. Security-critical behavior stays understandable and testable:
 
-Examples:
-
-```text
-JWT verification
-Authorization rules
-Resource ownership
-Input validation
-```
-
-must have explicit tests.
+| Mechanism | Library | Behavior owned by the project | Tests |
+| --- | --- | --- | --- |
+| JWT verification | `jsonwebtoken` | Payload shape, secret length, rejection rules (§6, §16) | `Implemented` (`auth.routes.test.ts`); expiry and algorithm `Planned (B2)` |
+| Password hashing | `bcryptjs` | Generic failure message (§51) | `Implemented` (`auth.routes.test.ts`) |
+| Authorization rules | None | Permission matrix in the application layer (§13) | `Planned (B2)` |
+| Resource ownership | None | Owner-scoped lookups (§14) | `Implemented` (cross-user route tests) |
+| Input validation | `zod` | Schemas per route and in `@trading/contracts` (§18) | `Implemented` (`validate.test.ts`, route tests) |
+| Rate limiting | `express-rate-limit` | Limits and 429 envelope (§26) | `Implemented` (`rate-limit.test.ts`) |
+| Log redaction | `pino` | Fixed redaction list (§49) | `Planned (B3)` (ADR-009 point 13) |
 
 ---
 
 # 46. Frontend Security Boundary
 
-The frontend is considered untrusted.
+**Status:** server enforcement `Implemented` (ownership, `apps/api/src/services/`); application-layer enforcement `Planned (B0)`/`Planned (B2)` (ADR-001, ADR-005 point 3; NFR-026); client `Planned (FE)`
 
-The following must never be trusted from frontend state:
+The frontend is untrusted. The API never trusts these values from client
+state or request data:
 
-```text
-role
-permissions
-portfolio ownership
-prices
-transaction authorization
-administrative status
-```
+| Value | Authoritative source |
+| --- | --- |
+| Role and permissions | The user record read on `GET /auth/me` and on refresh (ADR-005 point 9); the token's `role` claim is a hint (§6) |
+| Portfolio ownership | The owning portfolio or user in the database (§14) |
+| Current prices and market values | `MarketPrice` and server calculations (`05-data-model.md` §31) |
+| Holdings and transaction acceptance | Domain validation against stored positions (§20, ADR-003 point 6) |
+| Administrative status | `simulation:control` in the permission matrix (§13) |
 
-The backend remains authoritative.
+A transaction's own `price` is user input describing a recorded trade; it
+is validated (§18-§20) but never used as the current market price.
 
 ---
 
 # 47. Client-Side Role Checks
 
-Frontend authorization checks are allowed for UX:
+**Status:** `Planned (FE)` (ADR-005 points 2 and 11; NFR-026)
+
+The client may hide or disable actions for UX. It checks permissions, as
+the server does, never role names (ADR-005 point 2):
 
 ```text
-if user.role === ADMIN
-    show Admin action
+if actor has simulation:control
+    show simulation controls
 ```
 
-But the backend must independently verify authorization.
+The API checks the same permission independently. Editing client state,
+the in-memory token or the demo role selector grants no extra privilege on
+the server: the server reads the role from the database (§46). In the
+demo, which has no server, the same use-case checks give parity, not
+security (NFR-026).
 
-A malicious user modifying frontend state must not gain additional privileges.
+Measurement: the NFR-020 tests call the API directly, bypassing the UI
+(NFR-026).
 
 ---
 
 # 48. Sensitive Information in URLs
 
-Sensitive information must not be placed unnecessarily in:
+**Status:** API `Implemented` (`apps/api/src/routes/auth.routes.ts`, `apps/api/src/middleware/authenticate.ts`); WebSocket `Planned (B5)` (ADR-007 point 2); client routes `Planned (FE)` (NFR-019)
 
-- query strings;
-- route parameters;
-- browser history.
+Credentials, tokens and secrets never appear in a URL, so they never reach
+browser history, server logs or `Referer` headers (NFR-019).
 
-Authentication credentials and secrets must never be included in URLs.
+| Credential | Transport | Status |
+| --- | --- | --- |
+| Email and password | `POST /api/v1/auth/login` JSON body | `Implemented` |
+| Access token | `Authorization: Bearer` header | `Implemented` |
+| Refresh token | `HttpOnly` cookie (§8) | `Planned (B2)` |
+| WebSocket token | `AUTHENTICATE` message, never the connection URL (ADR-007 point 2) | `Planned (B5)` |
+
+Path and query parameters carry only resource IDs, filters and pagination.
+IDs grant nothing without ownership (§15). Client routes follow the same
+rule (`Planned (FE)`).
 
 ---
 
 # 49. Logging Security
 
-Logs must not contain:
+**Status:** today's log lines `Implemented` without secrets (`apps/api/src/middleware/error-handler.ts`, `apps/api/src/controllers/health.controller.ts`, `apps/api/src/config/env.ts`); structured logging and redaction `Planned (B3)` (ADR-009 points 2-4 and 13; NFR-019, NFR-022)
+
+These are never logged (ADR-009 point 4, Deferred detail):
 
 - passwords;
-- JWT secrets;
-- access tokens;
-- refresh tokens;
-- database credentials;
-- private credentials.
+- the `Authorization` header, access tokens and refresh tokens;
+- request cookies and the response `Set-Cookie` header;
+- the access token inside the WebSocket `AUTHENTICATE` message;
+- CSV import input;
+- `JWT_SECRET`, `DATABASE_URL` and other secrets.
 
-Sensitive identifiers should be redacted where necessary.
+Log lines identify the user by `userId` only, never by email or display
+name (ADR-009 point 3). Redaction is a fixed path list in the `pino`
+adapter and is enforced by unit tests (ADR-009 points 4 and 13).
+
+Code today: logging is `console.*`. The unexpected-error line logs
+`requestId`, `errorName` and the error `message`; the health line logs
+`errorName` only; `env.ts` logs failing keys only. No line writes request
+headers or bodies, but the error `message` is not filtered.
 
 ---
 
 # 50. Auditability
 
-Important security-sensitive actions should be traceable.
+**Status:** `Planned (B3)` (ADR-009 points 3, 9 and 13); refresh reuse event `Planned (B2)` (ADR-005 point 5)
 
-Examples:
+Security-relevant actions are traceable through structured security
+events in the operational log (ADR-009 point 9). Version 1 has no separate
+audit store; operational logs are not permanent audit storage
+(`13-observability-spec.md` §45).
 
-```text
-LOGIN
-LOGOUT
-FAILED_LOGIN
-ROLE_CHANGED
-PERMISSION_DENIED
-RESOURCE_ACCESS_DENIED
-SECURITY_RELEVANT_ERROR
-```
+| Event | When | Block |
+| --- | --- | --- |
+| `auth.login.succeeded` | Valid credentials | B3 |
+| `auth.login.failed` | Any credential failure, with the same fields whatever the cause (§51) | B3 |
+| `auth.refresh.reuse_detected` | An already-rotated refresh token is presented and its family is revoked (§7) | B2 / B3 |
+| `authz.denied` | A permission check fails, including a refused realtime subscription (§17) | B2 / B5 |
 
-The initial project may implement lightweight audit logging rather than a full enterprise audit platform.
+Each event carries `timestamp`, `event`, `requestId` and `userId` when
+known, and none of the fields of §49.
+
+Not covered in version 1: role changes have no endpoint (roles come from
+the seed, ADR-005 point 10), so there is no role-change event.
+
+> Open detail (B3): whether logout emits an event. ADR-009 point 9 does
+> not list one; `13-observability-spec.md` names `auth.logout`.
+
+> Open detail (B3): whether a cross-user request answered with 404 (§15)
+> emits `authz.denied`. ADR-009 point 9 names the event without listing
+> its triggers.
 
 ---
 
 # 51. Authentication Failure Handling
 
-Repeated failed authentication attempts should be handled without exposing whether a particular account exists.
+**Status:** `Implemented` (`apps/api/src/services/auth.service.ts`, `apps/api/src/middleware/rate-limit.ts`; ADR-005 point 12; FR-001, NFR-019); failure event `Planned (B3)` (ADR-009 point 9)
 
-Example:
+Failed logins never reveal whether an account exists:
 
-Avoid:
+| Case | Response |
+| --- | --- |
+| Unknown email | 401 `UNAUTHORIZED` `Invalid credentials.` |
+| User without a credential | 401 `UNAUTHORIZED` `Invalid credentials.` |
+| Wrong password | 401 `UNAUTHORIZED` `Invalid credentials.` |
+| More than 5 attempts in 15 minutes from one IP | 429 `RATE_LIMITED` (§26) |
 
-```text
-User does not exist.
-```
+- There is no account lockout. Repeated failures are bounded per IP by the
+  login limiter (ADR-005 point 12), so a third party cannot lock a user
+  out.
+- Each failure is logged as `auth.login.failed` from B3 (§50).
+- A malformed body (for example an invalid email) returns 400
+  `VALIDATION_ERROR` before any lookup, so it reveals nothing about
+  accounts.
 
-Prefer:
+Code today: an unknown email returns without running a `bcrypt`
+comparison, so it responds measurably faster than a wrong password for an
+existing account. The message is identical; the timing is not.
 
-```text
-Invalid credentials.
-```
-
-This reduces account enumeration.
+> Pending decision: whether login equalizes timing, for example by
+> comparing against a fixed dummy hash when the user or credential is
+> missing. ADR-005 and NFR-019 require the generic message only.
 
 ---
 
 # 52. Password Policy
 
-If local authentication is implemented, passwords must meet a reasonable security policy.
+**Status:** `Implemented` (`apps/api/src/services/auth.service.ts`, `packages/database/src/seed/data/credential.ts`; ADR-005 points 10 and 12; NFR-019)
 
-Passwords must be:
+| Rule | Status |
+| --- | --- |
+| Hashed with `bcryptjs`, cost 10 or higher (NFR-019) | `Implemented` (the seed hash uses cost 10) |
+| Never stored in plaintext | `Implemented` (`Credential.passwordHash` only) |
+| Never returned by the API | `Implemented` (login and `me` return the user without credential fields) |
+| Never logged | `Implemented` (no log line writes the body); redaction test `Planned (B3)` (§49) |
 
-- hashed;
-- never stored in plaintext;
-- never logged;
-- never returned through APIs.
+Version 1 sets no password through the API: there is no registration
+(ADR-005 point 10), password change or reset (§53). The only password is
+the seeded demo user's (§42). The API compares passwords and never hashes
+one; the login schema requires a non-empty string only.
 
-The password hashing implementation must use a modern, security-reviewed algorithm.
+A strength policy (length, breached-password check) applies only when an
+endpoint that sets passwords is introduced, which requires a new decision.
 
 ---
 
 # 53. Password Reset
 
-Password reset is not required for the initial portfolio demo unless authentication requirements explicitly introduce it.
+**Status:** `Deferred` (ADR-005 point 10)
 
-If implemented later, reset tokens must be:
+Version 1 has no password reset: users come from the seed and there is no
+self-service account management. No reset endpoint, token or email flow
+exists or is planned in B0-B7.
 
-- random;
+If a later ADR introduces reset, its tokens are:
+
+- random and unguessable;
 - short-lived;
-- single-use;
-- stored securely;
-- invalidated after use.
+- single-use and invalidated after use;
+- stored as hashes, like refresh tokens (§39);
+- requested through a response that does not reveal whether the account
+  exists (§51).
 
 ---
 
 # 54. Security in Demo Error Scenarios
 
-The demo should simulate security failures without exposing real secrets.
+**Status:** `Deferred` (ADR-010 point 6); role-based denials `Planned (FE)` (ADR-005 point 11)
 
-Examples:
+The demo shows security failures without exposing real secrets:
 
-```text
-401 Unauthorized
-403 Forbidden
-Validation Error
-Expired Session
-Invalid Token
-Permission Denied
-```
+| Scenario | Source in the demo | Status |
+| --- | --- | --- |
+| 403 `FORBIDDEN` for an action the selected role lacks | The real permission check with the demo role (§41) | `Planned (FE)` |
+| 401 `UNAUTHORIZED`, expired session, invalid token | Scripted failures | `Deferred` |
+| 400 `VALIDATION_ERROR` | The real boundary and domain validation (§19) | `Planned (FE)` |
 
-These scenarios should be part of the functional demo behavior.
+ADR-010 point 6 leaves scripted failures to a frontend-stage ADR. Any
+injected error uses the same error envelope and codes as the API (§29) and
+contains no real token, secret or stack trace.
 
 ---
 
 # 55. Security Testing
 
-Security tests should cover:
+**Status:** `Implemented` where marked, with the files named; other groups `Planned` in the listed block
+
+Each test calls the API (or the use case, from B0) directly, never through
+the UI, so a hidden control is never the protection under test (NFR-026).
 
 ### Authentication
 
-- valid credentials;
-- invalid credentials;
-- expired token;
-- malformed token;
-- logout;
-- session isolation.
+| Case | Status |
+| --- | --- |
+| Valid credentials return a usable token | `Implemented` (`auth.routes.test.ts`) |
+| Wrong password and unknown email return the same 401 | `Implemented` (`auth.routes.test.ts`) |
+| Missing and malformed token return 401 | `Implemented` (`auth.routes.test.ts`) |
+| Login rate limit returns 429 with the error envelope | `Implemented` (`rate-limit.test.ts`) |
+| Expired token, wrong algorithm, unknown role return 401 | `Planned (B2)` |
+| Startup fails with a missing or short `JWT_SECRET` | `Planned (B7)` (NFR-019, NFR-023) |
+| Refresh rotation, reuse detection, parallel refresh, lost response | `Planned (B2)` (ADR-005 Deferred detail) |
+| Logout revokes the family; refresh and logout without the custom header are rejected | `Planned (B2)` (NFR-028) |
+| Cookie attributes (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path`) | `Planned (B2)` (NFR-028) |
+| Session isolation after logout and role switch | `Planned (FE)` (§10) |
 
 ### Authorization
 
-- allowed role;
-- denied role;
-- resource ownership;
-- cross-user access;
-- privilege escalation attempts.
+| Case | Status |
+| --- | --- |
+| Cross-user access returns 404, never 403, and changes nothing | `Implemented` (`portfolios`, `alerts`, `decisions`, `notifications`, `preferences` route tests) |
+| Allowed role, denied role (403), escalation attempts | `Planned (B2)` (NFR-020) |
+| Every matrix row of §13 | `Planned (B2)` |
 
 ### Validation
 
-- malformed payloads;
-- missing fields;
-- invalid types;
-- invalid values;
-- unexpected fields.
+| Case | Status |
+| --- | --- |
+| Malformed payloads, missing fields, invalid types and values return 400 | `Implemented` (`validate.test.ts`, route tests) |
+| Oversized JSON body returns 413 | `Implemented` (`validate.test.ts`) |
+| Malformed JSON body returns 400 | `Implemented` (`validate.test.ts`) |
+| Malformed path parameters | `Planned (B0)` (§18) |
+| Unexpected fields | `Planned (B0)` (see the Open detail below) |
+| CSV size, row count and per-row validation | `Planned (B4)` (ADR-008 point 10) |
 
 ### Realtime
 
-- unauthorized channel;
-- invalid event;
-- duplicate event;
-- stale event;
-- excessive subscription.
+| Case | Status |
+| --- | --- |
+| No `AUTHENTICATE` within 5 s closes `4001`; expired token closes `4002` | `Planned (B5)` |
+| Unauthorized channel is refused and logged as `authz.denied` | `Planned (B5)` |
+| Invalid, duplicate and stale events | `Planned (B5)`; client checks `Planned (FE)` (§33, §34) |
+| Subscription and inbound-rate limits close `4008` | `Planned (B5)` (§35) |
+
+### Transport, data and logging
+
+| Case | Status |
+| --- | --- |
+| `helmet` headers present, no `X-Powered-By` | `Planned (B7)` (§25) |
+| Unexpected errors return the generic 500 without internals | `Planned (B3)` (error classification tests) |
+| Readiness with the database down exposes no driver error | `Planned (B7)` (security checklist) |
+| Redaction of every field in §49 | `Planned (B3)` (ADR-009 point 13) |
+| `git ls-files` lists no `.env` file except examples | `Planned (B7)` (NFR-023) |
+| Dependency audit | `Planned (B7)` (NFR-024) |
+| No unsanitized HTML in `apps/web`; no token in browser storage | `Planned (FE)` (NFR-027, NFR-028) |
+
+> Open detail (B0): request schemas use Zod's default object parsing,
+> which strips unknown fields instead of rejecting them. Whether the
+> contracts in `@trading/contracts` reject unknown fields is fixed with
+> the B0 move (ADR-002); the test asserts whichever behavior is chosen.
 
 ---
 
 # 56. Security Acceptance Criteria
 
-The security implementation is considered complete when:
+**Status:** `Reference`; each criterion is measured by §55
 
-- protected API routes require authentication;
-- JWT validation occurs server-side;
-- authorization uses RBAC;
-- resource ownership is enforced;
-- frontend state cannot bypass authorization;
-- request payloads are validated;
-- database access is isolated behind the backend;
-- secrets remain server-side;
-- sensitive errors are not exposed;
-- CORS is explicitly configured;
-- authenticated realtime channels are authorized;
-- realtime events are validated;
-- session data is cleared on logout;
-- demo data contains no real credentials;
-- security-sensitive flows have automated tests.
+Security is complete for version 1 when:
+
+| # | Criterion | Status |
+| --- | --- | --- |
+| 1 | Every protected route requires a valid Bearer token | `Implemented` |
+| 2 | JWT validation runs server-side with a pinned algorithm and rejects unknown roles | `Implemented`; pinning and roles `Planned (B2)` |
+| 3 | Refresh tokens rotate, reuse revokes the family, and logout revokes the session | `Planned (B2)` |
+| 4 | Every use case checks permission (§13) and ownership in the application layer | Ownership `Implemented`; permissions `Planned (B0)`/`Planned (B2)` |
+| 5 | Another user's resource returns 404, never 403 | `Implemented` |
+| 6 | Client state cannot bypass authorization | `Implemented` (server checks); client `Planned (FE)` |
+| 7 | Every body, query and path parameter is validated | Body and query `Implemented`; path `Planned (B0)` |
+| 8 | Database access stays behind the backend repositories | `Implemented` |
+| 9 | Secrets stay server-side, are validated at startup and are never tracked | `Implemented`; `DATABASE_URL` check `Planned (B7)` |
+| 10 | Errors expose no internals and do not reveal another user's resources | `Implemented` |
+| 11 | CORS allows only `CORS_ORIGIN`, with credentials for the refresh cookie | `Implemented`; credentials `Planned (B2)` |
+| 12 | Realtime sockets authenticate by message and channels are authorized | `Planned (B5)` |
+| 13 | Realtime events are validated and ordered by `sequence` | `Planned (B5)`; client `Planned (FE)` |
+| 14 | No credential, token or secret is logged, enforced by tests | `Planned (B3)` |
+| 15 | Security events of §50 are emitted | `Planned (B3)` |
+| 16 | Session data is cleared on logout and role switch | `Planned (FE)` |
+| 17 | Demo data is synthetic and the demo build contains no secrets | Seed `Implemented`; build `Planned (FE)` |
+| 18 | The dependency audit shows no unrecorded high or critical advisory | `Planned (B7)` |
+| 19 | Every row of §55 has an automated test | Partial; see §55 |
 
 ---
 
 # 57. Security Architecture Summary
 
+**Status:** `Reference` (ADR-001, ADR-005, ADR-006, ADR-007)
+
 ```text
-                         ┌───────────────┐
-                         │    Browser    │
-                         └───────┬───────┘
-                                 │
-                         HTTPS / WebSocket
-                                 │
-                  ┌──────────────▼──────────────┐
-                  │       Security Layer        │
-                  │                              │
-                  │ Authentication              │
-                  │ Authorization               │
-                  │ Validation                  │
-                  │ Rate Limiting               │
-                  │ Security Headers             │
-                  └──────────────┬──────────────┘
-                                 │
-                         ┌───────▼───────┐
-                         │  Application  │
-                         └───────┬───────┘
-                                 │
-                         ┌───────▼───────┐
-                         │    Domain     │
-                         └───────┬───────┘
-                                 │
-                         ┌───────▼───────┐
-                         │  Repository   │
-                         └───────┬───────┘
-                                 │
-                         ┌───────▼───────┐
-                         │  PostgreSQL   │
-                         └───────────────┘
+                    ┌──────────────────────────────┐
+                    │  Browser (untrusted, §46)    │
+                    │  access token in memory      │
+                    └──────────────┬───────────────┘
+                                   │
+          HTTP on localhost, no HTTPS (ADR-006)    WebSocket (Planned B5)
+          Bearer header; refresh cookie (B2)       AUTHENTICATE message
+                                   │
+                    ┌──────────────▼───────────────┐
+                    │  API boundary (Express)      │
+                    │  helmet, CORS, request ID,   │
+                    │  rate limits, authenticate   │
+                    │  → Actor, Zod validation     │
+                    └──────────────┬───────────────┘
+                                   │
+                    ┌──────────────▼───────────────┐
+                    │  Application (Planned B0)    │
+                    │  permission + ownership      │
+                    │  same checks in the demo     │
+                    └──────────────┬───────────────┘
+                                   │
+                    ┌──────────────▼───────────────┐
+                    │  Domain: invariants, rules   │
+                    └──────────────┬───────────────┘
+                                   │
+                    ┌──────────────▼───────────────┐
+                    │  Repositories → Prisma       │
+                    │  parameterized queries       │
+                    └──────────────┬───────────────┘
+                                   │
+                    ┌──────────────▼───────────────┐
+                    │  PostgreSQL (local only)     │
+                    └──────────────────────────────┘
 ```
+
+- Authentication happens at the boundary; authorization happens in the
+  application layer, never in middleware (ADR-005 point 3, ADR-001).
+- The same application layer runs in the public demo with demo adapters
+  and no backend (ADR-001, ADR-006 point 7).
+- The backend runs locally only; a public backend behind HTTPS and WSS is
+  `Deferred` until a new ADR (ADR-006 point 2).
 
 ---
 
 # 58. Security Philosophy
 
-Security should be implemented as an architectural property rather than as a collection of isolated libraries.
+**Status:** `Reference`
 
-The project should demonstrate that:
+Security is an architectural property, not a collection of isolated
+libraries.
 
-> Authentication establishes identity, authorization establishes permission, validation establishes input trust boundaries, and the backend remains the final authority over every protected operation.
+> Authentication establishes identity, authorization establishes
+> permission, validation establishes input trust boundaries, and the
+> backend remains the final authority over every protected operation.
 
-The objective is not to build an enterprise security platform.
-
-The objective is to demonstrate **secure engineering decisions that are proportional to the product's actual requirements**.
+The objective is not an enterprise security platform. It is secure
+engineering decisions proportional to the product's actual requirements:
+a local backend, a static demo, synthetic data and no real financial
+integration (ADR-003, ADR-006).
