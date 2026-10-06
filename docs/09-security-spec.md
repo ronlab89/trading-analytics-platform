@@ -87,13 +87,16 @@ Repository
 Database
 ```
 
-Code today: `helmet`, CORS restricted to `CORS_ORIGIN`, the request ID and
-the general rate limiter run in that order (`apps/api/src/app.ts`). Each
-route then runs `authenticate` and `validate`, and the service in
-`apps/api/src/services/` checks ownership. There is no application layer
-and no permission check yet; ADR-001 moves the services into
-`@trading/application` in B0, and the use cases take an `Actor` instead of a
-bare `userId`.
+Code today (`apps/api/src/app.ts`):
+
+- `helmet`, CORS restricted to `CORS_ORIGIN`, the request ID and the general
+  rate limiter run in that order.
+- Each route then runs `authenticate` and `validate`.
+- The service in `apps/api/src/services/` checks ownership.
+- There is no application layer and no permission check yet.
+
+Planned (B0, ADR-001): the services move into `@trading/application`, and
+the use cases take an `Actor` instead of a bare `userId`.
 
 Transport: the backend runs locally only and has no HTTPS; the public demo
 is a static build served by its host (ADR-006 points 1-2). A public backend
