@@ -192,7 +192,8 @@ Product decisions that no ADR covers are asked to the user in batches.
     - For T5.3: `BACKEND-ROADMAP.md` B5 predates ADR-007 (`notifications:{userId}`, "eleven events", settled open decisions, stale §47-51 citations).
     - Mismatch: `06` §20 says job events are `Planned (B4)`, while `08` §13 and §20 say B5.
     - `12` and `13` will need their realtime event names and disconnect scenarios aligned (T5.1).
-  - [ ] User decision on the pending `08` items, one batch:
+    - Commit `f98cb86`, assess `passive`. The stop-hook candidate (base `d55fce2`, 312 files, high) was declined by the user on 2026-10-06.
+  - [x] User decision on the pending `08` items, one batch (all 9 approved 2026-10-06; recorded as ADR-007 point 15; applied to `08`, `07` §54 and `06` §20-21 by a delegated writer; `pnpm docs:check` and `pnpm lint` pass). Also fixed: `08` §7 `CONNECTED → RECONNECTING` / `DISCONNECTED`; job events are `Planned (B5)` in `06` and `08` (the transport arrives in B5). Decision 2 is stated precisely: only `TIMED_OUT` has a notification (ADR-008 point 6). Open: `PAUSED` is both a mode wire ID and a lifecycle state (ADR-007 Deferred detail, B5, needs a user decision). The batch items were:
     - the `ALERT_TRIGGERED` channel;
     - whether `CANCELLED` and `TIMED_OUT` jobs emit events;
     - protocol message names, close codes and errors;
@@ -247,8 +248,8 @@ Paused 2026-10-05 by the user. Phase 4 is in progress on `docs/sdd-contracts`:
 
 Resume with:
 
-1. Present the `08` decision table to the user and apply the answers, together with the §7 `CONNECTED` transition and the `06` §20 B4/B5 mismatch.
-2. `09` in 3 slices, then `10` in 3 slices.
+1. User decision on the `PAUSED` mode vs lifecycle overlap (ADR-007 Deferred detail).
+2. `09` in 3 slices, then `10` in 3 slices — only when the user says to continue.
 3. Close Phase 4: `pr-body.md` and the `gh` command, which the user runs.
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.

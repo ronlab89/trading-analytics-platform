@@ -154,25 +154,40 @@ client transport states, not domain entities (`07-api-spec.md` §37).
 
 # 7. Connection Lifecycle
 
-**Status:** client transitions `Planned (FE)`; heartbeat and limits `Planned (B5)` (ADR-007 points 2 and 11)
+**Status:** client transitions `Planned (FE)`; heartbeat and limits `Planned (B5)` (ADR-007 points 2, 11 and 15)
 
 Client transitions:
 
 ```text
 DISCONNECTED → CONNECTING → CONNECTED
 CONNECTING   → RECONNECTING → CONNECTED
+CONNECTED    → RECONNECTING      (unintended socket loss, §42)
+CONNECTED    → DISCONNECTED      (intentional close, no reconnection, §54)
 RECONNECTING → FAILED
 FAILED       → CONNECTING        (manual retry)
 ```
 
-Server rules:
+Server rules (ADR-007 point 15):
 
-- Heartbeat: WebSocket ping/pong every 30 seconds.
-- Limits: a maximum number of subscriptions per connection, an inbound
-  message rate limit, and bounded memory per connection. The numeric values
-  and the missed-pong policy are decided in B5.
-- The server closes a socket not authenticated within 5 seconds, or whose
-  token expired without re-authentication (§9).
+| Rule | Value |
+|---|---|
+| Heartbeat | WebSocket ping every 30 s; socket closed after 2 consecutive missed pongs (about 60 s) |
+| Subscriptions per connection | 50 |
+| Inbound messages per connection | 20 per second |
+| Outbound buffer per connection | 1 MB |
+
+- When the server closes a socket for exceeding a limit, it uses close
+  code `4008` (§9).
+- The server closes a socket not authenticated within 5 seconds (`4001`),
+  or whose token expired without re-authentication (`4002`) (§9).
+
+Open details (B5):
+
+- The close code for a missed-pong close. ADR-007 assigns none, and the
+  custom codes of §9 do not cover it.
+- Whether a `SUBSCRIBE` beyond the subscription limit is refused with an
+  `ERROR` reply or closes the socket with `4008`.
+- Outbound buffer overflow handling (§48).
 
 ---
 
@@ -200,7 +215,7 @@ The application never assumes the connection is immediately available.
 
 # 9. Authentication
 
-**Status:** `Planned (B5)` (ADR-007 point 2, ADR-005)
+**Status:** `Planned (B5)` (ADR-007 points 2 and 15, ADR-005)
 
 - The first client message carries the access token; the token is never
   put in the URL.
@@ -221,8 +236,20 @@ Authentication message, shape only:
 { "type": "AUTHENTICATE", "accessToken": "..." }
 ```
 
-Client message names, acknowledgements, error messages and close codes are
-decided in B5, as Zod schemas in `@trading/contracts`.
+Protocol (ADR-007 point 15), defined as Zod schemas in `@trading/contracts`:
+
+- Client messages: `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE` (§10).
+- Server replies: `ACK`, or `ERROR` carrying a `code`.
+
+| Close code | Meaning |
+|---|---|
+| `4001` | Unauthenticated or invalid token, including the 5-second authentication timeout |
+| `4002` | Token expired without re-authentication |
+| `4008` | Limit exceeded (§7) |
+| `1001` | Server going away |
+
+Open detail (B5): the `ACK` and `ERROR` field shapes and the set of `ERROR`
+codes.
 
 ---
 
@@ -284,6 +311,10 @@ progress without polling. A job can finish before the subscription exists;
 the client then reads the final state through `GET /api/v1/jobs/:jobId`
 (ADR-007 Deferred detail).
 
+The job lifecycle itself lands in B4 (ADR-008); its events are `Planned
+(B5)` because they need the WebSocket transport of B5 (ADR-007), and
+`BACKEND-ROADMAP.md` lists job event producers in the B5 scope.
+
 ---
 
 # 14. Event Envelope
@@ -313,7 +344,7 @@ the client then reads the final state through `GET /api/v1/jobs/:jobId`
 
 # 15. Event Types
 
-**Status:** `Planned (B5)` (ADR-007 point 6, ADR-008 point 11)
+**Status:** `Planned (B5)` (ADR-007 points 6 and 15, ADR-008 point 11)
 
 Catalog, version 1:
 
@@ -325,7 +356,7 @@ Catalog, version 1:
 | `JOB_COMPLETED` | `jobs:{jobId}` |
 | `JOB_FAILED` | `jobs:{jobId}` |
 | `NOTIFICATION_CREATED` | `notifications` |
-| `ALERT_TRIGGERED` | `notifications` (open decision 1, §22) |
+| `ALERT_TRIGGERED` | `notifications` (ADR-007 point 15) |
 
 Removed: `POSITION_UPDATED`, `TRANSACTION_CREATED` and
 `TRANSACTION_COMPLETED` (ADR-007 point 6), and `JOB_CREATED` (not in
@@ -407,7 +438,7 @@ or `TRANSACTION_COMPLETED` event. Deposits and withdrawals do not exist
 
 # 20. Background Job Events
 
-**Status:** `Planned (B5)` (ADR-008 points 3, 6 and 11)
+**Status:** `Planned (B5)` (ADR-008 points 3, 6 and 11, ADR-007 point 15)
 
 Events on `jobs:{jobId}` for CSV import jobs:
 
@@ -435,7 +466,11 @@ Events on `jobs:{jobId}` for CSV import jobs:
   (`07-api-spec.md` §15).
 - `reason` is one of `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`,
   `APPLY_REJECTED`.
-- `CANCELLED` and `TIMED_OUT` have no event yet (open decision 2, §22).
+- `CANCELLED` and `TIMED_OUT` emit no realtime event (ADR-007 point 15).
+  The client learns both from the job's HTTP status
+  (`GET /api/v1/jobs/:jobId`), and `TIMED_OUT` also from its `ERROR`
+  notification (§21). `CANCELLED` creates no notification, because the
+  user caused it (ADR-008 point 6).
 
 ---
 
@@ -462,7 +497,7 @@ through `07-api-spec.md` §28.
 
 # 22. Alert Events
 
-**Status:** `Planned (B5)` (ADR-007 point 9)
+**Status:** `Planned (B5)` (ADR-007 points 9 and 15)
 
 ```json
 {
@@ -484,15 +519,14 @@ through `07-api-spec.md` §28.
   `NOTIFICATION_CREATED`.
 - `threshold` and `price` are decimal strings.
 
-Open decisions for B5 (none changes ADR-007):
+Decided in ADR-007 point 15 (2026-10-06):
 
-1. The channel of `ALERT_TRIGGERED`. `notifications` is assumed because
-   alerts are user-scoped and ADR-007 point 3 names no alert channel.
-2. Whether `CANCELLED` and `TIMED_OUT` jobs emit a realtime event; ADR-008
-   point 11 lists only three job events.
-3. Client message names (`AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`),
-   acknowledgements, errors and close codes.
-4. Numeric limits and the missed-pong policy of §7.
+| Topic | Decision | Section |
+|---|---|---|
+| Channel of `ALERT_TRIGGERED` | `notifications`, because alerts are user-scoped | §15 |
+| `CANCELLED` and `TIMED_OUT` jobs | No realtime event; the client reads the job's HTTP status (and the `TIMED_OUT` notification) | §20 |
+| Protocol messages and close codes | `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`; `ACK` and `ERROR` with a `code`; `4001`, `4002`, `4008`, `1001` | §9 |
+| Limits and missed pongs | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer; closed after 2 missed pongs | §7 |
 
 ---
 
@@ -609,7 +643,7 @@ is refreshed through HTTP (§30). Realtime failure never blocks a screen.
 
 # 30. Polling Fallback
 
-**Status:** `Planned (FE)` (ADR-007 point 12, NFR-017)
+**Status:** `Planned (FE)` (ADR-007 points 12 and 15, NFR-014, NFR-017)
 
 ```text
 CONNECTED              -> realtime updates, no polling
@@ -618,8 +652,9 @@ reconnected            -> stop polling, resynchronize once (§26)
 ```
 
 - Polling never runs alongside an active subscription for the same data.
+- While the socket is down, visible data is refetched every 10 seconds
+  (ADR-007 point 15).
 - Polling requests use the 15 s client timeout (NFR-017).
-- The polling interval is not decided (decision 3, §41).
 
 ---
 
@@ -734,7 +769,7 @@ There is no external market data provider. One engine, the pure package
 
 # 37. Simulation Profiles
 
-**Status:** `Planned (B5)` (ADR-007 point 7)
+**Status:** `Planned (B5)` (ADR-007 points 7 and 15)
 
 The engine implements the modes and scenarios of `12-demo-mode-spec.md`
 §37 and §39:
@@ -746,19 +781,28 @@ Scenarios: Stable Market, Bullish Session, Volatile Session,
 ```
 
 This replaces the earlier profile list (`CALM`, `BREAKOUT`, `SELL_OFF` and
-others). Wire identifiers are not decided (decision 4, §41).
+others). Wire identifiers are SCREAMING_SNAKE_CASE (ADR-007 point 15):
+
+| Kind | Wire identifiers |
+|---|---|
+| Modes | `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH` |
+| Scenarios | `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY` |
+
+The `PAUSED` mode shares its identifier with the `PAUSED` lifecycle state
+(§40); their relation is an Open detail (B5) of §40.
 
 ---
 
 # 38. Simulation Timing
 
-**Status:** `Planned (B5)` (ADR-007 points 7 and 8)
+**Status:** `Planned (B5)` (ADR-007 points 7, 8 and 15)
 
 - Time comes from an injected clock, so tests and the demo can accelerate
   or freeze it (`12-demo-mode-spec.md` §40).
 - Daily candles close at the UTC day rollover of that clock.
-- The tick interval is not decided (decision 3, §41); any value must
-  respect NFR-006.
+- The simulator ticks every 1 second (ADR-007 point 15). NFR-006 sets no
+  tick interval; its client target (a burst of 100 events within 1 s keeps
+  INP ≤ 200 ms) applies at this interval too.
 
 ---
 
@@ -779,7 +823,7 @@ series (NFR-045). After a server restart the engine resumes from persisted
 
 # 40. Simulation Lifecycle
 
-**Status:** `Planned (B5)` (ADR-007 points 8 and 10)
+**Status:** `Planned (B5)` (ADR-007 points 8, 10 and 15)
 
 ```text
 RUNNING <-> PAUSED
@@ -788,36 +832,50 @@ RUNNING <-> PAUSED
 - The server simulator runs with the API process; on startup it backfills
   missing daily candles (§35).
 - `ADMIN` can pause it, start it again and change its mode (§41).
-- Other states (`STOPPED`, `STARTING`, `STOPPING`) are not decided
-  (decision 2, §41).
+- Real mode has no stop and no seed reset, so there is no `STOPPED`,
+  `STARTING` or `STOPPING` state. Reset belongs to the frontend-stage demo
+  ADR (ADR-010 point 6).
+
+Open detail (B5): `PAUSED` is both this lifecycle state and a mode wire
+identifier (§37). Whether `PUT /api/v1/simulation/mode` with `PAUSED` is
+the same as `POST /api/v1/simulation/pause` or is rejected, and which mode
+`start` resumes, are not decided (ADR-007 Deferred detail).
 
 ---
 
 # 41. Demo Simulation Controls
 
-**Status:** real-mode control `Planned (B5)` (ADR-007 point 10); demo controls `Deferred` (ADR-010 point 6)
+**Status:** real-mode control `Planned (B5)` (ADR-007 points 10 and 15); demo controls `Deferred` (ADR-010 point 6)
 
-Real mode: each operation requires the `simulation:control` permission
+Real mode: each endpoint requires the `simulation:control` permission
 (`ADMIN` only, ADR-005):
 
-| Operation | Source |
+| Operation | Endpoint |
 |---|---|
-| Start the simulation | ADR-007 point 10 |
-| Pause the simulation | ADR-007 point 10 |
-| Change the simulation mode | ADR-007 point 10 |
+| Start the simulation | `POST /api/v1/simulation/start` |
+| Pause the simulation | `POST /api/v1/simulation/pause` |
+| Change the simulation mode | `PUT /api/v1/simulation/mode` with `{ "mode": "<wire id>" }` (§37) |
+
+- Errors follow ADR-002 point 10: 400 `VALIDATION_ERROR` for an unknown
+  mode; 403 `FORBIDDEN` without `simulation:control`.
+- The lifecycle is only `RUNNING <-> PAUSED` (§40).
 
 Demo: the simulation panel, reset, speed, simulated disconnect and
 simulated errors are decided in the frontend-stage demo ADR (ADR-010
 point 6).
 
-Decisions needed (none changes ADR-007):
+Decided in ADR-007 point 15 (2026-10-06):
 
-1. HTTP paths, methods and payloads of the three control operations.
-   `07-api-spec.md` §54 points here, but ADR-007 gives no paths.
-2. Whether stop, seed reset and a `STOPPED` state exist in real mode.
-3. Simulator tick interval (§38) and HTTP polling interval while the
-   socket is down (§30).
-4. Wire identifiers for modes and scenarios (§37).
+| Topic | Decision | Section |
+|---|---|---|
+| Control endpoints | The three endpoints above | §41 |
+| Stop, seed reset and `STOPPED` | None in real mode | §40 |
+| Tick and polling intervals | Tick every 1 s; HTTP polling every 10 s while the socket is down | §30, §38 |
+| Wire identifiers | SCREAMING_SNAKE_CASE modes and scenarios | §37 |
+
+Open detail (B5): the success response bodies, and the response when
+`start` or `pause` finds the simulator already in the target state.
+`07-api-spec.md` §54 points here.
 
 ---
 
@@ -829,7 +887,7 @@ The client must survive this sequence without a page reload:
 
 ```text
 CONNECTED
-    ↓  socket lost
+    ↓  socket lost (§7)
 RECONNECTING        stale-data indicator, HTTP polling (§28, §30)
     ↓  backoff succeeds (§27)
 CONNECTED           re-authenticate, resubscribe once, resynchronize (§26)
@@ -839,10 +897,6 @@ CONNECTED           re-authenticate, resubscribe once, resynchronize (§26)
   socket; this is the "simulated disconnect" of NFR-018.
 - A demo control that triggers it on demand is decided in the
   frontend-stage demo ADR (ADR-010 point 6).
-
-Open detail (FE): §7 lists no transition out of `CONNECTED`; the target
-state on an unintended socket loss (`RECONNECTING` is assumed here) is
-fixed with the client state machine.
 
 ---
 
@@ -949,11 +1003,12 @@ Client:
 - A burst of 100 events in 1 s keeps INP ≤ 200 ms (NFR-006).
 
 Server: the subscription limit, inbound rate limit and bounded memory per
-connection of §7 apply; their numeric values are pending (decision 4, §22).
+connection of §7 apply: 50 subscriptions, 20 inbound messages per second
+and a 1 MB outbound buffer (ADR-007 point 15).
 
-Open detail (B5): behavior when a slow client's outbound buffer reaches the
-per-connection memory bound (drop messages or close the socket). Either
-choice ends in a client resynchronization (§26).
+Open detail (B5): behavior when a slow client's outbound buffer reaches
+1 MB (drop messages, or close the socket with `4008`, §9). Either choice
+ends in a client resynchronization (§26).
 
 ---
 
@@ -976,7 +1031,7 @@ Rendering        -> at most one render per animation frame
   shown.
 - Update highlights follow `11-ui-ux-spec.md` §15 and are disabled under
   reduced motion (NFR-032).
-- The simulator tick interval is pending (decision 3, §41).
+- The simulator ticks every 1 second (§38).
 
 ---
 
@@ -1036,8 +1091,8 @@ Leave asset     -> UNSUBSCRIBE market:{assetId}
   (§27).
 - Re-authentication can drop subscriptions the actor may no longer hold
   (§9).
-- The subscription limit per connection is pending (decision 4, §22); the
-  client keeps its active set below it.
+- The subscription limit is 50 per connection (§7); the client keeps its
+  active set below it.
 
 ---
 
@@ -1056,8 +1111,7 @@ Component C ─┘
 - Each client holds at most one realtime connection (NFR-054).
 
 Open detail (B5): server handling of a repeated `SUBSCRIBE` to a channel the
-connection already holds, defined with the protocol messages (decision 3,
-§22).
+connection already holds (`ACK` or `ERROR`, §9).
 
 ---
 
@@ -1080,8 +1134,9 @@ connection already holds, defined with the protocol messages (decision 3,
   delivery at logout.
 - Data from a previous session never leaks into the next one.
 
-Open detail (FE): telling a token-expiry close from a network loss depends
-on the close codes (decision 3, §22).
+A `4002` close means the token expired, so the client refreshes and
+reconnects; a `1001` close, or a socket lost without a close code, is a
+network loss and goes to `RECONNECTING` (§7).
 
 ---
 
@@ -1130,7 +1185,7 @@ Demo identity (role selector) -> Actor -> application-layer checks -> subscripti
 
 # 57. Realtime Error Handling
 
-**Status:** `Planned (FE)`; error names `Planned (B5)` (pending, decision 3, §22)
+**Status:** `Planned (FE)`; wire messages and close codes `Planned (B5)` (ADR-007 point 15)
 
 The realtime client maps transport and protocol errors to one normalized
 error, so feature modules never handle WebSocket objects (ADR-007 point 1):
@@ -1150,8 +1205,10 @@ RealtimeError {
 | Limit exceeded | §7 | Report as non-recoverable for that request |
 | Invalid event | §23 | Drop and log; never shown to the user |
 
-- Category and field names are illustrative; wire error names and close
-  codes are pending (decision 3, §22).
+- Category and field names are client-side and not part of the wire
+  contract. The wire carries `ERROR` replies with a `code` and the close
+  codes of §9 (`4001`, `4002` and `4008` map to the authentication and
+  limit categories). The `ERROR` code set is an Open detail (B5), §9.
 - Realtime errors show the stale-data indicator (§28), not an error page
   (NFR-013).
 
@@ -1207,8 +1264,8 @@ unseeded randomness.
   drops subscriptions no longer allowed (§9).
 - Subscribing to another user's `portfolio:{portfolioId}` or `jobs:{jobId}`
   is refused like an unknown channel (§10, §55).
-- Heartbeat every 30 s; subscription and inbound rate limits enforced
-  (§7; values pending, decision 4, §22).
+- Heartbeat every 30 s and close after 2 missed pongs; 50 subscriptions
+  and 20 inbound messages per second enforced (§7).
 
 ### Server events (B5)
 
@@ -1231,6 +1288,7 @@ unseeded randomness.
 - After a restart the engine resumes from persisted `MarketPrice` and
   `MAX(sequence)` (§39).
 - Start, pause and mode change require `simulation:control` (§41).
+- The simulator ticks every 1 second on the injected clock (§38).
 
 ### Client (FE)
 
@@ -1240,7 +1298,8 @@ unseeded randomness.
 - Invalid events dropped (§23); duplicate, stale and out-of-order events
   discarded (§44-§46).
 - Resynchronization on a gap, a reconnect and an epoch change (§26).
-- Polling only while the socket is down; stops on reconnect (§30).
+- Polling every 10 s only while the socket is down; stops on reconnect
+  (§30).
 - Render counting: one price event renders only affected components
   (§31, NFR-005).
 - Burst of 100 events in 1 s: INP ≤ 200 ms, one render per frame (§48,

@@ -1911,8 +1911,22 @@ Decided in the frontend-stage ADR, with the demo data layers.
 **Status:** `Deferred` for the demo (ADR-010 point 6); real-mode control `Planned (B5)` (ADR-007 point 10)
 
 In real mode, starting, pausing and changing the simulation mode require the
-`simulation:control` permission (`ADMIN`, ADR-005). The endpoints are
-specified in `08-realtime-spec.md`.
+`simulation:control` permission (`ADMIN`, ADR-005). Endpoints, all
+`Planned (B5)` (ADR-007 point 15):
+
+| Endpoint | Status |
+| --- | --- |
+| `POST /api/v1/simulation/start` | `Planned (B5)` |
+| `POST /api/v1/simulation/pause` | `Planned (B5)` |
+| `PUT /api/v1/simulation/mode` | `Planned (B5)` |
+
+Request for `PUT /api/v1/simulation/mode`: `{ "mode": "<wire id>" }`, one
+of `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH`. The lifecycle is
+only `RUNNING <-> PAUSED`; there is no stop and no seed reset.
+
+Errors: 400 `VALIDATION_ERROR` for an unknown mode; 403 `FORBIDDEN` without
+`simulation:control` (ADR-002 point 10). Success bodies and the `PAUSED`
+mode overlap are open details in `08-realtime-spec.md` §40-§41.
 
 ---
 
