@@ -183,7 +183,7 @@ Product decisions that no ADR covers are asked to the user in batches.
     - ADR-010 point 5: deleting on an archived portfolio returns 409.
   - The decisions are propagated to `07`, `16`, `02`, `05` and `11`.
   - Simulator control routes are left to `08`.
-- [ ] T4.2 `08`, `09`, `10`
+- [x] T4.2 `08`, `09`, `10` — complete 2026-10-06.
   - [x] `08` slice A (§1-22, `5f0d43e`) and slice B (§23-41) done.
   - [x] `08` slice C (§42-62), route: delegated writer; `pnpm docs:check` and `pnpm lint` pass.
     - All 21 sections have a status. Nothing is `Implemented`: no realtime code exists yet.
@@ -212,7 +212,8 @@ Product decisions that no ADR covers are asked to the user in batches.
     - Open: whether the `simulation.paused` event in `13` follows `HALTED` or stays tied to `/pause` (needs a user decision).
     - For T5.3: `BACKEND-ROADMAP.md` B0 needs the runtime DB role, login timing and route-param schemas; B2 the VIEWER self-service permissions; B5 the cap and the `HALTED` rename.
   - [x] `10` in 3 slices (2026-10-06), route: delegated writer per slice; `pnpm docs:check` and `pnpm lint` pass each time. A §1-20 `f2d52c3`, B §21-40 `aa561b0`, C §41-65 `87b688c`. User decisions: `simulation.paused` in `13` stays tied to `/pause` (no change); ADR-006 point 11 `7f84431` (CI also runs `format:check` and `build`; no coverage threshold in v1; frontend test tooling goes to the frontend-stage ADR); CSV import is a critical E2E flow in §33, `Planned (FE)`.
-    - Pending user decisions: (1) shared `Clock` port vs per-feature (§49); (2) component/E2E/a11y checks in CI (§53); (3) a11y scanning tool (§36); (4) HTTP client timeout and retry (§51); (5) which block owns route tests for analytics, positions, assets and market (§59); (6) dataset sizes beyond NFR-008 and a memory target (§41).
+    - Six `10` decisions approved by the user 2026-10-06, route: delegated writer, commit `d676429`: ADR-001 point 8 (one shared `Clock` port, B0; route tests for analytics, positions, assets and market in B0 before the layering refactor); ADR-006 point 11 extended (component/E2E/a11y CI checks, a11y tool and HTTP client timeout/retry go to the frontend-stage ADR); NFR-008 is enough for v1 and the memory target stays `Deferred` (`10` §41).
+    - For T5.3: `BACKEND-ROADMAP.md` and `15` B0 scope need the `Clock` port and the four route test files. For later: `06` line 214 and 781 should cite ADR-001 point 8; ADR-007 point 7 could cross-reference it; `04` §33 should point the a11y tool to the frontend-stage ADR; `03` NFR-008 could state no larger target in v1.
     - For later tasks: PR template checklist lacks format, build and tests (T5.2); `CONTRIBUTING.md` CI wording (T5.2); `08` and `09` headers still say `Draft`; `validateNewTransaction` reads `new Date()` directly (B0); `transactions.routes.test.ts` lacks a cross-user case; no test asserts notification ordering.
 
 ### Phase 5 — Operations and living docs
@@ -250,15 +251,11 @@ Product decisions that no ADR covers are asked to the user in batches.
 
 ## Next step
 
-Paused 2026-10-05 by the user. Phase 4 is in progress on `docs/sdd-contracts`:
-
-- T4.1 (`07`) is done.
-- T4.2: `08` (slices A-C plus ADR-007 point 15) and `09` (slices A-C) are done (2026-10-06). Paused by the user after `09`.
+Phase 4 is complete on `docs/sdd-contracts` (2026-10-06): T4.1 `07`, T4.2 `08`, `09`, `10`, and every user decision recorded as an ADR amendment. `pr-body.md` is written and the user runs the push and `gh pr create` (base `develop`).
 
 Resume with:
 
-1. User decisions: done 2026-10-06 (`00b307a`, `9e1af65`). Two small opens remain: which connection closes at the cap, and the `simulation.paused` event name in `13`.
-2. `10` in 3 slices: done 2026-10-06 (`f2d52c3`, `aa561b0`, `7f84431`, `87b688c`). Six `10` decisions pending.
-3. Close Phase 4: `pr-body.md` and the `gh` command, which the user runs.
+1. After PR merge: Phase 5 on a new branch from `develop`. T5.3 (`BACKEND-ROADMAP.md` B0) collects the "For T5.3" items above.
+2. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.
