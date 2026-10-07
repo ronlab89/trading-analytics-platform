@@ -2011,6 +2011,8 @@ Code vs ADR:
 
 # 61. File Handling
 
+**Status:** `Reference` for the principle; the CSV import input `Planned (B4)`
+
 If files are generated or delivered:
 
 ```text
@@ -2025,9 +2027,27 @@ Ephemeral container storage must not be treated as durable storage.
 
 Persistent file storage should be introduced through an infrastructure adapter if required later.
 
+| Item | Today or decided | Status |
+|---|---|---|
+| Files the system generates or delivers | None. No functional requirement asks for an export or a download, and no code writes a file | `Reference`: there is nothing to generate, deliver or clean up |
+| Files the API serves | None. `apps/api/src/app.ts` registers no static, download or `sendFile` route | `Implemented` |
+| CSV import input | The CSV content is stored in the `jobs` row when the job is created, not on disk; resume and retry read the row, never the original request (ADR-008 point 4) | `Planned (B4)` |
+| Size and row limits of an import | Bounded; the values are fixed in B4 (ADR-008 point 10, `09-security-spec.md` §27) | `Planned (B4)`, values open |
+| Import content in logs | The stored input is never logged (ADR-009, Deferred detail) | `Planned (B3)` |
+| Persistent file storage adapter | Not needed in version 1 | `Deferred` |
+
+Code vs ADR:
+
+- The generate, deliver and cleanup flow is the original text. In version 1 it has nothing to apply to: an import is parsed, validated and stored in the database, and no file survives the request.
+- The API container of the `full` profile writes no file of its own: ADR-009 point 3 sends logs to stdout, with no log files (`Planned (B7)`). The PostgreSQL data lives in the named volume `trading-analytics-postgres-data`, which is the durable store (`docker-compose.yml`).
+- Open (B4): how the CSV reaches `POST /api/v1/portfolios/:portfolioId/imports`. `07-api-spec.md` §14 fixes neither multipart nor a JSON body, and the global JSON limit is 100 kB (`JSON_BODY_LIMIT` in `app.ts`), so a larger file would be rejected with 413. Recommendation: decide the transport together with the size limit in B4, and give that route its own limit instead of raising the global one.
+- Open (B4): how long the stored input is kept. ADR-008 point 4 stores it so that retry works and says nothing about removing it. Recommendation: keep it while the job can still be retried (`TIMED_OUT`, `CANCELLED`, and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`), and clear it for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED`, which is not retryable (ADR-008 point 6).
+
 ---
 
 # 62. External APIs
+
+**Status:** `Deferred`: no external API exists or is decided
 
 External market-data services are optional.
 
@@ -2045,9 +2065,23 @@ Credentials remain server-side.
 
 Demo Mode must not depend on external market-data availability.
 
+| Item | Today or decided | Status |
+|---|---|---|
+| External market-data provider | None. There is no paid provider (`04-tech-stack.md` §47-48), so prices come from the seed and from the deterministic simulator `@trading/market-sim` (ADR-007 point 7) | `Deferred`: adding one needs a new ADR |
+| Outbound HTTP from the API | None. The non-test code of `apps/api`, `packages/domain` and `packages/database` makes no outbound request | `Implemented` as absence |
+| Credentials for a provider | None exist, so nothing is configured (§13) | `Reference` |
+| Demo independent of any external service | The demo makes no call to any backend and runs the same simulator in the browser (ADR-006 point 7, ADR-007 point 13) | `Planned (FE)` |
+
+Code vs ADR:
+
+- The adapter diagram stays as the shape an external provider would take. ADR-007 point 7 makes the simulator the price source in both modes, and its output in real mode is stored as `MarketPrice` and `MarketEvent` (ADR-007 point 8), so no part of the decided design needs a provider.
+- A provider would add outbound dependencies, credentials, rate limits of its own and a failure mode the readiness check does not cover (§50). None of that is decided, so none of it is specified here.
+
 ---
 
 # 63. Rate Limiting
+
+**Status:** per item (table below); the request limiters `Implemented` (`apps/api/src/middleware/rate-limit.ts`, `apps/api/src/app.ts`); realtime limits `Planned (B5)`
 
 Rate limiting should be considered for:
 
@@ -2060,9 +2094,29 @@ Exact limits should be based on the deployed environment and validated during im
 
 Rate limiting must not break local development or CI.
 
+| Area | Limiter | Status |
+|---|---|---|
+| Authentication | `loginRateLimiter` on `POST /api/v1/auth/login`: 5 attempts per 15 minutes per IP, on top of the general limiter (ADR-005 point 12) | `Implemented` |
+| Every other API route (including expensive analytics) | `generalApiRateLimiter`: 300 requests per 15 minutes per IP, registered after the health routes and before the body parser | `Implemented` |
+| Public endpoints | `GET /health`, `GET /health/ready` and `GET /` are unversioned operational routes. The health routes are registered before the limiter and never return 429; `GET /` falls under the general limiter | `Implemented` |
+| Token refresh | General limiter only; a dedicated limiter is open (`09-security-spec.md` §26) | `Planned (B2)`, open |
+| Simulation control | General limiter (`simulation:control`, ADR-007 point 10) | `Planned (B5)` |
+| Realtime messages | 20 inbound messages per second per connection (ADR-007 point 15) | `Planned (B5)` |
+| Resource-intensive operations (CSV import) | No limit beyond the general limiter, the size and row bounds, and the job timeout (ADR-008 points 7 and 10) | `Planned (B4)` |
+
+Code vs ADR:
+
+- A request over a limit returns 429 `RATE_LIMITED` in the standard error envelope with the `RateLimit` headers of draft 7; the legacy `X-RateLimit-*` headers are off. The full view is `09-security-spec.md` §26.
+- CI does not break: both limiters are skipped when `NODE_ENV=test`, which `.env.test.example` sets, and `rate-limit.test.ts` checks the 429 response on an isolated limiter. The workflow itself is `Planned (B0)`.
+- Local development is not exempt. Only `NODE_ENV=test` skips the limiters, so a developer who mistypes a password five times, or a script that sends more than 300 requests in 15 minutes, gets 429 until the window ends. The counters are in memory, so restarting the API clears them. Open: whether development should skip or raise the limits. Recommendation: keep them as they are, since they match the values a demonstration shows, and document the restart in the troubleshooting list (§75).
+- The store is per process and the key is the client IP. The API sets no `trust proxy`, so behind a proxy every client would share one address (§32). Neither matters while the stack is one local instance (ADR-006 points 1 and 2); both need a decision before a hosted backend (§67).
+- The limits are not environment variables. Changing a value is a code change; no ADR asks for configurable limits.
+
 ---
 
 # 64. Public Demo Traffic
+
+**Status:** `Planned (FE)`; the bounds `Deferred`
 
 Public traffic must be treated as untrusted.
 
@@ -2076,9 +2130,28 @@ The application should protect against:
 
 Demo resources should remain bounded.
 
+Public traffic reaches only the static demo (ADR-006 points 1 and 2). No public backend exists, so no request from the public internet reaches the API or the database:
+
+| Threat | How the decided design handles it | Status |
+|---|---|---|
+| Arbitrary file access | The demo is static files under a subpath of the portfolio site, served by that host; the API serves no files (§61) | `Planned (FE)` |
+| Unauthorized administration | No server operation exists to reach. The demo role selector runs the permission checks in process, for parity and not for security (ADR-005 point 11; §24) | `Planned (FE)` |
+| Private data access | The demo bundles synthetic data only (§24, §56) | `Planned (FE)`; the data layers `Deferred` |
+| Uncontrolled resource consumption | The demo's cost falls on the visitor's browser. No server resource is consumed, and the hosting of the portfolio site is outside this project's control (§28) | `Planned (FE)` |
+| Abusive simulation requests | The simulator runs in the visitor's browser, so a request affects only that tab. In real mode, simulation control needs `simulation:control` and falls under the general limiter (ADR-007 point 10, §63) | Demo `Planned (FE)`; real mode `Planned (B5)` |
+| Unbounded demo resources | No ADR sets a bound on retained ticks, events or stored state | `Deferred` |
+
+Code vs ADR:
+
+- This section overlaps §24, which keeps the exposure view; this one keeps the traffic view. They agree: the demo has no credentials and no server.
+- The real-mode API is reachable only on the author's machine. Treating its traffic as untrusted still applies to a demonstration on a shared network: CORS is limited to `CORS_ORIGIN`, the limiters apply (`09-security-spec.md` §26) and the business routes need an access token (`authenticate`, ADR-005). `Planned (B7)` covers the unbound PostgreSQL port (§6).
+- Open (FE): the numeric bound on the demo's retained history. Recommendation: decide it in the frontend-stage ADR with the other demo specifics (ADR-010 point 6), as §24 already records.
+
 ---
 
 # 65. Resource Limits
+
+**Status:** per item (table below)
 
 Reasonable limits should exist for:
 
@@ -2093,9 +2166,30 @@ Reasonable limits should exist for:
 
 These limits protect both local and public deployments.
 
+| Limit | Today or decided | Status |
+|---|---|---|
+| Request body size | 100 kB (`JSON_BODY_LIMIT`); over it returns 413 `VALIDATION_ERROR` (`apps/api/src/app.ts`, `apps/api/src/middleware/error-handler.ts`) | `Implemented` |
+| Upload size | CSV size and row count, values fixed in B4 (ADR-008 point 10) | `Planned (B4)` |
+| Pagination size | `pageSize` 1 to 100, default 20 (`apps/api/src/schemas/pagination.schema.ts`); batch `assetIds` 1 to 50; at most 5 scenarios compared (`scenario.schema.ts`) | `Implemented` |
+| Analytics query scope | Periods are enumerated and a custom range is validated (ADR-004). No maximum range or portfolio size is decided | `Deferred` |
+| Background job duration | A timeout per job type while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7); values fixed in B4 | `Planned (B4)` |
+| Realtime limits | 50 subscriptions, 20 inbound messages per second and a 1 MB outbound buffer per connection; 5 connections per user (ADR-007 point 15, ADR-005 point 13) | `Planned (B5)` |
+| Realtime history | `MarketEvent` retention is bounded, the limit fixed in B5 (ADR-007 point 8); the client keeps no event history (`08-realtime-spec.md` §51) | `Planned (B5)`; client `Planned (FE)` |
+| Demo history | No bound is decided (§24) | `Deferred` |
+| Database query limits | No statement timeout or row cap is configured; Prisma's pool timeout applies (§66) | `Deferred` |
+| API container memory | 512 MB in the `full` profile (NFR-054) | `Planned (B7)` |
+
+Code vs ADR:
+
+- The API has no server request timeout in version 1; the 15 s client timeout covers the user (ADR-002 point 10, NFR-017; the client policy is decided in the frontend-stage ADR, ADR-006 point 11). Node.js defaults cap the request line and headers (431).
+- Open (B5): the maximum inbound WebSocket message size. The `ws` library accepts messages up to 100 MiB unless `maxPayload` is set (`09-security-spec.md` §27). Recommendation: set it to a few kilobytes, since the client sends only `AUTHENTICATE`, `SUBSCRIBE` and `UNSUBSCRIBE`.
+- These limits protect the local stack. A public backend would need them reviewed against its real capacity (ADR-006 point 2).
+
 ---
 
 # 66. Database Pooling
+
+**Status:** `Implemented` with Prisma's default pool; explicit values `Deferred`
 
 The backend should use controlled PostgreSQL connection pooling.
 
@@ -2105,9 +2199,27 @@ It should not exceed what the database instance can safely support.
 
 Exact values are implementation decisions, not universal performance guarantees.
 
+| Item | Today | Status |
+|---|---|---|
+| One shared client | `packages/database/src/client.ts` exports one `PrismaClient` singleton, reused across hot reloads, so one process holds one pool | `Implemented` |
+| Pool size | Not configured. `DATABASE_URL` carries no `connection_limit` and `schema.prisma` has no pool setting, so Prisma 6 applies its default of `num_physical_cpus * 2 + 1` connections | `Implemented` as the default |
+| Pool timeout | Not configured; the Prisma 6 default is 10 seconds to obtain a connection | `Implemented` as the default |
+| PostgreSQL capacity | `docker-compose.yml` sets no `max_connections`, so the `postgres:18` default applies (100) | `Implemented` as the default |
+| Explicit pool configuration | No ADR decides values | `Deferred` |
+| Pool health | No separate check; readiness runs `SELECT 1` through the same client (`13-observability-spec.md` §21) | `Implemented` |
+
+Code vs ADR:
+
+- One API process, one pool, one local database: the default stays far below the PostgreSQL limit, which is why no ADR sets a value. The defaults come from the Prisma 6 documentation, and the installed version is `^6.0.0` (`packages/database/package.json`).
+- The test suites of `apps/api` and `packages/database` each create their own client and pool against the test database. Running both together adds their pools to the total, still well below the limit.
+- Open (B7): whether the `full` profile sets `connection_limit`. Recommendation: keep the default in version 1 and set the value only if a measurement shows a problem, as the last paragraph above asks. Revisit if the API ever runs as several instances (§67), because each instance would open its own pool.
+- The migration command (`prisma migrate deploy`, B7) opens its own short-lived connection and is not part of the runtime pool.
+
 ---
 
 # 67. Horizontal Scaling
+
+**Status:** `Deferred`: ADR-006 decides one local instance
 
 The initial backend may run as a single instance.
 
@@ -2127,9 +2239,27 @@ Load Balancer
 
 Realtime scaling may later require shared coordination.
 
+The topology above is not a target. ADR-006 points 1 and 2 decide one local API instance and no hosted backend, and the `full` profile runs one `api` service. Several instances need a new ADR. The process-local assumptions that exist or are decided today:
+
+| State | Where it lives | With several instances | Status |
+|---|---|---|---|
+| Access tokens | Stateless JWT signed with `JWT_SECRET` (`apps/api/src/config/env.ts`) | Safe if every instance shares the secret | `Implemented` |
+| Rate-limit counters | In memory, per process (`rate-limit.ts`) | Each instance counts apart, so the effective limit multiplies; the client IP is also hidden behind a proxy (§63) | `Implemented` |
+| Market simulator and tick sequence | Runs inside the API process, with in-memory sequences (ADR-007 point 7 and Deferred detail) | Each instance would run its own simulator and emit conflicting prices | `Planned (B5)` |
+| WebSocket connections and the per-user cap of 5 | In memory, per process (ADR-005 point 13) | The cap would count per instance | `Planned (B5)` |
+| Job runner | In process, backed by the `jobs` table; transitions are compare-and-set (ADR-008 point 4, Deferred detail) | The compare-and-set limits duplicate execution; startup resume by two instances is not designed | `Planned (B4)` |
+| Idempotency keys and database state | PostgreSQL (ADR-008 point 8) | Shared by every instance | `Planned (B4)` |
+
+Code vs ADR:
+
+- "Avoid unnecessary process-local assumptions" is kept as guidance. The assumptions in the table are not accidental: ADR-007 puts the simulator in the API process and ADR-008 puts the runner there, both because the target is one local instance.
+- No code is written to prepare for several instances, and none should be until a decision asks for it (NFR-070, avoid artificial complexity).
+
 ---
 
 # 68. Realtime Scaling Boundary
+
+**Status:** `Deferred`; the transport port `Planned (B5)`
 
 A multi-instance WebSocket deployment may require a shared event mechanism:
 
@@ -2143,9 +2273,24 @@ Connected clients
 
 The current realtime implementation should remain behind an abstraction to permit this evolution.
 
+| Item | Status |
+|---|---|
+| WebSocket library `ws` behind a transport port (ADR-007 point 1) | `Planned (B5)` |
+| Single API process: simulator, connections and sequences in memory (§67) | `Planned (B5)` |
+| Realtime broker or pub-sub between instances | `Deferred` |
+| Per-process epoch in the envelope, so a client resets its baseline after a server restart (ADR-007, Deferred detail) | `Planned (B5)` |
+
+Code vs ADR:
+
+- No realtime code exists. The abstraction ADR-007 decides is the transport port, which separates the code from the `ws` library. It does not decide a publish interface for fan-out, which is what a broker would replace.
+- Open (B5): whether the hub that delivers events to subscribed sockets sits behind its own interface. Recommendation: keep that interface separate from `ws`, so a broker could later stand behind it, and add no broker or second implementation in version 1.
+- The epoch field already treats a restart as a reset, which is the same recovery a broker-based design would need; clients resynchronize through HTTP on a gap (ADR-007 point 5).
+
 ---
 
 # 69. CDN and Static Assets
+
+**Status:** `Planned (FE)` for the demo build; the caching headers and any CDN `Deferred`
 
 The frontend should be compatible with CDN/static hosting.
 
@@ -2158,9 +2303,24 @@ Use:
 
 Exact caching headers depend on the host.
 
+| Item | Status |
+|---|---|
+| Static build of `apps/web` that a plain static host can serve (ADR-006 point 7) | `Planned (FE)` |
+| Content-hashed assets and cacheable immutable files | `Planned (FE)`: a property of the web build, which does not exist yet |
+| Controlled HTML caching and caching headers | `Deferred`: they belong to the portfolio host, which this project does not control (NFR-025 accepted exception) |
+| Explicit API origin configuration | Not needed by the public demo, which calls no backend (ADR-006 point 7); for the real mode `Deferred` (§14) |
+| A CDN in front of the demo | `Deferred`: no ADR decides one |
+
+Code vs ADR:
+
+- ADR-006 decides that the demo is a static build under a subpath, not a CDN. The guidance above stays as a compatibility requirement on the build, and nothing here selects a CDN or a provider (§28).
+- A configurable base path is part of the same decision (ADR-006 point 7), so asset URLs must resolve under the subpath. How the build receives it is open (FE). Recommendation: a build-time setting beside `VITE_APP_MODE` (§23), recorded in the frontend-stage ADR.
+
 ---
 
 # 70. SPA Routing
+
+**Status:** `Planned (FE)` (ADR-006 point 7); the host-specific fallback open
 
 Static hosting must support client-side routes such as:
 
@@ -2174,13 +2334,26 @@ Unknown application paths should resolve to the frontend entry point rather than
 
 The required host-specific fallback must be documented.
 
+| Item | Status |
+|---|---|
+| SPA fallback for the demo | `Planned (FE)`: decided in ADR-006 point 7 |
+| The route paths | `Deferred`: the three paths above are examples. Frontend routing is not decided (`06-architecture.md`, `11-ui-ux-spec.md`) |
+| The host-specific fallback documented | Open (FE) |
+
+Code vs ADR:
+
+- The demo is hosted under a subpath of the portfolio site, so every route sits under the base path and the fallback must return the demo's entry point, not the portfolio's. Whether the portfolio host provides such a fallback is unconfirmed (§28). Recommendation: confirm it, and if the host cannot, record in the frontend-stage ADR the alternative to use, for example a router that does not depend on server paths.
+- The API has no SPA fallback and needs none: it serves JSON only, and an unknown route returns 404 `NOT_FOUND` in the error envelope (`apps/api/src/app.ts`).
+
 ---
 
 # 71. API Versioning
 
+**Status:** `Implemented` (ADR-002 point 8)
+
 The API should have a consistent versioning strategy.
 
-A possible initial strategy:
+The strategy is decided:
 
 ```text
 /api/v1/...
@@ -2188,9 +2361,25 @@ A possible initial strategy:
 
 Final routes must remain aligned with `07-api-spec.md`.
 
+| Item | Status |
+|---|---|
+| Every business route is under `/api/v1` (for example `auth.routes.ts`, `portfolios.routes.ts`) | `Implemented` |
+| Unversioned operational routes: `GET /health`, `GET /health/ready` and `GET /` | `Implemented` (`07-api-spec.md` §3) |
+| Only additive changes within `v1`; a breaking change needs a new version | `Implemented` as a rule (ADR-002 point 8) |
+| Contracts as versioned schemas in `@trading/contracts` | `Planned (B0)` (ADR-002 points 1 and 8) |
+| OpenAPI document generated from the schemas | `Planned (B6)` (ADR-002 point 7) |
+| Version of the WebSocket endpoint | Open (B5): the path is not decided (§72) |
+
+Code vs ADR:
+
+- The original text called `/api/v1` a possible initial strategy. ADR-002 point 8 decides it, and the code already follows it.
+- The health routes sit outside `/api/v1` on purpose, so a probe does not depend on the API version (§50).
+
 ---
 
 # 72. WebSocket Configuration
+
+**Status:** per item (table below); nothing is built, the server is `Planned (B5)`
 
 The WebSocket endpoint must be environment-aware.
 
@@ -2206,9 +2395,32 @@ wss://<configured-domain>/<path>
 
 The exact endpoint is finalized during implementation.
 
+| Item | Decided or open | Status |
+|---|---|---|
+| Local stack endpoint | `ws://localhost:<PORT>/<path>`, no TLS (`09-security-spec.md` §31) | `Planned (B5)`; the path is open |
+| `wss://<configured-domain>/<path>` | Needs a hosted backend and TLS (ADR-006 point 2, §34) | `Deferred` |
+| Variable for the path or URL | `WEBSOCKET_PATH` is not adopted (§10); the client URL variable is not decided (§14) | `Deferred` |
+| Library and boundary | `ws` behind a transport port (ADR-007 point 1) | `Planned (B5)` |
+| Authentication | The access token travels in the first message, never in the URL; a socket not authenticated within 5 seconds closes with `4001` (ADR-007 point 2) | `Planned (B5)` |
+| Close codes | `4001` unauthenticated or invalid token, `4002` token expired, `4008` limit exceeded, `1001` server going away (ADR-007 point 15) | `Planned (B5)` |
+| Limits per connection | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer (ADR-007 point 15) | `Planned (B5)` |
+| Concurrent connections | 5 per authenticated user, not per IP; an excess connection closes with `4008` (ADR-005 point 13, ADR-007 point 16) | `Planned (B5)` |
+| Heartbeat | Ping every 30 seconds; close after 2 consecutive missed pongs, about 60 seconds (ADR-007 point 15) | `Planned (B5)` |
+| Protocol messages | `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`; replies `ACK` and `ERROR` (ADR-007 point 15) | `Planned (B5)` |
+
+Code vs ADR:
+
+- No WebSocket code exists: `apps/api` has no `ws` dependency. The local development endpoint is therefore a decided shape, not a running URL.
+- Open (B5), already recorded in §31: the endpoint path and whether the socket shares the HTTP port. Recommendation: the same server and port (`PORT`, default 7001) with a fixed path, so the full stack publishes one port.
+- Open (B5): the maximum inbound message size (`maxPayload`, §65); which connection closes when the per-user cap is hit, the new one or the oldest; the close code for a missed-pong close (`08-realtime-spec.md` §7); whether the upgrade request's `Origin` is checked against `CORS_ORIGIN` (`09-security-spec.md` §31).
+- ADR-007 point 15 assigns `1001` (server going away) to a server that is shutting down. The shutdown table in §16 says the close code of that step is not decided. The ADR governs; the realtime step of the shutdown sequence joins in B5 with that code (ADR-006, Deferred detail).
+- The demo has no socket: an in-process adapter implements the same client port (ADR-007 point 13, `Planned (FE)`).
+
 ---
 
 # 73. Backups
+
+**Status:** `Reference`: not applicable to the local environment (ADR-006 point 9)
 
 Local development does not require formal backups.
 
@@ -2216,9 +2428,24 @@ A production-like persistent deployment should have a documented backup and rest
 
 The project must not claim backup coverage until it has actually been configured and tested.
 
+| Item | Today | Status |
+|---|---|---|
+| Backup of the local database | None is configured, and none is claimed | `Reference` |
+| Where the data lives | The named volume `trading-analytics-postgres-data` (`docker-compose.yml`) | `Implemented` |
+| What destroys it | `docker compose down -v` removes the volume, and `pnpm --filter @trading/database db:reset` drops and recreates the database after a confirmation prompt | `Implemented` |
+| Backup for a hosted database | No hosted database exists (ADR-006 point 2) | `Deferred` |
+
+Code vs ADR:
+
+- ADR-006 point 9 documents backups as not applicable to a local environment and forbids claiming them. The stack holds seed and demonstration data, which `db:seed` and `db:reset` recreate from the repository.
+- The "production-like persistent deployment" of the original text is the local `full` profile (§57), which has no real user data, so the condition "if real user data exists" does not hold.
+- If a real portfolio ever lives on the local volume, a backup becomes the author's decision. No command or schedule is specified here.
+
 ---
 
 # 74. Disaster Recovery
+
+**Status:** `Reference`: enterprise recovery is out of scope; the sequence applies as described below
 
 Enterprise disaster recovery is out of scope.
 
@@ -2238,55 +2465,89 @@ Health checks
 Smoke tests
 ```
 
+For the local stack the first step is a rebuild, because no backup exists (§73):
+
+| Step | Local stack | Status |
+|---|---|---|
+| Restore database | Recreate it from the repository: start PostgreSQL and run `pnpm --filter @trading/database db:reset`, which reapplies every migration and reseeds | `Implemented` for development |
+| Run compatible application | The commit that matches the migrations; there are no down migrations, so recovery goes forward (ADR-006 point 6, §47) | `Reference` |
+| Validate migrations | `prisma migrate deploy` at startup in the full stack | `Planned (B7)` (ADR-006 point 5) |
+| Start services | `docker compose --profile full up` | `Planned (B7)` |
+| Health checks | `GET /health` and `GET /health/ready` (§50) | `Implemented` |
+| Smoke tests | The B7 smoke test (§49) | `Planned (B7)` |
+
+Code vs ADR:
+
+- `db:reset` is a development command: it is destructive by design and runs the seed. ADR-006 point 5 says the seed never runs automatically in the full stack, so a recovery there applies the migrations and runs the seed as a separate, explicit step.
+- Restoring a dump is not described because no backup exists. If one is ever configured, this section gains that step and its test (§73).
+
 ---
 
 # 75. Troubleshooting
 
+**Status:** `Reference`; the developer-facing workflow `Planned (B3)` (`13-observability-spec.md` §36), the README entries pending (T5.2)
+
 Documentation should cover common failures.
+
+The checks below name the commands and routes that exist today. Items about code that is not built are marked.
 
 ### Database unavailable
 
 Check:
 
-- PostgreSQL service
-- connection URL
-- credentials
-- network
-- readiness
+- PostgreSQL service: `docker compose ps`, and `docker compose logs postgres` for the reason; the container has a `pg_isready` healthcheck
+- connection URL: `DATABASE_URL` in `.env` must repeat the user, password, port and database of the Compose variables, and nothing keeps them in step (§6)
+- credentials: the Compose fallback password differs from the `.env.example` placeholder (§6)
+- network: the published port is `DATABASE_PORT` (default 5432); another local PostgreSQL on that port is a common clash
+- readiness: `GET /health/ready` returns 503 with `checks.database: "unavailable"`; the cause is in the API's `health.database.unavailable` log line, which carries the error name and no driver message
+
+A request that needs the database while it is down returns 500 `INTERNAL_ERROR` today; 503 `DEPENDENCY_ERROR` is `Planned (B0)`.
 
 ### Backend does not start
 
 Check:
 
-- environment variables
-- Node.js version
-- build output
-- migration state
-- logs
+- environment variables: an invalid value stops the process with `[api] invalid environment configuration:`, the key and the rule, and exit code 1 (`apps/api/src/config/env.ts`, §12). `JWT_SECRET` needs at least 32 characters
+- Node.js version: `engines.node` is `>=22.0.0` (§59)
+- build output: `pnpm --filter @trading/api start` runs `node dist/index.js`, which does not work until the production build exists (`Planned (B7)`); use `pnpm --filter @trading/api dev` (`tsx watch`) meanwhile
+- migration state: apply migrations with `pnpm --filter @trading/database db:migrate` (development); `db:reset` rebuilds the database from scratch
+- the port: `PORT` (default 7001) may already be in use
+- logs: today a startup line and error lines on stdout; structured startup entries are `Planned (B3)` (§52)
+
+### Login returns 429
+
+The login limiter allows 5 attempts per 15 minutes per IP, and the general limiter 300 requests (§63). Both are skipped under `NODE_ENV=test`. The counters are in memory, so restarting the API clears them.
 
 ### Frontend cannot reach API
 
-Check:
+`Planned (FE)`: there is no frontend yet. When it exists, check:
 
-- API base URL
-- CORS
-- backend health
-- browser network panel
+- API base URL: not decided (§14)
+- CORS: the browser origin must appear in `CORS_ORIGIN` (default `http://localhost:5173`); a mismatch is a browser error and not an API error
+- backend health: `GET /health`
+- browser network panel: the `X-Request-ID` header of a failing request identifies it in the API logs; exposing it to browser code through CORS is `Planned (B3)` (ADR-009 point 5)
 
 ### WebSocket fails
 
-Check:
+`Planned (B5)`: there is no WebSocket server yet. When it exists, check:
 
-- endpoint
-- WS/WSS scheme
-- proxy support
-- server upgrade support
-- browser console
-- reconnect diagnostics
+- endpoint: the path is open (§72)
+- WS/WSS scheme: the local stack uses `ws://`, and WSS is `Deferred` (§34)
+- proxy support: the local stack has no proxy (§32)
+- server upgrade support: the socket shares the API port if the recommendation of §72 is adopted
+- browser console: close codes `4001`, `4002` and `4008` identify an authentication failure, an expired token and a limit (§72)
+- reconnect diagnostics: client diagnostics are `Planned (FE)` (`08-realtime-spec.md` §27)
+
+Code vs ADR:
+
+- The original four headings are kept and extended with the real commands. The developer-facing troubleshooting document is `13-observability-spec.md` §36, which `Planned (B3)` assigns; `README.md` and `CONTRIBUTING.md` document neither the API start nor these checks, and are aligned in T5.2.
+- `.env.test.example` points at a test database (`trading_analytics_test`) that must be created by hand (§6); a test run that cannot connect usually means it is missing, or `pnpm --filter @trading/database db:test:migrate` has not run.
 
 ---
 
 # 76. Local Setup
+
+**Status:** per step (table below); the frontend step `Planned (FE)`; the repository documentation of these steps pending (T5.2)
 
 The documented setup should follow approximately:
 
@@ -2312,9 +2573,31 @@ Open application
 
 Exact commands belong in repository documentation.
 
+| Step | Command or action | Status |
+|---|---|---|
+| Clone | Node.js `>=22`, pnpm through corepack (`package.json` `engines`, `packageManager`) | `Implemented` |
+| Install dependencies | `pnpm install` | `Implemented` |
+| Create environment file | Copy `.env.example` to `.env`, then set `JWT_SECRET` (at least 32 characters) and a `DATABASE_URL` that matches the Compose variables (§10, §11) | `Implemented` |
+| Start PostgreSQL | `docker compose up -d` | `Implemented` |
+| Run migrations | `pnpm --filter @trading/database db:migrate` (`prisma migrate dev`) | `Implemented` |
+| Seed development data | `pnpm --filter @trading/database db:seed`; never automatic (ADR-006 point 5, §20) | `Implemented` |
+| Start backend | `pnpm --filter @trading/api dev` | `Implemented` |
+| Start frontend | No frontend exists | `Planned (FE)` |
+| Open application | The API answers `GET /` and `GET /health` on port 7001; the application is the frontend | API `Implemented`; UI `Planned (FE)` |
+
+Optional checks, as in `README.md` and `package.json`: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm format:check` and `pnpm docs:check`. Tests need `.env.test.local` copied from `.env.test.example` and a separate test database (§11).
+
+Code vs ADR:
+
+- `README.md` lists `pnpm install` and `pnpm typecheck` as setup, says the API is "not started yet" and has no environment, API or health step. `CONTRIBUTING.md` documents none of these either. Both are stale and are aligned in T5.2.
+- The `db:migrate` and `db:seed` scripts load `.env` through `dotenv-cli` (`packages/database/package.json`), so the environment file and its `DATABASE_URL` belong before step "Run migrations".
+- The development flow runs the API on the host, against the PostgreSQL container's published port. The all-containers flow is the `full` profile (§57, `Planned (B7)`).
+
 ---
 
 # 77. Production Setup
+
+**Status:** local full stack `Planned (B7)`; demo publishing `Planned (FE)`; hosted steps `Deferred` (ADR-006 point 2)
 
 Production-like deployment should follow:
 
@@ -2338,61 +2621,111 @@ Verify realtime
 Run smoke tests
 ```
 
+"Production-like" is the local full stack, with the demo published separately (ADR-006 point 1). The steps map as follows:
+
+| Step | Local full stack or demo | Status |
+|---|---|---|
+| Provision infrastructure | Docker on the author's machine; no hosting, managed database or reverse proxy (§29, §30, §32) | Local `Implemented`; hosted `Deferred` |
+| Configure secrets | The git-ignored `.env`, with `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET` and the optional `PORT` and `CORS_ORIGIN` (§11, §13) | `Planned (B7)` |
+| Build artifacts | `pnpm build` and the API image; the compiled output must run with `node dist/index.js` (ADR-006 points 3 and 4) | `Planned (B7)` |
+| Run migrations | `prisma migrate deploy` at API startup (ADR-006 point 5) | `Planned (B7)` |
+| Start backend | `docker compose --profile full up` (§57) | `Planned (B7)` |
+| Deploy frontend | Publish the static demo build under the portfolio subpath; how it reaches the host is open (§22) | `Planned (FE)` |
+| Verify health | `GET /health` and `GET /health/ready` (§48, §50) | Routes `Implemented`; the procedure `Planned (B7)` |
+| Verify realtime | Connect to the local WebSocket server (§72) | `Planned (B5)` |
+| Run smoke tests | The B7 smoke test, from a clean checkout (§49, NFR-055) | `Planned (B7)` |
+
+Code vs ADR:
+
+- The sequence is the original text. Its "provision" and "deploy" steps presume a hosted backend, which ADR-006 point 2 removes. None of the steps run today: there is no `full` profile, no Dockerfile and no runnable production build (ADR-006 context).
+- Order matters between migration and start: the Compose healthcheck dependency (`condition: service_healthy`) keeps `migrate deploy` from running before PostgreSQL accepts connections (ADR-006, Deferred detail, B7).
+- The seed does not appear in this sequence, because it never runs automatically (ADR-006 point 5).
+
 ---
 
 # 78. Security Checklist
 
+**Status:** per item (tags below)
+
 Before public deployment:
 
-- [ ] No secrets committed
-- [ ] Production JWT secret configured
-- [ ] Database credentials protected
-- [ ] CORS restricted
-- [ ] HTTPS enabled
-- [ ] Debug mode disabled
-- [ ] Stack traces hidden
-- [ ] Health output sanitized
-- [ ] Metrics restricted if exposed
-- [ ] Admin operations protected
-- [ ] Rate limits considered
-- [ ] Resource limits configured
-- [ ] Demo data isolated
-- [ ] Dependencies reviewed
+ADR-006 point 2 hosts no backend, so "public deployment" means two things: publishing the static demo build, and running the local full stack for a demonstration. Items that need a hosted backend are `Deferred`. Each item ends with its status and, where it is not built, the block or stage that delivers it. `09-security-spec.md` holds the detail and NFR-024 cites this list. Checked items are those whose behavior exists in the repository today.
+
+- [x] No secrets committed. (`Implemented` by convention: `.env`, `.env.local` and `.env.*.local` are git-ignored and only the `*.example` files are tracked; no secret scanner exists, and CI itself is `Planned (B0)`, §13)
+- [x] Production JWT secret configured. (`Implemented` as a rule: `JWT_SECRET` has no default and needs at least 32 characters, `apps/api/src/config/env.ts`; supplying a real value in the `full` profile is `Planned (B7)`)
+- [ ] Database credentials protected. (Partly: `.env` is ignored, but the Compose fallback password is a known local value, the API connects as a superuser and the port is published on every host interface. Runtime role `Planned (B0)`, binding open in B7, §6)
+- [x] CORS restricted. (`Implemented`: `CORS_ORIGIN`, default `http://localhost:5173`, `apps/api/src/app.ts`)
+- [ ] HTTPS enabled. (`Deferred`: the local stack uses plain HTTP and `ws://`; the demo's HTTPS comes from the portfolio host, `Planned (FE)`, §28, §34)
+- [ ] Debug mode disabled. (No debug switch exists. `LOG_LEVEL` defaults to `info` in production, `Planned (B3)`; `ENABLE_DEBUG_LOGGING` is not adopted, §10)
+- [x] Stack traces hidden. (`Implemented`: the error handler returns a generic 500 body and logs the error name only, `apps/api/src/middleware/error-handler.ts`)
+- [x] Health output sanitized. (`Implemented`: fixed fields and `ok` or `unavailable`, `apps/api/src/controllers/health.controller.ts`, §50)
+- [x] Metrics restricted if exposed. (Satisfied by absence: no metrics and no `/metrics` endpoint, `Deferred`, ADR-009 point 10)
+- [ ] Admin operations protected. (`requireRole` and the roles of ADR-005 `Planned (B2)`; simulation control `Planned (B5)`; the code carries the role in the token but no route checks it yet)
+- [x] Rate limits considered. (`Implemented`, §63)
+- [ ] Resource limits configured. (Partly: body size and pagination `Implemented`; CSV, realtime and job limits `Planned (B4)` and `Planned (B5)`; the 512 MB container limit `Planned (B7)`, §65, NFR-054)
+- [ ] Demo data isolated. (`Planned (FE)`: the demo has no backend and no database, §24, §56)
+- [ ] Dependencies reviewed. (Lockfile and review `Implemented`; the manual `pnpm audit --prod --audit-level=high` step `Planned (B7)`, §58)
+
+Code vs ADR:
+
+- The original heading read "Before public deployment" and assumed a public backend. The two readings above replace it; a hosted backend would need a new ADR and a review of every item (ADR-006 point 2).
+- ADR-005 point 13 adds two items the original list lacks: a separate runtime database role and equalized login timing, both `Planned (B0)`. The checklist does not list them; ADR-005 point 13 and `09-security-spec.md` track them.
+- "Admin operations protected" cannot be checked until B2: the code roles are `USER` and `ADMIN`, ADR-005 decides `VIEWER`, `TRADER` and `ADMIN`, and no role check exists in `apps/api` today.
 
 ---
 
 # 79. Performance Checklist
 
+**Status:** per item (tags below)
+
 Before deployment:
 
-- [ ] Production frontend build succeeds
-- [ ] Production backend build succeeds
-- [ ] Development dependencies excluded where appropriate
-- [ ] Static assets optimized
-- [ ] Required indexes exist
-- [ ] Pagination limits enforced
-- [ ] Realtime history bounded
-- [ ] Background jobs have timeouts
-- [ ] Logging volume controlled
+Each item ends with its status and, where it is not built, the block or stage that delivers it. Checked items are those whose behavior exists today.
+
+- [ ] Production frontend build succeeds. (`Planned (FE)`: no web code exists)
+- [ ] Production backend build succeeds. (`pnpm build` compiles every package with `tsc --build`, but the output does not run, so the item stays open: running it is `Planned (B7)`; building in CI is `Planned (B0)`, ADR-006 points 3 and 11)
+- [ ] Development dependencies excluded where appropriate. (`Planned (B7)`: the multi-stage image, ADR-006 point 4)
+- [ ] Static assets optimized. (`Planned (FE)`, §69)
+- [x] Required indexes exist. (`Implemented`: `@@index` and `@@unique` declarations in `packages/database/prisma/schema.prisma`; whether they cover every query is not reviewed, `05-data-model.md`)
+- [x] Pagination limits enforced. (`Implemented`: `pageSize` at most 100 on the paginated lists, §65)
+- [ ] Realtime history bounded. (`Planned (B5)`: `MarketEvent` retention, ADR-007 point 8; the client window `Planned (FE)`)
+- [ ] Background jobs have timeouts. (`Planned (B4)`: ADR-008 point 7)
+- [ ] Logging volume controlled. (`Planned (B3)`: one JSON line per event at a level set by `LOG_LEVEL`, with `info` in production, ADR-009 points 3 and 7)
 
 No performance claim should be published without actual measurement.
+
+Code vs ADR:
+
+- The targets that a measurement would check are in `03-non-functional-requirements.md` (NFR-001 onward) and are not repeated here.
+- The slow-request threshold (`SLOW_REQUEST_THRESHOLD_MS`, default 500) is how a slow request becomes visible, `Planned (B3)` (ADR-009 point 8, §10).
+- No benchmark, load test or profile exists in the repository.
 
 ---
 
 # 80. Deployment Observability Checklist
 
+**Status:** per item (tags below); split by scope as ADR-009 point 12 requires
+
 Verify:
 
-- [ ] startup logs
-- [ ] request IDs
-- [ ] error logging
-- [ ] health endpoint
-- [ ] readiness checks
-- [ ] database health
-- [ ] realtime lifecycle diagnostics
-- [ ] background job diagnostics
-- [ ] metrics where implemented
-- [ ] safe production log level
+The backend items close in B3, except where a tag names another block. Frontend and demo items belong to the frontend stage, and metrics are `Deferred` (ADR-009 points 10 and 12; `13-observability-spec.md` §74, which owns the full definition of done). Checked items exist today.
+
+- [ ] startup logs. (`Planned (B3)`: the entry name and level are open; today one `console.log` line announces the port, §52)
+- [x] request IDs. (`Implemented`: `X-Request-ID` assigned or reused, echoed and present in error bodies, `apps/api/src/middleware/request-id.ts`; propagation to every log line `Planned (B3)`)
+- [x] error logging. (`Implemented` as the `request.failed` line from the error handler; `http.request.failed` `Planned (B3)`, ADR-009 point 6)
+- [x] health endpoint. (`Implemented`, §50)
+- [x] readiness checks. (`Implemented`, §50; 503 while shutting down `Planned (B3)`; the route test `Planned (B0)`, ADR-001 point 8)
+- [x] database health. (`Implemented`: `SELECT 1` through the shared client; a recovery entry is `Deferred` until a poller exists, B7, `13-observability-spec.md` §58)
+- [ ] realtime lifecycle diagnostics. (`Planned (B5)` on the server and `Planned (FE)` on the client; names open, ADR-009 point 11)
+- [ ] background job diagnostics. (`Planned (B4)`: entry names and fields are open)
+- [ ] metrics where implemented. (`Deferred`: none exist, ADR-009 point 10)
+- [ ] safe production log level. (`Planned (B3)`: `LOG_LEVEL` is `info` in production and `silent` in tests, ADR-009 point 7; the variable is not read yet)
+
+Code vs ADR:
+
+- ADR-009 point 12 limits B3 to the backend, and `13-observability-spec.md` §74 splits its checklist by block. This checklist is the deployment view of the same items; it must not be closed ahead of them.
+- The `app.shutdown.started` and `app.shutdown.completed` entries (ADR-006 point 12) are not in the original list. They are `Planned (B3)`, and the 503 readiness response while shutting down belongs to the same item (§16).
+- Log shipping, dashboards and alerting are `Deferred` with the hosted backend (§53).
 
 ---
 
