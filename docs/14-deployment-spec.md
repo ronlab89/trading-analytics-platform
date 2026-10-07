@@ -3,7 +3,7 @@
 **Project:** Trading Analytics Platform  
 **Document:** Deployment Specification  
 **Version:** 1.0  
-**Status:** All sections reconciled with the code and ADRs on 2026-10-07 (model and targets from ADR-006; graceful shutdown from ADR-006 point 12); open details and pending decisions are recorded per section  
+**Status:** All sections reconciled with the code and ADRs on 2026-10-07 (model and targets from ADR-006; graceful shutdown from ADR-006 point 12; the deployment decisions approved the same day from ADR-005 point 13, ADR-006 points 4, 8, 11-13, ADR-007 points 1 and 16, ADR-008 point 4, ADR-009 point 11 and ADR-010 point 6); open details are recorded per section  
 **Previous document:** `13-observability-spec.md`  
 **Next document:** `15-implementation-plan.md`
 
@@ -77,7 +77,7 @@ Code vs ADR:
 | Local Development | Daily development | `Implemented`: PostgreSQL through Compose, API through `pnpm --filter @trading/api dev` (`apps/api/package.json`) |
 | Test / CI | Automated validation | Local test runs `Implemented` (`vitest`, `.env.test.local`); the GitHub Actions workflow `Planned (B0)` (ADR-006 point 10) |
 | Demo | Public portfolio experience | `Planned (FE)`: static build of `apps/web` in demo mode under a subpath (ADR-006 points 1 and 7) |
-| Production-like | Deployment validation | `Planned (B7)`: the local full stack, `full` Compose profile with PostgreSQL and the API (ADR-006 points 1 and 4) |
+| Production-like | Deployment validation | `Planned (B7)`: the local full stack, `full` Compose profile with PostgreSQL, a one-shot `migrate` service and the API (ADR-006 points 1 and 4) |
 
 The same application artifacts should be reused whenever possible, with environment-specific configuration determining infrastructure.
 
@@ -139,7 +139,7 @@ Code vs ADR:
 
 - `apps/web` holds only `WIREFRAME-PLAN.md` and `wireframe.html`; there is no React or Vite code. The frontend box is `Planned (FE)`, and the WebSocket path of the arrow is `Planned (B5)`.
 - Today the API runs on the host and reaches PostgreSQL through the published port on `localhost`.
-- ADR-006 point 4 settles "may provide the complete stack": the default Compose profile holds only PostgreSQL, and a `full` profile adds the API (`Planned (B7)`). No frontend container is decided (§5).
+- ADR-006 point 4 settles "may provide the complete stack": the default Compose profile holds only PostgreSQL, and a `full` profile adds the one-shot `migrate` service and the API (`Planned (B7)`). No frontend container is decided (§5).
 
 ---
 
@@ -200,26 +200,28 @@ It should support:
 |---|---|
 | Startup/shutdown | `Implemented`: `docker compose up -d` and `docker compose down` |
 | Service networking | `Planned (B7)`: one service exists today, so there is nothing to network |
-| Health dependencies | PostgreSQL healthcheck `Implemented` (`pg_isready`, 5 s interval, 5 retries); API `depends_on` with `condition: service_healthy` `Planned (B7)` (ADR-006, Deferred detail) |
+| Health dependencies | PostgreSQL healthcheck `Implemented` (`pg_isready`, 5 s interval, 5 retries); `depends_on` with `condition: service_healthy` on PostgreSQL, so that it accepts connections before `migrate deploy` runs (ADR-006, Deferred detail), and API `depends_on: migrate` with `condition: service_completed_successfully` (ADR-006 point 4); both `Planned (B7)` |
 | Environment variables | `Implemented`: `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` and `DATABASE_PORT`, each with a default |
 | Persistent PostgreSQL volume | `Implemented`: named volume `trading-analytics-postgres-data`, mounted at `/var/lib/postgresql` |
 | Isolated database state | Per environment, `Implemented` by convention: `trading_analytics_dev` for development, and a separate `trading_analytics_test` on the same instance created by hand (`.env.test.example`) |
 | Development workflow | `Implemented`: the default profile is PostgreSQL only |
-| `full` profile | `Planned (B7)` (ADR-006 point 4) |
+| `full` profile | `Planned (B7)` (ADR-006 point 4): PostgreSQL, a one-shot `migrate` service and the API |
+| Container time zone | `Planned (B7)`: the API and PostgreSQL containers run with `TZ=UTC` (ADR-006 point 4; §60) |
 
 Conceptual structure:
 
 ```yaml
 services:
   postgres: # default profile, Implemented
-  api: # profile "full", Planned (B7)
+  migrate: # profile "full", one-shot (prisma migrate deploy), Planned (B7)
+  api: # profile "full", depends_on migrate (service_completed_successfully), Planned (B7)
 ```
 
 Exact configuration belongs to implementation.
 
 Code vs ADR:
 
-- The conceptual structure drops `frontend` and renames `backend` to `api`, following ADR-006 point 4.
+- The conceptual structure drops `frontend`, renames `backend` to `api` and adds the one-shot `migrate` service, following ADR-006 point 4 (amended 2026-10-07; migrations, §15).
 - `docker-compose.yml` has no `profiles` key yet. It fixes `container_name: trading-analytics-postgres` and `restart: unless-stopped`.
 - The Compose fallback password (`trading_dev_password`) differs from the `.env.example` placeholder (`change_me_in_local_env`). With no `.env`, Compose still starts, with the fallback. Both are local-only values.
 - `DATABASE_URL` repeats the user, password, port and database of the four Compose variables and is edited by hand; nothing keeps them in step.
@@ -341,16 +343,16 @@ Variables, with the names of `apps/api/src/config/env.ts` and ADR-006 point 8:
 | `NODE_ENV` | `development`, `test` or `production`; default `development` | `Implemented` |
 | `PORT` | API port; default `7001` | `Implemented` |
 | `DATABASE_URL` | PostgreSQL connection string, read by Prisma (`schema.prisma`) | `Implemented` as a Prisma input; not validated by `env.ts` (§12) |
-| `CORS_ORIGIN` | Comma-separated allowed browser origins; default `http://localhost:5173` | `Implemented` |
+| `CORS_ORIGIN` | Comma-separated allowed browser origins; default `http://localhost:5173` | `Implemented`; validation (only `http(s)://host[:port]`, `*` rejected) `Planned (B0)` (ADR-006 point 13; §33) |
 | `JWT_SECRET` | Token signing secret; at least 32 characters, no default | `Implemented` |
 | `JWT_EXPIRES_IN_SECONDS` | Access token lifetime in seconds; default `900` | `Implemented`; replaces `JWT_EXPIRES_IN` (ADR-006 point 8) |
 | `LOG_LEVEL` | `debug` in development, `info` in production, `silent` in tests | `Planned (B3)` (ADR-009 point 7) |
 | `SLOW_REQUEST_THRESHOLD_MS` | Slow-request `warn` threshold for HTTP requests; default `500` | `Planned (B3)` (ADR-009 point 8) |
 | `APP_MODE` | `real` or `demo`; exposed to the web build as `VITE_APP_MODE` | `Planned (FE)` (ADR-006 point 8); replaces `DEMO_MODE` |
-| `WEBSOCKET_PATH` | WebSocket endpoint path | `Deferred`: no ADR decides a variable for it (open detail, B5) |
+| `VITE_API_BASE_URL`, `VITE_WS_URL` | API and WebSocket base URLs of the real-mode web build; proposed names, build-time values (§14) | `Planned (FE)` (ADR-006 point 8) |
 | `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_PORT` | Read by `docker-compose.yml` only | `Implemented` |
 
-`LOG_FORMAT`, `ENABLE_DEBUG_LOGGING` and `ENABLE_DEV_DIAGNOSTICS` are not adopted (ADR-009 point 2).
+`LOG_FORMAT`, `ENABLE_DEBUG_LOGGING` and `ENABLE_DEV_DIAGNOSTICS` are not adopted (ADR-009 point 2). `WEBSOCKET_PATH` is not adopted either: the WebSocket is served on the API's port (7001) on a fixed path, proposed `/ws` and confirmed in B5 (ADR-007 point 1; §31).
 
 Configuration, secrets, code and runtime state must remain separate concerns.
 
@@ -397,13 +399,13 @@ Code vs ADR:
 
 - No repository document lists these variables outside this table; `README.md` and `CONTRIBUTING.md` are aligned in T5.2.
 - `.env.example` opens with a stale Spanish note ("variables reales se agregan a medida que se implementen") although the API variables already exist, and it lacks `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3) and `APP_MODE` (FE). Fixing the file is a code change and belongs to the block that adds each variable.
-- `.env.test.example` sets `NODE_ENV=test`, which disables rate limiting in the integration suite (`apps/api/src/middleware/rate-limit.ts`). `LOG_LEVEL=silent` in tests is `Planned (B3)` (ADR-009 point 7).
+- `.env.test.example` sets `NODE_ENV=test`, which disables rate limiting in the integration suite (`apps/api/src/middleware/rate-limit.ts`). Rate limits in development stay on, and restarting the API clears the counters (ADR-006, Deferred detail; B0). `LOG_LEVEL=silent` in tests is `Planned (B3)` (ADR-009 point 7).
 
 ---
 
 # 12. Configuration Validation
 
-**Status:** `Implemented` for the five variables `env.ts` validates; `DATABASE_URL` `Planned (B7)` (`09-security-spec.md` §43); `LOG_LEVEL`, `SLOW_REQUEST_THRESHOLD_MS` and `APP_MODE` join with their blocks
+**Status:** `Implemented` for the five variables `env.ts` validates; `DATABASE_URL` `Planned (B7)` (`09-security-spec.md` §43); the per-entry check of `CORS_ORIGIN` `Planned (B0)` (ADR-006 point 13); `LOG_LEVEL`, `SLOW_REQUEST_THRESHOLD_MS` and `APP_MODE` join with their blocks
 
 Backend configuration must be validated at startup.
 
@@ -432,6 +434,7 @@ Code vs ADR:
 - The message never carries the value, only the key and the rule (for example "JWT_SECRET must be at least 32 characters long."). The output goes through `console.error`, not the `Logger` of ADR-009 (B3).
 - Not validated today: `DATABASE_URL`. A missing or malformed value surfaces at the first query, so the API starts and `GET /health/ready` answers 503. Adding it to the schema is `Planned (B7)` (`09-security-spec.md` §43).
 - `NODE_ENV=production` imposes no extra rule in the schema (for example a stricter `JWT_SECRET`). No ADR decides one.
+- Decided (ADR-006 point 13, amended 2026-10-07; `Planned (B0)`): each `CORS_ORIGIN` entry must be a `http(s)://host[:port]` origin and `*` is rejected (§33). `NODE_ENV=production` also makes the seed and the hard database reset refuse to run (§20, §21); that guard is in the database scripts, not in the schema.
 
 ---
 
@@ -467,7 +470,7 @@ Code vs ADR:
 
 # 14. Frontend Configuration
 
-**Status:** `Planned (FE)`; the base URLs `Deferred`
+**Status:** `Planned (FE)`
 
 Only public configuration may be exposed to the frontend.
 
@@ -491,13 +494,13 @@ Vite variables must be treated as public unless explicitly guaranteed otherwise.
 
 | Item | Status |
 |---|---|
-| Public environment identifier | `Planned (FE)`: `VITE_APP_MODE`, from `APP_MODE` (ADR-006 point 8) |
+| Public environment identifier | `Planned (FE)`: `VITE_APP_MODE`, from `APP_MODE`, a build-time value (ADR-006 point 8) |
 | Demo configuration | `Planned (FE)`: configurable base path, SPA fallback and namespaced browser storage (ADR-006 point 7); the demo calls no backend |
-| API base URL and WebSocket URL | `Deferred`: no ADR decides how the real-mode web build receives them (open detail, FE) |
+| API base URL and WebSocket URL | `Planned (FE)`: build-time values, proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`, used by the real-mode web app, which runs on the Vite dev server against the local API (ADR-006 point 8; §27). The final names are set with the frontend code |
 
 Code vs ADR:
 
-- There is no web code, so nothing is exposed today. In the demo build no backend URL is needed (ADR-006 point 7).
+- There is no web code, so nothing is exposed today. In the demo build no backend URL is needed (ADR-006 point 7), and the demo bundle contains no HTTP adapter because `VITE_APP_MODE` and the base URLs are build-time values (ADR-006 point 8, amended 2026-10-07; §23).
 - Only `VITE_`-prefixed variables reach the web build, and none may be a secret (ADR-006 point 7; `09-security-spec.md` §43).
 
 ---
@@ -540,7 +543,7 @@ What `apps/api/src/index.ts` does today:
 | Initialize observability | Not present; two `console` lines and a startup `console.log` | `Planned (B3)` (ADR-009 point 11 adds the startup entry) |
 | Initialize database | The Prisma client is a shared singleton created when `@trading/database` is imported (`packages/database/src/client.ts`); no explicit connect, so no connection is attempted at startup | `Implemented` as implicit; explicit check `Planned (B7)` (`DATABASE_URL` validation, §12) |
 | Validate dependencies | Not present; readiness runs a `SELECT 1` on each `GET /health/ready` call | `Implemented` as a per-request check only |
-| Apply migrations | Manual (`db:migrate`, `db:test:migrate`); `prisma migrate deploy` at startup of the full stack | `Planned (B7)` (ADR-006 point 5) |
+| Apply migrations | Manual (`db:migrate`, `db:test:migrate`); in the `full` profile, a one-shot `migrate` service runs `prisma migrate deploy` before the API container starts | `Planned (B7)` (ADR-006 points 4 and 5) |
 | Initialize application services | `createApp()` wires middleware, routes and services | `Implemented` |
 | Initialize HTTP server | `app.listen(env.PORT)`, then `[api] listening on port <n>` | `Implemented` |
 | Resume background jobs | `PROCESSING` jobs fail as `INTERRUPTED`, and `QUEUED` jobs resume | `Planned (B4)` (ADR-008 point 5) |
@@ -550,7 +553,7 @@ What `apps/api/src/index.ts` does today:
 Code vs ADR:
 
 - The sequence is a target, and the table lists where the code departs from it. The API is ready to serve as soon as `listen` returns, with no gate on the database.
-- Open (B7): where `migrate deploy` runs (the API process or the container entrypoint) and its position relative to the PostgreSQL healthcheck (ADR-006, Deferred detail). Recommendation: the container entrypoint, so the API process stays free of schema changes.
+- Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): `prisma migrate deploy` runs as a one-shot `migrate` service in the `full` profile, not in the API process or its entrypoint. The API service has `depends_on: migrate` with `condition: service_completed_successfully`, and the API container starts with `node dist/index.js` directly (§26). In the `full` profile, "startup applies migrations" (ADR-006 point 5) means this service. Its position relative to the PostgreSQL healthcheck is in §6 (ADR-006, Deferred detail).
 - Open (B3): the log level of the startup entry (ADR-009, Deferred detail).
 
 ---
@@ -585,7 +588,7 @@ Decided (ADR-006 point 12): on `SIGTERM` or `SIGINT`, the API:
 
 - stops accepting connections;
 - returns 503 from `GET /health/ready` while it is shutting down;
-- drains in-flight requests, with a timeout of 10 seconds;
+- drains in-flight requests, with a timeout of 10 seconds; if the drain expires, the remaining connections are closed and the process exits with code 1, otherwise with code 0;
 - closes Prisma;
 - logs `app.shutdown.started` and `app.shutdown.completed` (ADR-009 point 11).
 
@@ -603,7 +606,8 @@ Decided (ADR-006 point 12): on `SIGTERM` or `SIGINT`, the API:
 Code vs ADR:
 
 - `apps/api/src/index.ts` discards the value `app.listen` returns and registers no signal handler, so a signal ends the process at once and drops in-flight requests. Prisma is never disconnected. The original text said "appropriate signals"; ADR-006 point 12 names `SIGTERM` and `SIGINT`.
-- Open (B3): what happens when the 10-second drain expires, and the exit code. Recommendation: close the remaining connections, log it in `app.shutdown.completed`, and exit with code 1 on a timeout and 0 otherwise.
+- Decided (ADR-006 point 12, exit code; `Planned (B3)`): if the 10-second drain expires, the remaining connections are closed and the process exits with code 1; otherwise it exits with code 0.
+- Decided (ADR-006 point 12, readiness body; `Planned (B3)`): while the API is shutting down, the 503 body of `GET /health/ready` is `status: "unavailable"` with no `checks` (§50).
 - Open (B3): the log levels of the two shutdown entries (ADR-009, Deferred detail).
 - Open (B4, B5): what stopping jobs means for a `PROCESSING` import (ADR-008 point 5 marks an interrupted job `FAILED` on the next startup) and where the realtime close sits in the sequence (the close code is `1001`, ADR-007 point 15).
 
@@ -628,10 +632,10 @@ Deployment must define:
 | Item | Status |
 |---|---|
 | Database creation | Development database `Implemented` through `POSTGRES_DB` in Compose; the test database is created by hand (`CREATE DATABASE trading_analytics_test`, `.env.test.example`); a CI service container `Planned (B0)` (ADR-006 point 10) |
-| Migrations | `Implemented` (§18); applied at startup in the full stack `Planned (B7)` (ADR-006 point 5) |
+| Migrations | `Implemented` (§18); applied in the full stack by the one-shot `migrate` service `Planned (B7)` (ADR-006 points 4 and 5) |
 | Seeds | `Implemented` (§20); never automatic (ADR-006 point 5) |
 | Connection configuration | `Implemented`: `DATABASE_URL`, with `?schema=public`; startup validation `Planned (B7)` (§12); a runtime role separate from the migration role `Planned (B0)` (ADR-005 point 13) |
-| Pool configuration | `Deferred`: no ADR decides it; Prisma's defaults apply (open detail listed in `13-observability-spec.md`) |
+| Pool configuration | Prisma's defaults apply; in the `full` profile `connection_limit` stays at Prisma's default until measured, `Planned (B7)` (ADR-006, Deferred detail) |
 | Reset process | `Implemented` (§21) |
 | Production backup expectations | `Reference`: not applicable to a local environment; documented as such, not claimed (ADR-006 point 9) |
 
@@ -644,7 +648,7 @@ Code vs ADR:
 
 # 18. Database Migrations
 
-**Status:** `Implemented` with Prisma Migrate; CI and startup application `Planned (B0)` and `Planned (B7)`
+**Status:** `Implemented` with Prisma Migrate; CI `Planned (B0)`; application in the full stack by the `migrate` service `Planned (B7)`
 
 Schema changes must be versioned.
 
@@ -676,7 +680,7 @@ Deployment
 | Checking migration state | Available through the Prisma CLI (`prisma migrate status`); no package script wraps it |
 | Controlled rollback | Removed: forward-fix only (ADR-006 point 6) |
 | `CI` step of the diagram | `Planned (B0)` (ADR-006 point 10) |
-| `Deployment` step of the diagram | `Planned (B7)`: `prisma migrate deploy` at startup of the full stack (ADR-006 point 5); there is no hosted deployment |
+| `Deployment` step of the diagram | `Planned (B7)`: `prisma migrate deploy` runs in the one-shot `migrate` service of the `full` profile, before the API container starts (ADR-006 points 4 and 5); there is no hosted deployment |
 
 Code vs ADR:
 
@@ -706,13 +710,13 @@ Code vs ADR:
 
 - "Reviewed" is the pull request review; "tested" is the migration applied to the test database (`db:test:migrate`) before the suites run, and in CI `Planned (B0)`. No automated check flags a destructive statement, and no ADR decides one.
 - Forward-only is ADR-006 point 6, so the last sentence is the rule, not an option.
-- Sequencing: the full stack applies migrations at the start of the same run that starts the API (ADR-006 point 5), and PostgreSQL health is awaited first (`Planned (B7)`, ADR-006 Deferred detail).
+- Sequencing: the full stack applies migrations in the one-shot `migrate` service, which the API service waits for with `depends_on` and `service_completed_successfully` (ADR-006 points 4 and 5), and PostgreSQL health is awaited first (`Planned (B7)`, ADR-006 Deferred detail).
 
 ---
 
 # 20. Seed Data
 
-**Status:** `Implemented` for the development seed; the Demo Mode data layers `Deferred`
+**Status:** `Implemented` for the development seed; the production guard `Planned (B0)`; the Demo Mode data layers `Deferred`
 
 Development/test environments should support controlled seed data.
 
@@ -740,7 +744,7 @@ It must remain separate from the browser-only/mock Demo Mode infrastructure.
 
 Code vs ADR:
 
-- The seed always runs `wipeDatabase()` first, so it deletes existing rows before it inserts (`packages/database/src/seed/index.ts`, `wipe.ts`). That is acceptable for a local development database. No guard checks `NODE_ENV` or the database name, so running it against another `DATABASE_URL` deletes that data. Open (B0): add a guard. Recommendation: refuse to run when `NODE_ENV=production`.
+- The seed always runs `wipeDatabase()` first, so it deletes existing rows before it inserts (`packages/database/src/seed/index.ts`, `wipe.ts`). That is acceptable for a local development database. No guard checks `NODE_ENV` or the database name, so running it against another `DATABASE_URL` deletes that data. Decided (ADR-006 point 13; `Planned (B0)`): the seed refuses to run when `NODE_ENV=production`. A check on the database name is not decided.
 - The seed is Prisma and PostgreSQL data for the real API. It is not the demo's in-browser mock data (ADR-001, ADR-002, ADR-010 point 6), which stays a separate layer.
 
 ---
@@ -768,13 +772,13 @@ This must be clearly separated from production operations.
 | Light reset (data only) | `pnpm --filter @trading/database db:seed`: deletes the seeded tables and reinserts the baseline; the schema is untouched (§20) | `Implemented` |
 | Hard reset (schema and data) | `pnpm --filter @trading/database db:reset` runs `prisma migrate reset`: drops and recreates the database, reapplies every migration, then runs the seed through the `prisma.seed` setting. Prisma asks for confirmation first (`README.md`, "Local Database") | `Implemented` |
 | Test database | No reset script. `db:test:migrate` only applies migrations (`prisma migrate deploy` with `.env.test.local`) | `Implemented` as migrate only |
-| Guard against a non-local database | None | `Planned (B0)`, open |
+| Production guard | None today. The seed and the hard reset refuse to run when `NODE_ENV=production` (ADR-006 point 13) | `Planned (B0)` |
 | Demo reset | Resetting the demo's browser-side state | `Deferred` (ADR-010 point 6; `05-data-model.md` §34-37) |
 
 Code vs ADR:
 
 - The diagram describes the hard reset. The light reset skips "Recreate schema" and "Run migrations".
-- Both commands act on the database named by `DATABASE_URL` in `.env` (`packages/database/package.json`). Nothing checks `NODE_ENV` or the database name. The only guard is Prisma's confirmation on the hard reset; the seed has none (§20, open B0).
+- Both commands act on the database named by `DATABASE_URL` in `.env` (`packages/database/package.json`). Nothing checks `NODE_ENV` or the database name. The only guard is Prisma's confirmation on the hard reset; the seed has none. The `NODE_ENV=production` refusal for both is `Planned (B0)` (ADR-006 point 13; §20). A check on the database name is not decided.
 - "Clearly separated from production operations" holds by construction: there is no production database (ADR-006 point 2), and the reset commands read `.env` while the tests read `.env.test.local`, so a reset never touches the test database unless both files point at the same one. A backup to restore from does not exist either (ADR-006 point 9).
 - The full stack never seeds on startup (ADR-006 point 5), so a demonstration that needs data runs the seed as an explicit command (`Planned (B7)` for the stack itself).
 
@@ -782,7 +786,7 @@ Code vs ADR:
 
 # 22. Demo Deployment
 
-**Status:** `Planned (FE)`; simulated latency and failures `Deferred`
+**Status:** `Planned (FE)`; demo hosting and simulated latency and failures `Deferred`
 
 The public demo must not require the complete real infrastructure when unnecessary.
 
@@ -806,6 +810,7 @@ The demo remains a functional product experience, not a static mockup.
 |---|---|
 | Static build of `apps/web` in demo mode, hosted under a subpath of the author's portfolio site | `Planned (FE)` (ADR-006 points 1 and 7) |
 | No backend, no secrets, no running cost | `Planned (FE)` (ADR-006 point 7; `04-tech-stack.md` §49) |
+| Demo hosting: how the build reaches the portfolio site | `Deferred` to the frontend-stage ADR (ADR-010 point 6; ADR-006 point 7) |
 | Demo composition root with in-memory implementations of the repository contracts, calling `@trading/application` and the presenters of `@trading/contracts` | `Planned (FE)` (ADR-001 point 4; ADR-002 point 5) |
 | Local persistence: namespaced browser storage | `Planned (FE)` (ADR-006 point 7); what is stored and how it resets is `Deferred` (ADR-010 point 6) |
 | Simulated latency and scripted failures | `Deferred` (ADR-010 point 6) |
@@ -815,7 +820,7 @@ Code vs ADR:
 
 - The "mock API" box is the in-process adapter behind the `TradingClient` port, not an HTTP mock. Mocking at the HTTP client level was rejected (ADR-001, Alternatives Considered), so the demo runs the real use cases and presenters.
 - No web code exists: `apps/web` holds the wireframe files only and is not a workspace package (`06-architecture.md` §4).
-- Open (FE): how the demo build reaches the portfolio site (copy of the static output, a separate repository or a deploy step). No ADR decides it, and ADR-006 point 10 rules out continuous deployment. Recommendation: settle it in the frontend-stage ADR (ADR-010 point 6).
+- Deferred (ADR-010 point 6, amended 2026-10-07; ADR-006 point 7): how the demo build reaches the portfolio site is decided in the frontend-stage ADR, with the base path, the SPA fallback and the numeric bound of the demo simulation (§24, §28). ADR-006 point 10 rules out continuous deployment. It does not block B0-B7.
 - `12-demo-mode-spec.md` has not been reconciled yet and still describes the demo as "mock infrastructure" (T5.1, `12` last).
 
 ---
@@ -853,7 +858,7 @@ Code vs ADR:
 
 - Today the services in `apps/api/src/services/` import the Prisma repositories directly, so the shared application layer in the diagram does not exist yet. ADR-001 moves them into `@trading/application` in B0.
 - The "Mock adapters" and "Simulation" boxes are in-memory repositories and the shared `@trading/market-sim` engine. They are not a second implementation of the use cases.
-- Open (FE): whether `VITE_APP_MODE` is read at build time (one bundle per mode) or at runtime (one bundle that selects its adapters). ADR-006 point 8 only names the variable. Recommendation: build time, so the public demo bundle contains no HTTP adapter and no API base URL.
+- Decided (ADR-006 point 8, amended 2026-10-07; `Planned (FE)`): `VITE_APP_MODE`, and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`), are build-time values: one bundle per mode. The demo bundle therefore contains no HTTP adapter. The real-mode web app runs on the Vite dev server against the local API (§14, §27).
 
 ---
 
@@ -880,13 +885,13 @@ Public demo simulations must have bounded resource usage.
 | Development stack traces | The error envelope carries `code`, `message`, `requestId` and optional `details`, never a stack (ADR-002 point 2) | `Planned (FE)` |
 | Unrestricted diagnostic information | No diagnostics interface is decided (`13-observability-spec.md` §30, `12-demo-mode-spec.md` §75) | `Deferred` |
 | Private data | The demo bundles synthetic data only; the data layers are not decided (ADR-010 point 6) | `Deferred` |
-| Bounded simulation resources | No ADR sets a bound for the in-browser simulation | `Deferred` |
+| Bounded simulation resources | The numeric bound for the in-browser simulation is decided in the frontend-stage ADR (ADR-010 point 6) | `Deferred` |
 
 Code vs ADR:
 
 - The security view is `09-security-spec.md` §41 and `12-demo-mode-spec.md` §58-59. In the demo, the use-case checks give parity with the real API, not security, because no server enforces them (NFR-026; `09-security-spec.md` §47).
 - The headers of the static host are outside this project's control (NFR-025 accepted exception; `09-security-spec.md` §25).
-- Open (FE): the numeric bound of the demo simulation, for example a cap on retained ticks and events. ADR-007 point 8 bounds retention in real mode only. Recommendation: decide it in the frontend-stage ADR with the demo specifics.
+- Deferred (ADR-010 point 6, amended 2026-10-07): the numeric bound of the demo simulation, for example a cap on retained ticks and events, is decided in the frontend-stage ADR with the demo specifics. ADR-007 point 8 bounds retention in real mode only. It does not block B0-B7.
 
 ---
 
@@ -951,18 +956,19 @@ Runtime stage
 |---|---|
 | Multi-stage build, decided rather than "considered" | `Planned (B7)` (ADR-006 point 4) |
 | Non-root execution, decided rather than "where practical" | `Planned (B7)` (ADR-006 point 4; `09-security-spec.md` §38) |
-| Predictable startup: PostgreSQL healthy before `migrate deploy` and the API | `Planned (B7)`: `depends_on` with `condition: service_healthy` (ADR-006, Deferred detail) |
+| Predictable startup: PostgreSQL healthy before `migrate deploy`, and `migrate` completed before the API | `Planned (B7)`: `depends_on` with `condition: service_healthy` on PostgreSQL (ADR-006, Deferred detail); the API has `depends_on: migrate` with `condition: service_completed_successfully` (ADR-006 point 4) |
 | Health checks: PostgreSQL | `Implemented`: `pg_isready` in `docker-compose.yml` |
-| Health checks: API container | `GET /health` and `GET /health/ready` exist; a container healthcheck is not decided (open, B7) |
-| Graceful shutdown | `Planned (B3)` (§16; ADR-006 point 12) |
-| Reproducibility and minimal runtime dependencies | `Planned (B7)`; base-image pinning and the dependency split are open |
-| `full` Compose profile (PostgreSQL and the API) | `Planned (B7)` (ADR-006 point 4) |
+| Health checks: API container | `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` `Planned (B7)` (ADR-006 point 4; §51) |
+| Graceful shutdown | `Planned (B3)` (§16; ADR-006 point 12); in the container it needs the direct `node dist/index.js` entrypoint below |
+| Reproducibility and minimal runtime dependencies | `Planned (B7)`; the Node version comes from `.nvmrc`, reused by the Dockerfile (ADR-006 point 13; §37); base-image pinning and the dependency split are open |
+| Time zone | `Planned (B7)`: the API and PostgreSQL containers run with `TZ=UTC` (ADR-006 point 4; §60) |
+| `full` Compose profile (PostgreSQL, the one-shot `migrate` service and the API) | `Planned (B7)` (ADR-006 point 4) |
 
 Code vs ADR:
 
 - `docker-compose.yml` defines one service, `postgres` (`postgres:18`), with no profiles. `docker/` holds a `.gitkeep` only, and no Dockerfile exists.
-- Open (B7): where the Dockerfile lives (`docker/` or `apps/api/`). Recommendation: `apps/api/Dockerfile` with the workspace root as build context, since the image needs the workspace packages.
-- Open (B7): the entrypoint must pass `SIGTERM` to the Node process, otherwise the shutdown of ADR-006 point 12 never runs in a container. Recommendation: run `node dist/index.js` directly as the container command, with no `pnpm` or shell wrapper.
+- Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the Dockerfile is `apps/api/Dockerfile`, built with the workspace root as the build context, since the image needs the workspace packages.
+- Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the API container starts with `node dist/index.js` directly, with no shell or package-manager wrapper, so `SIGTERM` reaches the process and the shutdown of ADR-006 point 12 runs. Migrations are not part of the entrypoint: the one-shot `migrate` service applies them (§15).
 - The Postgres port binding and the superuser database role are in `09-security-spec.md` §36 and §38 and ADR-005 point 13 (§30).
 
 ---
@@ -991,12 +997,12 @@ A Node.js runtime is not required to serve static assets unless the selected dep
 | Configurable base path, for the subpath of the portfolio site | `Planned (FE)` (ADR-006 point 7) |
 | SPA fallback | `Planned (FE)` (ADR-006 point 7) |
 | `VITE_APP_MODE=demo` at build time, no secrets in the build | `Planned (FE)` (ADR-006 points 7 and 8) |
-| Real-mode web app against the local API | `Deferred`: how it runs and receives the API URL is not decided (§14) |
+| Real-mode web app against the local API | `Planned (FE)`: runs on the Vite dev server against the local API, with the API and WebSocket base URLs as build-time values (ADR-006 point 8; §14) |
 
 Code vs ADR:
 
 - `apps/web` is not a workspace package, so `pnpm build` (`pnpm -r build`) does not cover it today.
-- The demo needs no Node.js runtime: its host serves static files (ADR-006 point 7). The `full` profile has no web service (ADR-006 point 4), so the real-mode web app is not served by the stack. Recommendation: run it with the Vite development server against the local API, and decide it in the frontend-stage ADR.
+- The demo needs no Node.js runtime: its host serves static files (ADR-006 point 7). The `full` profile has no web service (ADR-006 point 4), so the real-mode web app is not served by the stack. Decided (ADR-006 point 8, amended 2026-10-07; `Planned (FE)`): it runs on the Vite dev server against the local API.
 
 ---
 
@@ -1020,14 +1026,14 @@ The architecture must not depend on one specific hosting provider.
 |---|---|
 | HTTPS | `Planned (FE)`: expected from the portfolio site, which this project does not control; no ADR names the host |
 | Static assets | `Planned (FE)` (ADR-006 point 7) |
-| SPA fallback | `Planned (FE)` (ADR-006 point 7); how the host provides it is open |
-| Configurable API origin | Not needed by the public demo, which calls no backend (ADR-006 point 7); for the real mode `Deferred` (§14) |
-| Git-based deployment | `Deferred`: ADR-006 point 10 excludes continuous deployment, and the way the build reaches the host is open (§22) |
+| SPA fallback | `Planned (FE)` (ADR-006 point 7); the mechanism is `Deferred` to the frontend-stage ADR (ADR-010 point 6) |
+| Configurable API origin | Not needed by the public demo, which calls no backend (ADR-006 point 7); for the real mode a build-time value, `VITE_API_BASE_URL` (proposed name), `Planned (FE)` (ADR-006 point 8; §14) |
+| Git-based deployment | `Deferred`: ADR-006 point 10 excludes continuous deployment, and the way the build reaches the host is decided in the frontend-stage ADR (ADR-010 point 6; §22) |
 
 Code vs ADR:
 
 - ADR-006 decides the hosting model, a subpath of the author's portfolio site (context and point 7), and names no provider. This section therefore names none.
-- Open (FE): confirm that the portfolio host serves HTTPS and a SPA fallback for the subpath. Recommendation: record the confirmation in the frontend-stage ADR.
+- Deferred (ADR-010 point 6, amended 2026-10-07): demo hosting, the base path value and the SPA fallback mechanism are decided in the frontend-stage ADR. Whether the portfolio host serves HTTPS and a SPA fallback for the subpath stays open until then. The requirements of ADR-006 point 7 (configurable base path, SPA fallback) stay. It does not block B0-B7.
 
 ---
 
@@ -1085,6 +1091,7 @@ Code vs ADR:
 - The "Public/production-like" diagram does not apply: the production-like target is the same local PostgreSQL (ADR-006 points 1 and 4), so no application connects to a managed database.
 - Compose publishes PostgreSQL on `${DATABASE_PORT:-5432}` without a bind address, and the API, migrations and tests connect as the image's superuser. A `127.0.0.1` binding is open (B7), and the separate runtime role is `Planned (B0)` (`09-security-spec.md` §36 and §38; ADR-005 point 13).
 - The default Compose profile keeps only PostgreSQL (ADR-006 point 4).
+- Pool configuration: in the `full` profile `connection_limit` stays at Prisma's default until measured, `Planned (B7)` (ADR-006, Deferred detail; §17). The PostgreSQL container runs with `TZ=UTC` (ADR-006 point 4; §60).
 
 ---
 
@@ -1106,7 +1113,8 @@ Local Docker must remain a reliable fallback.
 
 | Requirement | Status |
 |---|---|
-| Persistent connections and upgrades | `Planned (B5)`: the `ws` library behind a transport port (ADR-007 point 1) |
+| Persistent connections and upgrades | `Planned (B5)`: the `ws` library behind a transport port, on the same server and port as the API (ADR-007 point 1) |
+| Endpoint path | `Planned (B5)`: fixed, proposed `/ws`, confirmed in B5; no `WEBSOCKET_PATH` variable (ADR-007 point 1) |
 | Timeout behavior | `Planned (B5)`: heartbeat with a ping every 30 seconds, and a socket closed after 2 consecutive missed pongs (`08-realtime-spec.md` §7) |
 | Reconnects | `Planned (FE)` (`08-realtime-spec.md` §27) |
 | Proxy configuration | `Deferred`: the local stack has no proxy (§32) |
@@ -1115,7 +1123,7 @@ Local Docker must remain a reliable fallback.
 Code vs ADR:
 
 - No WebSocket code exists. The "provider" and "production-like deployment" wording applies to a hosted backend, which ADR-006 point 2 defers. The production-like target is the local full stack, which stays the only target.
-- Open (B5): the endpoint path, and whether the WebSocket server shares the HTTP port. The variable `WEBSOCKET_PATH` is not adopted (§10). Recommendation: attach it to the same HTTP server and port (7001) with a fixed path, so the full stack publishes one port.
+- Decided (ADR-007 point 1, amended 2026-10-07; `Planned (B5)`): the WebSocket is served by the same HTTP server and port as the API (7001), on a fixed path, proposed `/ws` and confirmed in B5. The full stack therefore publishes one port. There is no `WEBSOCKET_PATH` variable (§10).
 
 ---
 
@@ -1146,7 +1154,7 @@ Code vs ADR:
 
 # 33. CORS
 
-**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); credentials `Planned (B2)`; `X-Request-ID` exposure `Planned (B3)`
+**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); origin validation `Planned (B0)`; credentials `Planned (B2)`; `X-Request-ID` exposure `Planned (B3)`
 
 CORS must be explicit.
 
@@ -1162,6 +1170,7 @@ Avoid wildcard CORS for authenticated APIs unless there is a specific, justified
 | Development origin | `Implemented`: default `http://localhost:5173` |
 | Production origins | `Implemented` through the same variable (local `production`) |
 | No wildcard | `Implemented`: the code never sets `*` (`09-security-spec.md` §24) |
+| Origin validation: only `http(s)://host[:port]` entries, `*` rejected | `Planned (B0)` (ADR-006 point 13) |
 | Credentials for the refresh cookie | `Planned (B2)` (ADR-005 Consequences) |
 | `X-Request-ID` readable by the browser | `Planned (B3)`: `exposedHeaders` (ADR-009 point 5) |
 | Public demo | No entry needed: it calls no backend (ADR-006 point 7) |
@@ -1170,7 +1179,7 @@ Code vs ADR:
 
 - `request-id.ts` sets `X-Request-ID` on every response, but the CORS configuration has no `exposedHeaders` and no `credentials`, so a browser on another origin cannot read the header today and sends no cookies.
 - The default origin also applies when `NODE_ENV=production` and `CORS_ORIGIN` is unset. `env.ts` does not check that each entry is a well-formed origin and does not reject `*`.
-- Open (B0): validate each `CORS_ORIGIN` entry in `env.ts`. Recommendation: accept only `http(s)://host[:port]` origins and reject `*`.
+- Decided (ADR-006 point 13, amended 2026-10-07; `Planned (B0)`): `env.ts` validates each `CORS_ORIGIN` entry. Only `http(s)://host[:port]` origins are accepted, and `*` is rejected.
 - Open (B5): whether the WebSocket upgrade also checks `Origin` against `CORS_ORIGIN` (`09-security-spec.md` §31).
 
 ---
@@ -1278,18 +1287,18 @@ The Node.js version should target a current supported LTS release when implement
 | Item | Today | Status |
 |---|---|---|
 | Committed lockfile | `pnpm-lock.yaml` is tracked | `Implemented` |
-| Explicit Node.js version | `engines.node` is `>=22.0.0` in the root `package.json`; there is no `.nvmrc` or `.node-version` | `Implemented` as a range; a pinned version `Planned (B0)`, open |
+| Explicit Node.js version | `engines.node` is `>=22.0.0` in the root `package.json`; there is no `.nvmrc` or `.node-version`. A single `.nvmrc` becomes the source of truth, reused by CI and the Dockerfile, with `engines.node` and `@types/node` aligned to it (ADR-006 point 13) | `Implemented` as a range; the `.nvmrc` pin `Planned (B0)`, exact major chosen in B0 |
 | Consistent package manager | `packageManager` is `pnpm@12.3.4`; `engines.pnpm` is `>=9.0.0` (`04-tech-stack.md` §37) | `Implemented` |
 | Deterministic commands | Root scripts `build`, `test`, `typecheck`, `lint`, `format:check` and `docs:check` | `Implemented` |
 | Install from the lockfile on a clean checkout | The GitHub Actions workflow (ADR-006 points 10 and 11) | `Planned (B0)` |
 | Shared TypeScript configuration | `tsconfig.base.json`, extended by `apps/api`, `packages/domain` and `packages/database`; the root `tsconfig.json` references the three | `Implemented` |
-| Pinned container base images | The `full` profile does not exist yet; `docker-compose.yml` pins `postgres:18` to the major version | `Planned (B7)`, open |
+| Pinned container base images | The `full` profile does not exist yet; `docker-compose.yml` pins `postgres:18` to the major version. The Node.js base image follows `.nvmrc` (ADR-006 point 13) | `Planned (B7)`; how images are pinned is open |
 
 Code vs ADR:
 
-- The sentence about an LTS release was written before implementation. The code targets Node.js 22 or later. Which line the CI and the image use is open (B0, B7). Recommendation: pin one line in `.nvmrc` and use it in CI and the Dockerfile.
-- Versions differ across packages: `typescript` is `^5.7.3` in `packages/domain` and `packages/database` but `^6.0.3` at the root and in `apps/api`, and `@types/node` is `^22.20.2` in `apps/api` but `^26.4.1` elsewhere. This is the open detail of `04-tech-stack.md` (B0).
-- `engines.pnpm >=9.0.0` admits versions older than the `pnpm@12.3.4` that produced the lockfile. Recommendation: align it with `packageManager` in B0.
+- The sentence about an LTS release was written before implementation. The code targets Node.js 22 or later. Decided (ADR-006 point 13, amended 2026-10-07; `Planned (B0)`): one `.nvmrc` is the single source for the Node.js version and CI and the Dockerfile reuse it (§43, §59). The exact major is chosen in B0, when CI is created, after confirming that it is an LTS release.
+- Versions differ across packages: `typescript` is `^5.7.3` in `packages/domain` and `packages/database` but `^6.0.3` at the root and in `apps/api`, and `@types/node` is `^22.20.2` in `apps/api` but `^26.4.1` elsewhere. The `@types/node` versions are aligned to `.nvmrc` (ADR-006 point 13, B0); the `typescript` difference stays the open detail of `04-tech-stack.md` (B0).
+- `engines.pnpm >=9.0.0` admits versions older than the `pnpm@12.3.4` that produced the lockfile. No ADR decides it. Open (B0): align it with `packageManager`.
 
 ---
 
@@ -1348,7 +1357,7 @@ The exact structure belongs to `15-implementation-plan.md` and implementation.
 | `packages/shared` | Not adopted. Its role is split between `@trading/domain` (rules and types) and `@trading/contracts` (wire types) | `@trading/contracts` `Planned (B0)` (ADR-002) |
 | `packages/config` | `.gitkeep` only | `Deferred` (`06-architecture.md` §4) |
 | `docs/`, `scripts/` | SDD and ADRs; `scripts/check-docs.mjs` | `Implemented` |
-| `docker/` | `.gitkeep` only | `Planned (B7)`: the Dockerfile location is open (§26) |
+| `docker/` | `.gitkeep` only | `Deferred`: the Dockerfile is `apps/api/Dockerfile` (ADR-006 point 4; §26), so no ADR gives `docker/` content |
 | `package.json` | Root manifest and scripts | `Implemented` |
 | Not in the diagram | `packages/domain` and `packages/database` `Implemented`; `packages/application` `Planned (B0)` (ADR-001); `@trading/market-sim` `Planned (B5)`, path not fixed (ADR-007 point 7) | per package |
 
