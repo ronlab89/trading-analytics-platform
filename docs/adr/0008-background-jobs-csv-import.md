@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 **Date:** 2026-10-04
+**Amended:** 2026-10-07 (point 4, retention of the stored input, approved by
+the user from the `14-deployment-spec.md` reconciliation; Deferred detail row)
 **Implemented in:** roadmap block B4 (not yet implemented)
 
 ## Context
@@ -45,7 +47,10 @@ retried `POST` must not create a duplicate transaction.
    separate worker process and no external queue. The job's input (the CSV
    content, bounded by point 10) is stored in the `jobs` row when the job is
    created, so resuming after a restart and retrying never depend on the
-   original request.
+   original request. (Amended 2026-10-07, approved by the user from the
+   `14-deployment-spec.md` reconciliation; `Planned (B4)`:) The stored input
+   is kept while the job can still be retried (point 6) and is cleared for
+   `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED`.
 5. **Restarts.** The apply stage sets the job to `COMPLETED` inside the same
    database transaction that writes the imported rows, so a job can never be
    both applied and not completed. On startup, every job left in
@@ -155,6 +160,7 @@ specified and tested in the listed block.
 | A request hash covering only the body lets the same key and body against another portfolio return a stored response; expired rows still hit the unique constraint. | The hash includes method, route and path parameters. Expired rows are purged or treated as absent. | B4 |
 | A timeout measured from creation makes retried or resumed jobs time out immediately. | The timeout is measured per attempt from when the job was queued. Startup handling of jobs past their deadline is defined. | B4 |
 | Retry and cancel have no stated permission. | Retry requires `transaction:create`; cancel requires `transaction:create` on an owned job. | B4 |
+| How the CSV reaches `POST .../imports`, and its body limit: the global JSON limit is 100 kB. | The transport and a route-specific body limit are set with the input limits of point 10. | B4 |
 
 ## Related
 

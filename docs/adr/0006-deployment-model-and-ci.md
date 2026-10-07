@@ -4,9 +4,12 @@
 **Date:** 2026-10-04
 **Supersedes:** the "no CI" decision recorded in `PROGRESS.md` §7
 **Amended:** 2026-10-07 (point 12, graceful shutdown, approved by the user
-from the `13-observability-spec.md` reconciliation)
-**Implemented in:** CI before roadmap block B0; build and containers in B7;
-graceful shutdown in B3; demo hosting in the frontend phase
+from the `13-observability-spec.md` reconciliation; points 4, 5, 7, 8, 11
+and 12 and new point 13, approved by the user from the
+`14-deployment-spec.md` reconciliation)
+**Implemented in:** CI and configuration safety before or in roadmap block
+B0; build and containers in B7; graceful shutdown and startup entries in B3;
+frontend build configuration and demo hosting in the frontend phase
 
 ## Context
 
@@ -49,18 +52,45 @@ Other facts:
 4. **Containers.** A multi-stage API Dockerfile running as a non-root user.
    Docker Compose gains a `full` profile (PostgreSQL and API) for the
    production-like local run. The default profile keeps only PostgreSQL for
-   development.
+   development. (Amended 2026-10-07, approved by the user from the
+   `14-deployment-spec.md` reconciliation; `Planned (B7)`:)
+   - **Migration service.** `prisma migrate deploy` runs as a one-shot
+     `migrate` service in the `full` profile. The API service has
+     `depends_on: migrate` with `condition: service_completed_successfully`
+     (`14-deployment-spec.md` §15, §26).
+   - **Entrypoint.** The API container starts with `node dist/index.js`
+     directly, with no shell or package-manager wrapper, so `SIGTERM`
+     reaches the process (point 12).
+   - **Dockerfile.** `apps/api/Dockerfile`, built with the workspace root as
+     the build context (§26).
+   - **Healthcheck.** The container healthcheck probes
+     `GET /health/ready` (§51).
+   - **Time zone.** The API and PostgreSQL containers run with `TZ=UTC`
+     (§60).
 5. **Migrations and seed.** Startup applies `prisma migrate deploy`. The
    seed never runs automatically; it is an explicit development command.
+   (Amended 2026-10-07: in the `full` profile, "startup applies" means the
+   `migrate` service of point 4. The seed refuses to run in production, see
+   point 13.)
 6. **Rollback.** Forward-fix only. Prisma Migrate has no down migrations, so
    "controlled rollback" is removed from the specification.
 7. **Demo under a subpath.** Configurable base path, SPA fallback,
    namespaced browser storage, no calls to any backend, and no secrets in
-   the build.
+   the build. (Amended 2026-10-07: demo hosting, the base path value, the
+   SPA fallback mechanism and the numeric bound of the demo simulation are
+   decided in the frontend-stage ADR, ADR-010 point 6; the requirements
+   above stay.)
 8. **Environments and variables.** `development`, `test` and local
    `production`. Canonical names: `PORT` (default `7001`),
    `JWT_EXPIRES_IN_SECONDS`, and `APP_MODE` with values `real` or `demo`
-   (exposed to the web build as `VITE_APP_MODE`).
+   (exposed to the web build as `VITE_APP_MODE`). (Amended 2026-10-07,
+   approved by the user from the `14-deployment-spec.md` reconciliation;
+   `Planned (FE)`:)
+   - **Build-time values.** `VITE_APP_MODE` and the API and WebSocket base
+     URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) are
+     build-time values. The demo bundle therefore contains no HTTP adapter.
+   - **Real-mode web app.** It runs on the Vite dev server against the local
+     API (`14-deployment-spec.md` §14, §23, §27).
 9. **Backups.** Not applicable to a local environment. Documented as such,
    not claimed.
 10. **Minimal CI.** One GitHub Actions workflow on pushes and pull requests
@@ -87,6 +117,18 @@ Other facts:
       accessibility scanning tool is also chosen there. The HTTP client's
       timeout and retry policy is decided there too, consistent with
       ADR-002 point 10 (the API has no server timeout).
+    - **Additions** (added 2026-10-07, approved by the user from the
+      `14-deployment-spec.md` reconciliation; `Planned (B0)`):
+      - **Documentation check.** The workflow also runs `pnpm docs:check`.
+        `docs/` is in `.prettierignore`, so `format:check` does not cover it.
+        This closes the CI part of task T1.5.
+      - **Test variables.** CI supplies them through the job `env`. It does
+        not generate `.env.test.local` (`14-deployment-spec.md` §43).
+      - **Database roles.** The CI test database uses the runtime and
+        migration roles of ADR-005 point 13 (§42).
+      - **Smoke test.** One smoke-test script runs after
+        `docker compose --profile full up`, with no frontend step (§49).
+        `Planned (B7)`, with the `full` profile.
 12. **Graceful shutdown** (added 2026-10-07, approved by the user, from the
     `13-observability-spec.md` reconciliation; `Planned (B3)`, with the
     lifecycle entries of ADR-009 point 11). `14-deployment-spec.md` §16
@@ -98,6 +140,25 @@ Other facts:
     - Prisma is closed.
     - The API logs `app.shutdown.started` and `app.shutdown.completed`
       (ADR-009 point 11).
+    - **Exit code** (added 2026-10-07, approved by the user from the
+      `14-deployment-spec.md` reconciliation, §16). If the 10-second drain
+      expires, the remaining connections are closed and the process exits
+      with code 1; otherwise it exits with 0.
+    - **Readiness body** (added 2026-10-07, same approval, §50). While the
+      API is shutting down, the 503 body of `GET /health/ready` is
+      `status: "unavailable"` with no `checks`.
+13. **Configuration safety and runtime version** (added 2026-10-07, approved
+    by the user from the `14-deployment-spec.md` reconciliation;
+    `Planned (B0)`):
+    - **Production guard.** The seed and the hard database reset refuse to
+      run when `NODE_ENV=production`. Today the seed wipes the database with
+      no guard (`14-deployment-spec.md` §20-21).
+    - **`CORS_ORIGIN` validation.** Only `http(s)://host[:port]` origins are
+      accepted, and `*` is rejected (§33).
+    - **Node version.** A single `.nvmrc` is the source of truth, reused by
+      CI and the Dockerfile, with `engines.node` and `@types/node` aligned
+      to it. The exact major is chosen in B0, when CI is created, after
+      confirming it is an LTS release (§37, §43, §59).
 
 ## Consequences
 
@@ -118,7 +179,8 @@ Other facts:
 **Documents to align**
 
 - `14-deployment-spec.md`: current model first, hosted sections deferred,
-  variable names, rollback, graceful shutdown (§16, point 12).
+  variable names, rollback, graceful shutdown (§16, point 12), and the
+  2026-10-07 decisions (points 4, 5, 7, 8, 11, 12 and 13).
 - `13-observability-spec.md` and `10-testing-strategy.md`: CI references.
 - `CONTRIBUTING.md`: CI gate wording, local gate commands.
 - `12-demo-mode-spec.md` and `04-tech-stack.md`: `APP_MODE`.
@@ -142,13 +204,17 @@ specified and tested in the listed block.
 | Item | Resolution | Block |
 |---|---|---|
 | In the `full` Compose profile the API may run `migrate deploy` before PostgreSQL accepts connections. | `depends_on` with `condition: service_healthy`. | B7 |
+| `connection_limit` of the Prisma connection pool in the `full` profile. | Stays at Prisma's default until measured. | B7 |
+| Rate limits in development. | Stay on. Restarting the API clears the counters. | B0 |
 | Point 12 covers the HTTP server and the database. The shutdown steps of `14-deployment-spec.md` §16 for background jobs and realtime connections are not decided there. | Added to the shutdown sequence when the job runner (ADR-008) and the realtime server (ADR-007) exist. | B4, B5 |
 
 ## Related
 
 - ADR-001, ADR-002 (demo runs the application in process; mandatory
   tests of point 11)
-- ADR-009 point 11 (shutdown lifecycle entries)
+- ADR-005 point 13 (runtime and migration roles)
+- ADR-008 point 5 (jobs interrupted at shutdown resume on startup)
+- ADR-009 point 11 (startup and shutdown lifecycle entries)
 - ADR-010 point 6 (frontend-stage ADR)
 - `10-testing-strategy.md` §5, §53-§55
 - `14-deployment-spec.md`, `15-implementation-plan.md` rule 10

@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 **Date:** 2026-10-04
+**Amended:** 2026-10-07 (point 13, WebSocket connection cap wording, approved
+by the user from the `14-deployment-spec.md` reconciliation)
 **Implemented in:** roadmap block B2 (not yet implemented); permission checks
 land with the application layer (B0, ADR-001)
 
@@ -90,6 +92,8 @@ live there rather than only in Express middleware.
       v1 value is 5 concurrent connections per user; numeric tuning is a
       deferred detail (B5). It complements the per-connection limits of
       ADR-007 points 11 and 15, and an excess connection closes with `4008`.
+      (Amended 2026-10-07: the excess connection is the new one; existing
+      connections stay open, ADR-007 point 16.)
     - **Runtime database role.** The API connects at runtime with a
       separate non-superuser role limited to data access. Only the
       migration role keeps DDL rights. `Planned (B0)`.

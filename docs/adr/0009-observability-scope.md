@@ -3,7 +3,8 @@
 **Status:** Accepted
 **Date:** 2026-10-04
 **Amended:** 2026-10-07 (points 2-13, approved by the user from the
-`13-observability-spec.md` reconciliation)
+`13-observability-spec.md` reconciliation; point 11 startup entries,
+approved by the user from the `14-deployment-spec.md` reconciliation)
 **Implemented in:** roadmap block B3 (not yet implemented); `auth.logout`
 lands with its endpoint in B2 and the simulator entries in B5
 
@@ -98,6 +99,10 @@ of its scope.
     (Amended 2026-10-07:)
     - **Shutdown.** The shutdown logs `app.shutdown.started` and
       `app.shutdown.completed`. `Planned (B3)`.
+    - **Startup.** (Added 2026-10-07, approved by the user from the
+      `14-deployment-spec.md` reconciliation, §52.) The startup logs
+      `app.startup.started` and `app.startup.completed`, mirroring the
+      shutdown pair. `Planned (B3)`.
     - **Simulator.** `simulation.started`, `simulation.paused` and
       `simulation.mode.changed`; the names follow the endpoints (ADR-007
       point 15). `Planned (B5)`. There is no `simulation.resumed`, because
