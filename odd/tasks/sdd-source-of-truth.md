@@ -207,7 +207,13 @@ Product decisions that no ADR covers are asked to the user in batches.
     - Every section has a status; code-vs-ADR differences are recorded per block (roles `USER`/`ADMIN` vs ADR-005, no refresh/logout, params not schema-validated, `{ field, message }` details, superuser DB role, unbound Postgres port, `DATABASE_URL` not validated, login timing).
     - Pending user decisions: (1) `VIEWER` self-service mutations (preferences, mark notifications read); (2) `ADMIN` permissions beyond `simulation:control`; (3) WebSocket connection cap per user or IP; (4) separate runtime DB role; (5) login timing equalization; (6) confirm route-param validation in B0.
     - For later tasks: `BACKEND-ROADMAP.md` B2 (`requireRole`, settled decisions) and B7 (CI) are stale (T5.3); `07` §45 and NFR-021 claim params are validated; NFR-019/022/023 name missing tests; `13` names `auth.logout`, which ADR-009 lacks (T5.1); `PROGRESS.md` §7 search debt is assets only (T5.3).
-  - [ ] `10` in 3 slices.
+  - [x] The 7 pending decisions (six `09` items and `PAUSED`) approved by the user 2026-10-06, route: delegated writer, commit `00b307a`: ADR-005 point 13 (VIEWER self-service, no extra ADMIN permissions, per-user WebSocket cap of 5 closing with `4008`, runtime DB role Planned B0, login timing equalization Planned B0), ADR-002 point 10 (malformed route param 400 `VALIDATION_ERROR`; well-formed unknown or foreign ID 404 `NOT_FOUND`; Planned B0), ADR-007 point 16 (lifecycle state renamed `HALTED`; `PAUSED` stays the public mode wire ID). Alignment follow-up `9e1af65` (`03` NFR-021, `08` §7/§9 cap, `12` lifecycle diagram). The stop-hook candidate (base `d55fce2`) was declined again by the user.
+    - Open: which connection closes when the cap is hit (new or oldest), B5.
+    - Open: whether the `simulation.paused` event in `13` follows `HALTED` or stays tied to `/pause` (needs a user decision).
+    - For T5.3: `BACKEND-ROADMAP.md` B0 needs the runtime DB role, login timing and route-param schemas; B2 the VIEWER self-service permissions; B5 the cap and the `HALTED` rename.
+  - [x] `10` in 3 slices (2026-10-06), route: delegated writer per slice; `pnpm docs:check` and `pnpm lint` pass each time. A §1-20 `f2d52c3`, B §21-40 `aa561b0`, C §41-65 `87b688c`. User decisions: `simulation.paused` in `13` stays tied to `/pause` (no change); ADR-006 point 11 `7f84431` (CI also runs `format:check` and `build`; no coverage threshold in v1; frontend test tooling goes to the frontend-stage ADR); CSV import is a critical E2E flow in §33, `Planned (FE)`.
+    - Pending user decisions: (1) shared `Clock` port vs per-feature (§49); (2) component/E2E/a11y checks in CI (§53); (3) a11y scanning tool (§36); (4) HTTP client timeout and retry (§51); (5) which block owns route tests for analytics, positions, assets and market (§59); (6) dataset sizes beyond NFR-008 and a memory target (§41).
+    - For later tasks: PR template checklist lacks format, build and tests (T5.2); `CONTRIBUTING.md` CI wording (T5.2); `08` and `09` headers still say `Draft`; `validateNewTransaction` reads `new Date()` directly (B0); `transactions.routes.test.ts` lacks a cross-user case; no test asserts notification ordering.
 
 ### Phase 5 — Operations and living docs
 
@@ -251,8 +257,8 @@ Paused 2026-10-05 by the user. Phase 4 is in progress on `docs/sdd-contracts`:
 
 Resume with:
 
-1. User decisions: the `PAUSED` mode vs lifecycle overlap (ADR-007 Deferred detail) and the six `09` items above.
-2. `10` in 3 slices — only when the user says to continue.
+1. User decisions: done 2026-10-06 (`00b307a`, `9e1af65`). Two small opens remain: which connection closes at the cap, and the `simulation.paused` event name in `13`.
+2. `10` in 3 slices: done 2026-10-06 (`f2d52c3`, `aa561b0`, `7f84431`, `87b688c`). Six `10` decisions pending.
 3. Close Phase 4: `pr-body.md` and the `gh` command, which the user runs.
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.
