@@ -1391,9 +1391,11 @@ Code vs ADR:
 
 # 41. CI Pipeline
 
+**Status:** backend stages `Planned (B0)` (ADR-006 points 10-11); component, E2E and accessibility stages `Deferred`; nothing runs on a server today
+
 CI should validate meaningful changes.
 
-Recommended pipeline:
+The original recommended pipeline, kept as the target shape. The decided stages are in the table below:
 
 ```text
 Install
@@ -1415,54 +1417,107 @@ Artifact validation
 
 Execution order may be optimized for speed.
 
+Decided (ADR-006 points 10-11): one GitHub Actions workflow on pushes and pull requests to `develop` and `main`, with no continuous deployment. It is the workflow of `10-testing-strategy.md` §53.
+
+| Stage | Command | Status |
+|---|---|---|
+| Install | `pnpm install --frozen-lockfile` | `Planned (B0)` |
+| Type check | `pnpm typecheck` (`tsc --build`) | `Planned (B0)` |
+| Lint | `pnpm lint` | `Planned (B0)` |
+| Formatting | `pnpm format:check` | `Planned (B0)` (ADR-006 point 11) |
+| Documentation check | `pnpm docs:check` | `Planned (B0)`: task T1.5, done together with the workflow; ADR-006 does not list it (open, below) |
+| Unit and integration tests | `pnpm test` (`pnpm -r test`: the domain, database and API suites; the latter two against a PostgreSQL service container, migrated first, §42) | `Planned (B0)` |
+| Build | `pnpm build` (`pnpm -r build`): proves the packages compile from a clean checkout; running the built API is B7 (ADR-006 point 11) | `Planned (B0)` |
+| Component, E2E and accessibility | Tools chosen in the frontend-stage ADR; they join the workflow once frontend code exists (ADR-006 point 11) | `Deferred` |
+| Artifact validation | No stage is decided (§44) | `Deferred` |
+| Coverage | No stage and no threshold in version 1 (ADR-006 point 11) | `Deferred` |
+
+Code vs ADR:
+
+- No workflow exists. `.github/` holds only `PULL_REQUEST_TEMPLATE.md`. Every stage above exists as a local script in the root `package.json`, and the Husky pre-commit hook runs `lint-staged` only (formatting and lint of staged files).
+- ADR-006 point 10 names install, typecheck, lint and the three suites; point 11 adds `format:check` and `build`. `docs:check` appears in neither. Open (B0): whether it joins the workflow. Recommendation: yes, and list it in ADR-006 point 11, because `docs/` is in `.prettierignore` and `format:check` never covers the SDD.
+- The ADR fixes install first and nothing else about order. The original "Integration Tests" and "E2E Tests" stages do not exist as separate stages: `pnpm test` runs every backend suite, and E2E is `Deferred`. Recommendation for B0: cheap checks first (lint, type check, formatting), then build, then tests, in one job.
+- `packages/contracts` holds a `.gitkeep` and `packages/config` is empty, so `pnpm test` covers three packages today. New packages join it with their own `test` script.
+- The pull request template checklist asks for `pnpm typecheck` and `pnpm lint` only; aligning it with the workflow is T5.2.
+
 ---
 
 # 42. CI Database
 
+**Status:** `Planned (B0)` (ADR-006 point 10)
+
 Integration tests must use an isolated disposable PostgreSQL instance.
 
-Possible approaches:
+Decided: a PostgreSQL service container of the workflow (ADR-006 point 10). The other approaches of the original list, a Docker service started by hand and a test container library, are not adopted.
 
-- Docker service
-- CI PostgreSQL service
-- test container
+| Item | Status |
+|---|---|
+| Disposable instance: the service container lives for one workflow run | `Planned (B0)` |
+| Migrated before the suites: `prisma migrate deploy` through `db:test:migrate` of `@trading/database` (`10-testing-strategy.md` §53) | `Planned (B0)` |
+| Test data: each suite creates and deletes its own rows (`apps/api/src/test-utils/fixtures.ts`); no seed runs | `Implemented` |
+| Local equivalent: a separate `trading_analytics_test` database on the development instance, created by hand (`.env.test.example`) | `Implemented` |
+| PostgreSQL image version in CI | Open (B0): see Code vs ADR |
 
 CI must never use a production database.
+
+Code vs ADR:
+
+- No production database exists (ADR-006 point 2). The rule is met by construction: the only database the workflow can reach is its own service container, with throwaway credentials, and no workflow secret holds another connection string.
+- The development Compose file pins `postgres:18`. Recommendation: the service container uses the same major version, so tests run against the engine the stack uses.
+- The API connects as the container's superuser today. ADR-005 point 13 (`Planned (B0)`) separates a data-only runtime role from the migration role. How the workflow creates the two roles is open (B0). Recommendation: the suites connect with the runtime role and `migrate deploy` runs with the migration role, as in the local stack, so CI exercises the role split.
 
 ---
 
 # 43. CI Environment
 
-CI should define:
+**Status:** per item (table below); `Planned (B0)` for the workflow
 
-- Node.js version
-- package manager
-- test mode
-- database configuration
-- deterministic seed data
-- required non-secret variables
+CI should define the items below. Variable names follow `apps/api/src/config/env.ts` (§10).
+
+| Item | Today or decided | Status |
+|---|---|---|
+| Node.js version | `engines.node` is `>=22.0.0`; there is no `.nvmrc`; the workflow's version is not decided (§59) | Open (B0) |
+| Package manager | `packageManager` is `pnpm@12.3.4` in the root `package.json` | `Implemented`; use in the workflow `Planned (B0)` |
+| Test mode | `NODE_ENV=test` (`.env.test.example`); it disables rate limiting in the integration suite (`apps/api/src/middleware/rate-limit.ts`) | `Implemented` locally; in CI `Planned (B0)` |
+| Database configuration | `DATABASE_URL` pointing at the service container (§42) | `Planned (B0)` |
+| Deterministic seed data | Suites build their own fixtures; the seed never runs automatically (ADR-006 point 5) and the workflow has no seed step | `Implemented` (fixtures) |
+| Required non-secret variables | `DATABASE_URL`, `NODE_ENV=test`, and a throwaway `JWT_SECRET` of at least 32 characters (§11) | `Planned (B0)` |
+| Secrets | None needed: there is no deployment and no hosted service (ADR-006 points 2 and 10). A repository secret store is not used | `Reference` |
 
 Secrets should use the CI platform's secret store if necessary.
+
+Code vs ADR:
+
+- The `test` scripts of `apps/api` and `packages/database`, and `db:test:migrate`, load `../../.env.test.local` through `dotenv-cli`. The file is git-ignored, so it does not exist on a clean checkout. `dotenv-cli` overrides variables already set only with its `-o` option, so the workflow can set the variables in the job `env` instead. Open (B0). Recommendation: job `env` and no generated file, so the workflow holds no file that could be mistaken for a secret.
+- The workflow's Node.js version is the open decision of §37 and §59 (a `.nvmrc` pin).
 
 ---
 
 # 44. Build Artifacts
 
-CI may produce:
+**Status:** per item (table below)
 
-- frontend build
-- backend build
-- Docker image
-- test reports
-- coverage reports
+CI may produce the items below. Version 1 has no continuous deployment (ADR-006 point 10), so nothing is published or uploaded.
 
-Generated artifacts should not be committed to Git.
+| Artifact | Today or decided | Status |
+|---|---|---|
+| Backend build | `tsc --build` writes `dist` in each package. The API does not run from `dist` yet (ADR-006 point 3) | Compile `Implemented`; in CI `Planned (B0)`; runnable `Planned (B7)` |
+| Frontend build | `apps/web` holds the wireframe only, with no `package.json` | `Planned (FE)` |
+| Docker image | Built on the author's machine by the `full` profile; CI builds and pushes no image (no registry, no deployment) | Local `Planned (B7)`; image build in CI `Deferred` |
+| Test reports | None kept: the suites print to the console and nothing is uploaded | `Deferred` |
+| Coverage reports | None: no coverage gate in version 1 (ADR-006 point 11) | `Deferred` |
+
+Generated artifacts should not be committed to Git. `.gitignore` covers `dist/`, `build/`, `*.tsbuildinfo` and `coverage/`, and no tracked file matches them.
+
+Code vs ADR: the original list assumed a pipeline that produces and keeps artifacts. ADR-006 point 11 limits CI to proving that the packages compile (`pnpm build`), so the Docker image, test report and coverage report entries are possibilities for a later ADR, not requirements.
 
 ---
 
 # 45. Deployment Pipeline
 
-A simple deployment flow:
+**Status:** hosted deployment `Deferred` (ADR-006 points 2 and 10); local stack steps `Planned (B7)`; demo publishing `Planned (FE)`
+
+A simple deployment flow, as originally written for a hosted backend:
 
 ```text
 Git push
@@ -1484,9 +1539,30 @@ Smoke test
 
 The pipeline should remain simple enough to maintain independently.
 
+What the two targets of ADR-006 point 1 have for each step:
+
+| Step | What exists or is decided | Status |
+|---|---|---|
+| Git push | CI runs on pushes and pull requests to `develop` and `main` (§41) | `Planned (B0)` |
+| CI validation | §41 | `Planned (B0)` |
+| Build | `pnpm build` compiles the packages; the web build of the demo is separate (§27) | Compile `Implemented`; in CI `Planned (B0)` |
+| Package or artifact | The API image of the `full` profile (multi-stage, non-root), built on the author's machine; for the demo, a static build of `apps/web` | `Planned (B7)`; demo `Planned (FE)` |
+| Deploy | Local: `docker compose --profile full up`. Demo: published under a subpath of the portfolio site, by a mechanism no ADR decides. Backend: no host | Local `Planned (B7)`; demo mechanism open (FE); backend `Deferred` |
+| Database migration | `prisma migrate deploy` at the start of the run that starts the API (ADR-006 point 5, §15, §19) | `Planned (B7)` |
+| Health check | `GET /health` and `GET /health/ready` (§50) | `Implemented`; container healthcheck `Planned (B7)` (§51) |
+| Smoke test | §49 | `Planned (B7)` |
+
+Code vs ADR:
+
+- There is no deployment pipeline: ADR-006 point 10 decides no continuous deployment. The flow above is a sequence a person runs on the local stack, not an automated chain from a push.
+- The original order puts the migration after the deploy. ADR-006 point 5 applies it at startup, in the same run as the API (§19), so the migration comes first.
+- Open (FE): how the demo build reaches the portfolio site (a manual copy or a workflow of that site's repository). Recommendation: leave it manual in version 1, which is consistent with no continuous deployment.
+
 ---
 
 # 46. Deployment Ordering
+
+**Status:** `Reference`; each item's mechanism `Planned (B7)` or `Planned (FE)` (table below)
 
 Deployment must consider compatibility between:
 
@@ -1499,29 +1575,47 @@ Where practical, migrations should support compatibility during rollout.
 
 Complex zero-downtime orchestration is not required for the initial project.
 
+| Compatibility | How it holds in version 1 | Status |
+|---|---|---|
+| Application and database schema | One API instance. The migration runs at the start of the run that starts the API (ADR-006 point 5), so the new code never meets an older schema. PostgreSQL health is awaited first (ADR-006, Deferred detail) | `Planned (B7)` |
+| API contract | The shared schemas of `@trading/contracts` and the contract tests (ADR-002 points 3 and 6) | `Planned (B0)` |
+| Frontend version | The demo is a static build with the application running in process and no backend (ADR-006 point 7), so a deployed frontend never meets a different API version | `Planned (FE)` |
+| Migration compatibility during rollout | No old version runs against the new schema with a single instance that stops before the next one starts. Compatible, stepwise migrations remain good practice (§19) but no ADR requires them | `Reference` |
+
+Code vs ADR: the original text assumes several deployed components that can run side by side in different versions. ADR-006 point 2 removes hosting, so the only version skew left is between a developer's running API and the schema of their database; the migration applied at startup (`Planned (B7)`) closes it for the full stack, and `db:migrate` covers development.
+
 ---
 
 # 47. Rollback
 
-Rollback must be considered separately for:
+**Status:** `Reference`: forward-fix only (ADR-006 point 6)
+
+The original text asked for rollback to be considered separately for the application, the frontend and the database. ADR-006 point 6 removes "controlled rollback": a mistake is corrected by a new change, not by returning to an older state.
 
 ### Application
 
-Redeploy a known-good artifact.
+No artifact is hosted, so there is none to redeploy (ADR-006 point 2). A faulty change is corrected by a new commit (a fix or a revert) and a new local run of the stack (`Planned (B7)`).
 
 ### Frontend
 
-Restore a previous static build.
+The demo is a static build of one commit. A faulty demo is corrected by building a corrected commit. Restoring a previously published build depends on the hosting of the portfolio site, which is not decided (§28), so it is `Deferred`.
 
 ### Database
 
-Rollback only when safe and supported by the migration/data model.
+Prisma Migrate has no down migrations (§18). A schema change is corrected by a new forward migration, and a development database can be reset with `db:reset` (§21).
 
-Database rollback is not automatically equivalent to application rollback.
+Database rollback is not automatically equivalent to application rollback. Reverting the application code after a migration has been applied leaves the schema ahead of the code. The fix is a forward migration, not a return to the earlier state.
+
+Code vs ADR:
+
+- The original lines "Redeploy a known-good artifact", "Restore a previous static build" and "Rollback only when safe and supported by the migration/data model" are replaced by ADR-006 point 6.
+- Open (FE): whether the demo's publishing step keeps previous builds. Recommendation: no, because the demo is rebuilt from Git and a revert commit is the forward fix.
 
 ---
 
 # 48. Deployment Verification
+
+**Status:** per step (table below); automated verification `Planned (B7)`; verification is manual today
 
 A deployment is not successful merely because a process starts.
 
@@ -1543,9 +1637,28 @@ WebSocket connects
 Health reports expected state
 ```
 
+Applied to the local full stack and to the demo:
+
+| Step | Today | Status |
+|---|---|---|
+| Frontend loads | The demo page loads under its subpath. The full stack has no frontend container (§7; open, B7) | Demo `Planned (FE)`; full stack open |
+| API reachable | `GET /health` answers 200 while the process serves | Route `Implemented`; automated check `Planned (B7)` |
+| Database ready | `GET /health/ready` runs `SELECT 1`; PostgreSQL has its own `pg_isready` healthcheck | `Implemented` |
+| Authentication works | `POST /api/v1/auth/login` and `GET /api/v1/auth/me` exist; refresh and logout do not | Login `Implemented`; refresh and logout `Planned (B2)` (ADR-005) |
+| Core API flow works | For example `GET /api/v1/portfolios` with a token. The flow is not chosen (§49) | Routes `Implemented`; automated check `Planned (B7)` |
+| WebSocket connects | No WebSocket server exists | `Planned (B5)` (ADR-007) |
+| Health reports expected state | `status: "ok"` and `checks.database: "ok"` from `GET /health/ready` | `Implemented` |
+
+Code vs ADR:
+
+- The API starts listening before any database check (§15), so a started process proves nothing, as the rule above says. Readiness proves only that `SELECT 1` succeeds; it does not show that migrations were applied. A readiness 200 on an unmigrated database is possible. Recommendation: the smoke test's core API flow (a route that reads a table) is the check that the schema is in place.
+- NFR-055 measures the full stack by `docker compose --profile full up` from a clean checkout passing the smoke test (B7).
+
 ---
 
 # 49. Smoke Tests
+
+**Status:** full stack `Planned (B7)`; demo `Planned (FE)`; the exact definition is open (B7)
 
 Minimum smoke tests should verify:
 
@@ -1557,28 +1670,62 @@ Minimum smoke tests should verify:
 6. realtime connection
 7. expected error handling
 
+How each applies:
+
+| Check | Full stack | Demo |
+|---|---|---|
+| 1. Frontend accessibility | No frontend container (§7); open | Page loads under the subpath: `Planned (FE)`; tool `Deferred` (frontend-stage ADR) |
+| 2. API health | `GET /health` and `GET /health/ready` return 200: `Planned (B7)` | Not applicable: no backend |
+| 3. Authentication | `POST /api/v1/auth/login` returns a token: `Planned (B7)` | In-process login: `Planned (FE)` |
+| 4. Authenticated request | `GET /api/v1/auth/me` or `GET /api/v1/portfolios` with the token: `Planned (B7)` | `Planned (FE)` |
+| 5. Primary portfolio flow | Not chosen; a read of the seeded portfolio is the smallest candidate: `Planned (B7)`, open | `Planned (FE)` |
+| 6. Realtime connection | `Planned (B5)`; added to the smoke test when the WebSocket server exists | `Planned (FE)` |
+| 7. Expected error handling | One request that returns the standard error envelope, for example `401` without a token: `Planned (B7)` | `Planned (FE)` |
+
+Code vs ADR:
+
+- No ADR defines the smoke test. `10-testing-strategy.md` has no smoke-test section, and `BACKEND-ROADMAP.md` B7 defers the definition to this section. `apps/api/src/app.test.ts` is a wiring test, not a deployment smoke test.
+- The smoke test belongs to the B7 definition of done (NFR-054 under a 512 MB container limit, NFR-055 from a clean checkout). CI does not run it (ADR-006 point 11: running the built API stays B7).
+- Open (B7): the form of the smoke test. Recommendation: one short script run after `docker compose --profile full up`, covering checks 2, 3, 4, 5 and 7 on the full stack (check 6 joins in B5), with no frontend step because the full stack has no frontend container.
+
 ---
 
 # 50. Health Checks
 
-The deployment must preserve the health model from `13-observability-spec.md`.
+**Status:** `Implemented` (`apps/api/src/routes/health.ts`, NFR-051); 503 while shutting down `Planned (B3)` (ADR-006 point 12); route test `Planned (B0)` (ADR-001 point 8)
 
-Recommended endpoints:
+The deployment must preserve the health model from `13-observability-spec.md` (§22-23).
+
+The endpoint names are final, not recommended (`07-api-spec.md` §30):
 
 ```text
 GET /health
 GET /health/ready
 ```
 
+| Endpoint | Behavior | Status |
+|---|---|---|
+| `GET /health` (liveness) | Always 200 with `status`, `service` and `timestamp`; no dependency check | `Implemented` |
+| `GET /health/ready` (readiness) | `SELECT 1` against the database on every call; 200 with `checks.database: "ok"`, or 503 with `status: "unavailable"` and `checks.database: "unavailable"` | `Implemented` (`apps/api/src/controllers/health.controller.ts`, `apps/api/src/services/health.service.ts`) |
+| Readiness while shutting down | 503 (ADR-006 point 12) | `Planned (B3)` |
+
 Liveness should answer whether the process is alive.
 
-Readiness should answer whether required dependencies are available.
+Readiness should answer whether required dependencies are available. It is stateless: nothing is cached and no state records a past failure.
 
-Health responses must never expose credentials or internal secrets.
+Health responses must never expose credentials or internal secrets. Both bodies hold only fixed fields and the `ok` or `unavailable` value of the database check (`13-observability-spec.md` §24).
+
+Code vs ADR:
+
+- The 503 body while shutting down is not decided. Open (B3). Recommendation: reuse `status: "unavailable"` and omit `checks`, so the body keeps its shape and does not claim that the database failed.
+- Readiness checks the database only; the job runner (B4) and the simulator (B5) are not added to it by any ADR (`13-observability-spec.md` §23).
+- No test covers either route today; the health route test is in the B0 set (ADR-001 point 8, ADR-009 point 13).
 
 ---
 
 # 51. Container Health
+
+**Status:** PostgreSQL healthcheck `Implemented`; API container healthcheck `Planned (B7)`, endpoint open
 
 A container can be running while the application is unusable.
 
@@ -1596,11 +1743,26 @@ Application ready
 
 The deployment platform should use readiness information where supported.
 
+| Item | Today | Status |
+|---|---|---|
+| Process running | `GET /health` (§50) | `Implemented` |
+| Application ready | `GET /health/ready` (§50) | `Implemented` |
+| PostgreSQL container | `pg_isready` every 5 s, 5 retries (`docker-compose.yml`) | `Implemented` |
+| API container | No Dockerfile and no `api` service exist | `Planned (B7)`; the endpoint the healthcheck probes is not decided |
+| Use of the readiness signal | The only consumer decided is `depends_on` with `condition: service_healthy` for the API on PostgreSQL (ADR-006, Deferred detail) | `Planned (B7)` |
+
+Code vs ADR:
+
+- The platform is Docker Compose, not an orchestrator. Compose uses a healthcheck for `depends_on` and for display. It does not route traffic away from an unhealthy container, and `restart: unless-stopped` restarts a container only when its process exits, not when it turns unhealthy.
+- Open (B7): the endpoint of the API healthcheck and the probe the runtime image provides. Recommendation: `GET /health/ready`, so that `service_healthy` means the application can serve and a later poller can log recovery (ADR-009, Deferred detail); and a probe that needs no extra package in the non-root image.
+
 ---
 
 # 52. Startup Diagnostics
 
-Startup should produce safe structured events such as:
+**Status:** per item (table below); the startup entry `Planned (B3)`, its name and level open
+
+Startup should produce safe structured events. The original list named seven examples:
 
 ```text
 service.starting
@@ -1612,36 +1774,69 @@ websocket.ready
 service.ready
 ```
 
-Startup failures must be visible through the observability system.
+ADR-009 point 11 lists "startup" among the lifecycle events but names no entry and no level, so the seven names are examples, not decisions. Version 1 decides the shutdown pair (`app.shutdown.started`, `app.shutdown.completed`, ADR-006 point 12). What exists for each moment:
+
+| Moment | Today | Status |
+|---|---|---|
+| Configuration validated | On failure, `[api] invalid environment configuration:` and the messages per variable (never the values), then exit code 1 (`apps/api/src/config/env.ts`). Nothing on success | Failure `Implemented` as plain text; structured entry `Planned (B3)` |
+| Database connected | No explicit connect (§15); the Prisma client connects on first use | No entry; explicit check `Planned (B7)` |
+| Application initialized | `createApp()` wires middleware and routes; no entry | `Planned (B3)` |
+| HTTP ready | `[api] listening on port <n>` through `console.log` | `Implemented` as plain text; entry `Planned (B3)` |
+| WebSocket ready | No WebSocket layer | `Planned (B5)` |
+| Service ready | Same as HTTP ready: readiness answers once the server listens (§15) | `Implemented` as implicit |
+
+Startup failures must be visible through the observability system. Today they reach the process output only: an invalid environment is printed and the process exits; a failing database does not stop startup and shows only as a readiness 503 (§50).
+
+Code vs ADR:
+
+- Open (B3): the names and levels of the startup entries. Recommendation: two entries, `app.startup.started` and `app.startup.completed` (the latter carrying the port), mirroring the shutdown pair. Per-step entries (database connected, application initialized) add nothing while the API has one dependency and no explicit connect.
+- Open (B3): whether the invalid-environment failure becomes a structured line. It is raised before the `Logger` exists (ADR-009 point 1), so plain output followed by exit 1 may stay. Recommendation: keep it as it is, since it is safe and visible.
+- The `websocket.ready` entry waits for B5.
 
 ---
 
 # 53. Observability During Deployment
 
-Deployment must preserve:
+**Status:** per item (table below)
 
-- structured logs
-- request IDs
-- error diagnostics
-- health checks
-- metrics where implemented
-- realtime diagnostics
+Deployment must preserve the items below (`13-observability-spec.md`):
+
+| Item | Today | Status |
+|---|---|---|
+| Structured logs | JSON `console` lines for errors only (`request.failed`, `health.database.unavailable`); the `Logger` port with `pino` is not built | `Planned (B3)` (ADR-009 points 1-3) |
+| Request IDs | `X-Request-ID` is assigned or reused and echoed (`apps/api/src/middleware/request-id.ts`) and appears in error bodies. Propagation to every log line and exposure through CORS are not built | Header `Implemented`; propagation and exposure `Planned (B3)` (ADR-009 point 5) |
+| Error diagnostics | The error handler writes one JSON line with `requestId` and `errorName` for unexpected errors | `Implemented` as a `console` line; `http.request.failed` `Planned (B3)` (ADR-009 point 6) |
+| Health checks | §50 | `Implemented` |
+| Metrics where implemented | No metrics and no `/metrics` endpoint | `Deferred` (ADR-009 point 10) |
+| Realtime diagnostics | Connection events | `Planned (B5)` (ADR-009 point 11) |
+| Startup and shutdown entries | §52 and §16 | `Planned (B3)` |
 
 See `13-observability-spec.md`.
 
 A deployment that cannot be diagnosed is incomplete.
 
+Code vs ADR:
+
+- In version 1 the diagnostic channel is the process output: one JSON line per event on stdout, with no log files (ADR-009 point 3). On the full stack that is `docker compose logs`.
+- Shipping logs to a collector or a monitoring service, and alerting, belong to a hosted backend and are `Deferred` (ADR-006 point 2, ADR-009 point 10).
+
 ---
 
 # 54. Background Jobs
 
-If background jobs execute in the API process, deployment must account for:
+**Status:** `Planned (B4)` (ADR-008 point 4); the shutdown step `Planned (B4)` (ADR-006, Deferred detail)
 
-- graceful shutdown
-- duplicate execution
-- cancellation
-- timeouts
-- process restarts
+Background jobs run in the API process, as ADR-008 point 4 decides: an in-process runner backed by a `jobs` table in PostgreSQL, with no separate worker process and no external queue. No job code exists yet.
+
+Deployment must account for the following:
+
+| Concern | Decision | Status |
+|---|---|---|
+| Graceful shutdown | Stopping new jobs joins the shutdown sequence when the runner exists (ADR-006, Deferred detail). What happens to a `PROCESSING` import is open | `Planned (B4)` |
+| Duplicate execution | Every transition is a compare-and-set on status, with a persisted `stage` and `attempt`; startup resume and enqueue cannot both take a job (ADR-008, Deferred detail). `Idempotency-Key` protects repeated requests (ADR-008 point 8) | `Planned (B4)` |
+| Cancellation | Allowed while `QUEUED` or during validation, never during apply (ADR-008 point 6) | `Planned (B4)` |
+| Timeouts | Each job type has a timeout applying while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7) | `Planned (B4)` |
+| Process restarts | On startup, `PROCESSING` jobs become `FAILED` with reason `INTERRUPTED` and `QUEUED` jobs resume (ADR-008 point 5) | `Planned (B4)` |
 
 A future worker architecture may be:
 
@@ -1653,97 +1848,164 @@ Queue
 Worker
 ```
 
-A separate worker is not required initially unless justified.
+A separate worker is not required initially unless justified. ADR-008 point 4 decides against one in version 1, so this architecture is `Deferred`.
+
+Code vs ADR:
+
+- The `Job` and `IdempotencyKey` tables are specified in `05-data-model.md` §52-53 but are not in `schema.prisma`; the runner and the startup step do not exist either.
+- Open (B4): what the shutdown does with a running validation (wait, cancel, or leave it for the next startup to mark `INTERRUPTED`). Recommendation: leave it, since ADR-008 point 5 already makes an interrupted job safe and retryable, and the 10-second drain (§16) is too short for a long import.
+- The local stack runs one API container (§7), so two runners resuming the same jobs do not occur; running several instances is not decided.
 
 ---
 
 # 55. Demo Background Jobs
 
-Demo jobs must not require a production queue service.
+**Status:** `Planned (FE)` (ADR-008 point 13); scripted demo failures `Deferred` (ADR-010 point 6)
 
-They should use the simulation infrastructure from `12-demo-mode-spec.md` and still demonstrate:
+Demo jobs must not require a production queue service. Real jobs do not use one either (§54), so the demo runs the same use case in process (ADR-008 point 13).
 
-- progress
-- completion
-- failure
-- cancellation
-- timeout
+They should use the simulation infrastructure from `12-demo-mode-spec.md` (§41-43) and still demonstrate:
+
+| Behavior | Status |
+|---|---|
+| Progress | `Planned (FE)` (FR-069) |
+| Completion | `Planned (FE)` |
+| Failure | `Planned (FE)`: CSV import failure injection (ADR-008 point 13, FR-071); other scripted failures are `Deferred` (ADR-010 point 6) |
+| Cancellation | `Planned (FE)`: same rules as the real runner (ADR-008 point 6) |
+| Timeout | `Planned (FE)`: the `TIMED_OUT` state (ADR-008 point 7) |
+
+Code vs ADR: `12-demo-mode-spec.md` §41 lists four job examples (analytics recalculation, report generation, data import, export generation) and a lifecycle with `retrying`. ADR-008 point 1 decides one job type, the CSV import, and a retry returns a job to `QUEUED`. `12` is aligned when it is reconciled (T5.1).
 
 ---
 
 # 56. Demo Persistence
 
+**Status:** isolation `Planned (FE)` (ADR-006 point 7); the persistence layers and reset `Deferred` (ADR-010 point 6)
+
 Demo state should remain isolated from production data.
 
-The public demo should not be able to modify:
+The demo has no backend and no database. It runs the application in process with in-memory repositories (ADR-001, ADR-006 point 7), makes no call to any backend, carries no secret and namespaces its browser storage. Because no backend is hosted (ADR-006 point 2) and the build holds no connection string, the public demo cannot reach any real data by construction:
 
-- real user records
-- real portfolios
-- real database state
-- private application data
+| The public demo should not modify | Why it cannot | Status |
+|---|---|---|
+| Real user records | No backend and no credentials in the build | `Planned (FE)` |
+| Real portfolios | Same | `Planned (FE)` |
+| Real database state | `DATABASE_URL` is a server variable and is not part of the web build (§11) | `Planned (FE)` |
+| Private application data | The demo ships its own seed data and nothing else | `Planned (FE)` |
+
+Code vs ADR:
+
+- Which browser storage the demo uses, its versioning and the reset are not decided: ADR-010 point 6 leaves them to the frontend-stage ADR (`05-data-model.md` §34-37, `06-architecture.md` §14, `12-demo-mode-spec.md` §18-21). `Deferred`.
+- `12-demo-mode-spec.md` §59 requires failing closed rather than falling back to real infrastructure. With no backend call at all (ADR-006 point 7) there is no real infrastructure to fall back to.
+- Nothing is built: `apps/web` holds the wireframe only.
 
 ---
 
 # 57. Local Production-like Mode
 
+**Status:** per item (table below); the `full` profile `Planned (B7)` (ADR-006 point 4)
+
 A production-like local mode should validate:
 
-- production builds
-- environment variables
-- containers
-- migrations
-- health checks
-- realtime
-- startup/shutdown
+| Validates | How | Status |
+|---|---|---|
+| Production builds | `node dist/index.js` from the compiled packages (ADR-006 point 3) | `Planned (B7)` |
+| Environment variables | `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` when they differ from the defaults (§11) | `Planned (B7)` |
+| Containers | The `full` profile: PostgreSQL and the API, multi-stage and non-root (ADR-006 point 4) | `Planned (B7)` |
+| Migrations | `prisma migrate deploy` at startup (ADR-006 point 5) | `Planned (B7)` |
+| Health checks | The routes exist (§50); the container healthcheck is `Planned (B7)` (§51) | Routes `Implemented` |
+| Realtime | The local WebSocket server | `Planned (B5)` |
+| Startup and shutdown | Graceful shutdown is `Planned (B3)` (§16); the startup order is `Planned (B7)` (§15) | `Planned (B3)` and `Planned (B7)` |
+| Smoke test and limits | `docker compose --profile full up` from a clean checkout passes the smoke test under a 512 MB limit (NFR-054, NFR-055; §49) | `Planned (B7)` |
 
-Conceptually:
+Conceptually, following ADR-006 point 4:
 
 ```text
-Docker Compose
- ├── frontend build
- ├── backend build
- ├── PostgreSQL
- └── production configuration
+Docker Compose, profile "full"
+ ├── api          (production build, NODE_ENV=production)
+ └── postgres     (the default profile's service)
 ```
+
+Code vs ADR:
+
+- The original diagram listed a frontend build and a production configuration as services. ADR-006 point 4 decides PostgreSQL and the API only. Whether a frontend container exists is open (§6; B7), with the recommendation recorded there.
+- `docker-compose.yml` has no `profiles` key and no `api` service. The default profile keeps only PostgreSQL for development.
+- This mode is the "local full stack" target of ADR-006 point 1, used for demonstrations; it is not a rehearsal of a hosted deployment, because none is planned.
 
 ---
 
 # 58. Dependency Security
 
+**Status:** per item (table below); no audit step in CI in version 1
+
 The project should:
 
-- commit lockfiles
-- review dependency updates
-- remove unused packages
-- run vulnerability checks when practical
-- keep production dependencies minimal
+| Practice | Today or decided | Status |
+|---|---|---|
+| Commit lockfiles | `pnpm-lock.yaml` is tracked | `Implemented` |
+| Review dependency updates | Pull request review. No update bot is configured (NFR-024) | `Implemented` as review |
+| Remove unused packages | Manual; no automated check | `Reference` |
+| Run vulnerability checks when practical | Not in CI. A manual `pnpm audit --prod --audit-level=high` is a step of the B7 security checklist (NFR-024) | `Planned (B7)` |
+| Keep production dependencies minimal | Principle of NFR-070. Dependencies come from the lockfile; install scripts are limited to Prisma and `esbuild` (`pnpm-workspace.yaml`, `allowBuilds`) | `Implemented` |
 
 No dependency should be added only for appearance.
+
+Code vs ADR:
+
+- The minimal CI adds no dependency audit or license step in version 1: ADR-009 point 2 (recorded 2026-10-07) covers `pino`, `pino-http` and `pino-pretty` with the lockfile as their source, NFR-070 gives the reason, and `13-observability-spec.md` §63 states it. The original "run vulnerability checks when practical" is met by the manual B7 step only.
+- NFR-024 cites `14-deployment-spec.md` §78 for the security checklist; that section is reconciled in a later slice.
 
 ---
 
 # 59. Runtime Versions
 
+**Status:** per item (table below); the Node.js pin `Planned (B0)`, open
+
 Node.js and PostgreSQL versions must be explicitly documented and pinned for local development.
 
-The versions should be selected from currently supported releases when implementation begins.
+| Item | Today | Status |
+|---|---|---|
+| Node.js | `engines.node` is `>=22.0.0` (root `package.json`); there is no `.nvmrc` or `.node-version`. `@types/node` is `^22.20.2` in `apps/api` and `^26.4.1` elsewhere. The author's machine runs v24.16.0 | Range `Implemented`; a pin `Planned (B0)`, open |
+| pnpm | `packageManager` is `pnpm@12.3.4`; `engines.pnpm` is `>=9.0.0` | `Implemented`; aligning `engines.pnpm` open (B0, §37) |
+| PostgreSQL | `postgres:18` in `docker-compose.yml` (`04-tech-stack.md`); a major-version pin | `Implemented`; a tighter pin open (B7) |
+| Compatibility of local, CI and the container | One Node line and one PostgreSQL major across the three | CI `Planned (B0)`; image `Planned (B7)` |
+
+The versions should be selected from currently supported releases when implementation begins. Implementation has begun: PostgreSQL and pnpm are fixed, and the Node.js line is the remaining choice.
 
 Local, CI and production-like environments should remain compatible.
+
+Code vs ADR:
+
+- No ADR decides the Node.js line. `engines.node >=22.0.0` admits every later major, while one package types against Node 22 and the others against 26. Open (B0), the same decision as §37. Recommendation: pin the major the author already runs (24, confirm it is a supported LTS line when B0 starts) in `.nvmrc`, use it in the workflow and the Dockerfile, and align `engines.node` and `@types/node` to it.
+- Local, CI and the container stay compatible only if the three read the same pin. Recommendation: the workflow and the Dockerfile read `.nvmrc` (or the same value), so a version change is one edit.
 
 ---
 
 # 60. Time and Timezone
 
+**Status:** `Reference` for the principle; per item (table below)
+
 The deployment environment should use UTC where practical.
 
 Recommended strategy:
 
-- store timestamps in UTC
-- serialize consistently
-- convert to user-local time in the UI
-- do not depend on server-local timezone
+| Strategy | Today or decided | Status |
+|---|---|---|
+| Store timestamps in UTC | Prisma `DateTime` columns are `TIMESTAMP(3)` without a time zone, and Prisma writes UTC instants (migrations in `packages/database/prisma/migrations`) | `Implemented` |
+| Serialize consistently | Timestamps are ISO-8601 strings in UTC (`07-api-spec.md`); a `Date` serialized to JSON is UTC, and the health `timestamp` uses `toISOString()` | `Implemented` |
+| Analytics days are UTC calendar dates | ADR-004; `16-analytics-spec.md` §2; the demo and the simulator use the same boundaries | `Planned (B1)` |
+| Convert to user-local time in the UI | Timestamps show in the user's local zone; analytics days stay UTC dates (`11-ui-ux-spec.md`, ADR-010 point 9) | `Planned (FE)` |
+| Do not depend on the server-local time zone | No local-time accessor appears in the non-test code of `apps/api`, `packages/domain` or `packages/database` (`getHours`, `getDate`, `getFullYear`, `toLocale*`, `getTimezoneOffset`); the seed uses `getUTC*` and `setUTC*` | `Implemented` by inspection; no test enforces it |
+| One time source | One shared `Clock` port (ADR-001 point 8); the simulator clock uses it (ADR-007 point 7) | `Planned (B0)`; simulator `Planned (B5)` |
+| Container time zone | Neither Compose nor a Dockerfile sets `TZ` | `Planned (B7)`, open |
 
 This is important for trading data and historical analytics.
+
+Code vs ADR:
+
+- The code reads the system clock directly through `new Date()` in services and mappers (`10-testing-strategy.md` §49 lists them); the `Clock` port replaces those calls in B0.
+- The migrations also give columns `DEFAULT CURRENT_TIMESTAMP`. For a `TIMESTAMP` without a zone, a value written by that default takes the PostgreSQL session time zone, so UTC holds only where the database runs in UTC or Prisma supplies the value. Open (B7). Recommendation: set `TZ=UTC` on the API and PostgreSQL containers of the `full` profile, and check in B0 whether any write relies on a database default.
+- Day boundaries in analytics are decided as UTC, while code that builds the series is not yet aligned (ADR-004 Deferred detail, B1).
 
 ---
 
