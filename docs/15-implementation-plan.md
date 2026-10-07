@@ -192,7 +192,7 @@ Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides t
 | ESLint (`eslint.config.js`, `pnpm lint`) | `Implemented` | none |
 | ESLint import-boundary rule for the application layer (ADR-001 point 1) | `Planned (B0)`; the config holds only a commented placeholder | B0 |
 | Prettier (`.prettierrc.json`, `pnpm format`, `pnpm format:check`) | `Implemented` | none |
-| Editor conventions | Open: no `.editorconfig` or `.vscode/` exists and no document requires one; Prettier is the only formatting convention | none |
+| Editor conventions | Decided (user, 2026-10-07): nothing is added in version 1; no `.editorconfig` or `.vscode/` exists and Prettier is the only formatting convention | none |
 | `.env.example` and `.env.test.example` | `Implemented`; the content of `.env.example` is stale (see Code vs ADR) | the block that adds each variable |
 | Basic commands documented | `Implemented` in `README.md` (setup and local database); `CONTRIBUTING.md` has no setup section | none (documentation work, T5.2) |
 | Commit workflow: Conventional Commits (`CONTRIBUTING.md` §6) and a Husky pre-commit hook running `lint-staged` | `Implemented` (`.husky/pre-commit`, `lint-staged` in the root `package.json`) | none |
@@ -488,7 +488,7 @@ The API:
 | `VIEWER` self-service (own preferences and own notifications read) and `ADMIN` limited to `TRADER` plus `simulation:control` (ADR-005 point 13) | `Planned (B2)` | B2 |
 | Protected routes: every `/api/v1` route except login runs `authenticate` | `Implemented` | none |
 | Ownership checks: another user's resource returns 404, never 403 (ADR-005 point 12) | `Implemented` | none |
-| Authentication tests: login success, wrong password, unknown email, `/me` without a token, `/me` with a malformed token (`apps/api/src/routes/auth.routes.test.ts`) | `Implemented`; no test covers an expired or wrongly signed token | Open |
+| Authentication tests: login success, wrong password, unknown email, `/me` without a token, `/me` with a malformed token (`apps/api/src/routes/auth.routes.test.ts`) | `Implemented`; no test covers an expired or wrongly signed token; those tests are `Planned (B2)` with the refresh tests (decided by the user, 2026-10-07) | `Planned (B2)` |
 | Authorization tests: cross-user access returns 404 (portfolio route tests) | `Implemented`; role tests `Planned (B2)` | B2 |
 | Session screens: login, logout, session expiry handling, access token kept in memory only (ADR-005 point 4) | `Planned (FE1)` | FE1 |
 | Demo identity with a role selector (Viewer, Trader, Admin) going through the same permission checks (ADR-005 point 11) | `Planned (FE4)` | FE4 |
@@ -498,7 +498,7 @@ Code vs ADR:
 - The code has `USER` and `ADMIN`. ADR-005 point 1 decides `VIEWER`, `TRADER` and `ADMIN`. Nothing checks `role` today: `authenticate` only attaches `req.auth.role` (a plain string), so there is no authorization middleware and the "permission checks" and "protected resources enforce authorization" items below hold only for ownership.
 - ADR-005 point 3 puts permission enforcement in the application layer, not in Express middleware, which only authenticates and builds the `Actor`. The `Actor` therefore depends on `@trading/application` (B0) before B2 can enforce roles.
 - There is no refresh, no logout and no sessions table. The access token lives 15 minutes (the `JWT_EXPIRES_IN_SECONDS` default), and an issued token stays valid until it expires even after a logout exists (ADR-005 point 6).
-- Acceptance criteria against the code: unauthenticated and invalid requests are rejected with a generic 401, and an expired token is rejected by `jsonwebtoken` verification, but no test asserts the expired or wrong-signature case. No ADR or NFR assigns those tests to a block, so which block adds them is open. The role-based part of "protected resources enforce authorization" is `Planned (B2)`.
+- Acceptance criteria against the code: unauthenticated and invalid requests are rejected with a generic 401, and an expired token is rejected by `jsonwebtoken` verification, but no test asserts the expired or wrong-signature case. No ADR or NFR assigns those tests to a block; the user assigned them to B2, alongside the refresh tests (2026-10-07). The role-based part of "protected resources enforce authorization" is `Planned (B2)`.
 - The principle below stays as written: the frontend check is a UX convenience and the backend check is the security boundary. In demo mode the same permission checks run in-process (ADR-005 points 3 and 11), so the rule holds without a backend.
 
 ### Objective
