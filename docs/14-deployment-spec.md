@@ -554,7 +554,7 @@ Code vs ADR:
 
 - The sequence is a target, and the table lists where the code departs from it. The API is ready to serve as soon as `listen` returns, with no gate on the database.
 - Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): `prisma migrate deploy` runs as a one-shot `migrate` service in the `full` profile, not in the API process or its entrypoint. The API service has `depends_on: migrate` with `condition: service_completed_successfully`, and the API container starts with `node dist/index.js` directly (§26). In the `full` profile, "startup applies migrations" (ADR-006 point 5) means this service. Its position relative to the PostgreSQL healthcheck is in §6 (ADR-006, Deferred detail).
-- Open (B3): the log level of the startup entry (ADR-009, Deferred detail).
+- Open (B3): the log level of the startup entry (no ADR sets it).
 
 ---
 
@@ -608,8 +608,9 @@ Code vs ADR:
 - `apps/api/src/index.ts` discards the value `app.listen` returns and registers no signal handler, so a signal ends the process at once and drops in-flight requests. Prisma is never disconnected. The original text said "appropriate signals"; ADR-006 point 12 names `SIGTERM` and `SIGINT`.
 - Decided (ADR-006 point 12, exit code; `Planned (B3)`): if the 10-second drain expires, the remaining connections are closed and the process exits with code 1; otherwise it exits with code 0.
 - Decided (ADR-006 point 12, readiness body; `Planned (B3)`): while the API is shutting down, the 503 body of `GET /health/ready` is `status: "unavailable"` with no `checks` (§50).
-- Open (B3): the log levels of the two shutdown entries (ADR-009, Deferred detail).
-- Open (B4, B5): what stopping jobs means for a `PROCESSING` import (ADR-008 point 5 marks an interrupted job `FAILED` on the next startup) and where the realtime close sits in the sequence (the close code is `1001`, ADR-007 point 15).
+- Open (B3): the log levels of the two shutdown entries (no ADR sets them).
+- Decided (ADR-008 point 5): a `PROCESSING` import interrupted by shutdown is marked `FAILED` with reason `INTERRUPTED` on the next startup and stays retryable; §54 repeats it.
+- Open (B5): where the realtime close sits in the sequence (the close code is `1001`, ADR-007 point 15).
 
 ---
 
@@ -1434,7 +1435,7 @@ Decided (ADR-006 points 10-11): one GitHub Actions workflow on pushes and pull r
 | Type check | `pnpm typecheck` (`tsc --build`) | `Planned (B0)` |
 | Lint | `pnpm lint` | `Planned (B0)` |
 | Formatting | `pnpm format:check` | `Planned (B0)` (ADR-006 point 11) |
-| Documentation check | `pnpm docs:check` | `Planned (B0)`: task T1.5, done together with the workflow; ADR-006 does not list it (open, below) |
+| Documentation check | `pnpm docs:check` | `Planned (B0)` (ADR-006 point 11, amended 2026-10-07): closes the CI part of task T1.5 |
 | Unit and integration tests | `pnpm test` (`pnpm -r test`: the domain, database and API suites; the latter two against a PostgreSQL service container, migrated first, §42) | `Planned (B0)` |
 | Build | `pnpm build` (`pnpm -r build`): proves the packages compile from a clean checkout; running the built API is B7 (ADR-006 point 11) | `Planned (B0)` |
 | Component, E2E and accessibility | Tools chosen in the frontend-stage ADR; they join the workflow once frontend code exists (ADR-006 point 11) | `Deferred` |
@@ -1444,7 +1445,7 @@ Decided (ADR-006 points 10-11): one GitHub Actions workflow on pushes and pull r
 Code vs ADR:
 
 - No workflow exists. `.github/` holds only `PULL_REQUEST_TEMPLATE.md`. Every stage above exists as a local script in the root `package.json`, and the Husky pre-commit hook runs `lint-staged` only (formatting and lint of staged files).
-- ADR-006 point 10 names install, typecheck, lint and the three suites; point 11 adds `format:check` and `build`. `docs:check` appears in neither. Open (B0): whether it joins the workflow. Recommendation: yes, and list it in ADR-006 point 11, because `docs/` is in `.prettierignore` and `format:check` never covers the SDD.
+- ADR-006 point 10 names install, typecheck, lint and the three suites; point 11 adds `format:check` and `build`. Decided (ADR-006 point 11, additions of 2026-10-07; `Planned (B0)`): the workflow also runs `pnpm docs:check`, because `docs/` is in `.prettierignore` and `format:check` never covers the SDD. This closes the CI part of task T1.5.
 - The ADR fixes install first and nothing else about order. The original "Integration Tests" and "E2E Tests" stages do not exist as separate stages: `pnpm test` runs every backend suite, and E2E is `Deferred`. Recommendation for B0: cheap checks first (lint, type check, formatting), then build, then tests, in one job.
 - `packages/contracts` holds a `.gitkeep` and `packages/config` is empty, so `pnpm test` covers three packages today. New packages join it with their own `test` script.
 - The pull request template checklist asks for `pnpm typecheck` and `pnpm lint` only; aligning it with the workflow is T5.2.
@@ -1465,6 +1466,7 @@ Decided: a PostgreSQL service container of the workflow (ADR-006 point 10). The 
 | Migrated before the suites: `prisma migrate deploy` through `db:test:migrate` of `@trading/database` (`10-testing-strategy.md` §53) | `Planned (B0)` |
 | Test data: each suite creates and deletes its own rows (`apps/api/src/test-utils/fixtures.ts`); no seed runs | `Implemented` |
 | Local equivalent: a separate `trading_analytics_test` database on the development instance, created by hand (`.env.test.example`) | `Implemented` |
+| Runtime and migration roles: the test database uses the two roles of ADR-005 point 13 (ADR-006 point 11, additions of 2026-10-07) | `Planned (B0)` |
 | PostgreSQL image version in CI | Open (B0): see Code vs ADR |
 
 CI must never use a production database.
@@ -1473,7 +1475,7 @@ Code vs ADR:
 
 - No production database exists (ADR-006 point 2). The rule is met by construction: the only database the workflow can reach is its own service container, with throwaway credentials, and no workflow secret holds another connection string.
 - The development Compose file pins `postgres:18`. Recommendation: the service container uses the same major version, so tests run against the engine the stack uses.
-- The API connects as the container's superuser today. ADR-005 point 13 (`Planned (B0)`) separates a data-only runtime role from the migration role. How the workflow creates the two roles is open (B0). Recommendation: the suites connect with the runtime role and `migrate deploy` runs with the migration role, as in the local stack, so CI exercises the role split.
+- The API connects as the container's superuser today. ADR-005 point 13 (`Planned (B0)`) separates a data-only runtime role from the migration role. Decided (ADR-006 point 11, additions of 2026-10-07; `Planned (B0)`): the CI test database uses those two roles, so the suites connect with the runtime role and `migrate deploy` runs with the migration role, as in the local stack, and CI exercises the role split. How the workflow creates the two roles is an implementation detail of B0.
 
 ---
 
@@ -1485,20 +1487,20 @@ CI should define the items below. Variable names follow `apps/api/src/config/env
 
 | Item | Today or decided | Status |
 |---|---|---|
-| Node.js version | `engines.node` is `>=22.0.0`; there is no `.nvmrc`; the workflow's version is not decided (§59) | Open (B0) |
+| Node.js version | `engines.node` is `>=22.0.0` and there is no `.nvmrc` today. Decided (ADR-006 point 13): a single `.nvmrc` is the source, reused by the workflow and the Dockerfile; the exact major is chosen in B0 after confirming it is an LTS release (§37, §59) | Pin `Planned (B0)` |
 | Package manager | `packageManager` is `pnpm@12.3.4` in the root `package.json` | `Implemented`; use in the workflow `Planned (B0)` |
 | Test mode | `NODE_ENV=test` (`.env.test.example`); it disables rate limiting in the integration suite (`apps/api/src/middleware/rate-limit.ts`) | `Implemented` locally; in CI `Planned (B0)` |
 | Database configuration | `DATABASE_URL` pointing at the service container (§42) | `Planned (B0)` |
 | Deterministic seed data | Suites build their own fixtures; the seed never runs automatically (ADR-006 point 5) and the workflow has no seed step | `Implemented` (fixtures) |
-| Required non-secret variables | `DATABASE_URL`, `NODE_ENV=test`, and a throwaway `JWT_SECRET` of at least 32 characters (§11) | `Planned (B0)` |
+| Required non-secret variables | `DATABASE_URL`, `NODE_ENV=test`, and a throwaway `JWT_SECRET` of at least 32 characters (§11) | `Planned (B0)`; supplied through the job `env` (ADR-006 point 11) |
 | Secrets | None needed: there is no deployment and no hosted service (ADR-006 points 2 and 10). A repository secret store is not used | `Reference` |
 
 Secrets should use the CI platform's secret store if necessary.
 
 Code vs ADR:
 
-- The `test` scripts of `apps/api` and `packages/database`, and `db:test:migrate`, load `../../.env.test.local` through `dotenv-cli`. The file is git-ignored, so it does not exist on a clean checkout. `dotenv-cli` overrides variables already set only with its `-o` option, so the workflow can set the variables in the job `env` instead. Open (B0). Recommendation: job `env` and no generated file, so the workflow holds no file that could be mistaken for a secret.
-- The workflow's Node.js version is the open decision of §37 and §59 (a `.nvmrc` pin).
+- The `test` scripts of `apps/api` and `packages/database`, and `db:test:migrate`, load `../../.env.test.local` through `dotenv-cli`. The file is git-ignored, so it does not exist on a clean checkout. `dotenv-cli` overrides variables already set only with its `-o` option, so the workflow can set the variables in the job `env` instead. Decided (ADR-006 point 11, additions of 2026-10-07; `Planned (B0)`): CI supplies the test variables through the job `env` and does not generate `.env.test.local`, so the workflow holds no file that could be mistaken for a secret.
+- The workflow's Node.js version comes from the `.nvmrc` of ADR-006 point 13 (§37, §59); the exact major is chosen in B0.
 
 ---
 
@@ -1556,7 +1558,7 @@ What the two targets of ADR-006 point 1 have for each step:
 | CI validation | §41 | `Planned (B0)` |
 | Build | `pnpm build` compiles the packages; the web build of the demo is separate (§27) | Compile `Implemented`; in CI `Planned (B0)` |
 | Package or artifact | The API image of the `full` profile (multi-stage, non-root), built on the author's machine; for the demo, a static build of `apps/web` | `Planned (B7)`; demo `Planned (FE)` |
-| Deploy | Local: `docker compose --profile full up`. Demo: published under a subpath of the portfolio site, by a mechanism no ADR decides. Backend: no host | Local `Planned (B7)`; demo mechanism open (FE); backend `Deferred` |
+| Deploy | Local: `docker compose --profile full up`. Demo: published under a subpath of the portfolio site; the hosting and publishing mechanism are decided in the frontend-stage ADR (ADR-010 point 6). Backend: no host | Local `Planned (B7)`; demo mechanism `Deferred` (frontend-stage ADR); backend `Deferred` |
 | Database migration | `prisma migrate deploy` at the start of the run that starts the API (ADR-006 point 5, §15, §19) | `Planned (B7)` |
 | Health check | `GET /health` and `GET /health/ready` (§50) | `Implemented`; container healthcheck `Planned (B7)` (§51) |
 | Smoke test | §49 | `Planned (B7)` |
@@ -1565,7 +1567,7 @@ Code vs ADR:
 
 - There is no deployment pipeline: ADR-006 point 10 decides no continuous deployment. The flow above is a sequence a person runs on the local stack, not an automated chain from a push.
 - The original order puts the migration after the deploy. ADR-006 point 5 applies it at startup, in the same run as the API (§19), so the migration comes first.
-- Open (FE): how the demo build reaches the portfolio site (a manual copy or a workflow of that site's repository). Recommendation: leave it manual in version 1, which is consistent with no continuous deployment.
+- `Deferred` (frontend-stage ADR, ADR-010 point 6): how the demo build reaches the portfolio site (a manual copy or a workflow of that site's repository) is part of the demo hosting decision. Recommendation for that ADR: leave it manual in version 1, which is consistent with no continuous deployment.
 
 ---
 
@@ -1607,7 +1609,7 @@ No artifact is hosted, so there is none to redeploy (ADR-006 point 2). A faulty 
 
 ### Frontend
 
-The demo is a static build of one commit. A faulty demo is corrected by building a corrected commit. Restoring a previously published build depends on the hosting of the portfolio site, which is not decided (§28), so it is `Deferred`.
+The demo is a static build of one commit. A faulty demo is corrected by building a corrected commit. Restoring a previously published build depends on the hosting of the portfolio site, which the frontend-stage ADR decides (ADR-010 point 6; §28), so it is `Deferred`.
 
 ### Database
 
@@ -1618,7 +1620,7 @@ Database rollback is not automatically equivalent to application rollback. Rever
 Code vs ADR:
 
 - The original lines "Redeploy a known-good artifact", "Restore a previous static build" and "Rollback only when safe and supported by the migration/data model" are replaced by ADR-006 point 6.
-- Open (FE): whether the demo's publishing step keeps previous builds. Recommendation: no, because the demo is rebuilt from Git and a revert commit is the forward fix.
+- `Deferred` (frontend-stage ADR, ADR-010 point 6): whether the demo's publishing step keeps previous builds belongs to the demo hosting decision. Recommendation for that ADR: no, because the demo is rebuilt from Git and a revert commit is the forward fix.
 
 ---
 
@@ -1650,7 +1652,7 @@ Applied to the local full stack and to the demo:
 
 | Step | Today | Status |
 |---|---|---|
-| Frontend loads | The demo page loads under its subpath. The full stack has no frontend container (§7; open, B7) | Demo `Planned (FE)`; full stack open |
+| Frontend loads | The demo page loads under its subpath. The smoke test of the full stack has no frontend step (ADR-006 point 11, additions of 2026-10-07; §49); whether a frontend container exists stays open (§7; B7) | Demo `Planned (FE)`; full stack: no frontend step |
 | API reachable | `GET /health` answers 200 while the process serves | Route `Implemented`; automated check `Planned (B7)` |
 | Database ready | `GET /health/ready` runs `SELECT 1`; PostgreSQL has its own `pg_isready` healthcheck | `Implemented` |
 | Authentication works | `POST /api/v1/auth/login` and `GET /api/v1/auth/me` exist; refresh and logout do not | Login `Implemented`; refresh and logout `Planned (B2)` (ADR-005) |
@@ -1667,7 +1669,7 @@ Code vs ADR:
 
 # 49. Smoke Tests
 
-**Status:** full stack `Planned (B7)`; demo `Planned (FE)`; the exact definition is open (B7)
+**Status:** full stack `Planned (B7)` as one script with no frontend step (ADR-006 point 11); demo `Planned (FE)`; the content of check 5 is a B7 detail
 
 Minimum smoke tests should verify:
 
@@ -1683,11 +1685,11 @@ How each applies:
 
 | Check | Full stack | Demo |
 |---|---|---|
-| 1. Frontend accessibility | No frontend container (§7); open | Page loads under the subpath: `Planned (FE)`; tool `Deferred` (frontend-stage ADR) |
+| 1. Frontend accessibility | No frontend step in the full-stack smoke test (ADR-006 point 11, additions of 2026-10-07); a frontend container stays open (§7; B7) | Page loads under the subpath: `Planned (FE)`; tool `Deferred` (frontend-stage ADR) |
 | 2. API health | `GET /health` and `GET /health/ready` return 200: `Planned (B7)` | Not applicable: no backend |
 | 3. Authentication | `POST /api/v1/auth/login` returns a token: `Planned (B7)` | In-process login: `Planned (FE)` |
 | 4. Authenticated request | `GET /api/v1/auth/me` or `GET /api/v1/portfolios` with the token: `Planned (B7)` | `Planned (FE)` |
-| 5. Primary portfolio flow | Not chosen; a read of the seeded portfolio is the smallest candidate: `Planned (B7)`, open | `Planned (FE)` |
+| 5. Primary portfolio flow | Not chosen; a read of the seeded portfolio is the smallest candidate: `Planned (B7)`, flow chosen in B7 | `Planned (FE)` |
 | 6. Realtime connection | `Planned (B5)`; added to the smoke test when the WebSocket server exists | `Planned (FE)` |
 | 7. Expected error handling | One request that returns the standard error envelope, for example `401` without a token: `Planned (B7)` | `Planned (FE)` |
 
@@ -1695,7 +1697,7 @@ Code vs ADR:
 
 - No ADR defines the smoke test. `10-testing-strategy.md` has no smoke-test section, and `BACKEND-ROADMAP.md` B7 defers the definition to this section. `apps/api/src/app.test.ts` is a wiring test, not a deployment smoke test.
 - The smoke test belongs to the B7 definition of done (NFR-054 under a 512 MB container limit, NFR-055 from a clean checkout). CI does not run it (ADR-006 point 11: running the built API stays B7).
-- Open (B7): the form of the smoke test. Recommendation: one short script run after `docker compose --profile full up`, covering checks 2, 3, 4, 5 and 7 on the full stack (check 6 joins in B5), with no frontend step because the full stack has no frontend container.
+- Decided (ADR-006 point 11, additions of 2026-10-07; `Planned (B7)`, with the `full` profile): the smoke test is one script run after `docker compose --profile full up`, with no frontend step. It covers the checks marked `Planned (B7)` in the table (2, 3, 4, 5 and 7; check 6 joins in B5). The flow of check 5 is chosen in B7.
 
 ---
 
@@ -1716,7 +1718,7 @@ GET /health/ready
 |---|---|---|
 | `GET /health` (liveness) | Always 200 with `status`, `service` and `timestamp`; no dependency check | `Implemented` |
 | `GET /health/ready` (readiness) | `SELECT 1` against the database on every call; 200 with `checks.database: "ok"`, or 503 with `status: "unavailable"` and `checks.database: "unavailable"` | `Implemented` (`apps/api/src/controllers/health.controller.ts`, `apps/api/src/services/health.service.ts`) |
-| Readiness while shutting down | 503 (ADR-006 point 12) | `Planned (B3)` |
+| Readiness while shutting down | 503 with `status: "unavailable"` and no `checks` (ADR-006 point 12) | `Planned (B3)` |
 
 Liveness should answer whether the process is alive.
 
@@ -1726,7 +1728,7 @@ Health responses must never expose credentials or internal secrets. Both bodies 
 
 Code vs ADR:
 
-- The 503 body while shutting down is not decided. Open (B3). Recommendation: reuse `status: "unavailable"` and omit `checks`, so the body keeps its shape and does not claim that the database failed.
+- Decided (ADR-006 point 12, readiness body; `Planned (B3)`): while the API is shutting down, the 503 body of `GET /health/ready` is `status: "unavailable"` with no `checks`, so the body does not claim that the database failed.
 - Readiness checks the database only; the job runner (B4) and the simulator (B5) are not added to it by any ADR (`13-observability-spec.md` §23).
 - No test covers either route today; the health route test is in the B0 set (ADR-001 point 8, ADR-009 point 13).
 
@@ -1734,7 +1736,7 @@ Code vs ADR:
 
 # 51. Container Health
 
-**Status:** PostgreSQL healthcheck `Implemented`; API container healthcheck `Planned (B7)`, endpoint open
+**Status:** PostgreSQL healthcheck `Implemented`; API container healthcheck `Planned (B7)`, probing `GET /health/ready` (ADR-006 point 4)
 
 A container can be running while the application is unusable.
 
@@ -1757,19 +1759,20 @@ The deployment platform should use readiness information where supported.
 | Process running | `GET /health` (§50) | `Implemented` |
 | Application ready | `GET /health/ready` (§50) | `Implemented` |
 | PostgreSQL container | `pg_isready` every 5 s, 5 retries (`docker-compose.yml`) | `Implemented` |
-| API container | No Dockerfile and no `api` service exist | `Planned (B7)`; the endpoint the healthcheck probes is not decided |
+| API container | No Dockerfile and no `api` service exist | `Planned (B7)`; the healthcheck probes `GET /health/ready` (ADR-006 point 4) |
 | Use of the readiness signal | The only consumer decided is `depends_on` with `condition: service_healthy` for the API on PostgreSQL (ADR-006, Deferred detail) | `Planned (B7)` |
 
 Code vs ADR:
 
 - The platform is Docker Compose, not an orchestrator. Compose uses a healthcheck for `depends_on` and for display. It does not route traffic away from an unhealthy container, and `restart: unless-stopped` restarts a container only when its process exits, not when it turns unhealthy.
-- Open (B7): the endpoint of the API healthcheck and the probe the runtime image provides. Recommendation: `GET /health/ready`, so that `service_healthy` means the application can serve and a later poller can log recovery (ADR-009, Deferred detail); and a probe that needs no extra package in the non-root image.
+- Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the container healthcheck probes `GET /health/ready`, so that `service_healthy` means the application can serve and a later poller can log recovery (ADR-009, Deferred detail).
+- Open (B7): the probe the runtime image provides. Recommendation: one that needs no extra package in the non-root image (image details are B7).
 
 ---
 
 # 52. Startup Diagnostics
 
-**Status:** per item (table below); the startup entry `Planned (B3)`, its name and level open
+**Status:** per item (table below); the startup entries `Planned (B3)` (ADR-009 point 11), their level open
 
 Startup should produce safe structured events. The original list named seven examples:
 
@@ -1783,14 +1786,14 @@ websocket.ready
 service.ready
 ```
 
-ADR-009 point 11 lists "startup" among the lifecycle events but names no entry and no level, so the seven names are examples, not decisions. Version 1 decides the shutdown pair (`app.shutdown.started`, `app.shutdown.completed`, ADR-006 point 12). What exists for each moment:
+The seven names are examples, not decisions. Version 1 decides a startup pair (`app.startup.started`, `app.startup.completed`, ADR-009 point 11, amended 2026-10-07) and the shutdown pair that mirrors it (`app.shutdown.started`, `app.shutdown.completed`, ADR-006 point 12). ADR-009 point 11 names no level for them. What exists for each moment:
 
 | Moment | Today | Status |
 |---|---|---|
 | Configuration validated | On failure, `[api] invalid environment configuration:` and the messages per variable (never the values), then exit code 1 (`apps/api/src/config/env.ts`). Nothing on success | Failure `Implemented` as plain text; structured entry `Planned (B3)` |
 | Database connected | No explicit connect (§15); the Prisma client connects on first use | No entry; explicit check `Planned (B7)` |
 | Application initialized | `createApp()` wires middleware and routes; no entry | `Planned (B3)` |
-| HTTP ready | `[api] listening on port <n>` through `console.log` | `Implemented` as plain text; entry `Planned (B3)` |
+| HTTP ready | `[api] listening on port <n>` through `console.log` | `Implemented` as plain text; `app.startup.completed` `Planned (B3)` |
 | WebSocket ready | No WebSocket layer | `Planned (B5)` |
 | Service ready | Same as HTTP ready: readiness answers once the server listens (§15) | `Implemented` as implicit |
 
@@ -1798,7 +1801,8 @@ Startup failures must be visible through the observability system. Today they re
 
 Code vs ADR:
 
-- Open (B3): the names and levels of the startup entries. Recommendation: two entries, `app.startup.started` and `app.startup.completed` (the latter carrying the port), mirroring the shutdown pair. Per-step entries (database connected, application initialized) add nothing while the API has one dependency and no explicit connect.
+- Decided (ADR-009 point 11, amended 2026-10-07; `Planned (B3)`): the startup logs `app.startup.started` and `app.startup.completed`, mirroring the shutdown pair. Per-step entries (database connected, application initialized) are not decided; they add nothing while the API has one dependency and no explicit connect.
+- Open (B3): the log levels of the startup and shutdown entries; no ADR sets them.
 - Open (B3): whether the invalid-environment failure becomes a structured line. It is raised before the `Logger` exists (ADR-009 point 1), so plain output followed by exit 1 may stay. Recommendation: keep it as it is, since it is safe and visible.
 - The `websocket.ready` entry waits for B5.
 
@@ -1841,7 +1845,7 @@ Deployment must account for the following:
 
 | Concern | Decision | Status |
 |---|---|---|
-| Graceful shutdown | Stopping new jobs joins the shutdown sequence when the runner exists (ADR-006, Deferred detail). What happens to a `PROCESSING` import is open | `Planned (B4)` |
+| Graceful shutdown | Stopping new jobs joins the shutdown sequence when the runner exists (ADR-006, Deferred detail). A validation still running at shutdown is left for the next startup: it is marked `FAILED` with reason `INTERRUPTED` on the next startup and is retryable (ADR-008 point 5) | `Planned (B4)` |
 | Duplicate execution | Every transition is a compare-and-set on status, with a persisted `stage` and `attempt`; startup resume and enqueue cannot both take a job (ADR-008, Deferred detail). `Idempotency-Key` protects repeated requests (ADR-008 point 8) | `Planned (B4)` |
 | Cancellation | Allowed while `QUEUED` or during validation, never during apply (ADR-008 point 6) | `Planned (B4)` |
 | Timeouts | Each job type has a timeout applying while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7) | `Planned (B4)` |
@@ -1862,7 +1866,7 @@ A separate worker is not required initially unless justified. ADR-008 point 4 de
 Code vs ADR:
 
 - The `Job` and `IdempotencyKey` tables are specified in `05-data-model.md` §52-53 but are not in `schema.prisma`; the runner and the startup step do not exist either.
-- Open (B4): what the shutdown does with a running validation (wait, cancel, or leave it for the next startup to mark `INTERRUPTED`). Recommendation: leave it, since ADR-008 point 5 already makes an interrupted job safe and retryable, and the 10-second drain (§16) is too short for a long import.
+- Decided (ADR-008 point 5; `Planned (B4)`): a validation running at shutdown is left for the next startup (§16). A job left in `PROCESSING` becomes `FAILED` with reason `INTERRUPTED` on the next startup and is retryable, so no job stays stuck silently; the 10-second drain (§16) is too short for a long import.
 - The local stack runs one API container (§7), so two runners resuming the same jobs do not occur; running several instances is not decided.
 
 ---
@@ -1968,25 +1972,26 @@ Code vs ADR:
 
 # 59. Runtime Versions
 
-**Status:** per item (table below); the Node.js pin `Planned (B0)`, open
+**Status:** per item (table below); the Node.js pin `Planned (B0)` (ADR-006 point 13); `engines.pnpm` and the tighter PostgreSQL pin open
 
 Node.js and PostgreSQL versions must be explicitly documented and pinned for local development.
 
 | Item | Today | Status |
 |---|---|---|
-| Node.js | `engines.node` is `>=22.0.0` (root `package.json`); there is no `.nvmrc` or `.node-version`. `@types/node` is `^22.20.2` in `apps/api` and `^26.4.1` elsewhere. The author's machine runs v24.16.0 | Range `Implemented`; a pin `Planned (B0)`, open |
+| Node.js | `engines.node` is `>=22.0.0` (root `package.json`); there is no `.nvmrc` or `.node-version`. `@types/node` is `^22.20.2` in `apps/api` and `^26.4.1` elsewhere. The author's machine runs v24.16.0 | Range `Implemented`; the `.nvmrc` pin, with `engines.node` and `@types/node` aligned to it, `Planned (B0)` (ADR-006 point 13) |
 | pnpm | `packageManager` is `pnpm@12.3.4`; `engines.pnpm` is `>=9.0.0` | `Implemented`; aligning `engines.pnpm` open (B0, §37) |
 | PostgreSQL | `postgres:18` in `docker-compose.yml` (`04-tech-stack.md`); a major-version pin | `Implemented`; a tighter pin open (B7) |
 | Compatibility of local, CI and the container | One Node line and one PostgreSQL major across the three | CI `Planned (B0)`; image `Planned (B7)` |
 
-The versions should be selected from currently supported releases when implementation begins. Implementation has begun: PostgreSQL and pnpm are fixed, and the Node.js line is the remaining choice.
+The versions should be selected from currently supported releases when implementation begins. Implementation has begun: PostgreSQL and pnpm are fixed, and the Node.js line is chosen in B0 (below).
 
 Local, CI and production-like environments should remain compatible.
 
 Code vs ADR:
 
-- No ADR decides the Node.js line. `engines.node >=22.0.0` admits every later major, while one package types against Node 22 and the others against 26. Open (B0), the same decision as §37. Recommendation: pin the major the author already runs (24, confirm it is a supported LTS line when B0 starts) in `.nvmrc`, use it in the workflow and the Dockerfile, and align `engines.node` and `@types/node` to it.
-- Local, CI and the container stay compatible only if the three read the same pin. Recommendation: the workflow and the Dockerfile read `.nvmrc` (or the same value), so a version change is one edit.
+- `engines.node >=22.0.0` admits every later major, while one package types against Node 22 and the others against 26. Decided (ADR-006 point 13; `Planned (B0)`, the same decision as §37 and §43): a single `.nvmrc` is the source of truth, reused by CI and the Dockerfile, with `engines.node` and `@types/node` aligned to it. The exact major is chosen in B0, when CI is created, after confirming it is an LTS release.
+- Local, CI and the container stay compatible because the three read the same `.nvmrc`, so a version change is one edit.
+- Open (B0): aligning `engines.pnpm` (`>=9.0.0`) with `packageManager` (`pnpm@12.3.4`); no ADR decides it (§37).
 
 ---
 
@@ -2006,14 +2011,14 @@ Recommended strategy:
 | Convert to user-local time in the UI | Timestamps show in the user's local zone; analytics days stay UTC dates (`11-ui-ux-spec.md`, ADR-010 point 9) | `Planned (FE)` |
 | Do not depend on the server-local time zone | No local-time accessor appears in the non-test code of `apps/api`, `packages/domain` or `packages/database` (`getHours`, `getDate`, `getFullYear`, `toLocale*`, `getTimezoneOffset`); the seed uses `getUTC*` and `setUTC*` | `Implemented` by inspection; no test enforces it |
 | One time source | One shared `Clock` port (ADR-001 point 8); the simulator clock uses it (ADR-007 point 7) | `Planned (B0)`; simulator `Planned (B5)` |
-| Container time zone | Neither Compose nor a Dockerfile sets `TZ` | `Planned (B7)`, open |
+| Container time zone | Neither Compose nor a Dockerfile sets `TZ` today. Decided (ADR-006 point 4): the API and PostgreSQL containers run with `TZ=UTC` | `Planned (B7)` |
 
 This is important for trading data and historical analytics.
 
 Code vs ADR:
 
 - The code reads the system clock directly through `new Date()` in services and mappers (`10-testing-strategy.md` §49 lists them); the `Clock` port replaces those calls in B0.
-- The migrations also give columns `DEFAULT CURRENT_TIMESTAMP`. For a `TIMESTAMP` without a zone, a value written by that default takes the PostgreSQL session time zone, so UTC holds only where the database runs in UTC or Prisma supplies the value. Open (B7). Recommendation: set `TZ=UTC` on the API and PostgreSQL containers of the `full` profile, and check in B0 whether any write relies on a database default.
+- The migrations also give columns `DEFAULT CURRENT_TIMESTAMP`. For a `TIMESTAMP` without a zone, a value written by that default takes the PostgreSQL session time zone, so UTC holds only where the database runs in UTC or Prisma supplies the value. Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the API and PostgreSQL containers of the `full` profile run with `TZ=UTC`. Whether any write relies on a database default remains a check for B0.
 - Day boundaries in analytics are decided as UTC, while code that builds the series is not yet aligned (ADR-004 Deferred detail, B1).
 
 ---
@@ -2040,8 +2045,8 @@ Persistent file storage should be introduced through an infrastructure adapter i
 |---|---|---|
 | Files the system generates or delivers | None. No functional requirement asks for an export or a download, and no code writes a file | `Reference`: there is nothing to generate, deliver or clean up |
 | Files the API serves | None. `apps/api/src/app.ts` registers no static, download or `sendFile` route | `Implemented` |
-| CSV import input | The CSV content is stored in the `jobs` row when the job is created, not on disk; resume and retry read the row, never the original request (ADR-008 point 4) | `Planned (B4)` |
-| Size and row limits of an import | Bounded; the values are fixed in B4 (ADR-008 point 10, `09-security-spec.md` §27) | `Planned (B4)`, values open |
+| CSV import input | The CSV content is stored in the `jobs` row when the job is created, not on disk; resume and retry read the row, never the original request. The stored input is kept while the job can still be retried and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` (ADR-008 point 4, amended 2026-10-07) | `Planned (B4)` |
+| Size and row limits of an import | Bounded; the values are fixed in B4 (ADR-008 point 10, `09-security-spec.md` §27) | `Planned (B4)`, values set in B4 |
 | Import content in logs | The stored input is never logged (ADR-009, Deferred detail) | `Planned (B3)` |
 | Persistent file storage adapter | Not needed in version 1 | `Deferred` |
 
@@ -2049,8 +2054,8 @@ Code vs ADR:
 
 - The generate, deliver and cleanup flow is the original text. In version 1 it has nothing to apply to: an import is parsed, validated and stored in the database, and no file survives the request.
 - The API container of the `full` profile writes no file of its own: ADR-009 point 3 sends logs to stdout, with no log files (`Planned (B7)`). The PostgreSQL data lives in the named volume `trading-analytics-postgres-data`, which is the durable store (`docker-compose.yml`).
-- Open (B4): how the CSV reaches `POST /api/v1/portfolios/:portfolioId/imports`. `07-api-spec.md` §14 fixes neither multipart nor a JSON body, and the global JSON limit is 100 kB (`JSON_BODY_LIMIT` in `app.ts`), so a larger file would be rejected with 413. Recommendation: decide the transport together with the size limit in B4, and give that route its own limit instead of raising the global one.
-- Open (B4): how long the stored input is kept. ADR-008 point 4 stores it so that retry works and says nothing about removing it. Recommendation: keep it while the job can still be retried (`TIMED_OUT`, `CANCELLED`, and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`), and clear it for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED`, which is not retryable (ADR-008 point 6).
+- `Planned (B4)`, set in B4 (ADR-008, Deferred detail): how the CSV reaches `POST /api/v1/portfolios/:portfolioId/imports`. `07-api-spec.md` §14 fixes neither multipart nor a JSON body, and the global JSON limit is 100 kB (`JSON_BODY_LIMIT` in `app.ts`), so a larger file would be rejected with 413. The transport and a route-specific body limit are set in B4 with the input limits of ADR-008 point 10; the global limit is not raised.
+- Decided (ADR-008 point 4, amended 2026-10-07; `Planned (B4)`): the stored input is kept while the job can still be retried (`TIMED_OUT`, `CANCELLED`, and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`), and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED`, which is not retryable (ADR-008 point 6).
 
 ---
 
@@ -2117,7 +2122,7 @@ Code vs ADR:
 
 - A request over a limit returns 429 `RATE_LIMITED` in the standard error envelope with the `RateLimit` headers of draft 7; the legacy `X-RateLimit-*` headers are off. The full view is `09-security-spec.md` §26.
 - CI does not break: both limiters are skipped when `NODE_ENV=test`, which `.env.test.example` sets, and `rate-limit.test.ts` checks the 429 response on an isolated limiter. The workflow itself is `Planned (B0)`.
-- Local development is not exempt. Only `NODE_ENV=test` skips the limiters, so a developer who mistypes a password five times, or a script that sends more than 300 requests in 15 minutes, gets 429 until the window ends. The counters are in memory, so restarting the API clears them. Open: whether development should skip or raise the limits. Recommendation: keep them as they are, since they match the values a demonstration shows, and document the restart in the troubleshooting list (§75).
+- Local development is not exempt. Only `NODE_ENV=test` skips the limiters, so a developer who mistypes a password five times, or a script that sends more than 300 requests in 15 minutes, gets 429 until the window ends. The counters are in memory, so restarting the API clears them. Decided (ADR-006, Deferred detail; B0): the limits stay on in development, and restarting the API clears the counters. The restart is documented in the troubleshooting list (§75).
 - The store is per process and the key is the client IP. The API sets no `trust proxy`, so behind a proxy every client would share one address (§32). Neither matters while the stack is one local instance (ADR-006 points 1 and 2); both need a decision before a hosted backend (§67).
 - The limits are not environment variables. Changing a value is a code change; no ADR asks for configurable limits.
 
@@ -2154,7 +2159,7 @@ Code vs ADR:
 
 - This section overlaps §24, which keeps the exposure view; this one keeps the traffic view. They agree: the demo has no credentials and no server.
 - The real-mode API is reachable only on the author's machine. Treating its traffic as untrusted still applies to a demonstration on a shared network: CORS is limited to `CORS_ORIGIN`, the limiters apply (`09-security-spec.md` §26) and the business routes need an access token (`authenticate`, ADR-005). `Planned (B7)` covers the unbound PostgreSQL port (§6).
-- Open (FE): the numeric bound on the demo's retained history. Recommendation: decide it in the frontend-stage ADR with the other demo specifics (ADR-010 point 6), as §24 already records.
+- `Deferred` (frontend-stage ADR): the numeric bound on the demo's retained history is decided in that ADR with the other demo specifics (ADR-010 point 6; ADR-006 point 7), as §24 already records.
 
 ---
 
@@ -2191,7 +2196,8 @@ These limits protect both local and public deployments.
 Code vs ADR:
 
 - The API has no server request timeout in version 1; the 15 s client timeout covers the user (ADR-002 point 10, NFR-017; the client policy is decided in the frontend-stage ADR, ADR-006 point 11). Node.js defaults cap the request line and headers (431).
-- Open (B5): the maximum inbound WebSocket message size. The `ws` library accepts messages up to 100 MiB unless `maxPayload` is set (`09-security-spec.md` §27). Recommendation: set it to a few kilobytes, since the client sends only `AUTHENTICATE`, `SUBSCRIBE` and `UNSUBSCRIBE`.
+- Decided (ADR-007, Deferred detail; `Planned (B5)`): the WebSocket `maxPayload` equals the inbound message limit already in `08-realtime-spec.md` §7; no new number is introduced for it.
+- Open (B5): the byte size of `maxPayload`. The `ws` library accepts messages up to 100 MiB unless `maxPayload` is set (`09-security-spec.md` §27), and `08-realtime-spec.md` §7 gives only a rate of 20 inbound messages per second, with no per-message size, so the value the decision points to does not exist yet. Recommendation: a few kilobytes, since the client sends only `AUTHENTICATE`, `SUBSCRIBE` and `UNSUBSCRIBE`; B5 fixes it together with the inbound limit.
 - These limits protect the local stack. A public backend would need them reviewed against its real capacity (ADR-006 point 2).
 
 ---
@@ -2214,14 +2220,14 @@ Exact values are implementation decisions, not universal performance guarantees.
 | Pool size | Not configured. `DATABASE_URL` carries no `connection_limit` and `schema.prisma` has no pool setting, so Prisma 6 applies its default of `num_physical_cpus * 2 + 1` connections | `Implemented` as the default |
 | Pool timeout | Not configured; the Prisma 6 default is 10 seconds to obtain a connection | `Implemented` as the default |
 | PostgreSQL capacity | `docker-compose.yml` sets no `max_connections`, so the `postgres:18` default applies (100) | `Implemented` as the default |
-| Explicit pool configuration | No ADR decides values | `Deferred` |
+| Explicit pool configuration | No values are decided; `connection_limit` stays at Prisma's default until measured (ADR-006, Deferred detail) | `Deferred` |
 | Pool health | No separate check; readiness runs `SELECT 1` through the same client (`13-observability-spec.md` §21) | `Implemented` |
 
 Code vs ADR:
 
 - One API process, one pool, one local database: the default stays far below the PostgreSQL limit, which is why no ADR sets a value. The defaults come from the Prisma 6 documentation, and the installed version is `^6.0.0` (`packages/database/package.json`).
 - The test suites of `apps/api` and `packages/database` each create their own client and pool against the test database. Running both together adds their pools to the total, still well below the limit.
-- Open (B7): whether the `full` profile sets `connection_limit`. Recommendation: keep the default in version 1 and set the value only if a measurement shows a problem, as the last paragraph above asks. Revisit if the API ever runs as several instances (§67), because each instance would open its own pool.
+- Decided (ADR-006, Deferred detail; B7): `connection_limit` of the `full` profile stays at Prisma's default until measured. Revisit if the API ever runs as several instances (§67), because each instance would open its own pool.
 - The migration command (`prisma migrate deploy`, B7) opens its own short-lived connection and is not part of the runtime pool.
 
 ---
@@ -2285,14 +2291,15 @@ The current realtime implementation should remain behind an abstraction to permi
 | Item | Status |
 |---|---|
 | WebSocket library `ws` behind a transport port (ADR-007 point 1) | `Planned (B5)` |
+| Realtime hub behind its own interface, separate from `ws`; no broker in version 1 (ADR-007, Deferred detail) | `Planned (B5)` |
 | Single API process: simulator, connections and sequences in memory (§67) | `Planned (B5)` |
 | Realtime broker or pub-sub between instances | `Deferred` |
 | Per-process epoch in the envelope, so a client resets its baseline after a server restart (ADR-007, Deferred detail) | `Planned (B5)` |
 
 Code vs ADR:
 
-- No realtime code exists. The abstraction ADR-007 decides is the transport port, which separates the code from the `ws` library. It does not decide a publish interface for fan-out, which is what a broker would replace.
-- Open (B5): whether the hub that delivers events to subscribed sockets sits behind its own interface. Recommendation: keep that interface separate from `ws`, so a broker could later stand behind it, and add no broker or second implementation in version 1.
+- No realtime code exists. The transport port of ADR-007 point 1 separates the code from the `ws` library. The interface of the hub, decided in the Deferred detail of ADR-007, is the publish interface for fan-out, which is what a broker would replace.
+- Decided (ADR-007, Deferred detail; `Planned (B5)`): the hub that delivers events to subscribed sockets sits behind its own interface, separate from `ws`, and version 1 has no broker, so one could later stand behind that interface.
 - The epoch field already treats a restart as a reset, which is the same recovery a broker-based design would need; clients resynchronize through HTTP on a gap (ADR-007 point 5).
 
 ---
@@ -2317,19 +2324,19 @@ Exact caching headers depend on the host.
 | Static build of `apps/web` that a plain static host can serve (ADR-006 point 7) | `Planned (FE)` |
 | Content-hashed assets and cacheable immutable files | `Planned (FE)`: a property of the web build, which does not exist yet |
 | Controlled HTML caching and caching headers | `Deferred`: they belong to the portfolio host, which this project does not control (NFR-025 accepted exception) |
-| Explicit API origin configuration | Not needed by the public demo, which calls no backend (ADR-006 point 7); for the real mode `Deferred` (§14) |
+| Explicit API origin configuration | Not needed by the public demo, which calls no backend (ADR-006 point 7); for the real mode, build-time `VITE_API_BASE_URL` and `VITE_WS_URL` (proposed names; ADR-006 point 8; §14): `Planned (FE)` |
 | A CDN in front of the demo | `Deferred`: no ADR decides one |
 
 Code vs ADR:
 
 - ADR-006 decides that the demo is a static build under a subpath, not a CDN. The guidance above stays as a compatibility requirement on the build, and nothing here selects a CDN or a provider (§28).
-- A configurable base path is part of the same decision (ADR-006 point 7), so asset URLs must resolve under the subpath. How the build receives it is open (FE). Recommendation: a build-time setting beside `VITE_APP_MODE` (§23), recorded in the frontend-stage ADR.
+- A configurable base path is part of the same decision (ADR-006 point 7), so asset URLs must resolve under the subpath. The base path value and how the build receives it are decided in the frontend-stage ADR (ADR-006 point 7, amended 2026-10-07; ADR-010 point 6) and stay `Deferred` until then. Recommendation for that ADR: a build-time setting beside `VITE_APP_MODE` (§23).
 
 ---
 
 # 70. SPA Routing
 
-**Status:** `Planned (FE)` (ADR-006 point 7); the host-specific fallback open
+**Status:** `Planned (FE)` (ADR-006 point 7); the host-specific fallback `Deferred` (frontend-stage ADR, ADR-010 point 6)
 
 Static hosting must support client-side routes such as:
 
@@ -2347,11 +2354,11 @@ The required host-specific fallback must be documented.
 |---|---|
 | SPA fallback for the demo | `Planned (FE)`: decided in ADR-006 point 7 |
 | The route paths | `Deferred`: the three paths above are examples. Frontend routing is not decided (`06-architecture.md`, `11-ui-ux-spec.md`) |
-| The host-specific fallback documented | Open (FE) |
+| The host-specific fallback documented | `Deferred`: the SPA fallback mechanism is decided in the frontend-stage ADR (ADR-006 point 7, amended 2026-10-07; ADR-010 point 6) |
 
 Code vs ADR:
 
-- The demo is hosted under a subpath of the portfolio site, so every route sits under the base path and the fallback must return the demo's entry point, not the portfolio's. Whether the portfolio host provides such a fallback is unconfirmed (§28). Recommendation: confirm it, and if the host cannot, record in the frontend-stage ADR the alternative to use, for example a router that does not depend on server paths.
+- The demo is hosted under a subpath of the portfolio site, so every route sits under the base path and the fallback must return the demo's entry point, not the portfolio's. Whether the portfolio host provides such a fallback is unconfirmed (§28); demo hosting and the fallback mechanism are decided in the frontend-stage ADR (ADR-010 point 6). Recommendation for that ADR: confirm it, and if the host cannot, record the alternative to use, for example a router that does not depend on server paths.
 - The API has no SPA fallback and needs none: it serves JSON only, and an unknown route returns 404 `NOT_FOUND` in the error envelope (`apps/api/src/app.ts`).
 
 ---
@@ -2377,7 +2384,7 @@ Final routes must remain aligned with `07-api-spec.md`.
 | Only additive changes within `v1`; a breaking change needs a new version | `Implemented` as a rule (ADR-002 point 8) |
 | Contracts as versioned schemas in `@trading/contracts` | `Planned (B0)` (ADR-002 points 1 and 8) |
 | OpenAPI document generated from the schemas | `Planned (B6)` (ADR-002 point 7) |
-| Version of the WebSocket endpoint | Open (B5): the path is not decided (§72) |
+| Version of the WebSocket endpoint | `Planned (B5)`: the endpoint has a fixed path, proposed `/ws` and confirmed in B5 (ADR-007 point 1; §72) |
 
 Code vs ADR:
 
@@ -2406,22 +2413,24 @@ The exact endpoint is finalized during implementation.
 
 | Item | Decided or open | Status |
 |---|---|---|
-| Local stack endpoint | `ws://localhost:<PORT>/<path>`, no TLS (`09-security-spec.md` §31) | `Planned (B5)`; the path is open |
+| Local stack endpoint | `ws://localhost:<PORT>/<path>` on the API's own server and port (7001 by default), no TLS (ADR-007 point 1, `09-security-spec.md` §31) | `Planned (B5)`; the path is fixed, proposed `/ws` and confirmed in B5 (ADR-007 point 1) |
 | `wss://<configured-domain>/<path>` | Needs a hosted backend and TLS (ADR-006 point 2, §34) | `Deferred` |
-| Variable for the path or URL | `WEBSOCKET_PATH` is not adopted (§10); the client URL variable is not decided (§14) | `Deferred` |
+| Variable for the path or URL | `WEBSOCKET_PATH` is not adopted: the path is fixed (ADR-007 point 1; §10). The client uses the build-time `VITE_WS_URL`, proposed name (ADR-006 point 8; §14) | Server: none. Client `Planned (FE)` |
 | Library and boundary | `ws` behind a transport port (ADR-007 point 1) | `Planned (B5)` |
 | Authentication | The access token travels in the first message, never in the URL; a socket not authenticated within 5 seconds closes with `4001` (ADR-007 point 2) | `Planned (B5)` |
 | Close codes | `4001` unauthenticated or invalid token, `4002` token expired, `4008` limit exceeded, `1001` server going away (ADR-007 point 15) | `Planned (B5)` |
 | Limits per connection | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer (ADR-007 point 15) | `Planned (B5)` |
-| Concurrent connections | 5 per authenticated user, not per IP; an excess connection closes with `4008` (ADR-005 point 13, ADR-007 point 16) | `Planned (B5)` |
+| Concurrent connections | 5 per authenticated user, not per IP; at the cap, the new (excess) connection closes with `4008` and the existing connections stay open (ADR-005 point 13, ADR-007 point 16) | `Planned (B5)` |
+| Maximum inbound message size | `maxPayload` equals the inbound message limit of `08-realtime-spec.md` §7, with no new number (ADR-007, Deferred detail); its byte size is open (§65) | `Planned (B5)` |
 | Heartbeat | Ping every 30 seconds; close after 2 consecutive missed pongs, about 60 seconds (ADR-007 point 15) | `Planned (B5)` |
 | Protocol messages | `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`; replies `ACK` and `ERROR` (ADR-007 point 15) | `Planned (B5)` |
 
 Code vs ADR:
 
 - No WebSocket code exists: `apps/api` has no `ws` dependency. The local development endpoint is therefore a decided shape, not a running URL.
-- Open (B5), already recorded in §31: the endpoint path and whether the socket shares the HTTP port. Recommendation: the same server and port (`PORT`, default 7001) with a fixed path, so the full stack publishes one port.
-- Open (B5): the maximum inbound message size (`maxPayload`, §65); which connection closes when the per-user cap is hit, the new one or the oldest; the close code for a missed-pong close (`08-realtime-spec.md` §7); whether the upgrade request's `Origin` is checked against `CORS_ORIGIN` (`09-security-spec.md` §31).
+- Decided (ADR-007 point 1, amended 2026-10-07; `Planned (B5)`), as recorded in §31: the WebSocket is served by the same HTTP server and port as the API (`PORT`, default 7001) on a fixed path, proposed `/ws` and confirmed in B5, so the full stack publishes one port. There is no `WEBSOCKET_PATH` variable.
+- Decided (ADR-007 point 16, ADR-005 point 13; `Planned (B5)`): when a user is at the cap of 5, the new connection is closed with `4008` and the existing ones stay open.
+- Open (B5): the byte size of `maxPayload` (§65); the close code for a missed-pong close (`08-realtime-spec.md` §7); whether the upgrade request's `Origin` is checked against `CORS_ORIGIN` (`09-security-spec.md` §31).
 - ADR-007 point 15 assigns `1001` (server going away) to a server that is shutting down. §16 records it for the realtime step, which joins the shutdown sequence in B5 (ADR-006, Deferred detail).
 - The demo has no socket: an in-process adapter implements the same client port (ADR-007 point 13, `Planned (FE)`).
 
@@ -2517,7 +2526,7 @@ A request that needs the database while it is down returns 500 `INTERNAL_ERROR` 
 Check:
 
 - environment variables: an invalid value stops the process with `[api] invalid environment configuration:`, the key and the rule, and exit code 1 (`apps/api/src/config/env.ts`, §12). `JWT_SECRET` needs at least 32 characters
-- Node.js version: `engines.node` is `>=22.0.0` (§59)
+- Node.js version: `engines.node` is `>=22.0.0` today; the `.nvmrc` pin is `Planned (B0)` (ADR-006 point 13, §59)
 - build output: `pnpm --filter @trading/api start` runs `node dist/index.js`, which does not work until the production build exists (`Planned (B7)`); use `pnpm --filter @trading/api dev` (`tsx watch`) meanwhile
 - migration state: apply migrations with `pnpm --filter @trading/database db:migrate` (development); `db:reset` rebuilds the database from scratch
 - the port: `PORT` (default 7001) may already be in use
@@ -2531,7 +2540,7 @@ The login limiter allows 5 attempts per 15 minutes per IP, and the general limit
 
 `Planned (FE)`: there is no frontend yet. When it exists, check:
 
-- API base URL: not decided (§14)
+- API base URL: the build-time `VITE_API_BASE_URL` (proposed name, ADR-006 point 8; §14)
 - CORS: the browser origin must appear in `CORS_ORIGIN` (default `http://localhost:5173`); a mismatch is a browser error and not an API error
 - backend health: `GET /health`
 - browser network panel: the `X-Request-ID` header of a failing request identifies it in the API logs; exposing it to browser code through CORS is `Planned (B3)` (ADR-009 point 5)
@@ -2540,10 +2549,10 @@ The login limiter allows 5 attempts per 15 minutes per IP, and the general limit
 
 `Planned (B5)`: there is no WebSocket server yet. When it exists, check:
 
-- endpoint: the path is open (§72)
+- endpoint: the fixed path, proposed `/ws` and confirmed in B5, and the build-time `VITE_WS_URL` (§72)
 - WS/WSS scheme: the local stack uses `ws://`, and WSS is `Deferred` (§34)
 - proxy support: the local stack has no proxy (§32)
-- server upgrade support: the socket shares the API port if the recommendation of §72 is adopted
+- server upgrade support: the socket shares the API port (ADR-007 point 1, §72)
 - browser console: close codes `4001`, `4002` and `4008` identify an authentication failure, an expired token and a limit (§72)
 - reconnect diagnostics: client diagnostics are `Planned (FE)` (`08-realtime-spec.md` §27)
 
@@ -2639,7 +2648,7 @@ Run smoke tests
 | Build artifacts | `pnpm build` and the API image; the compiled output must run with `node dist/index.js` (ADR-006 points 3 and 4) | `Planned (B7)` |
 | Run migrations | `prisma migrate deploy` at API startup (ADR-006 point 5) | `Planned (B7)` |
 | Start backend | `docker compose --profile full up` (§57) | `Planned (B7)` |
-| Deploy frontend | Publish the static demo build under the portfolio subpath; how it reaches the host is open (§22) | `Planned (FE)` |
+| Deploy frontend | Publish the static demo build under the portfolio subpath; how it reaches the host is decided in the frontend-stage ADR (ADR-010 point 6; §22) | `Planned (FE)`; mechanism `Deferred` |
 | Verify health | `GET /health` and `GET /health/ready` (§48, §50) | Routes `Implemented`; the procedure `Planned (B7)` |
 | Verify realtime | Connect to the local WebSocket server (§72) | `Planned (B5)` |
 | Run smoke tests | The B7 smoke test, from a clean checkout (§49, NFR-055) | `Planned (B7)` |
@@ -2719,11 +2728,11 @@ Verify:
 
 The backend items close in B3, except where a tag names another block. Frontend and demo items belong to the frontend stage, and metrics are `Deferred` (ADR-009 points 10 and 12; `13-observability-spec.md` §74, which owns the full definition of done). Checked items exist today.
 
-- [ ] startup logs. (`Planned (B3)`: the entry name and level are open; today one `console.log` line announces the port, §52)
+- [ ] startup logs. (`Planned (B3)`: `app.startup.started` and `app.startup.completed`, ADR-009 point 11; their level is open; today one `console.log` line announces the port, §52)
 - [x] request IDs. (`Implemented`: `X-Request-ID` assigned or reused, echoed and present in error bodies, `apps/api/src/middleware/request-id.ts`; propagation to every log line `Planned (B3)`)
 - [x] error logging. (`Implemented` as the `request.failed` line from the error handler; `http.request.failed` `Planned (B3)`, ADR-009 point 6)
 - [x] health endpoint. (`Implemented`, §50)
-- [x] readiness checks. (`Implemented`, §50; 503 while shutting down `Planned (B3)`; the route test `Planned (B0)`, ADR-001 point 8)
+- [x] readiness checks. (`Implemented`, §50; 503 with `status: "unavailable"` and no `checks` while shutting down `Planned (B3)`, ADR-006 point 12; the route test `Planned (B0)`, ADR-001 point 8)
 - [x] database health. (`Implemented`: `SELECT 1` through the shared client; a recovery entry is `Deferred` until a poller exists, B7, `13-observability-spec.md` §58)
 - [ ] realtime lifecycle diagnostics. (`Planned (B5)` on the server and `Planned (FE)` on the client; names open, ADR-009 point 11)
 - [ ] background job diagnostics. (`Planned (B4)`: entry names and fields are open)
@@ -2733,7 +2742,7 @@ The backend items close in B3, except where a tag names another block. Frontend 
 Code vs ADR:
 
 - ADR-009 point 12 limits B3 to the backend, and `13-observability-spec.md` §74 splits its checklist by block. This checklist is the deployment view of the same items; it must not be closed ahead of them.
-- The `app.shutdown.started` and `app.shutdown.completed` entries (ADR-006 point 12) are not in the original list. They are `Planned (B3)`, and the 503 readiness response while shutting down belongs to the same item (§16).
+- The `app.shutdown.started` and `app.shutdown.completed` entries (ADR-006 point 12) and the `app.startup.started` and `app.startup.completed` entries (ADR-009 point 11) are not in the original list. They are `Planned (B3)`, and the 503 readiness response while shutting down belongs to the same item (§16).
 - Log shipping, dashboards and alerting are `Deferred` with the hosted backend (§53).
 
 ---
@@ -2768,7 +2777,7 @@ What each row is in version 1:
 | Realtime | Server tests with the WebSocket server (ADR-007); client states and reconnect in the web app. The demo uses the in-process adapter behind the same client port (ADR-007 point 13) | Server `Planned (B5)`; client and demo `Planned (FE)` |
 | Demo simulation | One engine, `@trading/market-sim`, serves the API and the demo, with a seeded generator and an injected clock (ADR-007 point 7). The demo specifics wait for the frontend-stage ADR (ADR-010 point 6) | Engine `Planned (B5)`; demo `Planned (FE)` |
 | Production build | `pnpm build` runs `tsc --build` in each package and passes today, but its output does not run (ADR-006 context). CI runs `pnpm build` to prove a clean checkout compiles (ADR-006 point 11). Running `node dist/index.js` is B7. The web build of the demo is separate (§27) | Compile `Implemented`; in CI `Planned (B0)`; runnable `Planned (B7)`; web build `Planned (FE)` |
-| Smoke tests | The definition is open (§49). CI does not run them, because running the built API stays B7 (ADR-006 point 11) | Full stack `Planned (B7)`; demo `Planned (FE)` |
+| Smoke tests | One script run after `docker compose --profile full up`, with no frontend step (ADR-006 point 11, additions of 2026-10-07; §49). CI does not run it, because running the built API stays B7 (ADR-006 point 11) | Full stack `Planned (B7)`; demo `Planned (FE)` |
 
 Code vs ADR:
 
@@ -2849,7 +2858,7 @@ Each item ends with its status and, where it is not built, the block or stage th
 - [ ] frontend production build works. (`Planned (FE)`, §27)
 - [ ] backend production build works. (The compile `Implemented`; running the output `Planned (B7)`, §79)
 - [x] lockfile committed. (`Implemented`: `pnpm-lock.yaml`; `--frozen-lockfile` in CI `Planned (B0)`)
-- [ ] runtime versions documented. (Partly: `engines.node` is `>=22.0.0` and `packageManager` is pinned in `package.json`; no `.nvmrc`, an open decision (B0), §59)
+- [ ] runtime versions documented. (Partly: `engines.node` is `>=22.0.0` and `packageManager` is pinned in `package.json`; no `.nvmrc` yet, the pin is decided and `Planned (B0)`, ADR-006 point 13, §59)
 
 ### CI
 - [ ] lint passes. (`Planned (B0)`: `pnpm lint`, ADR-006 point 10)
@@ -2860,15 +2869,15 @@ Each item ends with its status and, where it is not built, the block or stage th
 - [ ] E2E strategy configured. (`Deferred`: tools are chosen in the frontend-stage ADR and join the workflow once frontend code exists, ADR-006 point 11)
 
 ### Deployment
-- [x] frontend target defined. (Defined: the static demo build under a subpath of the portfolio site, ADR-006 points 1 and 7; the publishing mechanism is open (FE), §45)
+- [x] frontend target defined. (Defined: the static demo build under a subpath of the portfolio site, ADR-006 points 1 and 7; the publishing mechanism is `Deferred` to the frontend-stage ADR, ADR-010 point 6, §45)
 - [x] backend target defined. (Defined: the local full stack, ADR-006 points 1 and 4; its container `Planned (B7)`)
 - [x] database target defined. (Defined: local PostgreSQL in Compose; managed PostgreSQL `Deferred`, ADR-006 point 2, §30)
 - [x] secrets strategy documented. (`Reference`: §13 and §78; no hosted secret store, ADR-006 point 2)
 - [x] health checks available. (`Implemented`, §50; the API container healthcheck `Planned (B7)`, §51)
-- [ ] smoke tests defined. (The outline is §49; the exact definition is open (B7))
+- [x] smoke tests defined. (Defined: one script after `docker compose --profile full up`, no frontend step, ADR-006 point 11, §49; the script itself `Planned (B7)`, and the flow of its check 5 is chosen in B7)
 
 ### Realtime
-- [ ] endpoint configurable. (`Planned (B5)`: the path and the client URL variable are not decided, §72, §14)
+- [ ] endpoint configurable. (`Planned (B5)`: the server path is fixed, proposed `/ws` and confirmed in B5, with no `WEBSOCKET_PATH` variable (ADR-007 point 1); the client URL is the build-time `VITE_WS_URL`, proposed name (ADR-006 point 8), §72, §14)
 - [ ] WSS supported publicly. (`Deferred`: no public backend, ADR-006 point 2)
 - [ ] hosting requirements documented. (`Deferred` with hosting; the local requirements are §31)
 - [ ] reconnect behavior preserved. (`Planned (FE)`: the client reconnect states, `08-realtime-spec.md`)
@@ -2881,13 +2890,13 @@ Each item ends with its status and, where it is not built, the block or stage th
 
 ### Operations
 - [ ] graceful shutdown works. (`Planned (B3)` for the server and the database; jobs `Planned (B4)`; realtime `Planned (B5)`, §16)
-- [ ] startup failures are observable. (Partly: an invalid environment prints a message and exits with code 1 (`Implemented`); the structured startup entry `Planned (B3)`, §52)
+- [ ] startup failures are observable. (Partly: an invalid environment prints a message and exits with code 1 (`Implemented`); the structured startup entries `Planned (B3)`, ADR-009 point 11, §52)
 - [x] deployment verification documented. (`Reference`: §48; the automated check `Planned (B7)`)
 - [ ] troubleshooting documented. (Partly: §75; the developer workflow `Planned (B3)` and the `README.md` entries are pending (T5.2))
 
 Code vs ADR:
 
-- ADR-006 point 11 adds `pnpm format:check` as a CI check. The original CI list does not have it, and `docs:check` is in neither the original list nor the ADR (open, §41).
+- ADR-006 point 11 adds `pnpm format:check` as a CI check, and its additions of 2026-10-07 add `pnpm docs:check` (`Planned (B0)`, §41). The original CI list has neither.
 - The list has no item for the runtime database role and the Postgres port binding (ADR-005 point 13, §6, §78), nor for the entries `app.shutdown.started` and `app.shutdown.completed` (ADR-006 point 12). They are tracked in those sections.
 - "Frontend target defined" and "backend target defined" are decisions, so they are checked even though nothing is built. They stay as written because the original asked for targets, not for deployments.
 - A hosted deployment would add items for hosting, TLS, secrets and a managed database; ADR-006 point 2 requires a new ADR first.
@@ -3007,7 +3016,7 @@ Providers must be evaluated against actual project requirements.
 Code vs ADR:
 
 - ADR-006 names no provider, so this section names none. The criteria are the input to the ADR that hosting the backend would need.
-- Open (FE): confirm that the portfolio host serves HTTPS and a SPA fallback for the subpath (also §28). Recommendation: record it in the frontend-stage ADR.
+- `Deferred` (frontend-stage ADR, ADR-010 point 6): confirming that the portfolio host serves HTTPS and a SPA fallback for the subpath (also §28) belongs to the demo hosting decision. Recommendation for that ADR: record the result there.
 
 ---
 
@@ -3098,12 +3107,12 @@ Observability is part of deployment readiness.
 
 | Capability | Version 1 | Status |
 |---|---|---|
-| Startup logs | A plain `console.log` line announces the port; the structured entry and its name are open (§52, `13-observability-spec.md` §8) | `Planned (B3)` |
+| Startup logs | A plain `console.log` line announces the port; the structured entries are `app.startup.started` and `app.startup.completed` (ADR-009 point 11, §52, `13-observability-spec.md` §8) | `Planned (B3)` |
 | Request correlation | `X-Request-ID` is assigned or reused, echoed and present in error bodies (`apps/api/src/middleware/request-id.ts`); on every log line it is B3 (`13-observability-spec.md` §9) | Response `Implemented`; log lines `Planned (B3)` |
-| Health | `GET /health` and `GET /health/ready` (§50, `13-observability-spec.md` §22-23); 503 while shutting down (ADR-006 point 12) | `Implemented`; shutdown 503 `Planned (B3)` |
+| Health | `GET /health` and `GET /health/ready` (§50, `13-observability-spec.md` §22-23); 503 with `status: "unavailable"` while shutting down (ADR-006 point 12) | `Implemented`; shutdown 503 `Planned (B3)` |
 | Metrics | None, and no `/metrics` endpoint (ADR-009 point 10, `13-observability-spec.md` §16) | `Deferred` |
 | Runtime errors | A generic 500 body, detail in the server log only (`apps/api/src/middleware/error-handler.ts`, `13-observability-spec.md` §12) | `Implemented`; the entry name `http.request.failed` `Planned (B3)` |
-| Shutdown entries (not in the original list) | `app.shutdown.started` and `app.shutdown.completed` (ADR-006 point 12, ADR-009 point 11) | `Planned (B3)` |
+| Shutdown entries (not in the original list) | `app.shutdown.started` and `app.shutdown.completed`, mirroring the startup pair (ADR-006 point 12, ADR-009 point 11) | `Planned (B3)` |
 | Verbosity | `LOG_LEVEL`, with `SLOW_REQUEST_THRESHOLD_MS` for slow requests (ADR-009 points 7 and 8, §10) | `Planned (B3)` |
 
 Code vs ADR:
@@ -3317,7 +3326,7 @@ Code vs ADR:
           │                       WebSocket       simulated realtime;
           │                                       no backend, no secrets
           ▼
-   install · typecheck · lint · format · build · tests
+   install · typecheck · lint · format · docs · build · tests
 ```
 
 The model has exactly two deployment targets (ADR-006 point 1): the local full stack, run with Docker Compose on the author's machine, and the public demo. No backend is hosted: hosting, a managed database, a reverse proxy and public WSS are `Deferred`, and hosting the backend later requires a new ADR (ADR-006 point 2).
@@ -3331,10 +3340,10 @@ The deployment strategy demonstrates:
 | Environment separation | `development`, `test` and local `production`, plus the demo build (ADR-006 point 8) | `Implemented` for the first two; `production` `Planned (B7)`; demo `Planned (FE)` |
 | Database migrations | Prisma Migrate; `migrate deploy` at startup; forward-fix only (ADR-006 points 5 and 6) | Migrations `Implemented`; startup `Planned (B7)` |
 | Secure configuration | Validated environment, secrets outside source control, no secret in the demo build (§12, §13, ADR-006 point 7) | `Implemented` for the API; demo `Planned (FE)` |
-| CI | One workflow on pushes and pull requests to `develop` and `main`, no continuous deployment (ADR-006 points 10 and 11) | `Planned (B0)` |
+| CI | One workflow on pushes and pull requests to `develop` and `main`, also running `pnpm docs:check`, no continuous deployment (ADR-006 points 10 and 11) | `Planned (B0)` |
 | Health checks | `GET /health`, `GET /health/ready`, the container healthcheck (§50, §51) | Routes `Implemented`; container `Planned (B7)` |
-| Realtime deployment | A local `ws://` server in the API process; public WSS is `Deferred` (§31, §34) | `Planned (B5)`; public `Deferred` |
-| Graceful shutdown | `SIGTERM` and `SIGINT`, a 10-second drain, readiness 503 (ADR-006 point 12, §16) | `Planned (B3)` |
+| Realtime deployment | A local `ws://` server in the API process, on the API's port and a fixed path (ADR-007 point 1); public WSS is `Deferred` (§31, §34) | `Planned (B5)`; public `Deferred` |
+| Graceful shutdown | `SIGTERM` and `SIGINT`, a 10-second drain, readiness 503, exit code 1 if the drain expires and 0 otherwise (ADR-006 point 12, §16) | `Planned (B3)` |
 | Production awareness | Forward-fix, no backups claimed, one instance, the explicit exclusions of §84 | `Reference` |
 | Vendor independence | No provider, ports at the infrastructure boundaries (§87) | `Reference` |
 
@@ -3387,4 +3396,4 @@ Code vs ADR:
 
 **Status:** All sections reconciled with the code and ADRs on 2026-10-07
 
-This document defines the deployment architecture for version 1 as decided in ADR-006: exactly two targets, the local full stack run with Docker Compose and the public demo as a static build, a minimal CI workflow, graceful shutdown, and forward-fix only; hosting, a managed database, a reverse proxy and public WSS are `Deferred`. Where it differs from an ADR, the ADR wins. Environment variable names follow `apps/api/src/config/env.ts` and ADR-006 point 8, and the shutdown sequence follows ADR-006 point 12. The open details listed per section (the Node.js pin, the CI stage order and whether `docs:check` joins the workflow, the PostgreSQL image version and role setup in CI, the Postgres port binding, the form of the smoke test, the container healthcheck endpoint, whether a frontend container exists, the demo publishing mechanism, the realtime endpoint path, and the shutdown details) are specified in the block that implements them (B0, B3, B4, B5, B7) or in the frontend-stage ADR. Hosting the backend requires a new ADR (ADR-006 point 2).
+This document defines the deployment architecture for version 1 as decided in ADR-006: exactly two targets, the local full stack run with Docker Compose and the public demo as a static build, a minimal CI workflow, graceful shutdown, and forward-fix only; hosting, a managed database, a reverse proxy and public WSS are `Deferred`. Where it differs from an ADR, the ADR wins. Environment variable names follow `apps/api/src/config/env.ts` and ADR-006 point 8, and the shutdown sequence follows ADR-006 point 12. The deployment decisions approved on 2026-10-07 are applied in every section: `pnpm docs:check` in CI, test variables from the job `env`, the CI database roles, the single `.nvmrc`, `TZ=UTC` in the containers, the one-script smoke test, the readiness body, exit code and healthcheck, the startup entries, the jobs shutdown and stored-input rules, development rate limits, the pool default, the realtime hub interface, the WebSocket path, `maxPayload` and connection cap, and the build-time frontend variables. The open details listed per section (the CI stage order, the PostgreSQL image version in CI, the Postgres port binding, `DATABASE_URL` of a containerised API, whether a frontend container exists and the image details, `engines.pnpm`, the byte size of `maxPayload`, the WebSocket `Origin` check, and the log levels of the lifecycle entries) are specified in the block that implements them (B0, B3, B4, B5, B7). The demo hosting, base path, SPA fallback and publishing mechanism are `Deferred` to the frontend-stage ADR (ADR-010 point 6). Hosting the backend requires a new ADR (ADR-006 point 2).
