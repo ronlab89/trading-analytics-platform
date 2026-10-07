@@ -3,12 +3,14 @@
 **Project:** Trading Analytics Platform  
 **Document:** Implementation Plan  
 **Version:** 1.0  
-**Status:** Final Implementation Roadmap  
+**Status:** Backend-first override added and §1-4 reconciled with the ADRs and the code on 2026-10-07 (§4.1-4.3); §5-end are reconciled in later slices  
 **Previous document:** `14-deployment-spec.md`
 
 ---
 
 ## 1. Purpose
+
+**Status:** `Reference`; the build order stated in this document is overridden by §4.1.
 
 This document translates the complete Software Design Document set into an executable implementation roadmap.
 
@@ -16,9 +18,13 @@ The objective is to build the Trading Analytics Platform incrementally while pre
 
 Implementation should proceed in vertical slices where practical rather than building the entire frontend, backend, and infrastructure independently and integrating them at the end.
 
+Code vs ADR: development is backend-first, not full-stack vertical slices from the start. The backend is completed in blocks B0-B7 before the frontend stage begins (`00-overview.md` §1, §4.1). Vertical slicing applies inside each backend block and inside each frontend block, not across the two stages.
+
 ---
 
 ## 2. Implementation Philosophy
+
+**Status:** `Reference`
 
 > **Build the smallest complete system that proves each architectural decision before increasing scope.**
 
@@ -46,6 +52,8 @@ Do not add technologies merely to increase the apparent size of the stack.
 
 ## 3. Implementation Rules
 
+**Status:** `Reference`
+
 1. Do not optimize based on assumptions; measure first.
 2. Do not invent performance, business, or user metrics.
 3. Keep domain rules outside presentation code.
@@ -60,6 +68,8 @@ Do not add technologies merely to increase the apparent size of the stack.
 ---
 
 ## 4. Phase Overview
+
+**Status:** per item (§4.2); the order below is the original plan and is overridden by §4.1
 
 ```text
 Phase 0  → Repository foundation
@@ -82,6 +92,87 @@ Phase 16 → Portfolio case study and interview readiness
 ```
 
 After foundational contracts are stable, some phases can proceed in parallel.
+
+Code vs ADR: parallel work between the backend and the frontend does not apply in version 1. The stages run in sequence (§4.1). Inside a stage, blocks follow the order given there.
+
+---
+
+## 4.1 Backend-First Override
+
+**Status:** `Reference`; the stage order is decided (ADR-006 point 1, `00-overview.md` §1)
+
+The phase list in §4 was written as one sequence that alternates backend and frontend work. Development does not follow it. The order is:
+
+1. **Minimal CI** (ADR-006 point 11), `Planned (B0)`.
+2. **Backend blocks B0 to B7**, in this order and defined in `BACKEND-ROADMAP.md`:
+   - B0: application layer and shared contracts (ADR-001, ADR-002).
+   - B1: portfolio performance and risk analytics (ADR-004).
+   - B2: authentication and RBAC (ADR-005).
+   - B3: observability foundation (ADR-009).
+   - B4: background jobs and idempotency (ADR-008).
+   - B5: realtime and market simulation (ADR-007).
+   - B6: API documentation and contract.
+   - B7: deployment readiness and hardening (ADR-006).
+3. **Frontend stage**, in the blocks of §4.3: the web app first, then the public demo build (ADR-006 points 1 and 7).
+
+The frontend stage starts when the backend counts as done: blocks B1 to B7 are closed against their own "Done when", the verification loop passes, every deliberate divergence from the SDD is reflected in the SDD, `PROGRESS.md` is current, and the handoff artifacts for the demo exist (`BACKEND-ROADMAP.md` §2 and §6).
+
+What the override changes and what it leaves alone:
+
+- The scope and acceptance content of each phase stay as written in §5 to §21. Only the order and the owner change: each phase belongs to a backend block, to a frontend block, or to both (§4.2).
+- Vertical slicing still applies, inside each block and not across the two stages.
+- Each block follows the same method: read the real code and the specs, propose small slices, apply, verify, commit.
+
+Code vs ADR:
+
+- `BACKEND-ROADMAP.md` describes this order as a deliberate override of "the plan's rule 11", which would prefer the demo first. §3 of this document has 10 rules and none states that preference, so that citation is stale. It is fixed with the roadmap rewrite (task T5.3).
+- `BACKEND-ROADMAP.md` does not list B0 or the minimal CI yet; ADR-001 and ADR-006 add them in front of B1 (same task).
+
+---
+
+## 4.2 Phase-to-Block Mapping
+
+**Status:** per item (table below)
+
+| Phase | Backend | Frontend |
+| --- | --- | --- |
+| 0 Repository foundation | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Planned (B0)` | none |
+| 1 Product and domain foundation | `Implemented` (`packages/domain`); analytics additions `Planned (B1)`; application layer and `@trading/contracts` `Planned (B0)` | none |
+| 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Planned (B4)`; runtime database role `Planned (B0)` | none |
+| 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Planned (B6)` | none |
+| 4 Authentication and RBAC | login and `me` `Implemented`; refresh, logout and role enforcement `Planned (B2)` | session screens `Planned (FE1)` |
+| 5 Frontend foundation | none | `Planned (FE0)` |
+| 6 Core portfolio workflow | endpoints `Implemented` | `Planned (FE1)` |
+| 7 Transactions and positions | endpoints `Implemented`; fee handling change `Planned (B1)` | `Planned (FE1)` |
+| 8 Tables, filters and analytics | allocation and attribution `Implemented`; performance and risk endpoints `Planned (B1)` | `Planned (FE2)` |
+| 9 Realtime | server `Planned (B5)` | client `Planned (FE3)` |
+| 10 Background operations | jobs and idempotency `Planned (B4)` | screens `Planned (FE3)` |
+| 11 Demo Mode | `@trading/market-sim` `Planned (B5)` | `Planned (FE4)` |
+| 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
+| 13 Observability | logger and security events `Planned (B3)`; metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
+| 14 Deployment | local full stack `Planned (B7)`; CI `Planned (B0)` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
+| 15 UX, accessibility and performance refinement | none | `Planned (FE5)` |
+| 16 Portfolio case study | none | `Planned (FE6)` |
+
+Code vs ADR: phases 5 to 11 and 14 to 16 were written before the ADRs, and their text still mixes backend and frontend work. They are reconciled slice by slice in §5 to §21.
+
+---
+
+## 4.3 Frontend Blocks
+
+**Status:** `Planned (FE)`; the breakdown below is proposed on 2026-10-07 and waits for the user's approval
+
+| Block | Scope | Phases | Depends on |
+| --- | --- | --- | --- |
+| FE0 Foundation | `apps/web` workspace, routing, state, shared UI, English and Spanish (ADR-010 point 8), API client over `@trading/contracts`, `APP_MODE` and base URLs at build time (ADR-006 point 8), browser-console `Logger` adapter | 5, part of 13 | B6; the frontend-stage ADR |
+| FE1 Core workflow (real mode) | Session screens, portfolios, transactions, positions | 4 (screens), 6, 7 | FE0; B2 |
+| FE2 Analytics and tables | Performance, risk, pulse, allocation and attribution views; tables, filters and sorting | 8 | FE1; B1 |
+| FE3 Realtime and jobs | WebSocket client, notifications and alerts, CSV import screens and job progress | 9, 10 | FE1; B4; B5 |
+| FE4 Demo mode | In-process adapters over the same application layer, `@trading/market-sim`, role selector, static build and its publication | 11, demo part of 14 | FE0; B0; B5 |
+| FE5 Quality and refinement | Component, E2E and accessibility checks (ADR-006 point 11), performance, UX refinement | 12 (frontend part), 15 | FE1 to FE4 |
+| FE6 Case study | Portfolio case study and interview readiness | 16 | FE5 |
+
+Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides today: routing, state, rendering and charts, shared UI, the accessibility tool, the HTTP client timeout and retry (ADR-006 point 11), the frontend test tooling, and the demo specifics (ADR-010 point 6).
 
 ---
 
