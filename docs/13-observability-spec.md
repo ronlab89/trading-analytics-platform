@@ -3,7 +3,7 @@
 **Project:** Trading Analytics Platform  
 **Document:** Observability Specification  
 **Version:** 1.0  
-**Status:** All sections reconciled with the code and ADRs on 2026-10-07; open details and pending decisions are recorded per section  
+**Status:** All sections reconciled with the code and ADRs on 2026-10-07; the decisions approved on 2026-10-07 (ADR-009 points 2-13, ADR-006 point 12, ADR-001 point 8) are applied; the details they leave open are recorded per section  
 **Previous document:** `12-demo-mode-spec.md`  
 **Next document:** `14-deployment-spec.md`
 
@@ -45,7 +45,7 @@ Today the API has no logger module and no logging dependency. It writes three ki
 | `apps/api/src/controllers/health.controller.ts` | One JSON line when readiness fails: `level`, `event: "health.database.unavailable"`, `requestId`, `errorName` |
 | `apps/api/src/index.ts`, `apps/api/src/config/env.ts` | Plain text: the startup line, and the names of invalid environment keys (never their values) |
 
-The `Logger` port, `pino` and request logs replace these in B3 (ADR-009 points 1-2).
+The `Logger` port, `pino` and request logs replace these in B3 (ADR-009 points 1-2). The unexpected-error line is then named `http.request.failed`, and the readiness line keeps `health.database.unavailable` (ADR-009 point 6).
 
 ---
 
@@ -225,12 +225,12 @@ Example conceptual event:
 }
 ```
 
-The library is decided: `pino` for structured JSON logs, `pino-http` for request logs and `pino-pretty` in development only (ADR-009 point 2). Each event is one JSON line on stdout; there are no log files (ADR-009 point 3).
+The library is decided: `pino` for structured JSON logs, `pino-http` for request logs and `pino-pretty` in development only (ADR-009 point 2). Each event is one JSON line on stdout; there are no log files (ADR-009 point 3). The format follows the environment: JSON on stdout, and `pino-pretty` only in development. `LOG_FORMAT`, `ENABLE_DEBUG_LOGGING` and `ENABLE_DEV_DIAGNOSTICS` are not adopted (ADR-009 point 2).
 
 Code vs ADR:
 
 - None of the three packages is a dependency yet. The two JSON lines written today (§1) already carry `level`, `event` and `requestId`, but no `timestamp`, and they go to stderr through `console.error`.
-- The example above shows `service`, `environment` and `portfolioId`, which ADR-009 point 3 does not list. See §7 for the field set.
+- The example above shows `service` and `environment`, which ADR-009 point 3 adds (amended 2026-10-07), and `portfolioId`, which it does not list; `portfolioId` belongs to the illustrative event. See §7 for the field set.
 - `portfolio.updated` is illustrative. ADR-009 names no per-resource domain events; each feature defines its own event names (ADR-009, Consequences).
 
 ---
@@ -303,15 +303,18 @@ The error handler logs by category (ADR-009 point 6):
 | --- | --- |
 | Validation failure (`VALIDATION_ERROR`) | `warn` |
 | Authentication failure (`UNAUTHORIZED`) | `warn` |
+| Forbidden (`FORBIDDEN`), rate limited (`RATE_LIMITED`) | `warn` |
 | Not found (`NOT_FOUND`), conflict (`CONFLICT`) | `info` |
+| Dependency failure (`DEPENDENCY_ERROR`) | `error`, with the stack trace |
 | Internal error (`INTERNAL_ERROR`) | `error`, with the stack trace |
 
-A request slower than the configured threshold (default 500 ms) is a `warn` entry (ADR-009 point 8).
+A request slower than the configured threshold (default 500 ms, `SLOW_REQUEST_THRESHOLD_MS`) is a `warn` entry (ADR-009 point 8).
 
 Code vs ADR:
 
 - Today only unexpected errors and readiness failures are logged, both at `error` and without the stack trace. Handled errors are not logged.
-- ADR-009 point 6 does not assign a level to `FORBIDDEN`, `RATE_LIMITED` or `DEPENDENCY_ERROR`. Open detail (B3).
+- The levels of `FORBIDDEN`, `RATE_LIMITED` and `DEPENDENCY_ERROR` are decided: `warn`, `warn` and `error` with the stack (ADR-009 point 6, amended 2026-10-07). `Planned (B3)`.
+- ADR-009 fixes no level for the startup, shutdown or simulator entries (§23, §56). Open detail (B3, B5).
 - `TRACE` is not part of the decided levels. `pino` supports it, but no configuration uses it.
 - Some examples above belong to later stages. Retries: the job runner retries only on request (ADR-008 point 6, B4); HTTP client retries are decided in the frontend-stage ADR (ADR-006 point 11). Simulated failures and demo scenarios are demo features (`Planned (FE)`, ADR-010 point 6) and log through the browser-console adapter (ADR-009 point 1). WebSocket events are `Planned (B5)`; their per-event level is an open detail of `08-realtime-spec.md` §58.
 
@@ -323,34 +326,36 @@ Code vs ADR:
 
 A common base schema should be used whenever possible.
 
-Recommended fields:
+Fields of version 1 (ADR-009 point 3, amended 2026-10-07):
 
-| Field | Purpose |
-|---|---|
-| `timestamp` | Event time |
-| `level` | Severity |
-| `service` | Application/service name |
-| `environment` | Runtime environment |
-| `event` | Stable event identifier |
-| `message` | Human-readable description |
-| `requestId` | HTTP correlation identifier |
-| `operationId` | Logical operation identifier |
-| `userId` | Internal user identifier when appropriate |
-| `resourceType` | Domain resource type |
-| `resourceId` | Relevant resource identifier |
-| `durationMs` | Operation duration when applicable |
-| `errorCode` | Application error code |
-| `errorName` | Error classification |
-| `source` | Layer/module that emitted the event |
+| Field | Purpose | Version 1 |
+|---|---|---|
+| `timestamp` | Event time | Adopted |
+| `level` | Severity | Adopted |
+| `service` | Application/service name | Adopted |
+| `environment` | Runtime environment | Adopted |
+| `event` | Stable event identifier | Adopted |
+| `message` | Human-readable description | Adopted |
+| `requestId` | HTTP correlation identifier | Adopted |
+| `userId` | Internal user identifier when appropriate | Adopted |
+| `durationMs` | Operation duration when applicable | Adopted |
+| `errorCategory` | The `AppErrorCode` wire value of the error | Adopted |
+| `errorName` | Error class name | Adopted on the unexpected-error line only, next to the stack |
+| `jobId`, `connectionId` | Correlation of jobs and realtime connections (ADR-009 point 5) | Adopted |
+| `operationId` | Logical operation identifier | Not adopted |
+| `resourceType` | Domain resource type | Not adopted |
+| `resourceId` | Relevant resource identifier | Not adopted |
+| `source` | Layer/module that emitted the event | Not adopted |
+| `module` | Module that emitted the event | Not adopted |
 
 Not every log event requires every field.
 
 Code vs ADR:
 
-- ADR-009 point 3 decides `timestamp`, `level`, `event`, `requestId`, `userId` (identifier only), `durationMs` and `errorCategory` where relevant. Point 5 adds `jobId` for jobs and `connectionId` for realtime connections; neither is in the table above.
-- ADR-009 names one error field, `errorCategory`; the table has `errorCode` and `errorName`. Today's lines write `errorName` (§1). Whether `errorCategory` holds the `AppErrorCode` value (§12.2) and whether `errorName` is kept is an open detail (B3).
-- `service`, `environment`, `message`, `operationId`, `resourceType`, `resourceId` and `source` are not in ADR-009. Which of them B3 adds is an open detail; `operationId` is covered in §10.
-- `message` must never carry secrets. Today the unexpected-error line logs the raw error `message` unfiltered (`09-security-spec.md` §49); redaction is `Planned (B3)` (§11).
+- ADR-009 point 3 decides `timestamp`, `level`, `service`, `environment`, `event`, `message`, `requestId`, `userId` (identifier only), `durationMs` and `errorCategory` where relevant. Point 5 adds `jobId` for jobs and `connectionId` for realtime connections.
+- `errorCategory` carries the `AppErrorCode` wire value (§12.2; ADR-002 point 10), so the earlier `errorCode` row is folded into it. `errorName` is kept only on the unexpected-error line, next to the stack (ADR-009 point 3). Today's lines write `errorName` on both (§1).
+- `source`, `module`, `resourceType`, `resourceId` and `operationId` are not adopted in v1 (ADR-009 point 3, Deferred detail). `requestId`, `jobId` and `connectionId` are the correlation fields; `operationId` is covered in §10.
+- `message` must never carry secrets. Today the unexpected-error line logs the raw error `message` unfiltered (`09-security-spec.md` §49). Redaction covers only the named fields of ADR-009 point 4 (§11), and the `message` of an unexpected error stays unfiltered in v1 (ADR-009 point 4). `Planned (B3)`.
 
 ---
 
@@ -407,8 +412,12 @@ The convention is a guide, not a fixed length: ADR-009 uses two segments (`job.f
 | Events | Source | Status |
 | --- | --- | --- |
 | `http.request.completed` | ADR-009 point 3 (request logs) | `Planned (B3)` |
+| `http.request.failed` (unexpected error), `health.database.unavailable` (readiness failure) | ADR-009 point 6 | `Planned (B3)` |
 | `auth.login.succeeded`, `auth.login.failed`, `authz.denied` | ADR-009 point 9, `09-security-spec.md` §50 | `Planned (B3)`; `authz.denied` on role checks from B2 and on realtime subscriptions from B5 |
 | `auth.refresh.reuse_detected` | ADR-009 point 9, ADR-005 | `Planned (B2)` / `Planned (B3)` |
+| `auth.logout` | ADR-009 point 9 (amended 2026-10-07) | `Planned (B2)`, with the endpoint |
+| `app.shutdown.started`, `app.shutdown.completed` | ADR-009 point 11, ADR-006 point 12 | `Planned (B3)` |
+| `simulation.started`, `simulation.paused`, `simulation.mode.changed` | ADR-009 point 11, ADR-007 point 15 | `Planned (B5)` |
 | `job.*` (transitions) | ADR-009 point 11, ADR-008 | `Planned (B4)` |
 | `realtime.*` (connect, authenticate, close) | ADR-009 point 11, ADR-007, `08-realtime-spec.md` §58 | `Planned (B5)` |
 | `demo.*` | ADR-010 point 6 | `Planned (FE)` |
@@ -417,7 +426,8 @@ The convention is a guide, not a fixed length: ADR-009 uses two segments (`job.f
 Code vs ADR:
 
 - ADR-009 point 9 names the login events `auth.login.succeeded` and `auth.login.failed`, not `success` and `failure`; the list above uses the ADR names.
-- Today's code writes `request.failed` and `health.database.unavailable` (§1). Their names under the B3 logger are an open detail; ADR-009 gives only `http.request.completed` for request logs.
+- Today's code writes `request.failed` and `health.database.unavailable` (§1). Under the B3 logger the first becomes `http.request.failed` and the second keeps its name (ADR-009 point 6, amended 2026-10-07). `http.request.completed` is the request log (ADR-009 point 3).
+- The simulator names follow the endpoints (ADR-007 point 15). There is no `simulation.resumed` (`start` from `HALTED` is the resume) and no `simulation.stopped` (real mode has no stop); `simulation.error` is deferred until simulator errors are defined (ADR-009 point 11, Deferred detail; §56).
 - Job transition names other than `job.failed` are not fixed by ADR-009. The job states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3), so `job.progress` and `job.started` above are working names until B4.
 - Realtime log names are not final: `08-realtime-spec.md` §58 leaves them open for B5, aligned with this section. `realtime.event.received` describes a client-side event; server-side per-event logging and its level are part of the same open detail. Realtime event types on the wire (`MARKET_PRICE_UPDATED` and the others in `08-realtime-spec.md` §15) are a different namespace from log event names.
 - Demo events depend on the frontend-stage demo ADR (ADR-010 point 6).
@@ -426,7 +436,7 @@ Code vs ADR:
 
 # 9. Request Correlation
 
-**Status:** request ID, header and error-body propagation `Implemented` (`apps/api/src/middleware/request-id.ts`); propagation to log lines `Planned (B3)` (ADR-009 point 5)
+**Status:** request ID, header and error-body propagation `Implemented` (`apps/api/src/middleware/request-id.ts`); propagation to log lines `Planned (B3)` (ADR-009 point 5); exposing the header through CORS `Planned (B3)` (ADR-009 point 5)
 
 Every HTTP request should receive a request identifier.
 
@@ -470,7 +480,7 @@ Code vs ADR:
 
 - The diagram passes through an application service layer, which does not exist yet (ADR-001, B0).
 - No log line receives the `requestId` automatically. The two JSON lines of §1 add it by hand. ADR-009 point 5 propagates it through `AsyncLocalStorage` to every log line of a request in B3, with an integration test (ADR-009 point 13).
-- `cors` is configured with `origin` only, so a browser on another origin cannot read the `X-Request-ID` header of a successful response; it can read `requestId` from error bodies. Whether to expose the header is an open detail for the frontend stage.
+- `cors` is configured with `origin` only, so today a browser on another origin cannot read the `X-Request-ID` header of a successful response; it can read `requestId` from error bodies. The header is exposed through CORS with `exposedHeaders` (ADR-009 point 5, amended 2026-10-07). `Planned (B3)`.
 
 ---
 
@@ -514,7 +524,7 @@ Several items in the list above are not asynchronous in version 1. Transactions 
 
 # 11. Sensitive Data Policy
 
-**Status:** policy `Reference`; enforced redaction `Planned (B3)` (ADR-009 point 4); current lines comply except for the unfiltered error `message`
+**Status:** policy `Reference`; enforced redaction `Planned (B3)` (ADR-009 point 4); current lines comply except for the unfiltered error `message`, which stays unfiltered in v1 (ADR-009 point 4)
 
 Logs must never become a secondary storage system for sensitive information.
 
@@ -556,7 +566,7 @@ Decided enforcement (ADR-009 point 4 and Deferred detail, B3):
 Code vs ADR:
 
 - Today no line writes request headers or bodies, and `env.ts` logs the names of invalid keys, never their values (`09-security-spec.md` §49).
-- The unexpected-error line logs the raw error `message`, which is not filtered. B3 redaction applies to fields; whether error messages are also scrubbed is an open detail (B3).
+- The unexpected-error line logs the raw error `message`, which is not filtered. B3 redaction applies only to the named fields of the list above; the `message` of an unexpected error is logged unfiltered in v1 because logs go to local stdout (ADR-009 point 4, amended 2026-10-07). Hosting the backend (ADR-006 point 2) reopens this decision (ADR-009 points 4 and 10).
 - Refresh tokens and their cookie do not exist yet (`Planned (B2)`, ADR-005); the redaction list covers them from the start.
 - "API keys" and "payment credentials" have no counterpart: the API holds no third-party keys and handles no payments.
 
@@ -609,7 +619,7 @@ Code vs ADR:
 
 - The diagram's categories are not all distinct today. Authentication and authorization failures are `AppError`s (`UNAUTHORIZED`; `FORBIDDEN` from B2). Dependency errors are not raised: a database outage surfaces as `INTERNAL_ERROR` until B0 maps it to 503 `DEPENDENCY_ERROR` (ADR-002 point 10, `07-api-spec.md` §6).
 - ADR-001 point 3 adds transport-free application errors (`NotFoundError`, `ConflictError`) that this handler maps to HTTP in B0.
-- ADR-009 point 6 logs every category, with the stack for internal errors (§6.2). Today handled errors leave no log line.
+- ADR-009 point 6 logs every category, with the stack for internal errors and for `DEPENDENCY_ERROR` (§6.2). Today handled errors leave no log line.
 
 ---
 
@@ -644,7 +654,7 @@ Code vs ADR: the codes a client receives are the `AppErrorCode` values of `07-ap
 | `REALTIME_ERROR` | Not an HTTP code: realtime failures use the `ERROR` message `code` and the close codes of ADR-007 point 15 (`08-realtime-spec.md`) |
 | `BACKGROUND_JOB_ERROR` | Not an HTTP code: a failed job ends in the `FAILED` state (ADR-008 point 3) and a `JOB_FAILED` event (ADR-008 point 11) |
 
-`TIMEOUT` is declared in `AppErrorCode` but never raised; it is removed in B0 (ADR-002 point 10). Whether the log field `errorCategory` (ADR-009 point 3) uses these wire codes is an open detail (B3, §7).
+`TIMEOUT` is declared in `AppErrorCode` but never raised; it is removed in B0 (ADR-002 point 10). The log field `errorCategory` carries these wire codes (ADR-009 point 3, amended 2026-10-07; §7), not the suggested names above. `Planned (B3)`.
 
 ---
 
@@ -660,7 +670,10 @@ Recommended fields:
 {
   "timestamp": "2026-10-06T12:00:00.000Z",
   "level": "error",
-  "event": "request.failed",
+  "service": "trading-api",
+  "environment": "development",
+  "event": "http.request.failed",
+  "message": "Can't reach database server",
   "requestId": "3f2b8c1e-6a4d-4e0f-9b7a-1c2d3e4f5a6b",
   "errorCategory": "INTERNAL_ERROR",
   "errorName": "PrismaClientInitializationError",
@@ -676,16 +689,16 @@ What each field gives today and in B3:
 
 | Field | Today (`request.failed`, §1) | B3 |
 | --- | --- | --- |
-| `level`, `event`, `requestId` | Written | Kept; `requestId` added automatically (ADR-009 point 5) |
-| `errorName` | Written | Open detail (§7) |
-| raw error `message` | Written, unfiltered | Open detail (§11) |
-| `timestamp`, `durationMs`, `errorCategory` | Not written | Added (ADR-009 point 3) |
+| `level`, `event`, `requestId` | Written | Kept; `event` is renamed `http.request.failed` (ADR-009 point 6); `requestId` added automatically (ADR-009 point 5) |
+| `errorName` | Written | Kept on this line only, next to the stack (ADR-009 point 3) |
+| raw error `message` | Written, unfiltered | Kept, unfiltered in v1 (ADR-009 point 4) |
+| `timestamp`, `service`, `environment`, `durationMs`, `errorCategory` | Not written | Added (ADR-009 point 3); `errorCategory` is the `AppErrorCode` value |
 | stack trace | Not written | Added for internal errors (ADR-009 point 6) |
 | `jobId`, `connectionId` | n/a | Added in B4 and B5 (ADR-009 point 5) |
 
 Code vs ADR:
 
-- The example previously showed `operationId`, `errorCode: "DATABASE_ERROR"` and `source`. ADR-009 has no generic `operationId` (§10), names the error field `errorCategory`, and has no `DATABASE_ERROR` code: an unreachable database is `INTERNAL_ERROR` today and `DEPENDENCY_ERROR` from B0 (§12.2). `source` is not in ADR-009 (§7).
+- The example previously showed `operationId`, `errorCode: "DATABASE_ERROR"` and `source`. ADR-009 has no generic `operationId` (§10), names the error field `errorCategory`, and has no `DATABASE_ERROR` code: an unreachable database is `INTERNAL_ERROR` today and `DEPENDENCY_ERROR` from B0 (§12.2). `source` is not adopted in v1 (§7). The example `message` is illustrative: it is the raw error message, unfiltered in v1 (§11).
 - The example `requestId` is a UUID: a client value with `_`, such as `req_123`, fails the `^[a-zA-Z0-9-]{1,64}$` check and is replaced (§9).
 - ADR-009 point 6 sets no environment condition for stack traces. "Production" is the local production-like run (ADR-006 points 1 and 8); its logs stay on the developer's machine.
 
@@ -964,17 +977,17 @@ Development diagnostics may expose more detail when explicitly enabled.
 | --- | --- | --- |
 | Connection can be established; a lightweight query succeeds | `GET /health/ready` runs `SELECT 1` through the shared Prisma client (`apps/api/src/services/health.service.ts`) | `Implemented` |
 | Connection pool functioning | No separate check; Prisma's default pool, observed through readiness and failed queries | Not decided |
-| A repository operation fails | `request.failed` line today (§12.1); 503 `DEPENDENCY_ERROR` for an unreachable database | `Implemented` / `Planned (B0)` (ADR-002 point 10) |
-| Unexpectedly slow database operations | No ADR times individual queries; ADR-009 point 8 times requests and the analytics series reconstruction | Not decided |
+| A repository operation fails | `request.failed` line today (§12.1), `http.request.failed` in B3 (ADR-009 point 6); 503 `DEPENDENCY_ERROR` for an unreachable database, logged at `error` with the stack | `Implemented` / `Planned (B0)` (ADR-002 point 10) / `Planned (B3)` |
+| Unexpectedly slow database operations | Individual database operations are not timed in v1; only requests and the analytics series reconstruction are (ADR-009 point 8) | `Deferred` (ADR-009 point 8, Deferred detail) |
 | No unrestricted SQL in logs | The Prisma client is created without a `log` option (`packages/database/src/client.ts`), so no query is logged | `Implemented` |
 
-Code vs ADR: no switch enables more detailed database diagnostics. `LOG_LEVEL=debug` in development (ADR-009 point 7) controls application log entries, not Prisma query logging. Whether to time database operations or enable Prisma query logging in development is a pending decision (B3).
+Code vs ADR: no switch enables more detailed database diagnostics. `LOG_LEVEL=debug` in development (ADR-009 point 7) controls application log entries, not Prisma query logging. Database operations are not timed and Prisma query logging is not enabled in v1 (ADR-009 point 8, amended 2026-10-07). `Deferred`.
 
 ---
 
 # 22. Health Checks
 
-**Status:** `Implemented` (`apps/api/src/routes/health.ts`, NFR-051, `07-api-spec.md` §30)
+**Status:** `Implemented` (`apps/api/src/routes/health.ts`, NFR-051, `07-api-spec.md` §30); route test `Planned (B0)` (ADR-001 point 8)
 
 The backend must expose health endpoints.
 
@@ -1000,14 +1013,14 @@ What exists:
 
 Code vs ADR:
 
-- NFR-051 measures health with route tests, including readiness with the database down. No test file covers `/health` or `/health/ready` today (`apps/api/src/routes`).
+- NFR-051 measures health with route tests, including readiness with the database down. No test file covers `/health` or `/health/ready` today (`apps/api/src/routes`). The B0 route-test set includes a health route test covering `GET /health` and `GET /health/ready` (ADR-001 point 8, amended 2026-10-07; ADR-009 point 13). `Planned (B0)`.
 - ADR-009 point 10 keeps both endpoints as the version 1 health signal while metrics are `Deferred`.
 
 ---
 
 # 23. Liveness vs Readiness
 
-**Status:** `Implemented` (`apps/api/src/controllers/health.controller.ts`); readiness during shutdown not decided
+**Status:** `Implemented` (`apps/api/src/controllers/health.controller.ts`); readiness 503 during graceful shutdown `Planned (B3)` (ADR-006 point 12)
 
 Health checks should distinguish between process health and dependency readiness.
 
@@ -1046,7 +1059,7 @@ Code vs ADR:
 
 - Readiness checks the database only. "Required internal services" have no counterpart yet: the job runner (ADR-008, B4) and the market simulator (ADR-007, B5) run in process, and no ADR adds them to readiness. "Critical configuration" is checked once at startup instead: `apps/api/src/config/env.ts` validates the environment and the process exits on invalid values, so a running process always has valid configuration.
 - The `health.database.unavailable` line logs `errorName` only, never the driver message or connection string (§24).
-- ADR-009 point 11 logs graceful shutdown (ADR-006), and `14-deployment-spec.md` §16 requires it. `apps/api/src/index.ts` only calls `app.listen` and handles no shutdown signal. Whether readiness answers 503 while shutting down depends on that pending decision.
+- Graceful shutdown is decided (ADR-006 point 12, added 2026-10-07; `14-deployment-spec.md` §16 requires it). `apps/api/src/index.ts` only calls `app.listen` and handles no shutdown signal today. On `SIGTERM` or `SIGINT` the server stops accepting connections, `GET /health/ready` returns 503 while the API is shutting down, in-flight requests drain with a timeout of 10 seconds, and Prisma is closed. The shutdown logs `app.shutdown.started` and `app.shutdown.completed` (ADR-009 point 11). `Planned (B3)`. No decision fixes the level of the shutdown entries; open detail (B3).
 
 ---
 
@@ -1093,9 +1106,9 @@ In version 1 a measurement is a log entry with `durationMs` (ADR-009 point 3), n
 
 | Operation | Measurement | Status |
 | --- | --- | --- |
-| API request duration | `durationMs` on `http.request.completed`; `warn` above a configurable threshold, default 500 ms | `Planned (B3)` (ADR-009 points 2-3 and 8) |
+| API request duration | `durationMs` on `http.request.completed`; `warn` above a configurable threshold, `SLOW_REQUEST_THRESHOLD_MS`, default 500 ms | `Planned (B3)` (ADR-009 points 2-3 and 8) |
 | Analytics calculation | The reconstruction of the analytics series (ADR-004) is timed separately | `Planned (B3)` (ADR-009 point 8) |
-| Database operation duration | None | Not decided (§21) |
+| Database operation duration | None; individual database operations are not timed in v1 (ADR-009 point 8) | `Deferred` (§21) |
 | Background job duration | Job transition log entries (ADR-009 point 11); whether they carry a duration is an open detail | `Planned (B4)` |
 | Realtime event processing duration | None in ADR-007 or ADR-009 | Not decided; open detail of `08-realtime-spec.md` §58 (B5) |
 | Frontend route, load, table and chart timing | §27 | `Planned (FE)` |
@@ -1167,7 +1180,7 @@ Code vs ADR:
 
 # 28. Realtime Debugging
 
-**Status:** server connection logging `Planned (B5)` (ADR-009 point 11, `08-realtime-spec.md` §58); client diagnostics `Planned (FE)`; a payload debug mode not decided
+**Status:** server connection logging `Planned (B5)` (ADR-009 point 11, `08-realtime-spec.md` §58); client diagnostics `Planned (FE)`; a development realtime debug mode `Deferred` to the frontend-stage ADR (ADR-009 point 12)
 
 The realtime subsystem should expose enough diagnostic information to understand connection behavior.
 
@@ -1213,7 +1226,7 @@ Code vs ADR:
 - The example previously showed `price.updated`. Wire event types are `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED` and the three job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` (ADR-007 point 6, ADR-008 point 11). They are a different namespace from log event names (§8).
 - Server log event names and the level of per-event entries are open in `08-realtime-spec.md` §58 (B5), so continuous ticks (one per second, ADR-007 point 15) do not flood `info` logs.
 - The access token of an `AUTHENTICATE` message and payloads with user data are never logged (ADR-009 point 4 and Deferred detail, `08-realtime-spec.md` §58). The envelope `id` identifies an event in logs and diagnostics (`08-realtime-spec.md` §47).
-- No ADR decides a development-only debug mode with payload summaries. Pending user decision (frontend stage).
+- A development-only realtime debug mode or diagnostics panel with payload summaries is deferred to the frontend-stage ADR (ADR-009 point 12, amended 2026-10-07). `Deferred`.
 
 ---
 
@@ -1284,7 +1297,7 @@ What each item is in version 1:
 Code vs ADR:
 
 - `@trading/market-sim` does not exist yet (ADR-007 point 7, B5); the API and the demo will share it.
-- No ADR decides an explicit demo diagnostics interface; `12-demo-mode-spec.md` §75 lists the same items as optional. Pending user decision (frontend-stage demo ADR, ADR-010 point 6).
+- An explicit demo diagnostics interface is deferred to the demo ADR (ADR-009 point 12, amended 2026-10-07; ADR-010 point 6); `12-demo-mode-spec.md` §75 lists the same items as optional. `Deferred`.
 
 ---
 
@@ -1322,7 +1335,7 @@ The tooling is decided: `pino` JSON lines on the API's stdout, `pino-pretty` in 
 | Item | Mechanism | Status |
 | --- | --- | --- |
 | Request IDs in logs | `requestId` on every log line of a request (ADR-009 point 5) | `Planned (B3)`; added by hand to two lines today (§9) |
-| Error events | Category logging (ADR-009 point 6) | `Planned (B3)`; `request.failed` line today (§1) |
+| Error events | Category logging (ADR-009 point 6) | `Planned (B3)` as `http.request.failed` and category entries; `request.failed` line today (§1) |
 | Realtime events | Connection lifecycle entries (§28) | `Planned (B5)` |
 | Background jobs | Job transition entries (§20) | `Planned (B4)` |
 | Demo simulations | Browser-console adapter (§29), not the API logs | `Planned (FE)` |
@@ -1461,7 +1474,7 @@ This allows future distributed tracing to be introduced without changing domain 
 | Operation ID | `jobId`, `connectionId`; no generic `operationId` (§10) | `Planned (B4)`, `Planned (B5)`; `operationId` `Deferred` |
 | Parent/child relationships | None decided. Whether a job's log entries also carry the `requestId` of the request that created it is an open detail (B4) | Not decided |
 | Duration | `durationMs` (ADR-009 point 3, §26) | `Planned (B3)` |
-| Service/module boundaries | `service` and `source` are not in ADR-009 (§7) | Open detail (B3) |
+| Service/module boundaries | `service` is adopted; `source` and `module` are not adopted in v1 (ADR-009 point 3, §7) | `service` `Planned (B3)`; `source`, `module` not adopted |
 
 The API is a single process: the job runner and the simulator run inside it (ADR-008 point 4, ADR-007), so there is no cross-service hop to trace.
 
@@ -1579,7 +1592,7 @@ Code vs ADR:
 | `operationId` | `jobId` or `connectionId` (point 5, §10) |
 | `errorCode` | `errorCategory` (point 3, §7) |
 | `status` | The response status of the request log entry (§17) |
-| `module`, `resource` | Not in ADR-009; open detail (B3, §7) |
+| `module`, `resource` | Not adopted in v1 (`module`, `resourceType` and `resourceId`, point 3, §7) |
 
 Function entry and exit messages have no level of their own: `TRACE` is not used (§6.2), and `debug` is the most detailed level.
 
@@ -1605,13 +1618,14 @@ Code vs ADR:
 - The previous text set `test` to `warn/error` with "deterministic output"; ADR-009 point 7 sets `silent`.
 - Stack traces are not a development-only setting: ADR-009 point 6 logs them for every internal error, never in the response (§13).
 - Redaction is not production-only: the fixed list of ADR-009 point 4 applies everywhere and is enforced by tests.
+- `LOG_LEVEL` is the only logging-format or verbosity variable. The format follows the environment, and `LOG_FORMAT`, `ENABLE_DEBUG_LOGGING` and `ENABLE_DEV_DIAGNOSTICS` are not adopted (ADR-009 points 2 and 7; §68). The slow-request threshold has its own variable, `SLOW_REQUEST_THRESHOLD_MS` (ADR-009 point 8, §52).
 - `apps/api/src/config/env.ts` validates `NODE_ENV` (`development`, `test`, `production`) but has no `LOG_LEVEL` today. Whether `LOG_LEVEL` is validated there like the other keys, and whether its default follows `NODE_ENV`, is an open detail (B3). `04-tech-stack.md` and `14-deployment-spec.md` already list the variable.
 
 ---
 
 # 39. Development Diagnostic Mode
 
-**Status:** not decided (pending user decision, frontend stage); its data sources are `Planned (FE)` or `Deferred` (below)
+**Status:** `Deferred` to the frontend-stage ADR (ADR-009 point 12); its data sources are `Planned (FE)` or `Deferred` (below)
 
 A development-only diagnostic mode may provide:
 
@@ -1626,7 +1640,7 @@ A development-only diagnostic mode may provide:
 
 This mode must not be enabled automatically in production.
 
-Code vs ADR: no ADR decides a diagnostic mode, and no frontend code exists. Where each item would come from:
+Code vs ADR: a development diagnostic mode or diagnostics panel is deferred to the frontend-stage ADR (ADR-009 point 12, amended 2026-10-07), and `ENABLE_DEV_DIAGNOSTICS` is not adopted (ADR-009 point 2). No frontend code exists. Where each item would come from:
 
 | Item | Source | Status |
 | --- | --- | --- |
@@ -1675,8 +1689,8 @@ No secrets should be intentionally exposed through diagnostics.
 
 Code vs ADR:
 
-- Console: the demo logs through the browser-console `Logger` adapter (ADR-009 point 1). How the real-mode web app reports unexpected errors is decided in the frontend stage (§14). Realtime lifecycle entries "in debug mode" depend on the debug mode of §28 and §39, which is not decided.
-- Network: the panel shows `X-Request-ID` on every API response. Page code can read it only from error bodies, because `cors` does not expose the header (§9). WebSocket messages appear there too; an `AUTHENTICATE` message carries the access token (ADR-007 point 2).
+- Console: the demo logs through the browser-console `Logger` adapter (ADR-009 point 1). How the real-mode web app reports unexpected errors is decided in the frontend stage (§14). Realtime lifecycle entries "in debug mode" depend on the debug mode of §28 and §39, which is deferred to the frontend-stage ADR (ADR-009 point 12).
+- Network: the panel shows `X-Request-ID` on every API response. Today page code can read it only from error bodies, because `cors` does not expose the header; B3 exposes it through CORS (ADR-009 point 5, §9). WebSocket messages appear there too; an `AUTHENTICATE` message carries the access token (ADR-007 point 2).
 - Application: the demo keeps its state in namespaced browser storage (ADR-006 point 7); storage versioning is a demo specific (`Deferred`, ADR-010 point 6). The access token is kept in memory only, never in browser storage, and the refresh token is an `HttpOnly` cookie that page code cannot read (ADR-005).
 
 ---
@@ -1815,7 +1829,7 @@ Code vs ADR:
 
 # 44. Observability and Security Events
 
-**Status:** `Planned (B3)` (ADR-009 point 9, `09-security-spec.md` §50); refresh reuse event `Planned (B2)` with the refresh endpoint (ADR-005 point 5); a logout event not decided
+**Status:** `Planned (B3)` (ADR-009 point 9, `09-security-spec.md` §50); refresh reuse event `Planned (B2)` with the refresh endpoint (ADR-005 point 5); `auth.logout` `Planned (B2)` with its endpoint (ADR-009 point 9)
 
 Security-relevant events should be observable.
 
@@ -1825,6 +1839,7 @@ Events (ADR-009 point 9):
 auth.login.succeeded
 auth.login.failed
 auth.refresh.reuse_detected
+auth.logout
 authz.denied
 ```
 
@@ -1846,8 +1861,8 @@ The list previously used other names. What each became:
 | --- | --- | --- |
 | `auth.login.success` | `auth.login.succeeded` | `Planned (B3)` |
 | `auth.login.failure` | `auth.login.failed`, same fields whatever the cause (`09-security-spec.md` §51) | `Planned (B3)` |
-| `auth.logout` | No ADR event. `POST /api/v1/auth/logout` is `Planned (B2)` (ADR-005 point 6) | Not decided (`09-security-spec.md` §50) |
-| `auth.token.refresh.failure` | Only reuse of a rotated refresh token has an event, `auth.refresh.reuse_detected` (ADR-005 point 5) | `Planned (B2)` / `Planned (B3)` |
+| `auth.logout` | `auth.logout`, at `info`, with `userId` only (ADR-009 point 9, amended 2026-10-07). `POST /api/v1/auth/logout` is `Planned (B2)` (ADR-005 point 6) | `Planned (B2)`, with the endpoint |
+| `auth.token.refresh.failure` | Only reuse of a rotated refresh token has an event, `auth.refresh.reuse_detected` (ADR-005 point 5); other refresh failures have none (ADR-009 point 9) | `Planned (B2)` / `Planned (B3)` |
 | `auth.authorization.denied` | `authz.denied` | `Planned (B3)`; on role checks from B2, on realtime subscriptions from B5 |
 
 Code vs ADR:
@@ -1855,8 +1870,8 @@ Code vs ADR:
 - No security event is logged today: there is no logger (ADR-009, B3) and no refresh or logout endpoint (ADR-005, B2). Login failures are answered (`09-security-spec.md` §51) but not logged.
 - Each event carries `timestamp`, `event`, `requestId` and `userId` when known (ADR-009 point 3, `09-security-spec.md` §50). Authentication failures log at `warn` (ADR-009 point 6). Passwords, the `Authorization` header, cookies and both tokens are never logged (ADR-009 point 4).
 - `route` comes from the request log. ADR-009 lists no client address or user agent, so "sanitized client context" is an open detail (B3). Whether `auth.login.failed` records the cause (unknown email or wrong password) as a value is also open (B3); the fields stay the same for every cause.
-- Refresh failures other than reuse (an expired, unknown or revoked token, a missing custom header) have no event; they are ordinary `401` request logs. Open detail (B2/B3).
-- Whether logout emits an event is an open detail in `09-security-spec.md` §50; no event is added here until it is decided.
+- Refresh failures other than reuse (an expired, unknown or revoked token, a missing custom header) have no dedicated event; they are ordinary `401` request logs (ADR-009 point 9, amended 2026-10-07).
+- Logout emits `auth.logout` at `info`, carrying `userId` only (ADR-009 point 9, amended 2026-10-07). `09-security-spec.md` §50, which left the event open, follows the ADR.
 
 ---
 
@@ -2029,8 +2044,8 @@ They should not automatically be presented as user-facing SLA guarantees.
 
 Code vs ADR:
 
-- The one decided threshold is for HTTP requests: configurable, default 500 ms (ADR-009 point 8). Its environment variable is not in `apps/api/src/config/env.ts` yet; its name is an open detail (B3).
-- The analytics series reconstruction is timed separately (ADR-009 point 8); whether it has its own threshold is an open detail (B3, §26).
+- The one decided threshold is for HTTP requests: configurable through `SLOW_REQUEST_THRESHOLD_MS`, default 500 ms, for HTTP requests only (ADR-009 point 8, amended 2026-10-07). The variable is not in `apps/api/src/config/env.ts` yet; it is added in B3.
+- The analytics series reconstruction is timed separately (ADR-009 point 8); because `SLOW_REQUEST_THRESHOLD_MS` covers HTTP requests only, whether the reconstruction has its own threshold is an open detail (B3, §26).
 - Version 1 is local only (ADR-006), so there is no SLA.
 
 ---
@@ -2108,7 +2123,7 @@ Code vs ADR: the simulator ticks once per second (ADR-007 point 15). No ADR adop
 
 # 56. Demo Realtime Logging
 
-**Status:** `Planned (FE)` through the browser-console `Logger` adapter (ADR-009 point 1); demo event names `Deferred` with the demo specifics (ADR-010 point 6)
+**Status:** real-mode simulator entries `Planned (B5)` (ADR-009 point 11); demo logging `Planned (FE)` through the browser-console `Logger` adapter (ADR-009 point 1); demo event names `Deferred` with the demo specifics (ADR-010 point 6)
 
 Demo mode should make simulated realtime behavior understandable without flooding the console.
 
@@ -2117,9 +2132,7 @@ Instead of logging every simulated price tick by default, log lifecycle events s
 ```text
 simulation.started
 simulation.paused
-simulation.resumed
-simulation.stopped
-simulation.error
+simulation.mode.changed
 ```
 
 Detailed tick logging can be enabled explicitly for debugging.
@@ -2128,17 +2141,18 @@ What each name maps to in the simulator lifecycle (`RUNNING <-> HALTED`, ADR-007
 
 | Name | Version 1 counterpart | Status |
 | --- | --- | --- |
-| `simulation.started` | `POST /api/v1/simulation/start`: `HALTED` -> `RUNNING` | Working name |
-| `simulation.paused` | `POST /api/v1/simulation/pause`: `RUNNING` -> `HALTED`. The name follows the endpoint, not the lifecycle state; it is unrelated to the `PAUSED` mode wire ID | Working name |
-| `simulation.resumed` | No separate transition: `start` from `HALTED` is the resume | Not decided |
-| `simulation.stopped` | Real mode has no stop (ADR-007 point 15); a demo stop or reset belongs to the demo ADR | `Deferred` (ADR-010 point 6) |
-| `simulation.error` | No ADR defines simulator errors | Not decided |
+| `simulation.started` | `POST /api/v1/simulation/start`: `HALTED` -> `RUNNING` (ADR-009 point 11) | `Planned (B5)` |
+| `simulation.paused` | `POST /api/v1/simulation/pause`: `RUNNING` -> `HALTED`. The name follows the endpoint, not the lifecycle state; it is unrelated to the `PAUSED` mode wire ID (ADR-009 point 11) | `Planned (B5)` |
+| `simulation.mode.changed` | `PUT /api/v1/simulation/mode`; the name follows the endpoint (ADR-009 point 11, ADR-007 point 15) | `Planned (B5)` |
+| `simulation.resumed` | No separate transition: `start` from `HALTED` is the resume, so the name is not adopted (ADR-009 point 11) | Not adopted |
+| `simulation.stopped` | Real mode has no stop (ADR-007 point 15), so the name is not adopted for real mode; a demo stop or reset belongs to the demo ADR | Not adopted; demo stop `Deferred` (ADR-010 point 6) |
+| `simulation.error` | No ADR defines simulator errors; deferred until they are defined (ADR-009 point 11, Deferred detail) | `Deferred` (B5) |
 
 Code vs ADR:
 
 - `@trading/market-sim` and the simulator do not exist yet (ADR-007, B5).
-- A mode change (`PUT /api/v1/simulation/mode`) has no name in the list. What the `PAUSED` mode does relative to `HALTED` is itself open (ADR-007 Deferred detail, B5).
-- ADR-009 point 11 lists startup, shutdown, job and realtime connection events; simulator transitions in the API are not named there, so the real-mode names are an open detail (B5). The demo names wait for the frontend-stage demo ADR (§29).
+- A mode change (`PUT /api/v1/simulation/mode`) is logged as `simulation.mode.changed`. What the `PAUSED` mode does relative to `HALTED` is itself open (ADR-007 Deferred detail, B5).
+- ADR-009 point 11 (amended 2026-10-07) names the real-mode simulator entries: `simulation.started`, `simulation.paused` and `simulation.mode.changed`. The level of these entries is not fixed by any decision; open detail (B5). The demo names wait for the frontend-stage demo ADR (§29).
 - Per-tick logging follows §55.
 
 ---
@@ -2162,19 +2176,19 @@ The only dependency is PostgreSQL.
 | Item | Today | Status |
 | --- | --- | --- |
 | Readiness reflects the dependency | `GET /health/ready` returns 503 with `checks.database: "unavailable"` | `Implemented` (`apps/api/src/controllers/health.controller.ts`) |
-| Errors are logged | Readiness writes one JSON line, `health.database.unavailable`, with `requestId` and `errorName`; other requests log `request.failed` (§1) | `Implemented` as `console` lines; on the `Logger` port `Planned (B3)` |
-| Appropriate error responses | A request that fails because the database is unreachable gets 500 `INTERNAL_ERROR` | 503 `DEPENDENCY_ERROR` `Planned (B0)` (ADR-002 point 10, `07-api-spec.md`) |
-| Recovery is observable | Readiness is checked on every call, so it returns 200 again once the database answers; no entry records the recovery | Recovery entry not decided (§58) |
-| No unnecessary crash | A failed query is handled per request by the error handler; there are no process-level handlers | Startup and graceful shutdown logging `Planned (B3)` (ADR-009 point 11) |
+| Errors are logged | Readiness writes one JSON line, `health.database.unavailable`, with `requestId` and `errorName`; other requests log `request.failed` (§1) | `Implemented` as `console` lines; on the `Logger` port `Planned (B3)` (`http.request.failed`, ADR-009 point 6) |
+| Appropriate error responses | A request that fails because the database is unreachable gets 500 `INTERNAL_ERROR` | 503 `DEPENDENCY_ERROR` `Planned (B0)` (ADR-002 point 10, `07-api-spec.md`), logged at `error` with the stack `Planned (B3)` (ADR-009 point 6) |
+| Recovery is observable | Readiness is checked on every call, so it returns 200 again once the database answers; no entry records the recovery | No recovery entry in v1 (ADR-009 point 11); `Deferred` until a poller exists (B7, §58) |
+| No unnecessary crash | A failed query is handled per request by the error handler; there are no process-level handlers | Startup logging and graceful shutdown (ADR-006 point 12) with `app.shutdown.started` and `app.shutdown.completed` `Planned (B3)` (ADR-009 point 11) |
 | Demo dependency failures | Simulated failures are a demo specific | `Deferred` (ADR-010 point 6) |
 
-Code vs ADR: readiness during shutdown is not decided (§23).
+Code vs ADR: readiness answers 503 while the API is shutting down (ADR-006 point 12, `Planned (B3)`; §23).
 
 ---
 
 # 58. Recovery Observability
 
-**Status:** per item (table below); recovery after a dependency failure not decided
+**Status:** per item (table below); a database recovery entry `Deferred` until a poller exists (B7, ADR-009 point 11)
 
 Recovery events are as important as failures.
 
@@ -2198,12 +2212,12 @@ retry/recovery
 success
 ```
 
-ADR-009 point 11 lists the lifecycle events of version 1: startup, graceful shutdown, job transitions and realtime connection events. It names no entry for recovery after a dependency failure. What each example is in version 1:
+ADR-009 point 11 lists the lifecycle events of version 1: startup, graceful shutdown, job transitions and realtime connection events. It names no entry for recovery after a dependency failure, and the amended point 11 states that version 1 has no database recovery entry and no `dependency.recovered`, because there is one dependency. What each example is in version 1:
 
 | Example | Counterpart in version 1 | Status |
 | --- | --- | --- |
-| `database.recovered` | Readiness is stateless: each `GET /health/ready` runs `SELECT 1` (`apps/api/src/services/health.service.ts`) and nothing remembers the previous answer. A recovery entry needs that memory, and no ADR adds it | Not decided (pending user decision, B3) |
-| `dependency.recovered` | PostgreSQL is the only dependency (§57), so this name would repeat `database.recovered` | Not decided; no separate event while there is one dependency |
+| `database.recovered` | Readiness is stateless: each `GET /health/ready` runs `SELECT 1` (`apps/api/src/services/health.service.ts`) and nothing remembers the previous answer. A recovery entry needs that memory, which is a poller: there is no entry in v1 (ADR-009 point 11 and Deferred detail) | `Deferred` (B7); reconsidered when the API healthcheck exists |
+| `dependency.recovered` | PostgreSQL is the only dependency (§57), so this name would repeat `database.recovered` | Not adopted in v1 (ADR-009 point 11) |
 | `realtime.reconnected` | For the server a reconnect is a new connection with a new `connectionId` (ADR-009 point 5), logged as a connection event (ADR-009 point 11); linking it to the earlier connection is not decided. The client exposes its reconnect attempts through its diagnostics (`08-realtime-spec.md` §58) | Server entry `Planned (B5)`; client diagnostics `Planned (FE)`; the name is not decided (`08-realtime-spec.md` §58) |
 | `job.retry` | A retry sends the job back to `QUEUED` with `attempt` + 1, on request through `POST /api/v1/jobs/:jobId/retry` (ADR-008 points 6 and 9); no automatic retry is decided. It is a job transition, so ADR-009 point 11 covers it | Entry `Planned (B4)`; working name (§43) |
 | Startup recovery of jobs (not in the list) | `PROCESSING` -> `FAILED` (`INTERRUPTED`) and `QUEUED` resumed on startup (ADR-008 point 5) | `Planned (B4)`; name open (§43) |
@@ -2213,9 +2227,9 @@ Code vs ADR:
 
 - No code emits any of these names; there is no logger yet (§1).
 - The five names above were examples, not ADR names (§8). Only the job entries are covered by a decision in kind (ADR-009 point 11); their names are working names until B4 (§43).
-- Recovery is implicit today: the failure lines stop and the next readiness call returns 200 (§57). No entry says that the database came back.
-- A job's lifecycle can be followed through the entries that share its `jobId` (§10): `job.failed`, the retry entry, `job.started`, `job.completed`. Whether those entries carry `attempt` is open (§43, B4). For the database and for a realtime connection the failure-to-success chain stays incomplete until the decisions above.
-- Pending user decision (B3): whether a database recovery entry exists, and under which name.
+- Recovery is implicit today: the failure lines stop and the next readiness call returns 200 (§57). No entry says that the database came back, and none is added in v1.
+- A job's lifecycle can be followed through the entries that share its `jobId` (§10): `job.failed`, the retry entry, `job.started`, `job.completed`. Whether those entries carry `attempt` is open (§43, B4). For the database the failure-to-success chain stays incomplete in v1 by decision, and for a realtime connection until the name of the reconnect entry is decided (`08-realtime-spec.md` §58).
+- A database recovery entry (and `dependency.recovered`) needs a poller, because readiness is stateless. It is reconsidered when the API healthcheck exists (B7; ADR-009 Deferred detail).
 
 ---
 
@@ -2271,14 +2285,14 @@ Where each group stands:
 | Logging | No logger and no log assertions | `Planned (B3)`: unit tests for redaction and event names, and an integration test that a request's `requestId` appears in its log entries, using a capturing logger at `info` (ADR-009 point 13 and Deferred detail) |
 | Errors | Route tests assert error codes, and the 404 test asserts `requestId` in the body (`apps/api/src/app.test.ts`). No test covers the 500 `INTERNAL_ERROR` response, the `request.failed` line or the `X-Request-ID` header | Logging of unexpected errors by category `Planned (B3)` (ADR-009 point 6); ADR-009 point 13 does not name error-handler tests, so assigning them is an open detail (B3) |
 | Metrics | None | `Deferred` (ADR-009 point 10) |
-| Health | No test covers `GET /health` or `GET /health/ready` | `Planned (B0)` as route tests (NFR-051, §22) |
+| Health | No test covers `GET /health` or `GET /health/ready` | `Planned (B0)` as a health route test in the B0 set (ADR-001 point 8, ADR-009 point 13; NFR-051, §22) |
 | Realtime | None | Server `Planned (B5)`, client `Planned (FE)` (`08-realtime-spec.md` §59) |
 | Demo | None | `Deferred` with the demo specifics, including failures and reset (ADR-010 point 6); tooling waits for the frontend-stage ADR (ADR-006 point 11) |
 
 Code vs ADR:
 
 - The tooling exists: Vitest and supertest run the `apps/api` route tests (`Implemented`).
-- NFR-051 is `Implemented` but no test covers the health routes. ADR-001 point 8 lists route tests for analytics, positions, assets and market in B0, not health. Carrying the health route tests into the B0 scope in `BACKEND-ROADMAP.md` needs user confirmation (raised in §22).
+- NFR-051 is `Implemented` but no test covers the health routes today. ADR-001 point 8 (amended 2026-10-07) adds a health route test, covering `GET /health` and `GET /health/ready`, to the B0 route-test set, and ADR-009 point 13 points to it. Reflecting it in the B0 scope of `BACKEND-ROADMAP.md` belongs to that document's alignment (T5.3).
 - Under `NODE_ENV=test` the log level is `silent` (ADR-009 point 7), so a test that asserts log content injects its own capturing logger.
 - "Metric labels remain bounded" is `Deferred` with the metrics; the cardinality rules of §71 apply if metrics are ever built.
 
@@ -2311,7 +2325,7 @@ Tests should avoid depending on wall-clock timing when possible.
 | Request ID generation | `apps/api/src/middleware/request-id.ts` has no test. The B3 integration test for `requestId` in log entries exercises it (ADR-009 point 13) | `Implemented`; test `Planned (B3)` |
 | Metric counters | No metrics | `Deferred` (ADR-009 point 10) |
 | Timing helpers | Request duration comes from `pino-http` (§26); the shape of a generic timer is open | `Planned (B3)`; shape open |
-| Health-check aggregation | One dependency, so nothing aggregates (§57). The readiness handler is covered by the health route tests (§59) | `Planned (B0)` as route tests |
+| Health-check aggregation | One dependency, so nothing aggregates (§57). The readiness handler is covered by the health route test of the B0 set (ADR-001 point 8, §59) | `Planned (B0)` as route tests |
 | Demo observability events | Demo event names wait for the demo ADR (ADR-010 point 6) | `Deferred` |
 
 Code vs ADR:
@@ -2351,7 +2365,7 @@ Examples:
 | Successful request emits the expected event | Request logs do not exist | `http.request.completed` `Planned (B3)` (ADR-009 points 2-3 and 13) |
 | Failed request includes the request ID | The response body carries it, asserted for the 404 case only. Log lines carry it only where the two `console` lines add it by hand | Response side `Implemented`; log side `Planned (B3)` (ADR-009 points 5 and 13) |
 | Database failure produces the correct error classification | A database failure on a normal request returns 500 `INTERNAL_ERROR` | 503 `DEPENDENCY_ERROR` `Planned (B0)` (ADR-002 point 10); log classification `Planned (B3)` |
-| Health endpoint reports the database state | Behavior `Implemented` (§23); no test | `Planned (B0)` (§59) |
+| Health endpoint reports the database state | Behavior `Implemented` (§23); no test | `Planned (B0)` as the health route test (ADR-001 point 8, §59) |
 
 Code vs ADR:
 
@@ -2416,7 +2430,7 @@ The decided workflow is one GitHub Actions workflow on pushes and pull requests 
 | Linting passes | `pnpm lint` | `Planned (B0)` |
 | Type checking passes | `pnpm typecheck` | `Planned (B0)` |
 | Production builds succeed | `pnpm build` proves the packages compile from a clean checkout; running the built API is B7 (ADR-006 point 11) | `Planned (B0)` |
-| Observability code adds no unsafe dependency | ADR-006 points 10-11 define no audit or license step. The dependencies are `pino`, `pino-http` and `pino-pretty` (ADR-009 point 2), installed from the lockfile | Not decided (pending user decision) |
+| Observability code adds no unsafe dependency | No audit or license step in v1 (ADR-009 point 2, NFR-070; ADR-006 points 10-11 define none). The dependencies are `pino`, `pino-http` and `pino-pretty` (ADR-009 point 2), installed from the lockfile | Not adopted in v1 |
 | Logging configuration is valid | `apps/api/src/config/env.ts` validates the environment at startup and the process exits on invalid values; `LOG_LEVEL` joins it in B3 (§38). No dedicated CI step is decided | `Planned (B3)` |
 
 Code vs ADR:
@@ -2429,7 +2443,7 @@ Code vs ADR:
 
 # 64. Failure Injection
 
-**Status:** demo failure injection `Deferred` (ADR-010 point 6); test fault injection `Planned (FE)` (`08-realtime-spec.md` §43); event names not decided (below)
+**Status:** demo failure injection `Deferred` (ADR-010 point 6); test fault injection `Planned (FE)` (`08-realtime-spec.md` §43); `http.request.failed` `Planned (B3)` (ADR-009 point 6); realtime event names not decided (below)
 
 The demo system should reuse the observability infrastructure to make simulated failures visible.
 
@@ -2438,7 +2452,7 @@ Examples:
 ```text
 API failure
    ↓
-request.failed
+http.request.failed
    ↓
 error surfaced
    ↓
@@ -2459,7 +2473,7 @@ Code vs ADR:
 
 - "The same observability infrastructure" is the `Logger` port (ADR-009 point 1). The demo supplies the browser-console adapter, `Planned (FE)`.
 - Scripted failures, latency and network changes are demo specifics, `Deferred` to the frontend-stage demo ADR (ADR-010 point 6). Faults in client tests are injected at the transport port; failure-injection code is demo-only or test-only and never reaches the API build (NFR-058, `08-realtime-spec.md` §43).
-- `request.failed` is the name of the unexpected-error line today (§1); its name under the B3 logger is open (§8). `realtime.disconnected` and `realtime.reconnected` are not decided (§58, `08-realtime-spec.md` §58).
+- `request.failed` is the name of the unexpected-error line today (§1); under the B3 logger it is `http.request.failed` (ADR-009 point 6, §8), as the example above shows. `realtime.disconnected` and `realtime.reconnected` are not decided (§58, `08-realtime-spec.md` §58).
 - A real API failure is reproducible today only by stopping PostgreSQL, which makes `GET /health/ready` return 503 and normal requests return 500 (§57).
 
 ---
@@ -2528,7 +2542,7 @@ What each step is in version 1:
 | Step | Version 1 counterpart | Status |
 | --- | --- | --- |
 | 1. Show the product | The web app | `Planned (FE)` |
-| 2. Open developer diagnostics | A diagnostic mode is not decided (§39). Until then the request lifecycle is read in the API's stdout | Not decided; stdout `Planned (B3)` |
+| 2. Open developer diagnostics | A diagnostic mode is deferred to the frontend-stage ADR (ADR-009 point 12, §39). Until then the request lifecycle is read in the API's stdout | Mode `Deferred`; stdout `Planned (B3)` |
 | 3. Perform an operation | `requestId` on every response and error body is `Implemented`. `durationMs` and `result` come from `http.request.completed`, `Planned (B3)`. A generic `operation` field is not an ADR-009 field (§7, §10) | Mixed: `requestId` `Implemented`; the rest `Planned (B3)` |
 | 4. Inject a failure | A controlled demo failure is a demo specific | `Deferred` (ADR-010 point 6) |
 | 5. Inspect recovery | The demo failure is `Deferred`. A real retry-and-recovery chain exists for a CSV import job: `FAILED`, retry, `COMPLETED` (§58) | Demo `Deferred`; job chain `Planned (B4)` |
@@ -2562,7 +2576,7 @@ The repository should document:
 | How to start the application | `pnpm --filter @trading/api dev` runs `tsx watch` (`apps/api/package.json`). `README.md` documents setup and the local database, not the API start | Command `Implemented`; not documented |
 | Where logs appear | The stdout of the API process (ADR-009 point 3); container output under the Compose `full` profile (ADR-006 point 4, B7) | `Planned (B3)` |
 | How to change the log level | `LOG_LEVEL` (ADR-009 point 7, §38) | `Planned (B3)` |
-| How to enable debug mode | `LOG_LEVEL=debug`, already the development default. A separate payload debug mode is not decided (§28) | `Planned (B3)`; payload mode not decided |
+| How to enable debug mode | `LOG_LEVEL=debug`, already the development default; `ENABLE_DEBUG_LOGGING` is not adopted (ADR-009 point 2). A development realtime debug mode is deferred to the frontend-stage ADR (ADR-009 point 12, §28) | `Planned (B3)`; realtime debug mode `Deferred` |
 | How to inspect health | `GET /health` and `GET /health/ready`, specified in `07-api-spec.md` §30 | `Implemented`; not in `README.md` |
 | How to inspect metrics | There are none in version 1 | `Deferred` (ADR-009 point 10) |
 | How to simulate failures | Demo failures are `Deferred` (ADR-010 point 6); client test faults are `Planned (FE)` (`08-realtime-spec.md` §43). On the API, stopping PostgreSQL makes readiness return 503 (§57) | Mixed, as listed |
@@ -2621,10 +2635,10 @@ LOG_FORMAT
 ENABLE_DEBUG_LOGGING
 ENABLE_METRICS
 ENABLE_DEV_DIAGNOSTICS
-SLOW_OPERATION_THRESHOLD_MS
+SLOW_REQUEST_THRESHOLD_MS
 ```
 
-The exact variables should be finalized during implementation.
+The version 1 set is decided in the table below (ADR-009 points 2, 7 and 8); the variables not adopted stay in the list only as conceptual examples.
 
 Secrets must never be stored in source control.
 
@@ -2632,12 +2646,12 @@ What each variable is in version 1:
 
 | Variable | Version 1 | Status |
 | --- | --- | --- |
-| `LOG_LEVEL` | `debug` in development, `info` in production, `silent` in tests (ADR-009 point 7, §38). Not in `apps/api/src/config/env.ts`; whether it is validated there and whether its default follows `NODE_ENV` are open (§38). `04-tech-stack.md` and `14-deployment-spec.md` already list it | `Planned (B3)` |
-| `LOG_FORMAT` | No ADR adopts it. The format follows the environment: JSON lines on stdout, `pino-pretty` in development only (ADR-009 points 2-3). How the pretty output is selected is open | Not decided (B3) |
-| `ENABLE_DEBUG_LOGGING` | Debug output is `LOG_LEVEL=debug` (ADR-009 point 7, §38). A separate variable exists only if a payload debug mode is decided (§28) | Not decided |
+| `LOG_LEVEL` | The only logging-format or verbosity variable (ADR-009 point 7, amended 2026-10-07): `debug` in development, `info` in production, `silent` in tests (§38). Not in `apps/api/src/config/env.ts`; whether it is validated there and whether its default follows `NODE_ENV` are open (§38). `04-tech-stack.md` and `14-deployment-spec.md` already list it | `Planned (B3)` |
+| `LOG_FORMAT` | Not adopted (ADR-009 point 2). The format follows the environment: JSON lines on stdout, `pino-pretty` in development only (ADR-009 points 2-3). How the pretty output is selected is an implementation detail (B3) | Not adopted |
+| `ENABLE_DEBUG_LOGGING` | Not adopted (ADR-009 point 2). Debug output is `LOG_LEVEL=debug` (ADR-009 point 7, §38) | Not adopted |
 | `ENABLE_METRICS` | There are no metrics in version 1 | `Deferred` (ADR-009 point 10) |
-| `ENABLE_DEV_DIAGNOSTICS` | A development diagnostic mode is not decided (§39) | Not decided (frontend stage) |
-| `SLOW_OPERATION_THRESHOLD_MS` | The one decided threshold is for HTTP requests, default 500 ms, configurable (ADR-009 point 8, §52). The analytics series reconstruction is timed separately, and whether it has its own threshold is open (§52). The variable name is not decided | Threshold `Planned (B3)`; name not decided (pending user decision) |
+| `ENABLE_DEV_DIAGNOSTICS` | Not adopted (ADR-009 point 2). A development diagnostic mode is deferred to the frontend-stage ADR (ADR-009 point 12, §39) | Not adopted |
+| `SLOW_REQUEST_THRESHOLD_MS` | The slow-request threshold for HTTP requests only, default 500 ms, configurable (ADR-009 point 8, amended 2026-10-07, §52). It replaces the earlier working name `SLOW_OPERATION_THRESHOLD_MS`. The analytics series reconstruction is timed separately, and whether it has its own threshold is open (§52) | `Planned (B3)` |
 
 Code vs ADR:
 
@@ -2758,7 +2772,7 @@ Important diagnostics should be reproducible locally.
 How version 1 meets the list:
 
 - Logging everything and raw objects: `LOG_LEVEL` keeps `debug` out of production (ADR-009 point 7), and payloads with user data are never logged (§54). The sampling of high-frequency events is open (§55).
-- Secrets: the redaction list of ADR-009 point 4 is enforced by tests, `Planned (B3)`. The `message` of the `request.failed` line is not filtered today (§11).
+- Secrets: the redaction list of ADR-009 point 4 is enforced by tests, `Planned (B3)`. The `message` of the `request.failed` line is not filtered today, and the `message` of an unexpected error stays unfiltered in v1 (ADR-009 point 4, §11).
 - User IDs and request IDs as metric labels: there are no metrics (ADR-009 point 10). `userId` and `requestId` are log fields.
 - Console logging everywhere: the API writes `console` lines today (§1). The `Logger` port replaces them in B3 (ADR-009 point 1). No lint rule restricts `console` in `eslint.config.js`, and none is decided.
 - Provider lock-in: the `Logger` port (ADR-009 point 1) and stdout logs (§33).
@@ -2777,10 +2791,10 @@ How version 1 meets the list:
 | Features | Meaningful user-flow events | Frontend events are not defined | `Planned (FE)`; events not decided |
 | Application | Operation lifecycle and business-context diagnostics | Logs through the `Logger` port in `@trading/application` (ADR-009 point 1). The package does not exist yet (ADR-001, B0) | `Planned (B3)`, after the B0 layer |
 | Domain | Domain events where useful | No ADR defines domain events, and the `Logger` port sits in the application layer, so the domain package logs nothing | Not decided |
-| Infrastructure | Dependency errors and performance | Dependency errors reach the error handler; no query timing (§21) | Query timing not decided (B3) |
+| Infrastructure | Dependency errors and performance | Dependency errors reach the error handler; no query timing (§21) | Dependency error logging `Planned (B3)`; query timing `Deferred` (ADR-009 point 8) |
 | API | Request correlation, status, duration | `requestId` middleware (`Implemented`); `http.request.completed` with `durationMs` (ADR-009 points 2-3) | Correlation `Implemented`; request logs `Planned (B3)` |
 | Realtime | Connection/event lifecycle | Connection entries with `connectionId` (ADR-009 points 5 and 11) | `Planned (B5)` |
-| Database | Connectivity and operation diagnostics | Readiness `SELECT 1` (`Implemented`); no operation diagnostics (§21) | Connectivity `Implemented`; operations not decided |
+| Database | Connectivity and operation diagnostics | Readiness `SELECT 1` (`Implemented`); no operation diagnostics (§21) | Connectivity `Implemented`; operation timing and query logging `Deferred` (ADR-009 point 8) |
 | Demo infrastructure | Simulation lifecycle and failures | Browser-console adapter; lifecycle and failure names wait for the demo ADR (§29, §56) | `Planned (FE)`; names `Deferred` |
 | Observability layer | Logging, metrics, sanitization, correlation | `Logger` port, pino adapter and redaction; metrics are `Deferred` | `Planned (B3)`; metrics `Deferred` |
 
@@ -2848,7 +2862,7 @@ ADR-009 point 12 splits this checklist because the backend block cannot close ag
 - [x] Backend errors are centrally handled. (`Implemented`, `apps/api/src/middleware/error-handler.ts`)
 - [ ] Error categories are standardized. (B3 for log categories; B0 for the response mapping of application errors)
 - [ ] Frontend runtime errors have boundaries. (FE)
-- [ ] Unexpected errors are observable. (B3; the `request.failed` line exists today)
+- [ ] Unexpected errors are observable. (B3 as `http.request.failed`; the `request.failed` line exists today)
 - [ ] User-facing errors remain safe. (B0 and B3; the generic 500 body is `Implemented`)
 
 ### Metrics
@@ -2877,7 +2891,7 @@ ADR-009 point 12 splits this checklist because the backend block cannot close ag
 - [ ] Connections are observable. (B5 on the server, FE on the client)
 - [ ] Reconnects are observable. (B5 connection entry, FE client diagnostics; the name is not decided, §58)
 - [ ] Realtime errors are observable. (B5, FE)
-- [ ] Debug logging can be controlled. (B5 through `LOG_LEVEL`; a payload debug mode is not decided, §28)
+- [ ] Debug logging can be controlled. (B5 through `LOG_LEVEL`; a development realtime debug mode is `Deferred` to the frontend-stage ADR, ADR-009 point 12, §28)
 
 ### Demo
 
@@ -2892,7 +2906,7 @@ ADR-009 point 12 splits this checklist because the backend block cannot close ag
 - [ ] Observability utilities have unit tests. (B3)
 - [ ] Request correlation has integration coverage. (B3)
 - [ ] Error handling has integration coverage. (B3; assignment is an open detail, §59)
-- [ ] Health checks are tested. (B0, §59)
+- [ ] Health checks are tested. (B0, ADR-001 point 8, §59)
 - [ ] Critical demo failure scenarios are tested. (`Deferred`)
 
 ### Documentation
@@ -2905,7 +2919,7 @@ ADR-009 point 12 splits this checklist because the backend block cannot close ag
 
 Code vs ADR:
 
-- The checked items are the ones whose behavior exists in `apps/api` today. They are checked because the code does what the item says, not because a test covers them: no test covers the health routes or the error handler (§59).
+- The checked items are the ones whose behavior exists in `apps/api` today. They are checked because the code does what the item says, not because a test covers them: no test covers the health routes or the error handler (§59). The health route test is part of the B0 set (ADR-001 point 8).
 - ADR-009 point 12 fixes the split but not the assignment of each item; the tags are derived from the sections above and follow their statuses.
 
 ---
@@ -2935,11 +2949,11 @@ How each question is answered in version 1:
 | --- | --- | --- |
 | 1. What operation failed? | The `event` name and the request entry of the failing request (ADR-009 point 3). Route fields beyond ADR-009 point 3 are open (§7) | `Planned (B3)` |
 | 2. Which request initiated it? | `requestId` in the response and error body; on every log line | Response `Implemented`; logs `Planned (B3)` (ADR-009 point 5) |
-| 3. Which application layer failed? | The stack trace of internal errors (ADR-009 point 6). A layer or module field is not an ADR-009 field (§7) | `Planned (B3)`; layer field not decided |
-| 4. What type of error occurred? | The `code` of the error body, and `errorCategory` on the log entry (ADR-009 point 3). `errorCategory` against `errorName` is a pending decision (§7) | Body `Implemented`; log `Planned (B3)` |
-| 5. Was the failure expected or unexpected? | The level by category: `warn` for validation and authentication, `info` for not-found and conflict, `error` with a stack for internal errors (ADR-009 point 6). Only unexpected errors are logged today | `Planned (B3)` |
+| 3. Which application layer failed? | The stack trace of internal errors (ADR-009 point 6). A layer or module field (`source`, `module`) is not adopted in v1 (ADR-009 point 3, §7) | `Planned (B3)`; layer field not adopted |
+| 4. What type of error occurred? | The `code` of the error body, and `errorCategory` on the log entry, which carries the same `AppErrorCode` value; `errorName` appears only on the unexpected-error line (ADR-009 point 3, §7) | Body `Implemented`; log `Planned (B3)` |
+| 5. Was the failure expected or unexpected? | The level by category: `warn` for validation, authentication, `FORBIDDEN` and `RATE_LIMITED`, `info` for not-found and conflict, `error` with a stack for internal errors and `DEPENDENCY_ERROR` (ADR-009 point 6). Only unexpected errors are logged today | `Planned (B3)` |
 | 6. Was a retry attempted? | Job retry and its `attempt` (ADR-008 point 6); client reconnect attempts (`08-realtime-spec.md` §58); the HTTP client retry policy waits for the frontend-stage ADR (ADR-006 point 11) | `Planned (B4)` / `Planned (FE)` |
-| 7. Did the system recover? | Job entries sharing a `jobId` (§58). Database and realtime recovery entries are not decided | `Planned (B4)`; the rest not decided |
+| 7. Did the system recover? | Job entries sharing a `jobId` (§58). There is no database recovery entry in v1 (ADR-009 point 11); the name of the realtime reconnect entry is not decided (§58) | Jobs `Planned (B4)`; database recovery entry `Deferred` (B7); reconnect name not decided |
 | 8. What was the approximate operation duration? | `durationMs` on `http.request.completed`; the series reconstruction is timed separately (ADR-009 point 8) | `Planned (B3)` |
 | 9. Was a dependency involved? | PostgreSQL is the only dependency. Readiness reports it; a request that fails because of it returns 503 `DEPENDENCY_ERROR` (ADR-002 point 10) | Readiness `Implemented`; 503 `Planned (B0)`; log classification `Planned (B3)` |
 | 10. Can the same failure be reproduced locally? | The project is local only (ADR-006), the database can be reseeded (`README.md`), the simulator is seeded (ADR-007 point 7, `Planned (B5)`), and PostgreSQL can be stopped. Scripted demo failures are `Deferred` (ADR-010 point 6) | Local reproduction `Implemented`; scripted failures `Deferred` |
@@ -2947,7 +2961,8 @@ How each question is answered in version 1:
 Code vs ADR:
 
 - Today a developer can answer questions 2 (from the response only), 4 (from the response code) and 9 (from readiness); the other seven wait for the B3 logger.
-- Question 5: ADR-009 point 6 leaves the log levels of `FORBIDDEN`, `RATE_LIMITED` and `DEPENDENCY_ERROR` unassigned (pending decision, §6.2).
+- Question 5: ADR-009 point 6 (amended 2026-10-07) assigns `FORBIDDEN` and `RATE_LIMITED` to `warn` and `DEPENDENCY_ERROR` to `error` with the stack (§6.2).
+- Question 7: for the database the chain stays incomplete in v1 by decision (§58).
 
 ---
 
@@ -2979,7 +2994,7 @@ For the Trading Analytics Platform, observability is part of the engineering sto
 
 It demonstrates that the system was designed not only to work, but also to be **understood, debugged, measured, tested and evolved**.
 
-Code vs ADR: the chain in the diagram is covered unevenly today. `Request` has its `requestId`; `Operation`, `Dependency` and `Result` need the B3 logger; `Recovery` is incomplete until the decisions of §58.
+Code vs ADR: the chain in the diagram is covered unevenly today. `Request` has its `requestId`; `Operation`, `Dependency` and `Result` need the B3 logger; `Recovery` is incomplete for the database in v1 by decision (ADR-009 point 11, §58), and for a realtime connection until the name of the reconnect entry is decided.
 
 ---
 
@@ -3016,4 +3031,4 @@ The next document, `14-deployment-spec.md`, defines how the application is packa
 
 **Status:** All sections reconciled with the code and ADRs on 2026-10-07
 
-This document defines the observability architecture for version 1 as decided in ADR-009: structured, correlated and safe backend logging in B3, metrics `Deferred`, and the frontend and demo parts in the frontend stage. Where it differs from ADR-009, the ADR wins. Event names marked as working names, log fields beyond ADR-009 point 3, thresholds other than the slow-request default, and the pending decisions listed per section are specified in the block that implements them (B0, B3, B4, B5) or in the frontend-stage ADRs. Metric names and exporters apply only if the metrics decision is reopened (ADR-009 point 10).
+This document defines the observability architecture for version 1 as decided in ADR-009: structured, correlated and safe backend logging in B3, metrics `Deferred`, and the frontend and demo parts in the frontend stage. Where it differs from ADR-009, the ADR wins. The decisions approved on 2026-10-07 (ADR-009 points 2-13, ADR-006 point 12, ADR-001 point 8) are applied throughout. Event names marked as working names, the levels of lifecycle, simulator and shutdown entries, thresholds other than the slow-request default, and the other open details listed per section are specified in the block that implements them (B0, B3, B4, B5, B7) or in the frontend-stage and demo ADRs. Metric names and exporters apply only if the metrics decision is reopened (ADR-009 point 10).
