@@ -3,7 +3,7 @@
 **Project:** Trading Analytics Platform  
 **Document:** Deployment Specification  
 **Version:** 1.0  
-**Status:** Sections 1-20 reconciled with the code and the ADRs on 2026-10-07 (model and targets from ADR-006; graceful shutdown from ADR-006 point 12); each carries a status and the details it leaves open. Sections 21-96 are reconciled in later slices.  
+**Status:** All sections reconciled with the code and ADRs on 2026-10-07 (model and targets from ADR-006; graceful shutdown from ADR-006 point 12); open details and pending decisions are recorded per section  
 **Previous document:** `13-observability-spec.md`  
 **Next document:** `15-implementation-plan.md`
 
@@ -594,7 +594,7 @@ Decided (ADR-006 point 12): on `SIGTERM` or `SIGINT`, the API:
 | Shutdown signal: `SIGTERM` and `SIGINT` | `Planned (B3)` |
 | Stop accepting new work: server stops accepting connections; readiness 503 | `Planned (B3)` |
 | Stop new background jobs | `Planned (B4)`: joins the sequence when the job runner exists (ADR-006, Deferred detail) |
-| Handle realtime connections | `Planned (B5)`: joins the sequence when the realtime server exists (ADR-006, Deferred detail); the close code and message are not decided |
+| Handle realtime connections | `Planned (B5)`: joins the sequence when the realtime server exists (ADR-006, Deferred detail); connections close with code `1001`, server going away (ADR-007 point 15) |
 | Finish or cancel active operations: drain in-flight requests, 10 s timeout | `Planned (B3)` |
 | Close database pool: Prisma closed | `Planned (B3)` |
 | Flush critical diagnostics | No separate step is decided: ADR-009 point 3 writes one JSON line per event to stdout, with no log files and no buffered transport in production |
@@ -605,7 +605,7 @@ Code vs ADR:
 - `apps/api/src/index.ts` discards the value `app.listen` returns and registers no signal handler, so a signal ends the process at once and drops in-flight requests. Prisma is never disconnected. The original text said "appropriate signals"; ADR-006 point 12 names `SIGTERM` and `SIGINT`.
 - Open (B3): what happens when the 10-second drain expires, and the exit code. Recommendation: close the remaining connections, log it in `app.shutdown.completed`, and exit with code 1 on a timeout and 0 otherwise.
 - Open (B3): the log levels of the two shutdown entries (ADR-009, Deferred detail).
-- Open (B4, B5): what stopping jobs means for a `PROCESSING` import (ADR-008 point 5 marks an interrupted job `FAILED` on the next startup) and how realtime connections are closed.
+- Open (B4, B5): what stopping jobs means for a `PROCESSING` import (ADR-008 point 5 marks an interrupted job `FAILED` on the next startup) and where the realtime close sits in the sequence (the close code is `1001`, ADR-007 point 15).
 
 ---
 
@@ -2413,7 +2413,7 @@ Code vs ADR:
 - No WebSocket code exists: `apps/api` has no `ws` dependency. The local development endpoint is therefore a decided shape, not a running URL.
 - Open (B5), already recorded in §31: the endpoint path and whether the socket shares the HTTP port. Recommendation: the same server and port (`PORT`, default 7001) with a fixed path, so the full stack publishes one port.
 - Open (B5): the maximum inbound message size (`maxPayload`, §65); which connection closes when the per-user cap is hit, the new one or the oldest; the close code for a missed-pong close (`08-realtime-spec.md` §7); whether the upgrade request's `Origin` is checked against `CORS_ORIGIN` (`09-security-spec.md` §31).
-- ADR-007 point 15 assigns `1001` (server going away) to a server that is shutting down. The shutdown table in §16 says the close code of that step is not decided. The ADR governs; the realtime step of the shutdown sequence joins in B5 with that code (ADR-006, Deferred detail).
+- ADR-007 point 15 assigns `1001` (server going away) to a server that is shutting down. §16 records it for the realtime step, which joins the shutdown sequence in B5 (ADR-006, Deferred detail).
 - The demo has no socket: an in-process adapter implements the same client port (ADR-007 point 13, `Planned (FE)`).
 
 ---
@@ -2731,6 +2731,10 @@ Code vs ADR:
 
 # 81. Deployment Testing Matrix
 
+**Status:** `Reference` for the matrix; per row status in the table below
+
+Columns follow the environments of §3: Local is a developer machine with the default Compose profile, CI is the GitHub Actions workflow of §41, Demo is the static build of `apps/web`, and Production-like is the local `full` Compose profile (ADR-006 points 1 and 4).
+
 | Test | Local | CI | Demo | Production-like |
 |---|---:|---:|---:|---:|
 | Unit | ✓ | ✓ | - | - |
@@ -2743,9 +2747,31 @@ Code vs ADR:
 | Production build | ✓ | ✓ | ✓ | ✓ |
 | Smoke tests | Optional | Optional | ✓ | ✓ |
 
+What each row is in version 1:
+
+| Test | Today or decided | Status |
+|---|---|---|
+| Unit | The domain suite runs with `vitest` (`packages/domain`). Application-service tests with in-memory fakes join with the application layer (ADR-001 point 7) | Domain `Implemented`; application services `Planned (B0)`; in CI `Planned (B0)` |
+| Integration | The API route tests (`apps/api/src/routes/*.routes.test.ts`, supertest) and the `@trading/database` suite run against the test database (`.env.test.local`). `analytics`, `positions`, `assets` and `market` have no route test file yet (`10-testing-strategy.md` §59). In CI the database is a PostgreSQL service container (§42). The demo has no backend, and no integration suite runs against the `full` stack: the smoke test (§49) is its check | Local partly `Implemented`; missing route tests `Planned (B0)` (ADR-001 point 8); in CI `Planned (B0)`; production-like through the smoke test `Planned (B7)` |
+| E2E | No frontend code exists. The component runner, Playwright and the accessibility tool are chosen in the frontend-stage ADR and join the CI workflow once frontend code exists (ADR-006 point 11). The critical flows are in `10-testing-strategy.md` §33-34. The `full` stack has no frontend container (§7), so what an E2E run targets there is open | `Planned (FE)`; tools `Deferred`; production-like open (B7) |
+| Migrations | `db:migrate` (`prisma migrate dev`) locally and `db:test:migrate` (`prisma migrate deploy`) for the test database, both in `packages/database/package.json`. CI migrates its service container before the suites (§42). The `full` profile runs `prisma migrate deploy` at startup (ADR-006 point 5). The demo has no database | Local `Implemented`; CI `Planned (B0)`; production-like `Planned (B7)`; demo not applicable |
+| Health | `GET /health` and `GET /health/ready` (§50). No route test exists yet (ADR-001 point 8). The API container healthcheck is §51. The demo is a static build with no health endpoint (`13-observability-spec.md` §65) | Routes `Implemented`; route test `Planned (B0)`; container healthcheck `Planned (B7)`; demo not applicable |
+| Realtime | Server tests with the WebSocket server (ADR-007); client states and reconnect in the web app. The demo uses the in-process adapter behind the same client port (ADR-007 point 13) | Server `Planned (B5)`; client and demo `Planned (FE)` |
+| Demo simulation | One engine, `@trading/market-sim`, serves the API and the demo, with a seeded generator and an injected clock (ADR-007 point 7). The demo specifics wait for the frontend-stage ADR (ADR-010 point 6) | Engine `Planned (B5)`; demo `Planned (FE)` |
+| Production build | `pnpm build` runs `tsc --build` in each package and passes today, but its output does not run (ADR-006 context). CI runs `pnpm build` to prove a clean checkout compiles (ADR-006 point 11). Running `node dist/index.js` is B7. The web build of the demo is separate (§27) | Compile `Implemented`; in CI `Planned (B0)`; runnable `Planned (B7)`; web build `Planned (FE)` |
+| Smoke tests | The definition is open (§49). CI does not run them, because running the built API stays B7 (ADR-006 point 11) | Full stack `Planned (B7)`; demo `Planned (FE)` |
+
+Code vs ADR:
+
+- The matrix is the original. Four cells do not hold under ADR-006: E2E in Local and CI (no frontend code, tools `Deferred`), Integration and E2E in Production-like (no suite targets the `full` stack, and it has no frontend container), and Health in Demo (a static build has no endpoint). The ticks in the CI column mean the stage runs in the workflow of §41, which has no E2E, no smoke test and no coverage stage.
+- Production build in CI is a compile check only. "Production-like" is the author's machine, not a hosted environment (ADR-006 point 2), so no column runs against a deployed backend.
+- The matrix says nothing about the pull request gate; that is `10-testing-strategy.md` §54, which also lists no coverage threshold (ADR-006 point 11).
+
 ---
 
 # 82. Deployment Acceptance Criteria
+
+**Status:** `Reference`; per-criterion status below
 
 The architecture is acceptable when:
 
@@ -2764,67 +2790,104 @@ The architecture is acceptable when:
 13. Rollback considerations are documented.
 14. The architecture is not tied to one hosting vendor.
 
+| # | Status | Basis |
+|---|---|---|
+| 1 | Partly `Implemented` | `README.md` documents Compose, the seed and the reset; it does not document starting the API, the environment files or the health routes. Per-environment documentation is `Planned (B0)` (§11) and the repository documentation is T5.2 (§76) |
+| 2 | `Implemented` | `docker-compose.yml`: `postgres:18`, a named volume and a `pg_isready` healthcheck (§6, §30) |
+| 3 | `Implemented` | Committed Prisma migrations in `packages/database/prisma/migrations/`; applied from a clean checkout in CI `Planned (B0)` and at startup of the `full` profile `Planned (B7)` (§18) |
+| 4 | Backend compile `Implemented`; runnable backend `Planned (B7)`; frontend `Planned (FE)` | `pnpm build` compiles every package but the output does not run (ADR-006 point 3); `apps/web` has no `package.json` (§44) |
+| 5 | `Implemented` | `apps/api/src/config/env.ts` and the `.env*` files (§10-§12); `DATABASE_URL` is not validated there (`Planned (B7)`) |
+| 6 | `Implemented` by convention | `.env`, `.env.local` and `.env.*.local` are git-ignored and only `*.example` files are tracked; no scanner exists (§78) |
+| 7 | `Implemented`; shutdown behavior `Planned (B3)` | `GET /health` and `GET /health/ready` (NFR-051, §50); readiness returns 503 while shutting down (ADR-006 point 12) |
+| 8 | `Planned (B5)` locally; hosted `Deferred` | The supported environment is the local full stack, over `ws://` (§31, §34). Public WSS needs a hosted backend, which ADR-006 point 2 excludes |
+| 9 | `Planned (FE)` | The demo is a static build with no backend and no secrets (ADR-006 point 7); NFR-052 and NFR-067 |
+| 10 | `Planned (B0)` | The workflow of §41 installs from the lockfile; ADR-006 point 10 |
+| 11 | `Planned (B7)` | The `full` profile (ADR-006 point 4, §57); NFR-055 measures it by `docker compose --profile full up` passing the smoke test from a clean checkout |
+| 12 | `Planned (B3)` for logs; health `Implemented` | Request IDs are `Implemented`; structured logs, startup and shutdown entries are B3 (§52, §80) |
+| 13 | `Reference` | Forward-fix only (ADR-006 point 6, §47). "Documented" means that statement; no rollback procedure exists or is promised |
+| 14 | `Implemented` by absence | No hosting provider is named and no vendor-specific code exists in `apps/` or `packages/`; the demo sits under the author's portfolio site (§28, §87) |
+
+Code vs ADR:
+
+- Criterion 8 is satisfied only for the local stack. "The supported deployment environment" is the full stack of ADR-006 point 1; no other environment supports WebSockets, because none hosts a backend.
+- Criterion 13 changes meaning: the original asked for rollback considerations, and ADR-006 point 6 removes controlled rollback. The criterion holds by documenting that choice.
+- No criterion may be closed ahead of the block that delivers it. B0 closes 10, B3 closes 12 and the shutdown part of 7, B5 closes 8, B7 closes 4 and 11, and the frontend stage closes 4 and 9.
+- NFR-055 is the measurable form of criteria 3, 4, 10 and 11; NFR-024 cites the security checklist of §78; NFR-051 measures criterion 7 with health route tests that do not exist yet (`Planned (B0)`, ADR-001 point 8).
+
 ---
 
 # 83. Definition of Done
 
+**Status:** per item (tags below)
+
+Each item ends with its status and, where it is not built, the block or stage that delivers it. Checked items are those whose behavior exists, or that are decided, today. The checklist is not closed ahead of its blocks.
+
 ### Local
-- [ ] Docker setup implemented
-- [ ] PostgreSQL reproducible
-- [ ] frontend starts
-- [ ] backend starts
-- [ ] WebSockets work
-- [ ] environment setup documented
+- [ ] Docker setup implemented. (Partly: the `postgres` service `Implemented`; the `full` profile and the API Dockerfile `Planned (B7)`, §5, §6)
+- [x] PostgreSQL reproducible. (`Implemented`: `postgres:18`, named volume, healthcheck)
+- [ ] frontend starts. (`Planned (FE)`: no web code exists)
+- [x] backend starts. (`Implemented`: `pnpm --filter @trading/api dev`, §76)
+- [ ] WebSockets work. (`Planned (B5)`)
+- [ ] environment setup documented. (Partly: `.env.example` and `.env.test.example` are tracked; `README.md` does not cover starting the API (T5.2); per-environment documentation `Planned (B0)`, §11)
 
 ### Database
-- [ ] migration system implemented
-- [ ] seed process documented
-- [ ] reset process documented
-- [ ] database version pinned
+- [x] migration system implemented. (`Implemented`: Prisma Migrate, `packages/database/prisma/migrations/`, §18)
+- [x] seed process documented. (`Implemented`: `db:seed` in `README.md` and §20; it never runs automatically, ADR-006 point 5)
+- [x] reset process documented. (`Implemented`: `db:reset` in `README.md` and §21)
+- [x] database version pinned. (`Implemented` at major version: `postgres:18` in `docker-compose.yml`; the CI service container version is open (B0), §42)
 
 ### Build
-- [ ] frontend production build works
-- [ ] backend production build works
-- [ ] lockfile committed
-- [ ] runtime versions documented
+- [ ] frontend production build works. (`Planned (FE)`, §27)
+- [ ] backend production build works. (The compile `Implemented`; running the output `Planned (B7)`, §79)
+- [x] lockfile committed. (`Implemented`: `pnpm-lock.yaml`; `--frozen-lockfile` in CI `Planned (B0)`)
+- [ ] runtime versions documented. (Partly: `engines.node` is `>=22.0.0` and `packageManager` is pinned in `package.json`; no `.nvmrc`, an open decision (B0), §59)
 
 ### CI
-- [ ] lint passes
-- [ ] type checking passes
-- [ ] unit tests pass
-- [ ] integration tests pass
-- [ ] build passes
-- [ ] E2E strategy configured
+- [ ] lint passes. (`Planned (B0)`: `pnpm lint`, ADR-006 point 10)
+- [ ] type checking passes. (`Planned (B0)`: `pnpm typecheck`)
+- [ ] unit tests pass. (`Planned (B0)`: `pnpm test`, domain suite)
+- [ ] integration tests pass. (`Planned (B0)`: database and API suites against a PostgreSQL service container)
+- [ ] build passes. (`Planned (B0)`: `pnpm build`, ADR-006 point 11)
+- [ ] E2E strategy configured. (`Deferred`: tools are chosen in the frontend-stage ADR and join the workflow once frontend code exists, ADR-006 point 11)
 
 ### Deployment
-- [ ] frontend target defined
-- [ ] backend target defined
-- [ ] database target defined
-- [ ] secrets strategy documented
-- [ ] health checks available
-- [ ] smoke tests defined
+- [x] frontend target defined. (Defined: the static demo build under a subpath of the portfolio site, ADR-006 points 1 and 7; the publishing mechanism is open (FE), §45)
+- [x] backend target defined. (Defined: the local full stack, ADR-006 points 1 and 4; its container `Planned (B7)`)
+- [x] database target defined. (Defined: local PostgreSQL in Compose; managed PostgreSQL `Deferred`, ADR-006 point 2, §30)
+- [x] secrets strategy documented. (`Reference`: §13 and §78; no hosted secret store, ADR-006 point 2)
+- [x] health checks available. (`Implemented`, §50; the API container healthcheck `Planned (B7)`, §51)
+- [ ] smoke tests defined. (The outline is §49; the exact definition is open (B7))
 
 ### Realtime
-- [ ] endpoint configurable
-- [ ] WSS supported publicly
-- [ ] hosting requirements documented
-- [ ] reconnect behavior preserved
+- [ ] endpoint configurable. (`Planned (B5)`: the path and the client URL variable are not decided, §72, §14)
+- [ ] WSS supported publicly. (`Deferred`: no public backend, ADR-006 point 2)
+- [ ] hosting requirements documented. (`Deferred` with hosting; the local requirements are §31)
+- [ ] reconnect behavior preserved. (`Planned (FE)`: the client reconnect states, `08-realtime-spec.md`)
 
 ### Demo
-- [ ] no paid infrastructure required
-- [ ] infrastructure isolated
-- [ ] simulation follows `12-demo-mode-spec.md`
-- [ ] private infrastructure not exposed
+- [ ] no paid infrastructure required. (`Planned (FE)`: a static build with no backend, ADR-006 point 7; NFR-067)
+- [ ] infrastructure isolated. (`Planned (FE)`: no backend, no database and namespaced browser storage, §22-§24, §56)
+- [ ] simulation follows `12-demo-mode-spec.md`. (Engine `Planned (B5)` (ADR-007 point 7); demo `Planned (FE)`; the demo specifics wait for the frontend-stage ADR, ADR-010 point 6)
+- [ ] private infrastructure not exposed. (`Planned (FE)`: the build calls no backend and holds no secrets, ADR-006 point 7)
 
 ### Operations
-- [ ] graceful shutdown works
-- [ ] startup failures are observable
-- [ ] deployment verification documented
-- [ ] troubleshooting documented
+- [ ] graceful shutdown works. (`Planned (B3)` for the server and the database; jobs `Planned (B4)`; realtime `Planned (B5)`, §16)
+- [ ] startup failures are observable. (Partly: an invalid environment prints a message and exits with code 1 (`Implemented`); the structured startup entry `Planned (B3)`, §52)
+- [x] deployment verification documented. (`Reference`: §48; the automated check `Planned (B7)`)
+- [ ] troubleshooting documented. (Partly: §75; the developer workflow `Planned (B3)` and the `README.md` entries are pending (T5.2))
+
+Code vs ADR:
+
+- ADR-006 point 11 adds `pnpm format:check` as a CI check. The original CI list does not have it, and `docs:check` is in neither the original list nor the ADR (open, §41).
+- The list has no item for the runtime database role and the Postgres port binding (ADR-005 point 13, §6, §78), nor for the entries `app.shutdown.started` and `app.shutdown.completed` (ADR-006 point 12). They are tracked in those sections.
+- "Frontend target defined" and "backend target defined" are decisions, so they are checked even though nothing is built. They stay as written because the original asked for targets, not for deployments.
+- A hosted deployment would add items for hosting, TLS, secrets and a managed database; ADR-006 point 2 requires a new ADR first.
 
 ---
 
 # 84. Deployment Tradeoffs
+
+**Status:** `Reference`; the exclusions are ADR-006 and ADR-008 decisions
 
 The initial architecture intentionally does **not** require:
 
@@ -2841,9 +2904,25 @@ These may be appropriate in a larger system, but adding them here would increase
 
 The deployment should demonstrate sound engineering rather than infrastructure for its own sake.
 
+| Excluded | Why it holds in version 1 |
+|---|---|
+| Kubernetes, service meshes | One local API instance and no hosted backend (ADR-006 points 1 and 2, §67) |
+| Terraform | Nothing is provisioned: no host, no managed database (ADR-006 point 2); infrastructure as code is `Deferred` (§93) |
+| Distributed queues, dedicated worker fleets | Jobs run in the API process on a `jobs` table (ADR-008 point 4, §54) |
+| Dedicated observability clusters | One JSON line per event on stdout, and metrics are `Deferred` (ADR-009 points 3 and 10, §53) |
+| Multi-region deployment | No hosted backend (ADR-006 point 2) |
+| Autoscaling infrastructure | One instance; several need a new ADR (§67) |
+
+Code vs ADR:
+
+- The list matches ADR-006, ADR-008 and ADR-009, and NFR-070 (avoid artificial complexity). No exclusion is stronger than a decision: each reopens only through a new ADR.
+- The ADR also accepts costs, which this section should not hide: the full-stack experience exists only on the author's machine, and a broken build on `develop` becomes visible and must be fixed promptly (ADR-006, Consequences).
+
 ---
 
 # 85. Free / Low-Cost Strategy
+
+**Status:** `Reference`; version 1 has no recurring cost (NFR-052, NFR-067)
 
 The project should prioritize infrastructure that can run at no recurring cost during development and portfolio demonstration.
 
@@ -2866,9 +2945,22 @@ and:
 Current provider choice
 ```
 
+| Item | Version 1 |
+|---|---|
+| Architecture requirement | No paid service, no hosted backend and no managed database; the demo is a static build any free static host can serve (NFR-052, ADR-006 points 1 and 2) |
+| Current provider choice | None. The demo sits under the author's portfolio site, which this project does not control and no ADR names (§28). Backend and database hosting are `Deferred` (§29, §30) |
+| Limits to verify | Not applicable until a limited service is added; then it degrades instead of failing (NFR-068) |
+
+Code vs ADR:
+
+- "Local Docker as the canonical fallback" understates ADR-006. The local full stack is not a fallback for a hosted backend; it is the only backend target (ADR-006 points 1 and 2).
+- The rule against claiming permanent free hosting stays. No decision may assume a paid plan, and none may assume a free one lasts (`04-tech-stack.md` §49).
+
 ---
 
 # 86. Provider Selection Criteria
+
+**Status:** `Reference`; frontend criteria `Planned (FE)`; backend and database criteria `Deferred` (ADR-006 point 2)
 
 ### Frontend
 
@@ -2897,9 +2989,22 @@ Current provider choice
 
 Providers must be evaluated against actual project requirements.
 
+| Group | Applies to | Status |
+|---|---|---|
+| Frontend | The portfolio host of the demo, checked for HTTPS, static files and a SPA fallback under a subpath (ADR-006 point 7). Environment configuration is build-time only (`VITE_APP_MODE`) and holds no secret. Git deployment is not required: continuous deployment is excluded (ADR-006 point 10) | `Planned (FE)`; Git deployment `Deferred` |
+| Backend | No provider is evaluated. The local full stack meets the list with Node.js, Docker Compose and PostgreSQL (§29) | `Deferred` |
+| Database | No provider is evaluated. Local PostgreSQL 18 meets the list; backups are not applicable locally (ADR-006 point 9, §30) | `Deferred` |
+
+Code vs ADR:
+
+- ADR-006 names no provider, so this section names none. The criteria are the input to the ADR that hosting the backend would need.
+- Open (FE): confirm that the portfolio host serves HTTPS and a SPA fallback for the subpath (also §28). Recommendation: record it in the frontend-stage ADR.
+
 ---
 
 # 87. Vendor Independence
+
+**Status:** `Reference`; per boundary below
 
 Infrastructure integrations should be encapsulated.
 
@@ -2913,9 +3018,25 @@ The following must not require vendor-specific application logic unless isolated
 
 This preserves portability.
 
+| Boundary | Version 1 | Status |
+|---|---|---|
+| Database | Repository interfaces in `@trading/domain` with Prisma implementations in `@trading/database`; in-memory implementations for the demo (ADR-001) | Interfaces and Prisma `Implemented`; in-memory `Planned (B0)` |
+| Realtime | `ws` behind a transport port (ADR-007 point 1); the demo has an in-process adapter behind the same client port (point 13) | `Planned (B5)`; demo `Planned (FE)` |
+| File storage | None. The CSV import content is stored in the `jobs` row (ADR-008 point 4), so no file store or adapter exists (§61) | Not applicable; a store `Deferred` |
+| Observability | A `Logger` port with a `pino` adapter (ADR-009 point 1) | `Planned (B3)` |
+| External APIs | None exists or is decided; market data is simulated (ADR-007 point 7, §62) | `Deferred` |
+
+Code vs ADR:
+
+- The database is the only boundary built today. PostgreSQL is a fixed choice (`04-tech-stack.md`); the encapsulation is of Prisma, not a promise of another database engine.
+- The ports do not exist yet for the others. Until B0, B3 and B5, `apps/api` calls repositories directly and logs through `console` (§52). NFR-071 (evolution readiness) states the same rule: a new adapter and an ADR, not a domain rewrite.
+
+
 ---
 
 # 88. Architecture Relationship
+
+**Status:** `Reference`; the boundary rules `Planned (B0)` where a lint rule is decided
 
 Deployment reflects the application boundaries:
 
@@ -2933,9 +3054,25 @@ Deployment
 
 Domain logic should not know whether it runs locally, in Docker, in a demo, or in a cloud environment.
 
+| Boundary | Version 1 | Status |
+|---|---|---|
+| Domain knows no environment | `@trading/domain` depends on nothing internal (`06-architecture.md` §44) and reads no environment variable | `Implemented` |
+| Configuration enters at the edge | `apps/api/src/config/env.ts` validates the environment at startup; the composition root `apps/api/src/composition.ts` wires the repositories (ADR-001 point 4) | Env `Implemented`; composition root `Planned (B0)` |
+| Application layer is environment-free | `@trading/application` imports no infrastructure; an import boundary rule enforces it (ADR-001 point 1, NFR-011) | `Planned (B0)` |
+| Demo replaces adapters only | The same use cases run with in-memory repositories and a demo identity; no backend call, no secret (`06-architecture.md` §47, ADR-006 point 7) | `Planned (FE)` |
+| Local, Docker, demo | Differ by configuration and composition, not by domain code: `APP_MODE` (`real` or `demo`, ADR-006 point 8) | `Planned (FE)`; the API does not read `APP_MODE` today |
+
+Code vs ADR:
+
+- The original diagram is a layering, not a dependency graph. The real direction points inward: `application` depends on `domain`, `database` on `domain`, and `api` on all three (`06-architecture.md` §44, ADR-001). Deployment is not a layer the code depends on; it only supplies configuration to the edge.
+- `@trading/application` does not exist yet, so today `apps/api` services call repositories directly and the layers above `Domain` are not separated in code (`06-architecture.md` §4, §58).
+- Docker-internal hostnames must not reach the browser configuration (§8); that is the same rule at the container boundary.
+
 ---
 
 # 89. Observability Relationship
+
+**Status:** per item (table below); `Reference` for the principle
 
 Deployment must preserve the capabilities from `13-observability-spec.md`:
 
@@ -2950,9 +3087,26 @@ Deployment
 
 Observability is part of deployment readiness.
 
+| Capability | Version 1 | Status |
+|---|---|---|
+| Startup logs | A plain `console.log` line announces the port; the structured entry and its name are open (§52, `13-observability-spec.md` §8) | `Planned (B3)` |
+| Request correlation | `X-Request-ID` is assigned or reused, echoed and present in error bodies (`apps/api/src/middleware/request-id.ts`); on every log line it is B3 (`13-observability-spec.md` §9) | Response `Implemented`; log lines `Planned (B3)` |
+| Health | `GET /health` and `GET /health/ready` (§50, `13-observability-spec.md` §22-23); 503 while shutting down (ADR-006 point 12) | `Implemented`; shutdown 503 `Planned (B3)` |
+| Metrics | None, and no `/metrics` endpoint (ADR-009 point 10, `13-observability-spec.md` §16) | `Deferred` |
+| Runtime errors | A generic 500 body, detail in the server log only (`apps/api/src/middleware/error-handler.ts`, `13-observability-spec.md` §12) | `Implemented`; the entry name `http.request.failed` `Planned (B3)` |
+| Shutdown entries (not in the original list) | `app.shutdown.started` and `app.shutdown.completed` (ADR-006 point 12, ADR-009 point 11) | `Planned (B3)` |
+| Verbosity | `LOG_LEVEL`, with `SLOW_REQUEST_THRESHOLD_MS` for slow requests (ADR-009 points 7 and 8, §10) | `Planned (B3)` |
+
+Code vs ADR:
+
+- "Observability is part of deployment readiness" holds for the items that exist. Metrics are not part of readiness in version 1, because ADR-009 point 10 defers them; hosting the backend would reopen that decision.
+- The deployment view of the observability checklist is §80; the full definition of done and its split by block are `13-observability-spec.md` §74 (ADR-009 point 12). CI checks for observability are `13-observability-spec.md` §63.
+
 ---
 
 # 90. Testing Relationship
+
+**Status:** `Reference`; per stage below
 
 The deployment artifact should be validated as an executable system:
 
@@ -2972,9 +3126,25 @@ Smoke
 
 This reduces the difference between “the code builds” and “the deployed system works.”
 
+| Stage | Version 1 | Status |
+|---|---|---|
+| Build | `pnpm build`; in CI to prove a clean checkout compiles (ADR-006 point 11) | Compile `Implemented`; in CI `Planned (B0)` |
+| Test | `pnpm test`: the domain, database and API suites (§41, `10-testing-strategy.md` §53) | Local `Implemented`; in CI `Planned (B0)` |
+| Package | The multi-stage, non-root API image (ADR-006 point 4); for the demo, the static build of `apps/web` | `Planned (B7)`; demo `Planned (FE)` |
+| Run | `docker compose --profile full up`, with `node dist/index.js` in the container (ADR-006 points 3 and 4) | `Planned (B7)` |
+| Health | `GET /health` and `GET /health/ready`; the container healthcheck (§50, §51) | Routes `Implemented`; healthcheck `Planned (B7)` |
+| Smoke | The check of §49, run after the stack starts | `Planned (B7)` |
+
+Code vs ADR:
+
+- CI covers only the first two stages. The workflow publishes no artifact and runs no container (ADR-006 points 10 and 11), so Package, Run, Health and Smoke are run by hand on the author's machine from B7. That is the executable-system validation the original asks for; NFR-055 measures it.
+- The stage order inside the CI workflow is not fixed by the ADR (§41); the order above is the logical order of the artifact's life.
+
 ---
 
 # 91. Demo Relationship
+
+**Status:** `Planned (FE)` (ADR-001 point 4, ADR-006 points 1 and 7); the demo data layers `Deferred` (ADR-010 point 6)
 
 Demo deployment is a deployment target, not a separate product.
 
@@ -2983,14 +3153,29 @@ Real:
 API + PostgreSQL + WebSocket
 
 Demo:
-Mock API + browser persistence + simulated realtime
+In-process use cases + in-memory repositories + browser storage + simulated realtime
 ```
 
 Application behavior remains conceptually aligned.
 
+| Concern | Real | Demo | Status |
+|---|---|---|---|
+| Application behavior | `@trading/application` use cases behind the API | The same use cases in the browser (ADR-001 point 4) | `Planned (B0)`; demo `Planned (FE)` |
+| Persistence | PostgreSQL through Prisma | In-memory repositories with namespaced browser storage (ADR-006 point 7); the data layers and reset are not decided | `Planned (FE)`; layers `Deferred` |
+| Realtime | WebSocket server (`ws`) | An in-process adapter fed by the same `@trading/market-sim` engine (ADR-007 point 13) | `Planned (B5)`; demo `Planned (FE)` |
+| Identity | Login with a JWT (ADR-005) | A demo identity with a `Viewer`, `Trader` and `Admin` selector (ADR-005 point 11) | `Planned (FE)` |
+| Infrastructure | Local `full` stack | A static build under a subpath, no backend, no secrets | `Planned (B7)`; demo `Planned (FE)` |
+
+Code vs ADR:
+
+- The original diagram listed a "Mock API". ADR-001 rejects a mock HTTP layer: the demo runs the real use cases in process (`06-architecture.md` §6.1). The diagram above follows that decision.
+- The demo and the full stack are two targets (ADR-006 point 1) that share packages, not one artifact (§3). `12-demo-mode-spec.md` §93 leaves the deployment specifics of the demo build to this document, which are §22-§24, §28 and §56.
+
 ---
 
 # 92. Technical Interview Demonstration
+
+**Status:** per step (table below); `Reference` for the walkthrough as a whole
 
 A concise deployment walkthrough should demonstrate:
 
@@ -3006,9 +3191,28 @@ A concise deployment walkthrough should demonstrate:
 
 This communicates engineering maturity without unnecessary cloud complexity.
 
+| Step | Version 1 counterpart | Status |
+|---|---|---|
+| 1. Start local services | `docker compose up -d` for PostgreSQL; the `full` profile adds the API | Default profile `Implemented`; `full` `Planned (B7)` |
+| 2. Show frontend, backend and PostgreSQL | Backend and PostgreSQL run today; the frontend is the web app | Backend and database `Implemented`; frontend `Planned (FE)` |
+| 3. Run or inspect migrations | `db:migrate`, `db:test:migrate` or `prisma migrate deploy`; at startup in the `full` profile (§18) | `Implemented`; at startup `Planned (B7)` |
+| 4. Open health endpoint | `GET /health` and `GET /health/ready` (§50) | `Implemented` |
+| 5. Demonstrate realtime | Server events and the client states and reconnect | `Planned (B5)` and `Planned (FE)` |
+| 6. Trigger an observable operation | `X-Request-ID` on a response is `Implemented`; the log line with `requestId`, duration and result is B3 (`13-observability-spec.md` §65) | Mixed: `Implemented` and `Planned (B3)` |
+| 7. Show production build | `pnpm build` compiles every package today; running `node dist/index.js` and the image are B7 | Compile `Implemented`; run `Planned (B7)` |
+| 8. Explain how the architecture maps to public deployment | The only public deployment is the demo; the backend is never public (ADR-006 points 1 and 2). The mapping is the two targets of §95 and the adapters of §87 | `Reference` |
+| 9. Demonstrate Demo Mode as an infrastructure substitution | The demo build next to the local full stack, on the same use cases; there is no runtime switch because `APP_MODE` is fixed at build time (`10-testing-strategy.md` §64) | `Planned (FE)` |
+
+Code vs ADR:
+
+- Step 8 changes: the original assumed a public deployment of the backend. ADR-006 point 2 removes it, so the explanation is why no hosted backend exists and what a new ADR would have to decide.
+- The same demonstration is covered from the testing side in `10-testing-strategy.md` §64, from the observability side in `13-observability-spec.md` §65 and from the demo side in `12-demo-mode-spec.md` §89. The order here is a suggestion, not a requirement.
+
 ---
 
 # 93. Future Evolution
+
+**Status:** `Deferred`: no ADR adopts any item
 
 Possible future deployment capabilities:
 
@@ -3027,9 +3231,30 @@ Possible future deployment capabilities:
 
 These are future capabilities, not minimum requirements.
 
+| Capability | Where version 1 decides against it | Status |
+|---|---|---|
+| Dedicated worker | In-process runner (ADR-008 point 4, §54) | `Deferred` |
+| Redis/pub-sub | Single API process, realtime behind a transport port (ADR-007 point 1, §68) | `Deferred` |
+| Managed observability | Stdout JSON lines; metrics are `Deferred` (ADR-009 points 3 and 10, §53) | `Deferred` |
+| Container registry | The image is built on the author's machine; CI pushes none (§44) | `Deferred` |
+| Infrastructure as code | Nothing is provisioned (ADR-006 point 2, §84) | `Deferred` |
+| Automated backups | Not applicable to a local environment (ADR-006 point 9, §73) | `Deferred` |
+| Zero-downtime and blue/green deployments | One instance and forward-fix only (ADR-006 point 6, §46, §47) | `Deferred` |
+| Horizontal API scaling | One local instance (§67) | `Deferred` |
+| CDN optimization | Static build under the portfolio host (§69) | `Deferred` |
+| Managed secrets | No hosted service; local `.env` files (§13) | `Deferred` |
+| Distributed tracing | `13-observability-spec.md` §34-35 | `Deferred` |
+
+Code vs ADR:
+
+- Hosting the backend reopens most rows at once (ADR-006 point 2, ADR-009 point 10), so it is a single new ADR rather than twelve separate decisions.
+- The ports that keep these options open are decided: repositories and the `Clock` (ADR-001), the transport port (ADR-007 point 1) and the `Logger` port (ADR-009 point 1). NFR-071 asks for exactly that, and no more.
+
 ---
 
 # 94. Final Deployment Principle
+
+**Status:** `Reference`
 
 > **The environment may change; the application's engineering boundaries should not.**
 
@@ -3053,78 +3278,104 @@ Deployment is therefore treated as another infrastructure boundary.
 
 The application remains focused on domain behavior and communicates with its environment through configuration and infrastructure adapters.
 
+Code vs ADR:
+
+- The chain is a set of environments, not a pipeline. CI validates and deploys nothing (ADR-006 point 10), and the demo and the production-like local stack are two separate targets (ADR-006 point 1), not consecutive stages.
+- "Production-like environment" is the local `full` stack (`Planned (B7)`); no hosted production environment exists (ADR-006 point 2).
+- The principle is the one enforced in §88 and §87: the domain reads no environment, and the ports isolate the infrastructure.
+
 ---
 
 # 95. Final Deployment Model
 
+**Status:** `Reference`; it restates ADR-006, which governs; each element carries its status in the table below
+
 ```text
                          Git Repository
-                              │
-                              ▼
-                         CI Pipeline
-                              │
-                    ┌─────────┴─────────┐
-                    │                   │
-                Validation            Build
-                    │                   │
-                    └─────────┬─────────┘
-                              │
-                        Deployable
-                         Artifacts
-                              │
-               ┌──────────────┼──────────────┐
-               │              │              │
-             Local           Demo        Production
-               │              │              │
-          Docker stack   Demo adapters   Real adapters
-               │              │              │
-          PostgreSQL       Browser        PostgreSQL
-          WebSocket       simulation      WebSocket
-          API             persistence     external infra
+                               │
+          ┌────────────────────┼─────────────────────┐
+          │                    │                     │
+          ▼                    ▼                     ▼
+     CI workflow         Local full stack        Public demo
+     validation only     docker compose          static build of
+     no deployment       --profile full          apps/web, APP_MODE=demo,
+          │                    │                 under a subpath of
+          │             ┌──────┴──────┐          the portfolio site
+          │             │             │                 │
+          │         PostgreSQL       API          in-process use cases,
+          │        (default       node dist/      in-memory repositories,
+          │         profile)      index.js        browser storage,
+          │                       WebSocket       simulated realtime;
+          │                                       no backend, no secrets
+          ▼
+   install · typecheck · lint · format · build · tests
 ```
+
+The model has exactly two deployment targets (ADR-006 point 1): the local full stack, run with Docker Compose on the author's machine, and the public demo. No backend is hosted: hosting, a managed database, a reverse proxy and public WSS are `Deferred`, and hosting the backend later requires a new ADR (ADR-006 point 2).
 
 The deployment strategy demonstrates:
 
-- reproducibility
-- containerization
-- environment separation
-- database migrations
-- secure configuration
-- CI
-- health checks
-- realtime deployment
-- graceful shutdown
-- production awareness
-- vendor independence
+| Quality | How version 1 demonstrates it | Status |
+|---|---|---|
+| Reproducibility | A clean checkout installs from the lockfile and builds; the full stack starts with one command | CI `Planned (B0)`; stack `Planned (B7)` |
+| Containerization | PostgreSQL in Compose today; a multi-stage, non-root API image in the `full` profile (ADR-006 point 4) | PostgreSQL `Implemented`; image `Planned (B7)` |
+| Environment separation | `development`, `test` and local `production`, plus the demo build (ADR-006 point 8) | `Implemented` for the first two; `production` `Planned (B7)`; demo `Planned (FE)` |
+| Database migrations | Prisma Migrate; `migrate deploy` at startup; forward-fix only (ADR-006 points 5 and 6) | Migrations `Implemented`; startup `Planned (B7)` |
+| Secure configuration | Validated environment, secrets outside source control, no secret in the demo build (§12, §13, ADR-006 point 7) | `Implemented` for the API; demo `Planned (FE)` |
+| CI | One workflow on pushes and pull requests to `develop` and `main`, no continuous deployment (ADR-006 points 10 and 11) | `Planned (B0)` |
+| Health checks | `GET /health`, `GET /health/ready`, the container healthcheck (§50, §51) | Routes `Implemented`; container `Planned (B7)` |
+| Realtime deployment | A local `ws://` server in the API process; public WSS is `Deferred` (§31, §34) | `Planned (B5)`; public `Deferred` |
+| Graceful shutdown | `SIGTERM` and `SIGINT`, a 10-second drain, readiness 503 (ADR-006 point 12, §16) | `Planned (B3)` |
+| Production awareness | Forward-fix, no backups claimed, one instance, the explicit exclusions of §84 | `Reference` |
+| Vendor independence | No provider, ports at the infrastructure boundaries (§87) | `Reference` |
 
 without introducing infrastructure whose complexity is not justified by the project.
+
+Code vs ADR:
+
+- The original diagram had a "Production" target with "Real adapters", PostgreSQL, WebSocket and "external infra", fed by deployable artifacts from CI. ADR-006 removes all of it: there is no hosted target, CI publishes no artifact, and the two targets do not share one artifact (§3). The diagram above is the model of ADR-006 points 1-4 and 10.
+- The local full stack and the demo are `Planned`: today only PostgreSQL in Compose, the API in development mode and the local checks exist. The model describes the end of B7 and the frontend stage, not the present.
 
 ---
 
 # 96. Relationship to Other SDDs
+
+**Status:** `Reference`
 
 This document depends on and complements:
 
 - `00-overview.md` — project scope and principles
 - `01-product-spec.md` — product behavior
 - `02-functional-requirements.md` — functional requirements
-- `03-non-functional-requirements.md` — quality attributes
+- `03-non-functional-requirements.md` — quality attributes (NFR-024 cites §78; NFR-051 to NFR-055 and NFR-067 cover health, cost, resources and reproducibility)
 - `04-tech-stack.md` — technical stack
-- `06-architecture.md` — application architecture
-- `07-api-spec.md` — API contracts
-- `08-realtime-spec.md` — realtime architecture
-- `09-security-spec.md` — security specification
-- `10-testing-strategy.md` — testing strategy
+- `05-data-model.md` — the schema behind migrations, seed and reset (§17-§21 here)
+- `06-architecture.md` — application architecture (§44 dependency direction, §58 deployment architecture)
+- `07-api-spec.md` — API contracts (health routes, error bodies)
+- `08-realtime-spec.md` — realtime architecture (§31 and §72 here)
+- `09-security-spec.md` — security specification (the checklist of §78 here)
+- `10-testing-strategy.md` — testing strategy (CI, §53; pull request gate, §54; environments, §56)
 - `11-ui-ux-spec.md` — UX behavior
-- `12-demo-mode-spec.md` — demo infrastructure
-- `13-observability-spec.md` — logs, metrics, health and diagnostics
+- `12-demo-mode-spec.md` — demo infrastructure (its §93 leaves the demo build to this document)
+- `13-observability-spec.md` — logs, metrics, health and diagnostics (§8, §22-23, §38, §63)
+- `15-implementation-plan.md` — the implementation phases; Phase 14 (§19) cites this document
+- `16-analytics-spec.md` — analytics formulas; no deployment content, the code ships in the packages this document builds and tests
+- `BACKEND-ROADMAP.md` — blocks B0-B7, which deliver the `Planned` items of this document
+- `adr/0006-deployment-model-and-ci.md` — the decision that sets the scope of this document; `adr/0001-application-layer.md`, `adr/0005-roles-and-authentication.md`, `adr/0007-realtime-and-market-simulation.md`, `adr/0008-background-jobs-csv-import.md`, `adr/0009-observability-scope.md` and `adr/0010-v1-product-scope-clarifications.md` supply the other decisions cited here
 
-The next document, `15-implementation-plan.md`, will translate the complete SDD set into an ordered implementation roadmap with phases, dependencies, milestones, validation points and delivery sequencing.
+Where this document and an ADR differ, the ADR wins (`README.md`, precedence).
+
+`15-implementation-plan.md` is the next document: it orders the implementation into phases with dependencies, milestones and validation points, and cites this document in Phase 14 (§19).
+
+Code vs ADR:
+
+- The original text said `15-implementation-plan.md` "will translate" the SDD set. It exists, and its Phase 14 still lists HTTPS/WSS configuration and rollback documentation, which ADR-006 points 2 and 6 remove; aligning it is T5.2.
+- `05-data-model.md`, `15-implementation-plan.md`, `16-analytics-spec.md`, `BACKEND-ROADMAP.md` and the ADRs were missing from the original list.
 
 ---
 
 # Document Status
 
-**Status:** Ready for implementation alignment
+**Status:** All sections reconciled with the code and ADRs on 2026-10-07
 
-This document defines the target deployment architecture. Specific hosting providers, exact runtime versions, CI configuration, environment variable names and deployment commands may be finalized during implementation as long as they preserve the principles and acceptance criteria defined here.
+This document defines the deployment architecture for version 1 as decided in ADR-006: exactly two targets, the local full stack run with Docker Compose and the public demo as a static build, a minimal CI workflow, graceful shutdown, and forward-fix only; hosting, a managed database, a reverse proxy and public WSS are `Deferred`. Where it differs from an ADR, the ADR wins. Environment variable names follow `apps/api/src/config/env.ts` and ADR-006 point 8, and the shutdown sequence follows ADR-006 point 12. The open details listed per section (the Node.js pin, the CI stage order and whether `docs:check` joins the workflow, the PostgreSQL image version and role setup in CI, the Postgres port binding, the form of the smoke test, the container healthcheck endpoint, whether a frontend container exists, the demo publishing mechanism, the realtime endpoint path, and the shutdown details) are specified in the block that implements them (B0, B3, B4, B5, B7) or in the frontend-stage ADR. Hosting the backend requires a new ADR (ADR-006 point 2).
