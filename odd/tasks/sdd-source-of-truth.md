@@ -233,7 +233,12 @@ Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10
       - Health route tests in B0 (§59-62): amend ADR-001 point 8 or add them to the B0 scope in T5.3.
       - `LOG_FORMAT`, `ENABLE_DEBUG_LOGGING`, `ENABLE_DEV_DIAGNOSTICS` (§68): do not adopt.
     - Found in E: ADR-009 point 11 cites ADR-006 for graceful shutdown but ADR-006 has none (only `14` §16 requires it; no signal handling in code); `14` §10 lists `DEMO_MODE` and `JWT_EXPIRES_IN` while ADR-006 point 8 and `env.ts` use `APP_MODE` and `JWT_EXPIRES_IN_SECONDS` (for the `14` slice); `README.md` and `CONTRIBUTING.md` document no API start, logs, health or `LOG_LEVEL` (T5.2); no `no-console` ESLint rule; `@trading/application` does not exist yet, so the B3 `Logger` port depends on B0; `docs/` is in `.prettierignore`, so `format:check` never covers the SDD; `.github/` holds only the PR template.
-    - `13` is fully reconciled. Remaining for T5.1 `13`: one batch of the 19 pending decisions (14 from slices A-D plus 5 from E).
+    - `13` is fully reconciled.
+    - [x] Decision batch approved by the user 2026-10-07: 18 distinct decisions (the 19 counted "health route tests" twice), all as recommended, `pino`, `pino-http` and `pino-pretty` reconfirmed. Route: delegated writer for the ADRs, then one for `13`; `pnpm docs:check` and `pnpm lint` pass each time. Recorded in ADR-009 (points 2-9, 11-13, Deferred detail), ADR-006 point 12 (graceful shutdown, B3) and ADR-001 point 8 (health route test, B0), with `docs/adr/README.md` and `04` §42-45 aligned: `28a14ca`. Propagated to `13`: `158456b`. Assess against `develop`: passive both times.
+    - Writer additions, not in the approved list: an ADR-006 Deferred detail row (B4/B5: `14` §16 shutdown steps for jobs and realtime join the sequence when those components exist) and an `Amended:` header line on ADR-006 and ADR-009.
+    - Open details left on purpose (no decision covers them): levels of startup, shutdown and simulator entries; route template vs raw URL in request logs (§17); a separate threshold or timer helper for the analytics series (§26, §52); the slow-request entry name (§53); job entry names and fields (B4); realtime log names and sampling (B5); `LOG_LEVEL` validation in `env.ts`; connection-pool check; demo event names; sanitized client context; error-handler test assignment.
+    - Minor contradiction to settle in B3: ADR-009 point 3 limits `errorName` to the unexpected-error line, while the `health.database.unavailable` line logs `errorName` today (§23-24). Recommendation: keep it there, since it carries no driver message.
+    - For T5.3 and later docs: `BACKEND-ROADMAP.md` lists graceful shutdown in B7 (and B4) but ADR-006 point 12 says B3; B0 needs the health route test; B2 needs `auth.logout`; B3 needs CORS `exposedHeaders`; B7 the recovery entry. `09` §50 needs `auth.logout` and no refresh-failure event; `14` §10 and §16 need `SLOW_REQUEST_THRESHOLD_MS`, the shutdown details (point 12, 10 s drain, 503 readiness) and no `LOG_FORMAT`; `12` §75 diagnostics deferred; `15` B0, B2, B3 and B5 scopes.
 - [ ] T5.2 `15` (backend-first override), `CONTRIBUTING.md`, `README.md`
 - [ ] T5.3 `PROGRESS.md` (main-branch claim fix), `BACKEND-ROADMAP.md` (add B0, including every ADR "Deferred detail" row assigned to B0; move the position-recalculation race from B7 to B0 per ADR-001)
 
@@ -268,12 +273,12 @@ Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10
 
 Phase 4 is complete on `docs/sdd-contracts` (2026-10-06): T4.1 `07`, T4.2 `08`, `09`, `10`, and every user decision recorded as an ADR amendment. `pr-body.md` is written and the user runs the push and `gh pr create` (base `develop`).
 
-Phase 4 PR merged into `develop`. Phase 5 started on `docs/sdd-operations`; `13` slice E done 2026-10-07 (`bcf3b9a`), paused there by the user's request.
+Phase 4 PR merged into `develop`. Phase 5 started on `docs/sdd-operations`; `13` slice E done 2026-10-07 (`bcf3b9a`); the 18 `13` decisions were approved and applied the same day (`28a14ca`, `158456b`). `13` is closed; the user decides when to continue.
 
 Resume with:
 
-1. One batch of the 19 pending `13` decisions (listed under T5.1), with recommendations.
-2. Then `14`, T5.2, T5.3 (collects every "For T5.3" item above), `12` last.
+1. `14` (deployment spec), delegated writer in slices of 300-500 lines. Fix its `DEMO_MODE` / `JWT_EXPIRES_IN` names (`APP_MODE`, `JWT_EXPIRES_IN_SECONDS`) and apply the shutdown and `SLOW_REQUEST_THRESHOLD_MS` items listed under T5.1.
+2. Then T5.2, T5.3 (collects every "For T5.3" item above), `12` last.
 3. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.
