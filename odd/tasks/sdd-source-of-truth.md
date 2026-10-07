@@ -218,7 +218,11 @@ Product decisions that no ADR covers are asked to the user in batches.
 
 ### Phase 5 — Operations and living docs
 
+Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10-06). Order approved by the user: `13` → `14` → T5.2 (`15`, `CONTRIBUTING.md`, `README.md`) → T5.3 (`BACKEND-ROADMAP.md`, `PROGRESS.md`, collecting every "For T5.3" item) → `12` last (frontend-only). Route: one delegated writer per slice of 300-500 lines, one commit per slice. `13` is split into 5 slices: §1-12, §13-27, §28-42, §43-57, §58-end.
+
 - [ ] T5.1 `12`, `13`, `14`
+  - [ ] `13` in 5 slices. A §1-12 `a414592` (`pnpm docs:check` and `pnpm lint` pass). Pending user decisions from A (batched at the end of `13`): `errorCategory` vs `errorName` (§7); extra B3 log fields (§7); log levels for `FORBIDDEN`, `RATE_LIMITED`, `DEPENDENCY_ERROR` (§6.2); B3 names of `request.failed` and `health.database.unavailable` (§8); scrub error messages or only named fields (§11); expose `X-Request-ID` through CORS (§9, FE).
+    - B §13-27 `54ba55f`. Pending: block for graceful shutdown and 503 readiness while shutting down (§23; code has no SIGTERM handling); DB operation timing or Prisma query logging in dev (§21, §25); health route tests for NFR-051, maybe B0 with the ADR-001 point 8 route tests (§22). Found: NFR-051 is `Implemented` but no test covers `/health` or `/health/ready`.
 - [ ] T5.2 `15` (backend-first override), `CONTRIBUTING.md`, `README.md`
 - [ ] T5.3 `PROGRESS.md` (main-branch claim fix), `BACKEND-ROADMAP.md` (add B0, including every ADR "Deferred detail" row assigned to B0; move the position-recalculation race from B7 to B0 per ADR-001)
 
