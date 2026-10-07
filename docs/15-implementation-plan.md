@@ -178,6 +178,42 @@ Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides t
 
 ## 5. Phase 0 — Repository Foundation
 
+**Status:** per item (table below)
+
+**Owning blocks:** Backend: B0 (minimal CI, runtime version pin, lint boundary); Frontend: none.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Git repository and `.gitignore` (excludes `.env`, `.env.*.local`, build output and `pr-body.md`) | `Implemented` | none |
+| Repository structure: pnpm workspace over `apps/*` and `packages/*` (`pnpm-workspace.yaml`) | `Implemented`; `packages/contracts`, `packages/config` and `docker/` hold only `.gitkeep`, and `apps/web` holds only the wireframe | none |
+| Package manager and committed lockfile (`packageManager` `pnpm@12.3.4`, `pnpm-lock.yaml`) | `Implemented` | none |
+| TypeScript (`tsconfig.base.json`, root `tsconfig.json` with references to `packages/domain`, `packages/database` and `apps/api`, `pnpm typecheck`) | `Implemented` | none |
+| Alignment of the `typescript` and `@types/node` versions across packages | Open (the versions differ, see Code vs ADR) | B0 |
+| ESLint (`eslint.config.js`, `pnpm lint`) | `Implemented` | none |
+| ESLint import-boundary rule for the application layer (ADR-001 point 1) | `Planned (B0)`; the config holds only a commented placeholder | B0 |
+| Prettier (`.prettierrc.json`, `pnpm format`, `pnpm format:check`) | `Implemented` | none |
+| Editor conventions | Open: no `.editorconfig` or `.vscode/` exists and no document requires one; Prettier is the only formatting convention | none |
+| `.env.example` and `.env.test.example` | `Implemented`; the content of `.env.example` is stale (see Code vs ADR) | the block that adds each variable |
+| Basic commands documented | `Implemented` in `README.md` (setup and local database); `CONTRIBUTING.md` has no setup section | none (documentation work, T5.2) |
+| Commit workflow: Conventional Commits (`CONTRIBUTING.md` §6) and a Husky pre-commit hook running `lint-staged` | `Implemented` (`.husky/pre-commit`, `lint-staged` in the root `package.json`) | none |
+| Pull request template (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist asks only for `pnpm typecheck` and `pnpm lint` | none (documentation work, T5.2) |
+| Minimal CI workflow: install with the lockfile, typecheck, lint, `format:check`, `docs:check`, `build`, and the domain, database and API suites against a PostgreSQL service container (ADR-006 points 10 and 11) | `Planned (B0)` | B0 |
+| Test variables supplied through the job `env`, not a generated `.env.test.local` (ADR-006 point 11) | `Planned (B0)` | B0 |
+| `.nvmrc` as the single Node.js version source, reused by CI and the Dockerfile (ADR-006 point 13) | `Planned (B0)`; `engines.node` is `>=22.0.0` today | B0 |
+| Docker Compose with PostgreSQL in the default profile (`docker-compose.yml`, `postgres:18`) | `Implemented`; detail in §7 | none |
+| API Dockerfile and the Compose `full` profile (ADR-006 point 4) | `Planned (B7)`; detail in §7 | B7 |
+
+Code vs ADR:
+
+- No workflow exists. `.github/` holds only `PULL_REQUEST_TEMPLATE.md`. The acceptance criteria below (clean install, typecheck, lint, formatting) are checked by hand today. The minimal CI automates them and comes first in the build order (§4.1).
+- ADR-006 point 10 names install, typecheck, lint and the three suites. Point 11 adds `pnpm format:check` and `pnpm build`, and its additions of 2026-10-07 add `pnpm docs:check`, because `docs/` is in `.prettierignore` and `format:check` never covers the SDD. Hardening `scripts/check-docs.mjs` (task T1.5: one shared fence-state helper and fixture-based tests) is not decided in an ADR and stays open for B0.
+- There is no `.nvmrc`. The exact Node.js major is chosen in B0 after confirming it is an LTS release (ADR-006 point 13), and `engines.node` and `@types/node` are aligned to it.
+- The `test` scripts of `apps/api` and `packages/database` load `../../.env.test.local` through `dotenv-cli`. That file is git-ignored, so a clean checkout does not have it; CI supplies the variables through the job `env` instead (`14-deployment-spec.md` §43).
+- "No secrets exist in Git" holds: the only tracked environment files are `.env.example` and `.env.test.example`. The Compose fallback password (`trading_dev_password`) differs from the `.env.example` placeholder; both are local-only values (`14-deployment-spec.md` §6).
+- `.env.example` opens with a stale Spanish note and lacks `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3) and `APP_MODE` (FE). Each variable is added by the block that introduces it (`14-deployment-spec.md` §11).
+- `typescript` is `^6.0.3` in the root and in `apps/api` but `^5.7.3` in `packages/domain` and `packages/database`; `@types/node` is `^22` in `apps/api` and `^26` in the root and in `packages/database`.
+- The Husky hook runs `lint-staged` only (ESLint and Prettier on staged files). It runs no typecheck or tests; CI is the gate for those.
+
 ### Objective
 
 Create the repository structure and development conventions.
@@ -209,6 +245,33 @@ Create the repository structure and development conventions.
 ---
 
 ## 6. Phase 1 — Product and Domain Foundation
+
+**Status:** per item (table below)
+
+**Owning blocks:** Backend: B0 (application layer, contracts, `Clock` port), B1 (analytics additions); Frontend: none. The demo reuses the same domain and application layer in FE4.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Domain entities and enums (`packages/domain/src/entities`: 16 entities, each with tests, and `enums.ts`) | `Implemented` | none |
+| Value objects (`Money`, `packages/domain/src/value-objects/money.ts`) | `Implemented` | none |
+| Domain invariants (per-entity validators and `Invalid*Error` / `Insufficient*Error` types) | `Implemented` | none |
+| Ownership rules (every portfolio carries a `userId`; foreign resources return 404, never 403) | `Implemented` in `apps/api/src/services`; permission checks through an `Actor` (ADR-005 point 3) `Planned (B2)` | B2 |
+| Transaction states (`TransactionStatus`: `DRAFT`, `VALIDATING`, `PROCESSING`, `COMPLETED`, `FAILED`) | `Implemented` | none |
+| Deterministic tiebreak for transactions with the same `executedAt` (ADR-003 Deferred detail) | `Planned (B0)` | B0 |
+| Portfolio calculations and derived data: allocation, current-state attribution, portfolio and position metrics, daily change, Pulse, asset-level volatility and drawdown, decision replay, scenario impact and comparison (`packages/domain/src/calculations`) | `Implemented` | none |
+| Analytics additions: portfolio-level performance (TWR), risk series, period handling, realized P/L, range attribution, fee handling change, `Decimal` end to end (ADR-004, `16-analytics-spec.md`) | `Planned (B1)` | B1 |
+| Domain `quantity` as a plain `number` | Open: no ADR decides it | B1 |
+| `@trading/application` (use cases moved out of `apps/api/src/services`, ADR-001) | `Planned (B0)` | B0 |
+| `@trading/contracts` (request and response schemas, error envelope, presenters, DTO types, ADR-002) | `Planned (B0)` | B0 |
+| One shared `Clock` port; `validateNewTransaction` receives the time instead of calling `new Date()` (ADR-001 point 8) | `Planned (B0)` | B0 |
+| Money, prices and quantities in persisted JSON as decimal strings; `decision-replay.ts` and `scenario-impact.ts` stop using floating point (ADR-002 point 9) | `Planned (B0)` | B0 |
+| Core business rules testable without React, Express or PostgreSQL (acceptance criterion) | `Implemented`: `@trading/domain` depends only on `decimal.js` and has its own Vitest suite | none |
+
+Code vs ADR:
+
+- The initial concepts below are a "may include" list, and the final model follows the product and functional specifications. Against the real model: `Instrument` is `Asset`; `Role` is the `UserRole` enum (`USER` and `ADMIN` today, `VIEWER`, `TRADER` and `ADMIN` in ADR-005 point 1, `Planned (B2)`); `PortfolioMember` has no entity, because every portfolio belongs to one user and collaboration is out of scope (`05-data-model.md` §49); `PriceSnapshot` is `MarketPrice` and `HistoricalPrice`; `AnalyticsSnapshot` has no entity, because analytics are computed from transactions and prices (ADR-004) and portfolio snapshots are `Deferred`; `BackgroundJob` is the `Job` entity, `Planned (B4)` (ADR-008). `Credential`, `WatchlistItem`, `Alert`, `Decision`, `DecisionEvent`, `Scenario`, `UserPreference` and `MarketEvent` exist in the code and are not in the list.
+- The application layer is still inside `apps/api/src/services`, and those services create Prisma repositories directly (for example `auth.service.ts`). Rules that live there cannot be tested without Prisma until `@trading/application` exists (`06-architecture.md` §11, ADR-001).
+- The analytics rows marked `Implemented` cover the current-state and asset-level metrics only. The status of each analytics item is in `16-analytics-spec.md`.
 
 ### Objective
 
@@ -251,6 +314,39 @@ Core business rules can be tested without React, Express, or PostgreSQL.
 
 ## 7. Phase 2 — Database and Infrastructure
 
+**Status:** per item (table below)
+
+**Owning blocks:** Backend: B0 (runtime database role, seed and reset guard, in-memory repositories), B2 (`Session`), B4 (`Job`, `IdempotencyKey`), B7 (Dockerfile, `full` profile, production migration path); Frontend: none (the demo data layers are `Deferred` to the frontend-stage ADR, ADR-010 point 6).
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| PostgreSQL through Docker Compose, default profile with PostgreSQL only (`docker-compose.yml`: `postgres:18`, named volume, healthcheck) | `Implemented` | none |
+| Docker: multi-stage API Dockerfile, non-root user, `apps/api/Dockerfile` (ADR-006 point 4) | `Planned (B7)`; `docker/` holds only `.gitkeep` | B7 |
+| Compose `full` profile: PostgreSQL, a one-shot `migrate` service and the API (ADR-006 point 4) | `Planned (B7)` | B7 |
+| Migration tooling: Prisma (`packages/database/prisma`) | `Implemented` | none |
+| Initial schema and migrations (`schema.prisma`: 12 enums and 16 models; 10 migrations) | `Implemented` | none |
+| `Session` (refresh tokens, `05-data-model.md` §5.3) | In `05`, not in `schema.prisma`; `Planned (B2)` | B2 |
+| `Job` and `IdempotencyKey` (`05-data-model.md` §52 and §53) | In `05`, not in `schema.prisma`; `Planned (B4)` | B4 |
+| Seed workflow (`packages/database/prisma/seed.ts`, `src/seed`, `pnpm --filter @trading/database db:seed`) | `Implemented`; the production guard (ADR-006 point 13) `Planned (B0)` | B0 |
+| Local reset workflow: light reset by rerunning the seed, hard reset by `db:reset` (`prisma migrate reset`) | `Implemented`; the production guard `Planned (B0)` | B0 |
+| Database connection (`packages/database/src/client.ts`, shared `prisma` client) | `Implemented`; `DATABASE_URL` validation at startup `Planned (B7)` | B7 |
+| Separate runtime database role without DDL rights; only the migration role keeps them (ADR-005 point 13) | `Planned (B0)` | B0 |
+| Repository interfaces (`packages/domain/src/repositories`) | `Implemented` | none |
+| PostgreSQL repositories, mappers and `PrismaUnitOfWork` (`packages/database/src`) | `Implemented` | none |
+| In-memory repositories and `UnitOfWork` (ADR-001 point 7, `06-architecture.md` §12 and §13) | `Planned (B0)` | B0 |
+| Production migration path: `prisma migrate deploy` in the `migrate` service (ADR-006 points 4 and 5) | `Planned (B7)` | B7 |
+| `TZ=UTC` on the API and PostgreSQL containers; Prisma `connection_limit` (default until measured) | `Planned (B7)` | B7 |
+
+Code vs ADR:
+
+- The acceptance sequence works locally by hand: `docker compose up -d`, then `pnpm --filter @trading/database db:migrate`, then `db:seed`, then `pnpm --filter @trading/api dev`. No root script chains it. The CI form (migrate with `db:test:migrate`, no seed) is `Planned (B0)` (ADR-006 point 11).
+- `db:migrate` runs `prisma migrate dev`. The production path is `migrate deploy` (ADR-006 point 5), which exists only as `db:test:migrate` today.
+- The seed always wipes the database first and has no guard. ADR-006 point 13 makes the seed and the hard reset refuse to run when `NODE_ENV=production` (`Planned (B0)`).
+- The API connects as the PostgreSQL superuser of the container. The data-only runtime role of ADR-005 point 13 is `Planned (B0)`.
+- The PostgreSQL port is published on every host interface, and binding it to `127.0.0.1` is still open (B7). Compose has no profiles yet, so the default profile and the future `full` profile share one file.
+- Migrations declare `TIMESTAMP(3)` columns without a time zone. The containers run with `TZ=UTC` (ADR-006 point 4, `Planned (B7)`).
+- The domain defines the repository interfaces and `@trading/database` implements them, as the objective requires. Domain logic does not import Prisma. The services in `apps/api` still import the Prisma repositories directly until the composition root of ADR-001 point 4 exists (B0).
+
 ### Objective
 
 Create persistent infrastructure without coupling domain logic directly to PostgreSQL.
@@ -283,6 +379,47 @@ start database
 ---
 
 ## 8. Phase 3 — Backend/API Foundation
+
+**Status:** per item (table below)
+
+**Owning blocks:** Backend: B0 (layering, `Clock` port, route tests, error contract, route parameters, contracts), B2 (authorization middleware), B3 (logger, graceful shutdown), B6 (OpenAPI), B7 (`DATABASE_URL` validation); Frontend: none.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Express application (`apps/api/src/app.ts` `createApp()`, `index.ts` listening on `PORT`, default `7001`) | `Implemented` | none |
+| Middleware: helmet, CORS from `CORS_ORIGIN`, request ID, JSON body limit of 100 kb | `Implemented` | none |
+| Rate limiting: a general limiter (300 requests per 15 minutes) and a login limiter (5 per 15 minutes), disabled under `NODE_ENV=test` | `Implemented` | none |
+| `CORS_ORIGIN` accepts only `http(s)://host[:port]` and rejects `*` (ADR-006 point 13) | `Planned (B0)` | B0 |
+| Configuration validation at startup (`config/env.ts`: `NODE_ENV`, `PORT`, `JWT_SECRET` of at least 32 characters, `JWT_EXPIRES_IN_SECONDS`, `CORS_ORIGIN`; exits on failure) | `Implemented`; `DATABASE_URL` is not validated, `Planned (B7)` | B7 |
+| Request validation of body and query with Zod (`middleware/validate.ts`) | `Implemented` | none |
+| Request validation of route parameters (ADR-002 point 10) | `Planned (B0)` | B0 |
+| Consistent error handling (`errors/app-error.ts`, `middleware/error-handler.ts`, envelope `{ error: { code, message, requestId, details? } }`) | `Implemented` | none |
+| Error contract changes: `{ field, code, message }` validation details, `TIMEOUT` removed from `AppErrorCode`, 503 `DEPENDENCY_ERROR` on a database outage (ADR-002 point 10) | `Planned (B0)` | B0 |
+| Request IDs (`middleware/request-id.ts`, `X-Request-ID`, bounded safe pattern) | `Implemented`; exposing the header through CORS `Planned (B3)` | B3 |
+| API response conventions: `/api/v1` paths and paginated lists with `meta` | `Implemented` | none |
+| `@trading/contracts`: response schemas, presenters and DTO types (ADR-002) | `Planned (B0)` | B0 |
+| Authentication middleware (`middleware/authenticate.ts`) | `Implemented` | none |
+| Authorization middleware (`requireRole`, permission checks through the `Actor`) | `Planned (B2)`; see §9 | B2 |
+| Application services | `Implemented` inside `apps/api/src/services`; `@trading/application` and the composition root (`apps/api/src/composition.ts`) `Planned (B0)` (ADR-001) | B0 |
+| Repository integration | `Implemented`: the services create the Prisma repositories directly | B0 (composition root) |
+| One shared `Clock` port (ADR-001 point 8) | `Planned (B0)` | B0 |
+| Route tests for analytics, positions, assets, market and health, written before the layering refactor (ADR-001 point 8) | `Planned (B0)` | B0 |
+| Health endpoints: `GET /health` (liveness) and `GET /health/ready` (readiness, database check), registered before the rate limiter | `Implemented` | none |
+| `GET /health/ready` returns 503 with `status: "unavailable"` and no `checks` while the API shuts down (ADR-006 point 12) | `Planned (B3)` | B3 |
+| Safe structured logging: `Logger` port in `@trading/application`, pino adapter, request logs, security events (ADR-009) | `Planned (B3)`; see Code vs ADR for what exists | B3 |
+| Graceful shutdown on `SIGTERM` and `SIGINT` (ADR-006 point 12) | `Planned (B3)` | B3 |
+| OpenAPI document generated from the `@trading/contracts` schemas (ADR-002 point 7) | `Planned (B6)` | B6 |
+
+Code vs ADR:
+
+- The boundary diagram below lists Infrastructure last. The dependency direction follows ADR-001: `@trading/application` depends only on `@trading/domain`, the Prisma repositories implement the domain's repository interfaces, and the composition root wires them together. Domain and application code never import Express or Prisma.
+- Today the boundary is not enforced. Routes call controllers, controllers call services in `apps/api/src/services`, and those services import `@trading/database` directly. The import-boundary lint rule and the move to `@trading/application` are `Planned (B0)`. The route tests come first so the refactor can be shown to keep HTTP behavior unchanged.
+- Logging today is `console.log` at startup (`index.ts`) and two `console.error(JSON.stringify(...))` lines (`request.failed` in the error handler, `health.database.unavailable` in the readiness controller). There is no logger module, no request logging and no `no-console` rule. ADR-009 decides `pino`, `pino-http` and `pino-pretty`.
+- `index.ts` is `createApp()` plus `listen()`. There is no signal handling and no drain of in-flight requests (ADR-006 point 12 requires a 10 second drain).
+- A database outage on a normal request returns 500 `INTERNAL_ERROR`, not the 503 `DEPENDENCY_ERROR` of ADR-002 point 10. `GET /health/ready` returns 503 on an unreachable database but 200 on an unmigrated one. `AppErrorCode` still declares `TIMEOUT`.
+- Route parameters are not schema-validated: `validate` accepts only `body` and `query`. A malformed ID is therefore not a 400 `VALIDATION_ERROR` today.
+- No test covers `GET /health` or `GET /health/ready`, although NFR-051 is `Implemented`. Analytics, positions, assets and market also have no route test file.
+- Acceptance criteria against the code: the API starts cleanly, validates its configuration, connects to PostgreSQL through the shared client, exposes health and readiness, returns the consistent error envelope and supports request correlation through `X-Request-ID` (all `Implemented`). Structured diagnostics are partial until B3.
 
 ### Objective
 
@@ -331,6 +468,39 @@ The API:
 
 ## 9. Phase 4 — Authentication and RBAC
 
+**Status:** per item (table below)
+
+**Owning blocks:** Backend: B0 (login timing, route parameters), B2 (refresh, logout, roles, permissions); Frontend: FE1 (session screens and in-memory access token), FE4 (demo role selector).
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| User model (`User`, `Credential` in a separate table) | `Implemented` | none |
+| Password handling (`bcryptjs`, ADR-005 point 12) | `Implemented` | none |
+| Login (`POST /api/v1/auth/login`, limited to 5 attempts per 15 minutes) and `GET /api/v1/auth/me` | `Implemented` | none |
+| Login response `{ user, session: { accessToken, expiresAt } }` (ADR-005 point 8); today the response carries `token` | `Planned (B2)` | B2 |
+| Login timing equalization: a `bcryptjs` check against a fixed dummy hash when the user does not exist (ADR-005 point 13) | `Planned (B0)` | B0 |
+| Access token generation and validation (`jsonwebtoken`, payload `sub` and `role`, `JWT_EXPIRES_IN_SECONDS` default 900, which is the 15 minutes of ADR-005 point 4) | `Implemented` | none |
+| Authentication middleware (`authenticate`: one generic 401 for every failure) | `Implemented` | none |
+| Refresh token in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie with rotation and family revocation, `POST /api/v1/auth/refresh`, `Session` table, custom request header (ADR-005 points 5 to 7) | `Planned (B2)` | B2 |
+| `POST /api/v1/auth/logout` (ADR-005 point 6) and the `auth.logout` security event (ADR-009) | `Planned (B2)` | B2 |
+| Role model: `USER` and `ADMIN` today | `Implemented`; `VIEWER`, `TRADER` and `ADMIN`, with `USER` migrated to `TRADER` (ADR-005 point 1), `Planned (B2)` | B2 |
+| Permission matrix, `Actor { userId, role }` and enforcement in the application layer (ADR-005 points 2 and 3); `requireRole` and the 403 `FORBIDDEN` code | `Planned (B2)` | B2 |
+| `VIEWER` self-service (own preferences and own notifications read) and `ADMIN` limited to `TRADER` plus `simulation:control` (ADR-005 point 13) | `Planned (B2)` | B2 |
+| Protected routes: every `/api/v1` route except login runs `authenticate` | `Implemented` | none |
+| Ownership checks: another user's resource returns 404, never 403 (ADR-005 point 12) | `Implemented` | none |
+| Authentication tests: login success, wrong password, unknown email, `/me` without a token, `/me` with a malformed token (`apps/api/src/routes/auth.routes.test.ts`) | `Implemented`; no test covers an expired or wrongly signed token | Open |
+| Authorization tests: cross-user access returns 404 (portfolio route tests) | `Implemented`; role tests `Planned (B2)` | B2 |
+| Session screens: login, logout, session expiry handling, access token kept in memory only (ADR-005 point 4) | `Planned (FE1)` | FE1 |
+| Demo identity with a role selector (Viewer, Trader, Admin) going through the same permission checks (ADR-005 point 11) | `Planned (FE4)` | FE4 |
+
+Code vs ADR:
+
+- The code has `USER` and `ADMIN`. ADR-005 point 1 decides `VIEWER`, `TRADER` and `ADMIN`. Nothing checks `role` today: `authenticate` only attaches `req.auth.role` (a plain string), so there is no authorization middleware and the "permission checks" and "protected resources enforce authorization" items below hold only for ownership.
+- ADR-005 point 3 puts permission enforcement in the application layer, not in Express middleware, which only authenticates and builds the `Actor`. The `Actor` therefore depends on `@trading/application` (B0) before B2 can enforce roles.
+- There is no refresh, no logout and no sessions table. The access token lives 15 minutes (the `JWT_EXPIRES_IN_SECONDS` default), and an issued token stays valid until it expires even after a logout exists (ADR-005 point 6).
+- Acceptance criteria against the code: unauthenticated and invalid requests are rejected with a generic 401, and an expired token is rejected by `jsonwebtoken` verification, but no test asserts the expired or wrong-signature case. No ADR or NFR assigns those tests to a block, so which block adds them is open. The role-based part of "protected resources enforce authorization" is `Planned (B2)`.
+- The principle below stays as written: the frontend check is a UX convenience and the backend check is the security boundary. In demo mode the same permission checks run in-process (ADR-005 points 3 and 11), so the rule holds without a backend.
+
 ### Objective
 
 Implement secure access control.
@@ -370,6 +540,37 @@ Backend authorization check
 ---
 
 ## 10. Phase 5 — Frontend Foundation
+
+**Status:** per item (table below); the whole phase is frontend stage work and `apps/web` holds only a wireframe
+
+**Owning blocks:** Backend: none (FE0 depends on B6, the documented API contract); Frontend: FE0 (§4.3). The frontend-stage ADR must exist before FE0 starts (§4.3).
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Frontend-stage ADR: routing, state, rendering library, charts, shared UI, accessibility tool, HTTP client timeout and retry, frontend test tooling, demo specifics (ADR-010 point 6, ADR-006 point 11) | Open: not written | before FE0 |
+| `apps/web` workspace (package, scripts, build); `apps/web` holds `wireframe.html`, `WIREFRAME-PLAN.md` and `.gitkeep` | `Planned (FE0)` | FE0 |
+| Vite as the build tool (ADR-006 point 8) | `Planned (FE0)` | FE0 |
+| React as the rendering library | `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §4) | FE0 |
+| TypeScript for `apps/web` | `Planned (FE0)` | FE0 |
+| Tailwind CSS, shadcn/ui, shared UI structure and design tokens | `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §7 and §8) | FE0 |
+| Routing | `Deferred` to the frontend-stage ADR | FE0 |
+| Server state (TanStack Query), client state (Zustand "where justified"), forms (React Hook Form) | `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §10, §11 and §13) | FE0 |
+| Request and response types (DTOs) consumed from `@trading/contracts` (ADR-002 point 5) | `Planned (FE0)`; the package is `Planned (B0)` | FE0 |
+| Feature structure (the `src/` layout below) | `Deferred` to the frontend-stage ADR (`06-architecture.md` §7 and §8) | FE0 |
+| `TradingClient` port with the HTTP adapter over `@trading/contracts` (ADR-002 point 5); the in-process adapter is FE4 | `Planned (FE0)` | FE0 |
+| Application shell: icon rail, top bar and status bar (`11-ui-ux-spec.md`) | `Planned (FE0)` | FE0 |
+| English and Spanish (ADR-010 point 8): English initially, Spanish only after the user selects it, localized messages mapped from error codes, locale formatting | `Planned (FE0)` | FE0 |
+| `APP_MODE` and the API and WebSocket base URLs as build-time values (`VITE_APP_MODE`, proposed `VITE_API_BASE_URL` and `VITE_WS_URL`; ADR-006 point 8) | `Planned (FE0)` | FE0 |
+| Browser-console `Logger` adapter (ADR-009 point 1) | `Planned (FE0)`; the `Logger` port is `Planned (B3)` | FE0 |
+| Wireframe corrections: `lang="es"` becomes English and `WIREFRAME-PLAN.md` is updated (ADR-010 point 8) | `Planned (FE0)` | FE0 |
+
+Code vs ADR:
+
+- The task list below names React, Tailwind CSS, shadcn/ui, TanStack Query, Zustand and React Hook Form. No ADR decides them, and `04-tech-stack.md` marks them `Deferred`. The list is kept as the original intent, not as a decision. Only Vite is decided (ADR-006 point 8).
+- This phase was written to follow Phase 4 so the frontend could start early. Under the backend-first override (§4.1) it starts after B1 to B7 are closed, and FE0 is its only block.
+- FE0 builds on backend deliverables: the DTOs and schemas in `@trading/contracts` (B0) and the documented API contract (B6). The web build reads no secrets, and the demo bundle contains no HTTP adapter (ADR-006 points 7 and 8).
+- `lang="es"` in `apps/web/wireframe.html` contradicts ADR-010 point 8, which makes English the initial language; the wireframe is a visual reference, not production code.
+- The API's `CORS_ORIGIN` defaults to `http://localhost:5173`, the Vite dev server default. The real-mode web app runs on the Vite dev server against the local API (ADR-006 point 8). The API does not expose `X-Request-ID` through CORS, so a browser client cannot read it until B3 adds that.
 
 ### Objective
 
