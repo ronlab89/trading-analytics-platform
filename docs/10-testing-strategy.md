@@ -55,13 +55,13 @@ The objective is not maximum test count.
 
 The objective is **high confidence in important product behavior**.
 
-There is no coverage threshold today and none is decided (no coverage provider is configured in any Vitest config). A numeric target is `Deferred`; risk decides where tests are added, not a percentage.
+Version 1 has no coverage threshold (ADR-006 point 11), and no coverage provider is configured in any Vitest config. A numeric target stays `Deferred`. The quality bar is the named mandatory tests: application services with in-memory fakes (ADR-001 point 7) and contract tests (ADR-002 point 6). Risk decides where other tests are added, not a percentage (§55).
 
 ---
 
 # 3. Testing Pyramid
 
-**Status:** unit and integration levels `Implemented` (backend); component and E2E levels `Planned (FE)`; their tooling `Deferred` (`04-tech-stack.md` §33)
+**Status:** unit and integration levels `Implemented` (backend); component and E2E levels `Planned (FE)`; their tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11)
 
 The project should follow:
 
@@ -91,7 +91,7 @@ Most tests should exist at the unit and component levels.
 
 A smaller number of integration and E2E tests should validate complete system behavior.
 
-Current shape, by file count: domain unit tests 28 files, database repository tests 17 files, API HTTP integration tests 14 files. The backend therefore leans on integration tests more than the pyramid asks, because application services do not exist as a separate layer yet (§6, ADR-001 point 7). The names "Playwright", "React" and "Testing Library" in this document are working assumptions: `04-tech-stack.md` §33 leaves component and end-to-end tooling `Deferred` until the frontend stage.
+Current shape, by file count: domain unit tests 28 files, database repository tests 17 files, API HTTP integration tests 14 files. The backend therefore leans on integration tests more than the pyramid asks, because application services do not exist as a separate layer yet (§6, ADR-001 point 7). The names "Playwright", "React" and "Testing Library" in this document are working assumptions: component and end-to-end tooling is decided in the frontend-stage ADR and stays `Deferred` until then (ADR-006 point 11, `04-tech-stack.md` §33).
 
 ---
 
@@ -127,7 +127,7 @@ Additional specialized testing covers:
 
 # 5. Static Verification
 
-**Status:** local checks `Implemented`; CI gate `Planned (B0)` (ADR-006 point 10)
+**Status:** local checks `Implemented`; CI gate `Planned (B0)` (ADR-006 points 10-11)
 
 Every change should pass:
 
@@ -165,7 +165,7 @@ The pre-commit hook (`.husky/pre-commit`, `lint-staged`) formats and lints stage
 Code vs ADR:
 
 - No CI workflow exists (`.github/` holds only the pull request template). ADR-006 point 10 decides one GitHub Actions workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, typecheck, lint, and the domain, database and API test suites, the latter two against a PostgreSQL service container. It is `Planned (B0)`.
-- ADR-006 does not list the Prettier check or the build in that workflow, and "production build" does not yet run as a deployable artifact (`node dist/index.js` fails on extensionless imports; fixed in B7, ADR-006 point 3). The list above is therefore the target for local runs. Adding `format:check` and `build` to CI is not decided (`Deferred`).
+- ADR-006 point 11 adds `pnpm format:check` and `pnpm build` to that workflow, so CI runs all four checks above (`Planned (B0)`). The build step proves the packages compile from a clean checkout; the compiled API does not yet run (`node dist/index.js` fails on extensionless imports; fixed in B7, ADR-006 point 3).
 - The domain-boundary lint rule is commented out in `eslint.config.js` (`06-architecture.md` §43); it is `Planned (B0)` with the lint-enforced boundaries of ADR-002.
 
 ---
@@ -287,7 +287,7 @@ Examples:
 
 # 10. Component Testing
 
-**Status:** `Planned (FE)`; tooling `Deferred` (`04-tech-stack.md` §33)
+**Status:** `Planned (FE)`; tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11)
 
 Testing Library should be used for React component behavior.
 
@@ -309,7 +309,7 @@ confirm
 
 The test should verify the resulting user-visible behavior.
 
-No `apps/web` code or component test setup exists (`apps/web` holds only wireframe files). React and Testing Library are the intended choice but are not recorded in an ADR; the frontend stage confirms them.
+No `apps/web` code or component test setup exists (`apps/web` holds only wireframe files). React and Testing Library are the intended choice; the component test runner and React Testing Library are decided in the frontend-stage ADR (ADR-006 point 11).
 
 ---
 
@@ -667,7 +667,7 @@ What the tests assert, through the realtime transport test double (`08-realtime-
 - A burst of 100 events in 1 s is applied in at most one render per animation frame (NFR-006); the new price is visible within 100 ms of receipt (NFR-004, §40).
 - Update highlights are disabled under reduced motion (`08-realtime-spec.md` §49, NFR-032).
 
-The component test tooling is `Deferred` (`04-tech-stack.md` §33).
+The component test tooling is `Deferred` to the frontend-stage ADR (ADR-006 point 11).
 
 ---
 
@@ -974,7 +974,7 @@ At minimum:
 
 # 32. End-to-End Testing
 
-**Status:** `Planned (FE)`; tooling `Deferred` (`04-tech-stack.md` §33)
+**Status:** `Planned (FE)`; tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11)
 
 Playwright will be used for critical user journeys.
 
@@ -994,7 +994,7 @@ Database / Mock Infrastructure
 
 depending on the test environment.
 
-No frontend and no E2E suite exist. Playwright is a working assumption, not a decision (`04-tech-stack.md` §33). There is no public backend (ADR-006 point 2), so the two E2E environments are the local production stack (browser → web → API → PostgreSQL) and the static demo, where the application layer runs in the browser on in-memory repositories (ADR-001, ADR-006 point 7) and there is no API.
+No frontend and no E2E suite exist. Playwright is a working assumption, not a decision: the frontend-stage ADR picks the E2E tool (ADR-006 point 11). There is no public backend (ADR-006 point 2), so the two E2E environments are the local production stack (browser → web → API → PostgreSQL) and the static demo, where the application layer runs in the browser on in-memory repositories (ADR-001, ADR-006 point 7) and there is no API.
 
 ---
 

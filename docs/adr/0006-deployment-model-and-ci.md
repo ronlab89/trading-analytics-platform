@@ -65,6 +65,22 @@ Other facts:
     to `develop` and `main`: install with the lockfile, typecheck, lint, and
     the domain, database and API test suites, the latter two against a
     PostgreSQL service container. No continuous deployment.
+11. **CI scope, coverage and frontend test tooling** (added 2026-10-06,
+    approved by the user, from the `10-testing-strategy.md`
+    reconciliation; `Planned (B0)` with point 10):
+    - **Formatting and build.** The point 10 workflow also runs
+      `pnpm format:check` and `pnpm build`. Building in CI proves the
+      packages compile from a clean checkout; running the built API stays
+      a B7 concern (point 3).
+    - **No coverage threshold.** Version 1 sets no coverage percentage and
+      configures no coverage gate in CI. The quality bar is the named
+      mandatory tests: application services with in-memory fakes
+      (ADR-001 point 7) and contract tests against the `@trading/contracts`
+      schemas (ADR-002 point 6). A threshold stays `Deferred`.
+    - **Frontend test tooling.** The component test runner, React Testing
+      Library and Playwright are decided in the frontend-stage ADR, like the
+      demo specifics (ADR-010 point 6). They stay `Deferred` until then and
+      do not block B0-B7.
 
 ## Consequences
 
@@ -112,6 +128,9 @@ specified and tested in the listed block.
 
 ## Related
 
-- ADR-001, ADR-002 (demo runs the application in process)
+- ADR-001, ADR-002 (demo runs the application in process; mandatory
+  tests of point 11)
+- ADR-010 point 6 (frontend-stage ADR)
+- `10-testing-strategy.md` §5, §53-§55
 - `14-deployment-spec.md`, `15-implementation-plan.md` rule 10
 - `PROGRESS.md` §7
