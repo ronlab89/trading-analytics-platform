@@ -1741,69 +1741,91 @@ Code vs ADR:
 
 # 43. Observability and Background Tasks
 
-Background operations must emit lifecycle events.
+**Status:** `Planned (B4)` on the B3 `Logger` port (ADR-009 points 5 and 11, ADR-008); no job code exists today
 
-Example:
+Background operations must emit lifecycle events. The only job in version 1 is the CSV transaction import (ADR-008 point 1). Each log entry names the ADR-008 transition it records; the dotted names are working names until B4 (§8), except `job.failed`, which ADR-009 point 3 uses as an example.
+
+Success:
 
 ```text
-job.started
+job.started      QUEUED -> PROCESSING
+     │
+     ▼
+job.progress     processed/total updated (a field, not a state)
      │
      ▼
 job.progress
      │
      ▼
-job.progress
-     │
-     ▼
-job.completed
+job.completed    PROCESSING -> COMPLETED (set in the apply UnitOfWork)
 ```
 
 Failure:
 
 ```text
-job.started
+job.started      QUEUED -> PROCESSING
      │
      ▼
 job.progress
      │
      ▼
-job.failed
+job.failed       PROCESSING -> FAILED, with a reason
 ```
 
-Timeout:
+Timeout (only while `QUEUED` or validating; the apply stage is exempt):
 
 ```text
-job.started
+job.started      QUEUED -> PROCESSING
      │
      ▼
-job.timed_out
+job.timed_out    -> TIMED_OUT
 ```
 
-Cancellation:
+Cancellation (only while `QUEUED` or validating; never during apply):
 
 ```text
-job.started
+job.started      QUEUED -> PROCESSING
      │
      ▼
-job.cancelled
+job.cancelled    -> CANCELLED
 ```
 
-These events should correlate through `operationId`.
+These events correlate through `jobId` (ADR-009 point 5), not a generic `operationId` (§10).
+
+| Transition | ADR-008 | Log entry | Realtime event |
+| --- | --- | --- | --- |
+| Created as `QUEUED` | points 3-4 | Name open (B4) | None |
+| `QUEUED` -> `PROCESSING` | point 3 | `job.started` (working name) | None |
+| Progress update | point 3 (`processed`, `total`) | `job.progress` (working name; level open, B4) | `JOB_PROGRESS_UPDATED` |
+| -> `COMPLETED` | point 5 | `job.completed` (working name) | `JOB_COMPLETED` |
+| -> `FAILED` | points 2, 5-6 | `job.failed` | `JOB_FAILED` |
+| -> `CANCELLED` | point 6 | `job.cancelled` (working name) | None (ADR-007 point 15) |
+| -> `TIMED_OUT` | point 7 | `job.timed_out` (working name) | None (ADR-007 point 15) |
+| Retry: back to `QUEUED`, `attempt` + 1 | point 6 | Name open (B4) | None |
+| Startup: `PROCESSING` -> `FAILED` (`INTERRUPTED`); `QUEUED` resumed | point 5 | Name open (B4); part of startup logging (ADR-009 point 11) | `JOB_FAILED` |
+
+Code vs ADR:
+
+- The six states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3). There is no `started` or `progress` state; the log names above describe transitions, and realtime event types (`JOB_*`) are a separate namespace (§8).
+- A `FAILED` entry carries its reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED` (ADR-008 points 5-6). Which other fields (`attempt`, `stage`, `userId`) each entry includes is an open detail (B4, §20).
+- The job input (the stored CSV content) is never logged (ADR-009 Deferred detail).
+- Under ADR-009 point 6, a job failure is not an HTTP error, so its level is not fixed there. Open detail (B4).
 
 ---
 
 # 44. Observability and Security Events
 
+**Status:** `Planned (B3)` (ADR-009 point 9, `09-security-spec.md` §50); refresh reuse event `Planned (B2)` with the refresh endpoint (ADR-005 point 5); a logout event not decided
+
 Security-relevant events should be observable.
 
-Examples:
+Events (ADR-009 point 9):
 
 ```text
-auth.login.success
-auth.login.failure
-auth.logout
-auth.token.refresh.failure
-auth.authorization.denied
+auth.login.succeeded
+auth.login.failed
+auth.refresh.reuse_detected
+authz.denied
 ```
 
 These events should never log authentication secrets.
@@ -1818,9 +1840,29 @@ For failed authentication attempts, useful context may include:
 
 Avoid storing excessive identifying information.
 
+The list previously used other names. What each became:
+
+| Previous name | Version 1 | Status |
+| --- | --- | --- |
+| `auth.login.success` | `auth.login.succeeded` | `Planned (B3)` |
+| `auth.login.failure` | `auth.login.failed`, same fields whatever the cause (`09-security-spec.md` §51) | `Planned (B3)` |
+| `auth.logout` | No ADR event. `POST /api/v1/auth/logout` is `Planned (B2)` (ADR-005 point 6) | Not decided (`09-security-spec.md` §50) |
+| `auth.token.refresh.failure` | Only reuse of a rotated refresh token has an event, `auth.refresh.reuse_detected` (ADR-005 point 5) | `Planned (B2)` / `Planned (B3)` |
+| `auth.authorization.denied` | `authz.denied` | `Planned (B3)`; on role checks from B2, on realtime subscriptions from B5 |
+
+Code vs ADR:
+
+- No security event is logged today: there is no logger (ADR-009, B3) and no refresh or logout endpoint (ADR-005, B2). Login failures are answered (`09-security-spec.md` §51) but not logged.
+- Each event carries `timestamp`, `event`, `requestId` and `userId` when known (ADR-009 point 3, `09-security-spec.md` §50). Authentication failures log at `warn` (ADR-009 point 6). Passwords, the `Authorization` header, cookies and both tokens are never logged (ADR-009 point 4).
+- `route` comes from the request log. ADR-009 lists no client address or user agent, so "sanitized client context" is an open detail (B3). Whether `auth.login.failed` records the cause (unknown email or wrong password) as a value is also open (B3); the fields stay the same for every cause.
+- Refresh failures other than reuse (an expired, unknown or revoked token, a missing custom header) have no event; they are ordinary `401` request logs. Open detail (B2/B3).
+- Whether logout emits an event is an open detail in `09-security-spec.md` §50; no event is added here until it is decided.
+
 ---
 
 # 45. Audit vs Operational Logs
+
+**Status:** `Reference`; version 1 has operational logs only (`Planned (B3)`) and no separate audit store (`09-security-spec.md` §50)
 
 Operational logs and audit records are different concepts.
 
@@ -1848,45 +1890,43 @@ Audit requirements should be implemented separately from generic logging if they
 
 Operational logs must not be treated as permanent audit storage.
 
+Code vs ADR:
+
+- The security events of §44 are the version 1 trail for security-relevant actions; they live in the operational log, so they are as transient as it is (§46).
+- Two audit examples have no counterpart in version 1: transactions are immutable, with no update or delete endpoint (ADR-003, `07-api-spec.md`), and roles come from the seed, with no role-change endpoint (ADR-005 point 10).
+- User-visible activity (the Activity view, notifications) is a product feature, not an audit record and not an operational log (ADR-009 Context).
+- "Websocket disconnected" is a realtime connection entry, `Planned (B5)` (§28).
+
 ---
 
 # 46. Log Retention
 
+**Status:** stdout only `Planned (B3)` (ADR-009 point 3); log files `Deferred`
+
 Because the project is designed for local/free infrastructure, retention should remain simple.
 
-Local development logs may be:
+Logs are one JSON line per event on stdout (ADR-009 point 3). The API writes no log file, so it never appends to an unbounded file and keeps no retention of its own. Retention belongs to whatever reads stdout: the developer's terminal, or the container output under the Docker Compose `full` profile (ADR-006 point 4, `Planned (B7)`).
 
-- streamed to stdout
-- written to local files when useful
-- rotated to avoid unbounded growth
+Container environments treat stdout/stderr as the primary log stream.
 
-The application must not continuously append to an unlimited log file.
+Code vs ADR:
 
-Container environments should preferably treat stdout/stderr as the primary log stream.
+- Earlier drafts allowed writing local files and rotating them. ADR-009 point 3 rules out log files and rotation; there is no file option.
+- Today the API writes through `console.log` and `console.error` (§1), which also go to stdout and stderr only.
 
 ---
 
 # 47. Log Rotation
 
-If file logging is enabled locally, rotation must be bounded by:
+**Status:** removed by ADR-009 point 3 (no log files, no rotation); the heading stays so section numbers do not shift
 
-- maximum file size
-- number of retained files
-- optional time-based rotation
-
-Example conceptual policy:
-
-```text
-application.log
-application.log.1
-application.log.2
-```
-
-Exact values are implementation details.
+The API writes no log file (§46), so there is nothing to rotate. If a hosted backend (ADR-006 point 2) ever needs file logs, a new decision reopens this section.
 
 ---
 
 # 48. Metrics Storage
+
+**Status:** `Deferred` (ADR-009 point 10); no metrics library and no in-memory counters exist
 
 The initial metrics implementation should favor lightweight local mechanisms.
 
@@ -1901,9 +1941,13 @@ Metrics must not grow without bounds.
 
 If an in-memory metric is used, its lifecycle should be clearly defined.
 
+Code vs ADR: ADR-009 point 10 defers metrics until something consumes them (NFR-070); the in-memory approach was considered and deferred (ADR-009 Alternatives). Durations are still recorded per request as `durationMs` on log entries (ADR-009 point 3, §26). These constraints apply when a hosted backend (ADR-006 point 2) reopens metrics.
+
 ---
 
 # 49. Metrics Endpoint
+
+**Status:** `Deferred` (ADR-009 point 10: no `/metrics` endpoint)
 
 A development or internal metrics endpoint may be provided.
 
@@ -1919,9 +1963,13 @@ It must not expose secrets or sensitive application state.
 
 If Prometheus-compatible output is adopted, metric naming and label cardinality should follow Prometheus conventions.
 
+Code vs ADR: `apps/api` registers no `/metrics` route; the only unauthenticated operational routes are `GET /health` and `GET /health/ready` (§22). A Prometheus stack was rejected for version 1 (ADR-009 Alternatives).
+
 ---
 
 # 50. Process Metrics
+
+**Status:** `Deferred` (ADR-009 point 10)
 
 The backend may expose basic process measurements such as:
 
@@ -1935,9 +1983,16 @@ These are diagnostics, not promises of performance.
 
 They should be used to identify issues rather than to create artificial benchmarks.
 
+Code vs ADR:
+
+- `GET /health` returns `status`, `service` and `timestamp`, not uptime or memory (`apps/api/src/controllers/health.controller.ts`).
+- The server will count WebSocket connections per user to enforce the cap of 5 (ADR-005 point 13, ADR-007 point 16, `Planned (B5)`). That count is an enforcement limit, not an exposed metric.
+
 ---
 
 # 51. Performance Baselines
+
+**Status:** `Reference` (the rule against unmeasured results); recorded baselines `Deferred` with metrics (ADR-009 point 10)
 
 The project may establish performance baselines during implementation.
 
@@ -1951,9 +2006,13 @@ Examples of measurements that could be established:
 
 No baseline should be documented as a project result until it has actually been measured.
 
+Code vs ADR: no baseline has been measured. From B3, request and analytics-series durations appear as `durationMs` in log entries (ADR-009 points 3 and 8), which is enough to measure by hand. Realtime processing is `Planned (B5)` and frontend timing `Planned (FE)` (§27).
+
 ---
 
 # 52. Performance Thresholds
+
+**Status:** slow-request threshold `Planned (B3)` (ADR-009 point 8); other thresholds not decided
 
 Diagnostic thresholds may be configured to identify suspicious operations.
 
@@ -1968,29 +2027,43 @@ Thresholds should be configurable.
 
 They should not automatically be presented as user-facing SLA guarantees.
 
+Code vs ADR:
+
+- The one decided threshold is for HTTP requests: configurable, default 500 ms (ADR-009 point 8). Its environment variable is not in `apps/api/src/config/env.ts` yet; its name is an open detail (B3).
+- The analytics series reconstruction is timed separately (ADR-009 point 8); whether it has its own threshold is an open detail (B3, §26).
+- Version 1 is local only (ADR-006), so there is no SLA.
+
 ---
 
 # 53. Slow Operation Diagnostics
 
+**Status:** `Planned (B3)` (ADR-009 points 3, 5 and 8); the entry's event name is an open detail (B3)
+
 A slow operation should generate a useful diagnostic event.
 
-Example:
+Example (a request over the threshold):
 
 ```json
 {
   "level": "warn",
-  "event": "operation.slow",
-  "operationId": "op_456",
-  "source": "analytics.service",
+  "event": "http.request.completed",
+  "requestId": "6f1c2a9e-3b4d-4c1e-9a7f-2d8e5b0c4f11",
   "durationMs": 842
 }
 ```
 
 The threshold and exact fields should be implementation-configurable.
 
+Code vs ADR:
+
+- The example previously used `operation.slow` with `operationId` and `source`. Requests correlate by `requestId` (ADR-009 point 5); a generic `operationId` is `Deferred` (§10), and `source` is not an ADR-009 field (§7).
+- ADR-009 point 8 asks for "a `warn` entry"; whether that is the request's own `http.request.completed` entry raised to `warn` (as above) or a separate event is an open detail (B3).
+
 ---
 
 # 54. Observability Overhead
+
+**Status:** `Reference`
 
 Instrumentation must not significantly alter application behavior.
 
@@ -2005,9 +2078,13 @@ Avoid:
 
 The observability system itself should be observable if it becomes sufficiently complex.
 
+How version 1 meets the list: logs go to stdout with no in-memory event store (ADR-009 point 3); payloads with user data and the CSV job input are never logged (ADR-009 point 4 and Deferred detail); `LOG_LEVEL` keeps `debug` out of production and tests (ADR-009 point 7). Render logging is a frontend concern (`Planned (FE)`, §27).
+
 ---
 
 # 55. Realtime Event Sampling
+
+**Status:** not decided (open detail, B5, `08-realtime-spec.md` §58); product processing of every event `Planned (B5)` / `Planned (FE)`
 
 High-frequency realtime events may require sampling for diagnostics.
 
@@ -2025,9 +2102,13 @@ Realtime stream
 
 This prevents logs from becoming the bottleneck.
 
+Code vs ADR: the simulator ticks once per second (ADR-007 point 15). No ADR adopts sampling. `08-realtime-spec.md` §58 leaves open the level of per-event entries so that ticks do not flood `info` logs; sampling and a `debug`-only level are both candidates for that B5 detail.
+
 ---
 
 # 56. Demo Realtime Logging
+
+**Status:** `Planned (FE)` through the browser-console `Logger` adapter (ADR-009 point 1); demo event names `Deferred` with the demo specifics (ADR-010 point 6)
 
 Demo mode should make simulated realtime behavior understandable without flooding the console.
 
@@ -2043,9 +2124,28 @@ simulation.error
 
 Detailed tick logging can be enabled explicitly for debugging.
 
+What each name maps to in the simulator lifecycle (`RUNNING <-> HALTED`, ADR-007 points 15-16, `08-realtime-spec.md` §40):
+
+| Name | Version 1 counterpart | Status |
+| --- | --- | --- |
+| `simulation.started` | `POST /api/v1/simulation/start`: `HALTED` -> `RUNNING` | Working name |
+| `simulation.paused` | `POST /api/v1/simulation/pause`: `RUNNING` -> `HALTED`. The name follows the endpoint, not the lifecycle state; it is unrelated to the `PAUSED` mode wire ID | Working name |
+| `simulation.resumed` | No separate transition: `start` from `HALTED` is the resume | Not decided |
+| `simulation.stopped` | Real mode has no stop (ADR-007 point 15); a demo stop or reset belongs to the demo ADR | `Deferred` (ADR-010 point 6) |
+| `simulation.error` | No ADR defines simulator errors | Not decided |
+
+Code vs ADR:
+
+- `@trading/market-sim` and the simulator do not exist yet (ADR-007, B5).
+- A mode change (`PUT /api/v1/simulation/mode`) has no name in the list. What the `PAUSED` mode does relative to `HALTED` is itself open (ADR-007 Deferred detail, B5).
+- ADR-009 point 11 lists startup, shutdown, job and realtime connection events; simulator transitions in the API are not named there, so the real-mode names are an open detail (B5). The demo names wait for the frontend-stage demo ADR (§29).
+- Per-tick logging follows §55.
+
 ---
 
 # 57. Health Check Failure Behavior
+
+**Status:** per item (table below)
 
 If a dependency becomes unavailable:
 
@@ -2056,6 +2156,19 @@ If a dependency becomes unavailable:
 - the application should not crash unnecessarily
 
 For demo mode, dependency failures may be simulated according to `12-demo-mode-spec.md`.
+
+The only dependency is PostgreSQL.
+
+| Item | Today | Status |
+| --- | --- | --- |
+| Readiness reflects the dependency | `GET /health/ready` returns 503 with `checks.database: "unavailable"` | `Implemented` (`apps/api/src/controllers/health.controller.ts`) |
+| Errors are logged | Readiness writes one JSON line, `health.database.unavailable`, with `requestId` and `errorName`; other requests log `request.failed` (§1) | `Implemented` as `console` lines; on the `Logger` port `Planned (B3)` |
+| Appropriate error responses | A request that fails because the database is unreachable gets 500 `INTERNAL_ERROR` | 503 `DEPENDENCY_ERROR` `Planned (B0)` (ADR-002 point 10, `07-api-spec.md`) |
+| Recovery is observable | Readiness is checked on every call, so it returns 200 again once the database answers; no entry records the recovery | Recovery entry not decided (§58) |
+| No unnecessary crash | A failed query is handled per request by the error handler; there are no process-level handlers | Startup and graceful shutdown logging `Planned (B3)` (ADR-009 point 11) |
+| Demo dependency failures | Simulated failures are a demo specific | `Deferred` (ADR-010 point 6) |
+
+Code vs ADR: readiness during shutdown is not decided (§23).
 
 ---
 
