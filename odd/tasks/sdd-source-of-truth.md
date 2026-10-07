@@ -223,6 +223,8 @@ Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10
 - [ ] T5.1 `12`, `13`, `14`
   - [ ] `13` in 5 slices. A §1-12 `a414592` (`pnpm docs:check` and `pnpm lint` pass). Pending user decisions from A (batched at the end of `13`): `errorCategory` vs `errorName` (§7); extra B3 log fields (§7); log levels for `FORBIDDEN`, `RATE_LIMITED`, `DEPENDENCY_ERROR` (§6.2); B3 names of `request.failed` and `health.database.unavailable` (§8); scrub error messages or only named fields (§11); expose `X-Request-ID` through CORS (§9, FE).
     - B §13-27 `54ba55f`. Pending: block for graceful shutdown and 503 readiness while shutting down (§23; code has no SIGTERM handling); DB operation timing or Prisma query logging in dev (§21, §25); health route tests for NFR-051, maybe B0 with the ADR-001 point 8 route tests (§22). Found: NFR-051 is `Implemented` but no test covers `/health` or `/health/ready`.
+    - C §28-42 `1e228a9`. Pending (frontend stage): development-only realtime debug mode or diagnostics panel (§28, §39, §40); explicit demo diagnostics interface (§30, `12` §75). Found: `AppErrorCode` still declares `TIMEOUT` (removal is B0 per `07`).
+    - Paused by the user after slice C (2026-10-06). Remaining: D §43-57, E §58-end (with the header), then one batch of the 11 pending `13` decisions.
 - [ ] T5.2 `15` (backend-first override), `CONTRIBUTING.md`, `README.md`
 - [ ] T5.3 `PROGRESS.md` (main-branch claim fix), `BACKEND-ROADMAP.md` (add B0, including every ADR "Deferred detail" row assigned to B0; move the position-recalculation race from B7 to B0 per ADR-001)
 
@@ -257,9 +259,13 @@ Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10
 
 Phase 4 is complete on `docs/sdd-contracts` (2026-10-06): T4.1 `07`, T4.2 `08`, `09`, `10`, and every user decision recorded as an ADR amendment. `pr-body.md` is written and the user runs the push and `gh pr create` (base `develop`).
 
+Phase 4 PR merged into `develop`. Phase 5 started on `docs/sdd-operations`; paused by the user 2026-10-06 after `13` slice C (`1e228a9`).
+
 Resume with:
 
-1. After PR merge: Phase 5 on a new branch from `develop`. T5.3 (`BACKEND-ROADMAP.md` B0) collects the "For T5.3" items above.
-2. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
+1. `13` slice D (§43-57), then slice E (§58-end, header included), one delegated writer each.
+2. One batch of the 11 pending `13` decisions (listed under T5.1), with recommendations.
+3. Then `14`, T5.2, T5.3 (collects every "For T5.3" item above), `12` last.
+4. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.
