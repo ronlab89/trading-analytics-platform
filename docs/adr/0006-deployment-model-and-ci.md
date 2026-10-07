@@ -3,8 +3,10 @@
 **Status:** Accepted
 **Date:** 2026-10-04
 **Supersedes:** the "no CI" decision recorded in `PROGRESS.md` §7
+**Amended:** 2026-10-07 (point 12, graceful shutdown, approved by the user
+from the `13-observability-spec.md` reconciliation)
 **Implemented in:** CI before roadmap block B0; build and containers in B7;
-demo hosting in the frontend phase
+graceful shutdown in B3; demo hosting in the frontend phase
 
 ## Context
 
@@ -85,6 +87,17 @@ Other facts:
       accessibility scanning tool is also chosen there. The HTTP client's
       timeout and retry policy is decided there too, consistent with
       ADR-002 point 10 (the API has no server timeout).
+12. **Graceful shutdown** (added 2026-10-07, approved by the user, from the
+    `13-observability-spec.md` reconciliation; `Planned (B3)`, with the
+    lifecycle entries of ADR-009 point 11). `14-deployment-spec.md` §16
+    requires it; the API has no signal handling today. On `SIGTERM` or
+    `SIGINT`:
+    - The server stops accepting connections.
+    - `GET /health/ready` returns 503 while the API is shutting down.
+    - In-flight requests drain, with a timeout of 10 seconds.
+    - Prisma is closed.
+    - The API logs `app.shutdown.started` and `app.shutdown.completed`
+      (ADR-009 point 11).
 
 ## Consequences
 
@@ -105,7 +118,7 @@ Other facts:
 **Documents to align**
 
 - `14-deployment-spec.md`: current model first, hosted sections deferred,
-  variable names, rollback.
+  variable names, rollback, graceful shutdown (§16, point 12).
 - `13-observability-spec.md` and `10-testing-strategy.md`: CI references.
 - `CONTRIBUTING.md`: CI gate wording, local gate commands.
 - `12-demo-mode-spec.md` and `04-tech-stack.md`: `APP_MODE`.
@@ -129,11 +142,13 @@ specified and tested in the listed block.
 | Item | Resolution | Block |
 |---|---|---|
 | In the `full` Compose profile the API may run `migrate deploy` before PostgreSQL accepts connections. | `depends_on` with `condition: service_healthy`. | B7 |
+| Point 12 covers the HTTP server and the database. The shutdown steps of `14-deployment-spec.md` §16 for background jobs and realtime connections are not decided there. | Added to the shutdown sequence when the job runner (ADR-008) and the realtime server (ADR-007) exist. | B4, B5 |
 
 ## Related
 
 - ADR-001, ADR-002 (demo runs the application in process; mandatory
   tests of point 11)
+- ADR-009 point 11 (shutdown lifecycle entries)
 - ADR-010 point 6 (frontend-stage ADR)
 - `10-testing-strategy.md` §5, §53-§55
 - `14-deployment-spec.md`, `15-implementation-plan.md` rule 10

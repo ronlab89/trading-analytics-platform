@@ -15,10 +15,10 @@ an accepted ADR, the SDD document is wrong and is corrected.
 | [003](0003-holdings-only-portfolio.md) | Holdings-Only Portfolio with BUY and SELL Transactions | Accepted | Points 1-5 implemented; point 6 in B0 |
 | [004](0004-analytics-methodology.md) | Portfolio Analytics Methodology | Accepted | B1 |
 | [005](0005-roles-and-authentication.md) | Roles, Permissions and Session Management | Accepted | B2 (permission checks in B0) |
-| [006](0006-deployment-model-and-ci.md) | Deployment Model and Minimal Continuous Integration | Accepted | CI before B0; build and containers in B7; demo hosting in the frontend phase |
+| [006](0006-deployment-model-and-ci.md) | Deployment Model and Minimal Continuous Integration | Accepted | CI before B0; build and containers in B7; graceful shutdown in B3; demo hosting in the frontend phase |
 | [007](0007-realtime-and-market-simulation.md) | Realtime Transport and Shared Market Simulation | Accepted | B5 |
 | [008](0008-background-jobs-csv-import.md) | Background Jobs, Scoped to CSV Transaction Import, and Idempotency | Accepted | B4 |
-| [009](0009-observability-scope.md) | Observability Scope — Structured, Correlated, Safe Logging | Accepted | B3 |
+| [009](0009-observability-scope.md) | Observability Scope — Structured, Correlated, Safe Logging | Accepted | B3 (`auth.logout` with B2, simulator entries with B5) |
 | [010](0010-v1-product-scope-clarifications.md) | Version 1 Product Scope Clarifications | Accepted | B0, B1, FE |
 
 Blocks (B0-B7) are defined in [`../BACKEND-ROADMAP.md`](../BACKEND-ROADMAP.md).
