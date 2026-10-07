@@ -225,7 +225,15 @@ Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10
     - B §13-27 `54ba55f`. Pending: block for graceful shutdown and 503 readiness while shutting down (§23; code has no SIGTERM handling); DB operation timing or Prisma query logging in dev (§21, §25); health route tests for NFR-051, maybe B0 with the ADR-001 point 8 route tests (§22). Found: NFR-051 is `Implemented` but no test covers `/health` or `/health/ready`.
     - C §28-42 `1e228a9`. Pending (frontend stage): development-only realtime debug mode or diagnostics panel (§28, §39, §40); explicit demo diagnostics interface (§30, `12` §75). Found: `AppErrorCode` still declares `TIMEOUT` (removal is B0 per `07`).
     - D §43-57 `2eaac4a`. Pending: logout event and its name (§44, same as `09` §50); refresh failures other than token reuse get their own event (§44); simulator event names (`simulation.resumed`, `simulation.error`, mode changes; §56, ADR-009 point 11 lists none). Found: a DB outage on a normal request returns 500 `INTERNAL_ERROR`, not 503 (B0); `SLOW_OPERATION_THRESHOLD_MS` near line 2355 needs aligning in slice E.
-    - Paused by the user after slice D (2026-10-06). Remaining: E §58-end (with the header), then one batch of the 14 pending `13` decisions.
+    - Paused by the user after slice D (2026-10-06).
+    - E §58-77 and header `bcf3b9a` (2026-10-07, route: delegated writer; `pnpm docs:check` and `pnpm lint` pass). All 20 sections carry a status; the header reads "reconciled 2026-10-07". Pending user decisions from E (batched with the others), each with the writer's recommendation:
+      - Whether a database recovery entry exists and its name (§58): defer until something polls `/health/ready` (B7 healthcheck), because readiness is stateless.
+      - Slow-request env var name (§68): `SLOW_REQUEST_THRESHOLD_MS` over `SLOW_OPERATION_THRESHOLD_MS`, since the decided threshold is HTTP-only (ADR-009 point 8 times series reconstruction separately).
+      - Dependency audit or license CI step (§63): none in v1 (NFR-070).
+      - Health route tests in B0 (§59-62): amend ADR-001 point 8 or add them to the B0 scope in T5.3.
+      - `LOG_FORMAT`, `ENABLE_DEBUG_LOGGING`, `ENABLE_DEV_DIAGNOSTICS` (§68): do not adopt.
+    - Found in E: ADR-009 point 11 cites ADR-006 for graceful shutdown but ADR-006 has none (only `14` §16 requires it; no signal handling in code); `14` §10 lists `DEMO_MODE` and `JWT_EXPIRES_IN` while ADR-006 point 8 and `env.ts` use `APP_MODE` and `JWT_EXPIRES_IN_SECONDS` (for the `14` slice); `README.md` and `CONTRIBUTING.md` document no API start, logs, health or `LOG_LEVEL` (T5.2); no `no-console` ESLint rule; `@trading/application` does not exist yet, so the B3 `Logger` port depends on B0; `docs/` is in `.prettierignore`, so `format:check` never covers the SDD; `.github/` holds only the PR template.
+    - `13` is fully reconciled. Remaining for T5.1 `13`: one batch of the 19 pending decisions (14 from slices A-D plus 5 from E).
 - [ ] T5.2 `15` (backend-first override), `CONTRIBUTING.md`, `README.md`
 - [ ] T5.3 `PROGRESS.md` (main-branch claim fix), `BACKEND-ROADMAP.md` (add B0, including every ADR "Deferred detail" row assigned to B0; move the position-recalculation race from B7 to B0 per ADR-001)
 
@@ -260,13 +268,12 @@ Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10
 
 Phase 4 is complete on `docs/sdd-contracts` (2026-10-06): T4.1 `07`, T4.2 `08`, `09`, `10`, and every user decision recorded as an ADR amendment. `pr-body.md` is written and the user runs the push and `gh pr create` (base `develop`).
 
-Phase 4 PR merged into `develop`. Phase 5 started on `docs/sdd-operations`; paused by the user 2026-10-06 after `13` slice D (`2eaac4a`).
+Phase 4 PR merged into `develop`. Phase 5 started on `docs/sdd-operations`; `13` slice E done 2026-10-07 (`bcf3b9a`), paused there by the user's request.
 
 Resume with:
 
-1. `13` slice E (§58-end, header included), one delegated writer.
-2. One batch of the 14 pending `13` decisions (listed under T5.1), with recommendations.
-3. Then `14`, T5.2, T5.3 (collects every "For T5.3" item above), `12` last.
-4. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
+1. One batch of the 19 pending `13` decisions (listed under T5.1), with recommendations.
+2. Then `14`, T5.2, T5.3 (collects every "For T5.3" item above), `12` last.
+3. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.
