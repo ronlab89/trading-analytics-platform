@@ -747,6 +747,8 @@ Code vs ADR:
 
 # 21. Database Reset
 
+**Status:** per item (table below)
+
 Local development should provide a documented reset workflow:
 
 ```text
@@ -761,9 +763,26 @@ Seed
 
 This must be clearly separated from production operations.
 
+| Workflow | Command | Status |
+|---|---|---|
+| Light reset (data only) | `pnpm --filter @trading/database db:seed`: deletes the seeded tables and reinserts the baseline; the schema is untouched (§20) | `Implemented` |
+| Hard reset (schema and data) | `pnpm --filter @trading/database db:reset` runs `prisma migrate reset`: drops and recreates the database, reapplies every migration, then runs the seed through the `prisma.seed` setting. Prisma asks for confirmation first (`README.md`, "Local Database") | `Implemented` |
+| Test database | No reset script. `db:test:migrate` only applies migrations (`prisma migrate deploy` with `.env.test.local`) | `Implemented` as migrate only |
+| Guard against a non-local database | None | `Planned (B0)`, open |
+| Demo reset | Resetting the demo's browser-side state | `Deferred` (ADR-010 point 6; `05-data-model.md` §34-37) |
+
+Code vs ADR:
+
+- The diagram describes the hard reset. The light reset skips "Recreate schema" and "Run migrations".
+- Both commands act on the database named by `DATABASE_URL` in `.env` (`packages/database/package.json`). Nothing checks `NODE_ENV` or the database name. The only guard is Prisma's confirmation on the hard reset; the seed has none (§20, open B0).
+- "Clearly separated from production operations" holds by construction: there is no production database (ADR-006 point 2), and the reset commands read `.env` while the tests read `.env.test.local`, so a reset never touches the test database unless both files point at the same one. A backup to restore from does not exist either (ADR-006 point 9).
+- The full stack never seeds on startup (ADR-006 point 5), so a demonstration that needs data runs the seed as an explicit command (`Planned (B7)` for the stack itself).
+
 ---
 
 # 22. Demo Deployment
+
+**Status:** `Planned (FE)`; simulated latency and failures `Deferred`
 
 The public demo must not require the complete real infrastructure when unnecessary.
 
@@ -783,9 +802,27 @@ Mock adapters
 
 The demo remains a functional product experience, not a static mockup.
 
+| Item | Status |
+|---|---|
+| Static build of `apps/web` in demo mode, hosted under a subpath of the author's portfolio site | `Planned (FE)` (ADR-006 points 1 and 7) |
+| No backend, no secrets, no running cost | `Planned (FE)` (ADR-006 point 7; `04-tech-stack.md` §49) |
+| Demo composition root with in-memory implementations of the repository contracts, calling `@trading/application` and the presenters of `@trading/contracts` | `Planned (FE)` (ADR-001 point 4; ADR-002 point 5) |
+| Local persistence: namespaced browser storage | `Planned (FE)` (ADR-006 point 7); what is stored and how it resets is `Deferred` (ADR-010 point 6) |
+| Simulated latency and scripted failures | `Deferred` (ADR-010 point 6) |
+| Simulated realtime: in-process adapter fed by `@trading/market-sim` | Engine `Planned (B5)` (ADR-007 point 7); adapter `Planned (FE)` |
+
+Code vs ADR:
+
+- The "mock API" box is the in-process adapter behind the `TradingClient` port, not an HTTP mock. Mocking at the HTTP client level was rejected (ADR-001, Alternatives Considered), so the demo runs the real use cases and presenters.
+- No web code exists: `apps/web` holds the wireframe files only and is not a workspace package (`06-architecture.md` §4).
+- Open (FE): how the demo build reaches the portfolio site (copy of the static output, a separate repository or a deploy step). No ADR decides it, and ADR-006 point 10 rules out continuous deployment. Recommendation: settle it in the frontend-stage ADR (ADR-010 point 6).
+- `12-demo-mode-spec.md` has not been reconciled yet and still describes the demo as "mock infrastructure" (T5.1, `12` last).
+
 ---
 
 # 23. Demo vs Real Infrastructure
+
+**Status:** per item (table below)
 
 Application and domain behavior should remain shared.
 
@@ -803,9 +840,26 @@ Application and domain behavior should remain shared.
 
 The composition root selects the infrastructure.
 
+| Item | Status |
+|---|---|
+| Domain behavior shared by both | `Implemented`: `packages/domain` |
+| Application layer shared by both | `Planned (B0)`: `@trading/application` does not exist yet (ADR-001 point 1) |
+| Real adapters: Prisma repositories and the API | `Implemented`: `packages/database`, `apps/api`; the API wires them without a composition root today |
+| Real composition root | `Planned (B0)`: `apps/api/src/composition.ts` (ADR-001 point 4) |
+| Demo adapters: in-memory repositories and `UnitOfWork`, in-process `TradingClient`, market simulation | `Planned (FE)`; `@trading/market-sim` `Planned (B5)` |
+| Demo composition root and mode selection through `APP_MODE` / `VITE_APP_MODE` | `Planned (FE)` (ADR-001 point 4; ADR-006 point 8) |
+
+Code vs ADR:
+
+- Today the services in `apps/api/src/services/` import the Prisma repositories directly, so the shared application layer in the diagram does not exist yet. ADR-001 moves them into `@trading/application` in B0.
+- The "Mock adapters" and "Simulation" boxes are in-memory repositories and the shared `@trading/market-sim` engine. They are not a second implementation of the use cases.
+- Open (FE): whether `VITE_APP_MODE` is read at build time (one bundle per mode) or at runtime (one bundle that selects its adapters). ADR-006 point 8 only names the variable. Recommendation: build time, so the public demo bundle contains no HTTP adapter and no API base URL.
+
 ---
 
 # 24. Public Demo Safety
+
+**Status:** `Planned (FE)`; resource bounds and demo diagnostics `Deferred`
 
 The public demo must not expose:
 
@@ -818,9 +872,27 @@ The public demo must not expose:
 
 Public demo simulations must have bounded resource usage.
 
+| Exposure | How the decided design avoids it | Status |
+|---|---|---|
+| Server credentials | The build calls no backend and carries no secrets; only `VITE_`-prefixed values reach it, none of them secret (ADR-006 point 7; §14) | `Planned (FE)` |
+| Private database access | There is no server and the build has no `DATABASE_URL` | `Planned (FE)` |
+| Administrative operations | No server operation exists to expose. The role selector (Viewer, Trader, Admin) runs the same permission checks in process, and `ADMIN` adds only `simulation:control`, which acts on the in-browser simulator (ADR-005 points 11 and 13) | `Planned (FE)` |
+| Development stack traces | The error envelope carries `code`, `message`, `requestId` and optional `details`, never a stack (ADR-002 point 2) | `Planned (FE)` |
+| Unrestricted diagnostic information | No diagnostics interface is decided (`13-observability-spec.md` §30, `12-demo-mode-spec.md` §75) | `Deferred` |
+| Private data | The demo bundles synthetic data only; the data layers are not decided (ADR-010 point 6) | `Deferred` |
+| Bounded simulation resources | No ADR sets a bound for the in-browser simulation | `Deferred` |
+
+Code vs ADR:
+
+- The security view is `09-security-spec.md` §41 and `12-demo-mode-spec.md` §58-59. In the demo, the use-case checks give parity with the real API, not security, because no server enforces them (NFR-026; `09-security-spec.md` §47).
+- The headers of the static host are outside this project's control (NFR-025 accepted exception; `09-security-spec.md` §25).
+- Open (FE): the numeric bound of the demo simulation, for example a cap on retained ticks and events. ADR-007 point 8 bounds retention in real mode only. Recommendation: decide it in the frontend-stage ADR with the demo specifics.
+
 ---
 
 # 25. Backend Deployment
+
+**Status:** runnable artifact `Planned (B7)`; deployment to a host `Deferred` (ADR-006 point 2)
 
 The backend must be deployable as a standalone Node.js service or Docker container.
 
@@ -832,9 +904,26 @@ The runtime artifact should contain:
 
 Development-only dependencies should not be required in production.
 
+| Item | Status |
+|---|---|
+| Compiled application: every package compiles to `dist` and exposes it through `exports`; the API runs with `node dist/index.js` | `Planned (B7)` (ADR-006 point 3) |
+| Standalone Node.js service on the author's machine | `Planned (B7)`: the `start` script of `apps/api` exists, but the output does not run today |
+| Docker container | `Planned (B7)`: the `full` Compose profile (§26; ADR-006 point 4) |
+| Production dependencies only | `Planned (B7)`; how they are separated is open |
+| Runtime configuration through environment variables | `Implemented` (§10, §12) |
+| Deployment to a hosting provider | `Deferred`; a new ADR is needed (ADR-006 point 2) |
+
+Code vs ADR:
+
+- `pnpm build` compiles the packages, but `@trading/domain` and `@trading/database` set `main` to `./src/index.ts` and the domain uses extensionless relative imports, so `node dist/index.js` cannot resolve them (ADR-006 context). `apps/api` sets `main` to `./src/index.ts` as well.
+- The `start` script loads `../../.env` through `dotenv-cli`, which suits a local run. How a container receives its variables is open (B7).
+- Open (B7): how production dependencies are separated from development ones in the image. Recommendation: decide it with the Dockerfile in B7 (ADR-006 point 3 leaves the details to B7).
+
 ---
 
 # 26. Backend Container
+
+**Status:** `Planned (B7)`; the PostgreSQL service and its healthcheck `Implemented`
 
 A production container should prioritize:
 
@@ -858,9 +947,29 @@ Runtime stage
  └── compiled application
 ```
 
+| Priority | Status |
+|---|---|
+| Multi-stage build, decided rather than "considered" | `Planned (B7)` (ADR-006 point 4) |
+| Non-root execution, decided rather than "where practical" | `Planned (B7)` (ADR-006 point 4; `09-security-spec.md` §38) |
+| Predictable startup: PostgreSQL healthy before `migrate deploy` and the API | `Planned (B7)`: `depends_on` with `condition: service_healthy` (ADR-006, Deferred detail) |
+| Health checks: PostgreSQL | `Implemented`: `pg_isready` in `docker-compose.yml` |
+| Health checks: API container | `GET /health` and `GET /health/ready` exist; a container healthcheck is not decided (open, B7) |
+| Graceful shutdown | `Planned (B3)` (§16; ADR-006 point 12) |
+| Reproducibility and minimal runtime dependencies | `Planned (B7)`; base-image pinning and the dependency split are open |
+| `full` Compose profile (PostgreSQL and the API) | `Planned (B7)` (ADR-006 point 4) |
+
+Code vs ADR:
+
+- `docker-compose.yml` defines one service, `postgres` (`postgres:18`), with no profiles. `docker/` holds a `.gitkeep` only, and no Dockerfile exists.
+- Open (B7): where the Dockerfile lives (`docker/` or `apps/api/`). Recommendation: `apps/api/Dockerfile` with the workspace root as build context, since the image needs the workspace packages.
+- Open (B7): the entrypoint must pass `SIGTERM` to the Node process, otherwise the shutdown of ADR-006 point 12 never runs in a container. Recommendation: run `node dist/index.js` directly as the container command, with no `pnpm` or shell wrapper.
+- The Postgres port binding and the superuser database role are in `09-security-spec.md` §36 and §38 and ADR-005 point 13 (§30).
+
 ---
 
 # 27. Frontend Production Build
+
+**Status:** `Planned (FE)`
 
 The frontend should produce static assets:
 
@@ -876,9 +985,24 @@ Static hosting / web server
 
 A Node.js runtime is not required to serve static assets unless the selected deployment architecture chooses one.
 
+| Item | Status |
+|---|---|
+| Vite build to static assets | `Planned (FE)` (`04-tech-stack.md` §5; ADR-006 points 1 and 8) |
+| Configurable base path, for the subpath of the portfolio site | `Planned (FE)` (ADR-006 point 7) |
+| SPA fallback | `Planned (FE)` (ADR-006 point 7) |
+| `VITE_APP_MODE=demo` at build time, no secrets in the build | `Planned (FE)` (ADR-006 points 7 and 8) |
+| Real-mode web app against the local API | `Deferred`: how it runs and receives the API URL is not decided (§14) |
+
+Code vs ADR:
+
+- `apps/web` is not a workspace package, so `pnpm build` (`pnpm -r build`) does not cover it today.
+- The demo needs no Node.js runtime: its host serves static files (ADR-006 point 7). The `full` profile has no web service (ADR-006 point 4), so the real-mode web app is not served by the stack. Recommendation: run it with the Vite development server against the local API, and decide it in the frontend-stage ADR.
+
 ---
 
 # 28. Frontend Hosting
+
+**Status:** the demo under the portfolio site `Planned (FE)`; any other provider `Deferred`
 
 The frontend should be compatible with free/static hosting.
 
@@ -892,9 +1016,24 @@ Required characteristics:
 
 The architecture must not depend on one specific hosting provider.
 
+| Characteristic | Status |
+|---|---|
+| HTTPS | `Planned (FE)`: expected from the portfolio site, which this project does not control; no ADR names the host |
+| Static assets | `Planned (FE)` (ADR-006 point 7) |
+| SPA fallback | `Planned (FE)` (ADR-006 point 7); how the host provides it is open |
+| Configurable API origin | Not needed by the public demo, which calls no backend (ADR-006 point 7); for the real mode `Deferred` (§14) |
+| Git-based deployment | `Deferred`: ADR-006 point 10 excludes continuous deployment, and the way the build reaches the host is open (§22) |
+
+Code vs ADR:
+
+- ADR-006 decides the hosting model, a subpath of the author's portfolio site (context and point 7), and names no provider. This section therefore names none.
+- Open (FE): confirm that the portfolio host serves HTTPS and a SPA fallback for the subpath. Recommendation: record the confirmation in the frontend-stage ADR.
+
 ---
 
 # 29. Backend Hosting
+
+**Status:** `Deferred`: no backend is hosted (ADR-006 point 2)
 
 The backend requires a runtime that supports:
 
@@ -909,9 +1048,17 @@ Before actual deployment, current provider limits and WebSocket support must be 
 
 No provider should be presented as permanently free because hosting policies can change.
 
+Code vs ADR:
+
+- The list above is kept as input for the ADR that hosting would need (ADR-006 point 2). It is a requirement list, not a plan.
+- The local full stack meets it with Node.js, Docker Compose and PostgreSQL on the author's machine (ADR-006 points 1 and 4).
+- Every provider, plan and limit is `Deferred`. The rule about free tiers stays as a rule: no decision may assume a paid plan, and none may assume a free one lasts (`04-tech-stack.md` §49).
+
 ---
 
 # 30. Database Hosting
+
+**Status:** local PostgreSQL `Implemented`; managed PostgreSQL `Deferred` (ADR-006 point 2)
 
 Local:
 
@@ -927,9 +1074,23 @@ Application → Managed PostgreSQL
 
 A free development tier may be preferred, but the architecture remains provider-agnostic.
 
+| Item | Status |
+|---|---|
+| PostgreSQL in Docker | `Implemented`: service `postgres`, image `postgres:18`, named volume `trading-analytics-postgres-data`, `pg_isready` healthcheck (`docker-compose.yml`) |
+| Managed PostgreSQL | `Deferred` |
+| Backups | Not applicable to a local environment, and not claimed (ADR-006 point 9) |
+
+Code vs ADR:
+
+- The "Public/production-like" diagram does not apply: the production-like target is the same local PostgreSQL (ADR-006 points 1 and 4), so no application connects to a managed database.
+- Compose publishes PostgreSQL on `${DATABASE_PORT:-5432}` without a bind address, and the API, migrations and tests connect as the image's superuser. A `127.0.0.1` binding is open (B7), and the separate runtime role is `Planned (B0)` (`09-security-spec.md` §36 and §38; ADR-005 point 13).
+- The default Compose profile keeps only PostgreSQL (ADR-006 point 4).
+
 ---
 
 # 31. WebSocket Deployment
+
+**Status:** local WebSocket `Planned (B5)` (ADR-007); hosted requirements `Deferred`
 
 The selected deployment environment must support:
 
@@ -943,9 +1104,24 @@ If a provider cannot reliably support WebSockets, it is not a valid target for t
 
 Local Docker must remain a reliable fallback.
 
+| Requirement | Status |
+|---|---|
+| Persistent connections and upgrades | `Planned (B5)`: the `ws` library behind a transport port (ADR-007 point 1) |
+| Timeout behavior | `Planned (B5)`: heartbeat with a ping every 30 seconds, and a socket closed after 2 consecutive missed pongs (`08-realtime-spec.md` §7) |
+| Reconnects | `Planned (FE)` (`08-realtime-spec.md` §27) |
+| Proxy configuration | `Deferred`: the local stack has no proxy (§32) |
+| Provider support | `Deferred` (ADR-006 point 2) |
+
+Code vs ADR:
+
+- No WebSocket code exists. The "provider" and "production-like deployment" wording applies to a hosted backend, which ADR-006 point 2 defers. The production-like target is the local full stack, which stays the only target.
+- Open (B5): the endpoint path, and whether the WebSocket server shares the HTTP port. The variable `WEBSOCKET_PATH` is not adopted (§10). Recommendation: attach it to the same HTTP server and port (7001) with a fixed path, so the full stack publishes one port.
+
 ---
 
 # 32. Reverse Proxy
+
+**Status:** `Deferred` (ADR-006 point 2)
 
 A reverse proxy may provide:
 
@@ -961,9 +1137,16 @@ Backend
 
 A dedicated proxy is not mandatory if the hosting platform already provides equivalent routing and TLS behavior.
 
+Code vs ADR:
+
+- No proxy exists or is planned. In the local stack the browser calls the API directly on `PORT` (default 7001), and the `full` profile adds the API to PostgreSQL with no proxy service (ADR-006 point 4). The demo is static files served by its host.
+- `apps/api/src/app.ts` does not set `trust proxy`, and the rate limiters key on the client IP (`apps/api/src/middleware/rate-limit.ts`). Behind a proxy every client would share the proxy's address. This matters only for the ADR that would host the backend.
+
 ---
 
 # 33. CORS
+
+**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); credentials `Planned (B2)`; `X-Request-ID` exposure `Planned (B3)`
 
 CORS must be explicit.
 
@@ -973,9 +1156,28 @@ Production should allow only configured trusted origins.
 
 Avoid wildcard CORS for authenticated APIs unless there is a specific, justified requirement.
 
+| Item | Status |
+|---|---|
+| Explicit origins from `CORS_ORIGIN`, a comma-separated list | `Implemented`: `cors({ origin: env.CORS_ORIGIN })` |
+| Development origin | `Implemented`: default `http://localhost:5173` |
+| Production origins | `Implemented` through the same variable (local `production`) |
+| No wildcard | `Implemented`: the code never sets `*` (`09-security-spec.md` §24) |
+| Credentials for the refresh cookie | `Planned (B2)` (ADR-005 Consequences) |
+| `X-Request-ID` readable by the browser | `Planned (B3)`: `exposedHeaders` (ADR-009 point 5) |
+| Public demo | No entry needed: it calls no backend (ADR-006 point 7) |
+
+Code vs ADR:
+
+- `request-id.ts` sets `X-Request-ID` on every response, but the CORS configuration has no `exposedHeaders` and no `credentials`, so a browser on another origin cannot read the header today and sends no cookies.
+- The default origin also applies when `NODE_ENV=production` and `CORS_ORIGIN` is unset. `env.ts` does not check that each entry is a well-formed origin and does not reject `*`.
+- Open (B0): validate each `CORS_ORIGIN` entry in `env.ts`. Recommendation: accept only `http(s)://host[:port]` origins and reject `*`.
+- Open (B5): whether the WebSocket upgrade also checks `Origin` against `CORS_ORIGIN` (`09-security-spec.md` §31).
+
 ---
 
 # 34. HTTPS and WebSockets
+
+**Status:** public HTTPS for the demo is provided by its host; the local stack uses HTTP and `ws://`; public WSS `Deferred` (ADR-006 point 2)
 
 Public environments must use HTTPS.
 
@@ -987,9 +1189,23 @@ HTTPS → WSS
 
 Mixed-content requests must be avoided.
 
+| Environment | Transport | Status |
+|---|---|---|
+| Public demo | HTTPS from the portfolio host, no backend, no realtime socket | `Planned (FE)` |
+| Local full stack | `http://localhost:7001` and `ws://` | `Implemented` for HTTP; `ws://` `Planned (B5)` |
+| Public backend | HTTPS and WSS | `Deferred` |
+
+Code vs ADR:
+
+- The only public environment is the static demo, so "public environments must use HTTPS" reduces to the host serving it (§28). The demo never requests a local or insecure URL, which keeps mixed content out (ADR-006 point 7).
+- The local stack has no HTTPS (`09-security-spec.md` §3, §31). `helmet` still sends `Strict-Transport-Security`, which has no effect over plain HTTP (`09-security-spec.md` §25).
+- The refresh cookie is `Secure` (ADR-005 point 5) and the local stack has no HTTPS. Open (B2): serve on `localhost`, which browsers treat as secure, or make `Secure` environment-dependent (ADR-005, Deferred detail).
+
 ---
 
 # 35. Authentication Deployment
+
+**Status:** per item (table below)
 
 JWT authentication requires a server-side signing secret.
 
@@ -1004,9 +1220,25 @@ Requirements:
 
 Changing the signing secret should be treated as an operational event.
 
+| Requirement | Today | Status |
+|---|---|---|
+| Secret supplied at runtime | `JWT_SECRET` from the environment, at least 32 characters, no default (`apps/api/src/config/env.ts`) | `Implemented` |
+| Never exposed to the frontend | No endpoint returns it and `env.ts` prints keys, not values; the web build carries no secret (§14) | `Implemented` for the API; `Planned (FE)` for the build |
+| Expiration configured | `JWT_EXPIRES_IN_SECONDS`, default 900 (ADR-005 point 4) | `Implemented` |
+| Server-side validation | `authenticate.ts` verifies signature and expiry, and answers one generic 401 | `Implemented` |
+| Safe authentication logging | No authentication entries exist; redaction and the `auth.*` entries come with the `Logger` (ADR-009 points 4 and 11) | `Planned (B3)` |
+| Secure deployment configuration | Local only (§13); `NODE_ENV=production` adds no rule to the schema (§12) | `Implemented` as the minimum length |
+
+Code vs ADR:
+
+- `09-security-spec.md` §7-8 covers token lifetime and storage. Refresh tokens and sessions are `Planned (B2)` (ADR-005 points 5-6).
+- Changing `JWT_SECRET` invalidates every access token still in circulation, at most 15 minutes of them. From B2 the refresh tokens stay valid, because they are opaque values stored hashed in the sessions table and not signed with this secret (ADR-005 point 5). No ADR decides a rotation procedure, such as overlapping secrets. With one local API, restarting with a new secret is the whole procedure.
+
 ---
 
 # 36. RBAC Deployment
+
+**Status:** `Reference` for the principle; backend enforcement `Planned (B0)` and `Planned (B2)`; frontend checks `Planned (FE)`
 
 Authorization is a backend security boundary.
 
@@ -1020,9 +1252,18 @@ Backend role check
 
 Frontend visibility cannot replace backend authorization.
 
+Code vs ADR:
+
+- The roles differ. `UserRole` in `packages/database/prisma/schema.prisma` is `USER` and `ADMIN`, with `@default(USER)`, and the seed creates one `USER`. ADR-005 point 1 sets `VIEWER`, `TRADER` and `ADMIN`, with `USER` migrated to `TRADER` in B2 (`09-security-spec.md` §12).
+- No route checks the role. `authenticate.ts` copies `role` from the token into `req.auth`, and nothing reads it. ADR-005 point 3 puts the check in the application layer, with an `Actor { userId, role }`, which depends on `@trading/application` (B0).
+- Nothing in the deployment differs between environments: the role is read from the database at login and by `GET /auth/me`, then carried in the token (ADR-005 point 9), so no variable or build flag grants a role.
+- The demo has no server, so its role selector gives behavior parity, not security (ADR-005 point 11; `09-security-spec.md` §47; NFR-026).
+
 ---
 
 # 37. Build Reproducibility
+
+**Status:** per item (table below)
 
 Builds should use:
 
@@ -1034,9 +1275,27 @@ Builds should use:
 
 The Node.js version should target a current supported LTS release when implementation begins.
 
+| Item | Today | Status |
+|---|---|---|
+| Committed lockfile | `pnpm-lock.yaml` is tracked | `Implemented` |
+| Explicit Node.js version | `engines.node` is `>=22.0.0` in the root `package.json`; there is no `.nvmrc` or `.node-version` | `Implemented` as a range; a pinned version `Planned (B0)`, open |
+| Consistent package manager | `packageManager` is `pnpm@12.3.4`; `engines.pnpm` is `>=9.0.0` (`04-tech-stack.md` §37) | `Implemented` |
+| Deterministic commands | Root scripts `build`, `test`, `typecheck`, `lint`, `format:check` and `docs:check` | `Implemented` |
+| Install from the lockfile on a clean checkout | The GitHub Actions workflow (ADR-006 points 10 and 11) | `Planned (B0)` |
+| Shared TypeScript configuration | `tsconfig.base.json`, extended by `apps/api`, `packages/domain` and `packages/database`; the root `tsconfig.json` references the three | `Implemented` |
+| Pinned container base images | The `full` profile does not exist yet; `docker-compose.yml` pins `postgres:18` to the major version | `Planned (B7)`, open |
+
+Code vs ADR:
+
+- The sentence about an LTS release was written before implementation. The code targets Node.js 22 or later. Which line the CI and the image use is open (B0, B7). Recommendation: pin one line in `.nvmrc` and use it in CI and the Dockerfile.
+- Versions differ across packages: `typescript` is `^5.7.3` in `packages/domain` and `packages/database` but `^6.0.3` at the root and in `apps/api`, and `@types/node` is `^22.20.2` in `apps/api` but `^26.4.1` elsewhere. This is the open detail of `04-tech-stack.md` (B0).
+- `engines.pnpm >=9.0.0` admits versions older than the `pnpm@12.3.4` that produced the lockfile. Recommendation: align it with `packageManager` in B0.
+
 ---
 
 # 38. Package Management
+
+**Status:** `Implemented`; CI install strategy `Planned (B0)`
 
 One package manager must be selected and documented.
 
@@ -1044,9 +1303,23 @@ The lockfile must be committed.
 
 Local and CI environments should resolve dependencies using the same strategy.
 
+| Item | Status |
+|---|---|
+| One package manager: pnpm workspaces over `apps/*` and `packages/*` (`pnpm-workspace.yaml`), documented in `04-tech-stack.md` §37 | `Implemented` |
+| Lockfile committed: `pnpm-lock.yaml` | `Implemented` |
+| Install scripts restricted: `allowBuilds` allows only Prisma and `esbuild` | `Implemented` |
+| CI resolves dependencies from the lockfile, as locally | `Planned (B0)` (ADR-006 point 10) |
+
+Code vs ADR:
+
+- No CI exists, so the "same strategy" is untested until the workflow is added. `.github/` holds only the pull request template.
+- Workspace packages are linked with `workspace:*` (`apps/api/package.json`, `packages/database/package.json`).
+
 ---
 
 # 39. Repository Structure
+
+**Status:** `Implemented` for the current tree; new packages `Planned (B0)` and `Planned (B5)`
 
 If frontend and backend share a repository, their boundaries should be explicit.
 
@@ -1068,9 +1341,27 @@ Conceptual structure:
 
 The exact structure belongs to `15-implementation-plan.md` and implementation.
 
+| Path in the diagram | Real tree | Status |
+|---|---|---|
+| `apps/api` | `@trading/api` | `Implemented` |
+| `apps/web` | Wireframe files only; not a workspace package | `Planned (FE)` |
+| `packages/shared` | Not adopted. Its role is split between `@trading/domain` (rules and types) and `@trading/contracts` (wire types) | `@trading/contracts` `Planned (B0)` (ADR-002) |
+| `packages/config` | `.gitkeep` only | `Deferred` (`06-architecture.md` §4) |
+| `docs/`, `scripts/` | SDD and ADRs; `scripts/check-docs.mjs` | `Implemented` |
+| `docker/` | `.gitkeep` only | `Planned (B7)`: the Dockerfile location is open (§26) |
+| `package.json` | Root manifest and scripts | `Implemented` |
+| Not in the diagram | `packages/domain` and `packages/database` `Implemented`; `packages/application` `Planned (B0)` (ADR-001); `@trading/market-sim` `Planned (B5)`, path not fixed (ADR-007 point 7) | per package |
+
+Code vs ADR:
+
+- The current tree and the package states live in `06-architecture.md` §4 and `04-tech-stack.md` §38. The diagram is conceptual and is not the structure to follow. `15-implementation-plan.md` is aligned in T5.2.
+- Boundaries are enforced today by `package.json` dependencies and project references only. The import-restriction lint rule is commented out in `eslint.config.js` and is `Planned (B0)` (ADR-001; NFR-011).
+
 ---
 
 # 40. Shared Types
+
+**Status:** `Planned (B0)` for `@trading/contracts`; domain types `Implemented`
 
 Shared TypeScript contracts should originate from API/domain boundaries, not from UI implementation.
 
@@ -1083,6 +1374,18 @@ API contract
 ```
 
 Avoid making backend domain code depend on frontend types.
+
+| Item | Status |
+|---|---|
+| Domain types and enums shared through `@trading/domain` | `Implemented` |
+| `@trading/contracts`: request and response schemas, error envelope, pagination `meta` and the inferred DTO types | `Planned (B0)` (ADR-002 points 1 and 2) |
+| The web app consumes DTOs through the `TradingClient` port, with an HTTP adapter (real) and an in-process adapter (demo) | `Planned (FE)` (ADR-002 point 5) |
+
+Code vs ADR:
+
+- The "API contract" box is `@trading/contracts`. It depends on `zod` and on `@trading/domain` for types and enum values only (ADR-002 point 1). `packages/contracts` holds a `.gitkeep` only.
+- Today only requests are typed: the Zod schemas live in `apps/api/src/schemas/`, where no frontend can import them, and responses have no declared shape (ADR-002 context).
+- The last rule holds: `@trading/domain` depends on `decimal.js` only (`packages/domain/package.json`), so no frontend type can reach it.
 
 ---
 
