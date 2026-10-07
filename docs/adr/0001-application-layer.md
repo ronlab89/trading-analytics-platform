@@ -57,6 +57,23 @@ contract, entities, validators and pure calculations.
 7. **Testing.** Application services are unit-tested with in-memory fake
    repositories. Existing HTTP integration tests in `apps/api` stay as they
    are and keep covering the Prisma path end to end.
+8. **Clock port and refactor safety net** (added 2026-10-06, approved by
+   the user, from the `10-testing-strategy.md` reconciliation;
+   `Planned (B0)`):
+   - **One `Clock` port.** The current time comes from one shared `Clock`
+     port, injected through the composition root (point 4) like the
+     repositories. Domain and application code receive the time instead of
+     calling `new Date()`: for example `validateNewTransaction`
+     (`packages/domain/src/entities/transaction.ts`) receives the current
+     time to reject a future `executedAt`. The simulator clock of ADR-007
+     point 7 uses the same port, so tests control time in one way across the
+     system.
+   - **Route tests before the refactor.** HTTP integration tests for the
+     analytics, positions, assets and market routes, which have no route
+     test file today, are added in B0 before the services move into
+     `@trading/application`. With the existing route tests, they are the
+     safety net that shows the layering refactor keeps HTTP behavior
+     unchanged.
 
 ## Consequences
 
@@ -104,3 +121,5 @@ specified and tested in the listed block.
 - `06-architecture.md` (to be rewritten against this decision)
 - `12-demo-mode-spec.md` §87-88
 - ADR-002 (shared contracts and boundary validation)
+- ADR-007 point 7 (simulator clock on the point 8 port)
+- `10-testing-strategy.md` §49, §59

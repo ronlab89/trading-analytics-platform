@@ -1158,7 +1158,7 @@ Today the API and database tests create their own data through `apps/api/src/tes
 
 # 36. Accessibility Testing
 
-**Status:** `Planned (FE)` (NFR-029 to NFR-032); scanning tool `Deferred` (`04-tech-stack.md` §33)
+**Status:** `Planned (FE)` (NFR-029 to NFR-032); scanning tool `Deferred` to the frontend-stage ADR (ADR-006 point 11, `04-tech-stack.md` §33)
 
 Accessibility is part of product quality.
 
@@ -1279,7 +1279,7 @@ The targets are those of the NFRs, which replace the product-specification wordi
 
 # 41. Large Dataset Testing
 
-**Status:** `Planned (FE)` (NFR-008); server pagination `Implemented` for transactions and assets (NFR-012); other sizes not decided
+**Status:** `Planned (FE)` (NFR-008); server pagination `Implemented` for transactions and assets (NFR-012); no larger dataset target in version 1; memory target `Deferred`
 
 The application should have representative generated datasets.
 
@@ -1301,7 +1301,7 @@ The goal is to identify where:
 - filtering slows;
 - chart interaction becomes unstable.
 
-The only measurable target is NFR-008: a chart with 5 years of daily points per asset (about 1,260 candles) keeps INP ≤ 200 ms and renders within 500 ms, measured with a browser trace on a generated dataset in demo mode. The sizes above are examples, not targets; no transaction-count or memory target exists. Server lists of transactions and assets are already paginated (FR-014, NFR-012), so a large transaction table is a client concern only when a list is loaded in full (§27). `MarketEvent` retention is bounded in B5 (ADR-007 point 8), so "100,000 market points" is a client-side generated series, not stored history. No dataset generator exists yet; the demo dataset is `Deferred` (ADR-010 point 6, NFR-059).
+The only measurable target is NFR-008: a chart with 5 years of daily points per asset (about 1,260 candles) keeps INP ≤ 200 ms and renders within 500 ms, measured with a browser trace on a generated dataset in demo mode. The sizes above are examples, not targets. NFR-008 is sufficient for version 1 (decided 2026-10-06, approved by the user): there is no transaction-count or larger dataset target, and a memory target stays `Deferred`. Server lists of transactions and assets are already paginated (FR-014, NFR-012), so a large transaction table is a client concern only when a list is loaded in full (§27). `MarketEvent` retention is bounded in B5 (ADR-007 point 8), so "100,000 market points" is a client-side generated series, not stored history. No dataset generator exists yet; the demo dataset is `Deferred` (ADR-010 point 6, NFR-059).
 
 ---
 
@@ -1467,7 +1467,7 @@ Today no test uses `vi.mock`, fake timers or a mocked repository: domain tests n
 
 # 49. Time Control
 
-**Status:** simulator clock `Planned (B5)` (ADR-007 point 7); a clock for the rest of the system not decided; no controllable clock exists today
+**Status:** shared `Clock` port `Planned (B0)` (ADR-001 point 8); simulator clock on that port `Planned (B5)` (ADR-007 point 7); no controllable clock exists today
 
 Time-dependent functionality should use controllable clocks where practical.
 
@@ -1483,7 +1483,7 @@ This is important for:
 
 Tests must not rely on arbitrary real-world delays.
 
-Only the simulator has a decided injected clock (ADR-007 point 7), which also drives alerts and candle rollover in B5. Elsewhere the code reads the system clock directly: `validateNewTransaction` rejects a future `executedAt` against `new Date()` (`packages/domain/src/entities/transaction.ts`), the API services stamp `readAt` and end the overview's candle range at `new Date()`, and the mappers default timestamps the same way. No test uses fake timers, and none waits on real time. Token expiration (B2), job timeouts (B4) and time ranges (B1) need a controllable clock to be tested without delays; whether that is one `Clock` port in `@trading/application` or per-feature injection is not decided.
+ADR-001 point 8 decides one shared `Clock` port, injected through the composition root in B0; the simulator clock of ADR-007 point 7, which also drives alerts and candle rollover in B5, uses the same port. Today the code reads the system clock directly: `validateNewTransaction` rejects a future `executedAt` against `new Date()` (`packages/domain/src/entities/transaction.ts`), the API services stamp `readAt` and end the overview's candle range at `new Date()`, and the mappers default timestamps the same way. No test uses fake timers, and none waits on real time. Token expiration (B2), job timeouts (B4) and time ranges (B1) need a controllable clock to be tested without delays. In B0 these call sites move to the `Clock` port: domain code such as `validateNewTransaction` receives the current time instead of calling `new Date()`, and tests supply a fixed clock.
 
 ---
 
@@ -1521,7 +1521,7 @@ The demo and automated tests should simulate:
 
 The application must provide recovery behavior where appropriate.
 
-Decided recovery behavior to test: a dropped socket triggers reconnection with backoff, HTTP polling every 10 s and a stale-data indicator (§23, ADR-007 point 12); a malformed realtime event is dropped (§21); the server answers a 500 or a 503 `DEPENDENCY_ERROR` with the error envelope `{ error: { code, message, requestId, details? } }` (ADR-002 points 2 and 10), and the UI shows the error state with a retry (§13). Offline state, latency and timeouts in the demo are demo specifics, decided in the frontend-stage ADR (ADR-010 point 6). The HTTP client's timeout and retry policy is not decided.
+Decided recovery behavior to test: a dropped socket triggers reconnection with backoff, HTTP polling every 10 s and a stale-data indicator (§23, ADR-007 point 12); a malformed realtime event is dropped (§21); the server answers a 500 or a 503 `DEPENDENCY_ERROR` with the error envelope `{ error: { code, message, requestId, details? } }` (ADR-002 points 2 and 10), and the UI shows the error state with a retry (§13). Offline state, latency and timeouts in the demo are demo specifics, decided in the frontend-stage ADR (ADR-010 point 6). The HTTP client's timeout and retry policy is `Deferred` to the frontend-stage ADR, consistent with ADR-002 point 10 (no server timeout) (ADR-006 point 11).
 
 ---
 
@@ -1583,10 +1583,10 @@ The decided workflow is one GitHub Actions workflow on pushes and pull requests 
 | Formatting | `pnpm format:check` | `Planned (B0)` (point 11) |
 | Build | `pnpm build` | `Planned (B0)` (point 11) |
 | Unit and integration tests | `pnpm test` (domain, database and API suites; the latter two against a PostgreSQL service container, migrated before the run) | `Planned (B0)` |
-| Component, E2E, accessibility | tools chosen in the frontend-stage ADR | `Deferred` |
+| Component, E2E, accessibility | tools chosen in the frontend-stage ADR; join when frontend code exists | `Deferred` |
 | Performance | browser traces of §39-§41 | `Deferred` |
 
-`pnpm build` passes today (`pnpm -r build`, `tsc --build`). The stage order inside the workflow is not fixed by the ADR, apart from install first. Whether component, E2E and accessibility checks join this workflow is not decided. There is no coverage stage (§55).
+`pnpm build` passes today (`pnpm -r build`, `tsc --build`). The stage order inside the workflow is not fixed by the ADR, apart from install first. Component, E2E and accessibility checks join this workflow once frontend code exists, as the frontend-stage ADR decides (ADR-006 point 11); until then they stay `Deferred`. There is no coverage stage (§55).
 
 ---
 
@@ -1730,11 +1730,11 @@ Required properties:
 | --- | --- | --- |
 | Dependency injection at infrastructure boundaries | API services create Prisma repositories at module level (for example `new PrismaPortfolioRepository()`) | Factories receive dependencies; composition root in `apps/api/src/composition.ts` (ADR-001 points 2 and 4), `Planned (B0)` |
 | Deterministic simulation | No simulator | `@trading/market-sim`, `Planned (B5)` (ADR-007 point 7) |
-| Isolated domain logic | Pure calculations, no database (NFR-042) | `Implemented`; gap: `validateNewTransaction` reads the system clock (§49) |
+| Isolated domain logic | Pure calculations, no database (NFR-042) | `Implemented`; gap: `validateNewTransaction` reads the system clock, moved to the `Clock` port in B0 (§49) |
 | Explicit state transitions | None | Jobs `Planned (B4)` (ADR-008 point 3); simulator lifecycle `RUNNING <-> HALTED` `Planned (B5)` (ADR-007 point 16); realtime client states `Planned (FE)` |
 | Typed contracts | Hand-written DTOs | `@trading/contracts`, `Planned (B0)` (ADR-002) |
 | Replaceable repositories | Repository interfaces in `@trading/domain` with Prisma implementations | Interfaces `Implemented`; in-memory implementations `Planned (B0)` (NFR-044) |
-| Controllable clocks | None | Simulator `Planned (B5)`; elsewhere not decided (§49) |
+| Controllable clocks | None | Shared `Clock` port `Planned (B0)` (ADR-001 point 8); simulator on that port `Planned (B5)` (§49) |
 | Controllable randomness | None needed yet | Seeded generator `Planned (B5)` (§50) |
 | Transport abstractions | None in the client | Realtime client port with a demo adapter, `Planned (FE)` (ADR-007 point 13); HTTP through a DTO client (ADR-002 point 5) |
 
@@ -1768,7 +1768,7 @@ How the columns map to the code and blocks:
 
 - **Unit.** Domain calculations, validation and entity rules are `Implemented` (§7-§9). Application-service unit tests (authorization, portfolios, transactions, notifications) are `Planned (B0)` (ADR-001 point 7); analytics `Planned (B1)`; background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
 - **Component** and **E2E.** `Planned (FE)` for every row; tools `Deferred` to the frontend-stage ADR (ADR-006 point 11).
-- **Integration.** Authentication, authorization, portfolios, transactions and notifications are `Implemented` (§16, §26, §29-§30). Analytics has no HTTP test yet: `analytics.routes.ts` has no route test file, and analytics is tested with the B1 rework (ADR-004). Gap without an assigned block: `positions.routes.ts`, `assets.routes.ts` and `market.routes.ts` have no route test file either (the overview is exercised once, in `transactions.routes.test.ts`). Background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
+- **Integration.** Authentication, authorization, portfolios, transactions and notifications are `Implemented` (§16, §26, §29-§30). `analytics.routes.ts`, `positions.routes.ts`, `assets.routes.ts` and `market.routes.ts` have no route test file yet (the overview is exercised once, in `transactions.routes.test.ts`). Their HTTP integration tests are `Planned (B0)`, added before the layering refactor as its safety net (ADR-001 point 8); the reworked analytics endpoints are then tested in B1 (ADR-004). Background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
 - **Background jobs** means the CSV import (ADR-008), whose E2E flow is in §33. **Tables** follow ADR-010 points 4 and 9 (§27). **Performance** targets are those of §39-§41; no server load test is planned.
 
 ---
@@ -1822,7 +1822,7 @@ Before the project is considered portfolio-ready, the following must exist:
 | --- | --- | --- |
 | Unit | Domain calculations, `Money`, transaction input rules (`transaction.test.ts`), position rules, request validation middleware (`validate.test.ts`) | Chronological validation and application services `Planned (B0)`; permissions `Planned (B2)`; simulation and realtime event processing `Planned (B5)` |
 | Component | Nothing | All items `Planned (FE)` |
-| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests `Planned (B0)`; analytics API `Planned (B1)`; import API `Planned (B4)`; realtime events `Planned (B5)` |
+| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests and route tests for analytics, positions, assets and market `Planned (B0)` (ADR-001 point 8); reworked analytics API `Planned (B1)`; import API `Planned (B4)`; realtime events `Planned (B5)` |
 | E2E | Nothing | All items `Planned (FE)`; CSV import added on 2026-10-06 (§33); reset `Deferred` (ADR-010 point 6), so "logout/reset" means logout |
 
 ---
@@ -2019,7 +2019,7 @@ Testing is considered complete when:
 | Accessibility has automated and manual verification | `Planned (FE)` (§36) |
 | Representative performance scenarios are validated | `Planned (FE)` (§39-§41) |
 | CI executes the required quality gates | `Planned (B0)` (ADR-006 points 10-11); no coverage gate |
-| Tests are reproducible and isolated | `Implemented` across files (§45-§46); controllable clock not decided outside the simulator (§49) |
+| Tests are reproducible and isolated | `Implemented` across files (§45-§46); shared `Clock` port `Planned (B0)` (§49) |
 
 ---
 

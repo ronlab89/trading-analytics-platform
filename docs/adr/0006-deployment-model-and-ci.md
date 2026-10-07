@@ -80,7 +80,11 @@ Other facts:
     - **Frontend test tooling.** The component test runner, React Testing
       Library and Playwright are decided in the frontend-stage ADR, like the
       demo specifics (ADR-010 point 6). They stay `Deferred` until then and
-      do not block B0-B7.
+      do not block B0-B7. Component, E2E and accessibility checks join the
+      point 10 workflow once frontend code exists, as that ADR decides. The
+      accessibility scanning tool is also chosen there. The HTTP client's
+      timeout and retry policy is decided there too, consistent with
+      ADR-002 point 10 (the API has no server timeout).
 
 ## Consequences
 
