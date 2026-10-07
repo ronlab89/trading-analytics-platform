@@ -203,7 +203,7 @@ specified and tested in the listed block.
 
 | Item | Resolution | Block |
 |---|---|---|
-| In the `full` Compose profile the API may run `migrate deploy` before PostgreSQL accepts connections. | `depends_on` with `condition: service_healthy`. | B7 |
+| In the `full` Compose profile the `migrate` service may run before PostgreSQL accepts connections. | The `migrate` service has `depends_on` PostgreSQL with `condition: service_healthy`; the API then waits for `migrate` with `service_completed_successfully` (point 4). | B7 |
 | `connection_limit` of the Prisma connection pool in the `full` profile. | Stays at Prisma's default until measured. | B7 |
 | Rate limits in development. | Stay on. Restarting the API clears the counters. | B0 |
 | Point 12 covers the HTTP server and the database. The shutdown steps of `14-deployment-spec.md` §16 for background jobs and realtime connections are not decided there. | Added to the shutdown sequence when the job runner (ADR-008) and the realtime server (ADR-007) exist. | B4, B5 |
