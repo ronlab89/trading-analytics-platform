@@ -650,30 +650,50 @@ Code vs ADR: the codes a client receives are the `AppErrorCode` values of `07-ap
 
 # 13. Error Context
 
+**Status:** `Planned (B3)` (ADR-009 points 3, 5 and 6); a reduced context is written today (table below)
+
 An error event should include enough context to investigate the problem.
 
 Recommended fields:
 
 ```json
 {
+  "timestamp": "2026-10-06T12:00:00.000Z",
   "level": "error",
   "event": "request.failed",
-  "requestId": "req_123",
-  "operationId": "op_456",
-  "errorName": "DatabaseError",
-  "errorCode": "DATABASE_ERROR",
-  "source": "portfolio.repository",
+  "requestId": "3f2b8c1e-6a4d-4e0f-9b7a-1c2d3e4f5a6b",
+  "errorCategory": "INTERNAL_ERROR",
+  "errorName": "PrismaClientInitializationError",
   "durationMs": 42
 }
 ```
 
-Stack traces should be available in development and controlled environments.
+Stack traces are logged with every internal error (ADR-009 point 6). They go to the server log only and never reach the response (§12.1).
 
 Production logging must balance diagnostic usefulness with information exposure.
+
+What each field gives today and in B3:
+
+| Field | Today (`request.failed`, §1) | B3 |
+| --- | --- | --- |
+| `level`, `event`, `requestId` | Written | Kept; `requestId` added automatically (ADR-009 point 5) |
+| `errorName` | Written | Open detail (§7) |
+| raw error `message` | Written, unfiltered | Open detail (§11) |
+| `timestamp`, `durationMs`, `errorCategory` | Not written | Added (ADR-009 point 3) |
+| stack trace | Not written | Added for internal errors (ADR-009 point 6) |
+| `jobId`, `connectionId` | n/a | Added in B4 and B5 (ADR-009 point 5) |
+
+Code vs ADR:
+
+- The example previously showed `operationId`, `errorCode: "DATABASE_ERROR"` and `source`. ADR-009 has no generic `operationId` (§10), names the error field `errorCategory`, and has no `DATABASE_ERROR` code: an unreachable database is `INTERNAL_ERROR` today and `DEPENDENCY_ERROR` from B0 (§12.2). `source` is not in ADR-009 (§7).
+- The example `requestId` is a UUID: a client value with `_`, such as `req_123`, fails the `^[a-zA-Z0-9-]{1,64}$` check and is replaced (§9).
+- ADR-009 point 6 sets no environment condition for stack traces. "Production" is the local production-like run (ADR-006 points 1 and 8); its logs stay on the developer's machine.
 
 ---
 
 # 14. Frontend Error Observability
+
+**Status:** `Planned (FE)` (ADR-009 point 12)
 
 The frontend must provide a centralized mechanism for unexpected runtime errors.
 
@@ -705,9 +725,19 @@ Expected errors should produce appropriate UX.
 
 Unexpected errors should be logged through the frontend observability abstraction.
 
+Code vs ADR:
+
+- `apps/web` holds only a wireframe today; there is no frontend code to observe.
+- The abstraction is the `Logger` port of ADR-009 point 1. In demo mode application code logs through the browser-console adapter. How the UI layer of the real-mode web app reports unexpected errors is decided in the frontend stage (ADR-009 point 12).
+- Expected errors are told apart by the stable error `code` of the API (`07-api-spec.md` §5-6). The client shows a localized message mapped from the `code` (ADR-010 point 8), and can show the `requestId` of the error body (§9).
+- Some sources have a decided user-facing outcome: a lost realtime connection shows a stale-data indicator and falls back to HTTP polling (ADR-007 point 12); a failed or timed-out CSV import creates an `ERROR` notification (ADR-008 point 6). Neither is an unexpected application error.
+- There is no paid or hosted error-tracking service (ADR-006, §5).
+
 ---
 
 # 15. Error Boundaries
+
+**Status:** `Planned (FE)` (ADR-009 point 12)
 
 Critical UI areas should be isolated so that one failure does not unnecessarily break the entire application.
 
@@ -730,9 +760,17 @@ A boundary should provide:
 
 The fallback should not expose stack traces to end users.
 
+Code vs ADR:
+
+- The list of boundaries is a starting point; the frontend stage fixes it against the views of `11-ui-ux-spec.md`. The Activity view is `Deferred` (ADR-010 point 9), and "background job panels" means the CSV import status (ADR-008).
+- The only identifier a boundary can show is a `requestId` from an API error body (§9). There is no generic operation identifier (§10); a job is identified by its `jobId` (ADR-008 point 9).
+- Component tests for boundaries depend on the frontend test tooling, `Deferred` to the frontend-stage ADR (ADR-006 point 11).
+
 ---
 
 # 16. Metrics Strategy
+
+**Status:** `Deferred` (ADR-009 point 10)
 
 Metrics provide aggregated information about runtime behavior.
 
@@ -748,9 +786,24 @@ Metrics should cover:
 - demo simulations
 - performance
 
+ADR-009 point 10 defers all metrics: no metrics library and no `/metrics` endpoint until something consumes them (NFR-070). Under ADR-006 the backend runs locally only, so nothing would. Hosting the backend later (ADR-006 point 2) reopens the decision. §17-20 describe what a later metrics decision would start from; nothing in them is built in version 1.
+
+Version 1 answers the same questions with log events and health checks:
+
+| Area | Version 1 mechanism | Status |
+| --- | --- | --- |
+| Request behavior, errors, duration | `http.request.completed` with `durationMs`; error logs by category; slow-request `warn` (§6-8) | `Planned (B3)` (ADR-009 points 2, 6 and 8) |
+| Database health | `GET /health/ready` (§22-23) | `Implemented` |
+| Realtime behavior | Connection lifecycle log events (§8) | `Planned (B5)` (ADR-009 point 11) |
+| Background jobs | Job transition log events (§8) | `Planned (B4)` (ADR-009 point 11) |
+| Demo simulations | Browser-console adapter (ADR-009 point 1) | `Planned (FE)` |
+| Performance | §25-27 | Per section |
+
 ---
 
 # 17. HTTP Metrics
+
+**Status:** `Deferred` (ADR-009 point 10)
 
 The backend should measure, where practical:
 
@@ -782,9 +835,13 @@ Avoid labels containing:
 
 High-cardinality labels can create unnecessary memory and processing overhead.
 
+In version 1 each request produces one `http.request.completed` log entry with its status and `durationMs` (ADR-009 points 2-3, `Planned (B3)`); totals and distributions can be read from those lines. Whether that entry records the route template or the raw URL, which can carry identifiers and query strings, is an open detail (B3).
+
 ---
 
 # 18. Application Metrics
+
+**Status:** `Deferred` (ADR-009 point 10); the rule against fabricated values is `Reference`
 
 Useful application-level measurements may include:
 
@@ -802,9 +859,13 @@ Metrics must represent actual events.
 
 The system must never expose fabricated values merely to make the project appear more performant.
 
+Code vs ADR: the version 1 counterpart of these counters is the event stream of §8. Portfolio, transaction and analytics event names are defined with each feature (ADR-009, Consequences). The only job type is the CSV import (ADR-008 point 1).
+
 ---
 
 # 19. Realtime Metrics
+
+**Status:** `Deferred` (ADR-009 point 10); connection lifecycle logging `Planned (B5)` (ADR-009 point 11)
 
 The realtime layer requires specific instrumentation.
 
@@ -834,9 +895,18 @@ realtime_event_processing_ms
 
 The implementation must avoid unbounded per-user or per-event metric dimensions.
 
+Code vs ADR:
+
+- No realtime server exists yet (ADR-007, `Planned (B5)`).
+- In version 1 the server logs connection events with a `connectionId` (ADR-009 points 5 and 11): connect, authenticate and close. Event names and per-event logging are open in `08-realtime-spec.md` §58 (§8).
+- Close codes make closures diagnosable without counters: `4001` unauthenticated or invalid token, `4002` token expired, `4008` limit exceeded, `1001` server going away (ADR-007 point 15).
+- Reconnect attempts happen in the client (ADR-007 point 12); the server only sees new connections.
+
 ---
 
 # 20. Background Job Metrics
+
+**Status:** `Deferred` (ADR-009 point 10); job transition logging `Planned (B4)` (ADR-009 point 11)
 
 Background processing should expose lifecycle measurements.
 
@@ -864,9 +934,17 @@ background_jobs_duration_ms
 
 The demo mode defined in `12-demo-mode-spec.md` should use the same conceptual lifecycle.
 
+Code vs ADR:
+
+- The job states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3). "Started" is the move to `PROCESSING`. Progress is a field (`processed`, `total`), not a state, so "progressed" is not a lifecycle step.
+- A failed job carries a reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED` (ADR-008 points 5-6), and a retried job increments `attempt`. Job transition log entries carry the `jobId` (ADR-009 point 5); which of these fields they include is an open detail (B4).
+- The demo runs the same use case in process, with simulated progress and injectable failures (ADR-008 point 13); its specifics wait for the frontend-stage demo ADR (ADR-010 point 6).
+
 ---
 
 # 21. Database Observability
+
+**Status:** per capability (table below)
 
 The PostgreSQL integration should provide basic visibility into database health.
 
@@ -882,9 +960,21 @@ Database logs should not include unrestricted SQL or sensitive parameters in nor
 
 Development diagnostics may expose more detail when explicitly enabled.
 
+| Capability | Mechanism | Status |
+| --- | --- | --- |
+| Connection can be established; a lightweight query succeeds | `GET /health/ready` runs `SELECT 1` through the shared Prisma client (`apps/api/src/services/health.service.ts`) | `Implemented` |
+| Connection pool functioning | No separate check; Prisma's default pool, observed through readiness and failed queries | Not decided |
+| A repository operation fails | `request.failed` line today (§12.1); 503 `DEPENDENCY_ERROR` for an unreachable database | `Implemented` / `Planned (B0)` (ADR-002 point 10) |
+| Unexpectedly slow database operations | No ADR times individual queries; ADR-009 point 8 times requests and the analytics series reconstruction | Not decided |
+| No unrestricted SQL in logs | The Prisma client is created without a `log` option (`packages/database/src/client.ts`), so no query is logged | `Implemented` |
+
+Code vs ADR: no switch enables more detailed database diagnostics. `LOG_LEVEL=debug` in development (ADR-009 point 7) controls application log entries, not Prisma query logging. Whether to time database operations or enable Prisma query logging in development is a pending decision (B3).
+
 ---
 
 # 22. Health Checks
+
+**Status:** `Implemented` (`apps/api/src/routes/health.ts`, NFR-051, `07-api-spec.md` §30)
 
 The backend must expose health endpoints.
 
@@ -900,11 +990,24 @@ and preferably a dependency-aware endpoint such as:
 GET /health/ready
 ```
 
-The exact endpoint names can be finalized during API implementation.
+The names are final: `GET /health` (liveness) and `GET /health/ready` (readiness), defined in `07-api-spec.md` §30.
+
+What exists:
+
+- Both routes sit outside `/api/v1`, need no token and do not use the `data` envelope (`07-api-spec.md` §30).
+- They are registered after `helmet`, `cors` and the `requestId` middleware, and before the rate limiter and the body parser (`apps/api/src/app.ts`), so they are never rate-limited (NFR-051).
+- `GET /` also answers `{ "service": "trading-api", "status": "ok" }`. It is an operational route (`07-api-spec.md` §3) but sits after the rate limiter and is not a health check.
+
+Code vs ADR:
+
+- NFR-051 measures health with route tests, including readiness with the database down. No test file covers `/health` or `/health/ready` today (`apps/api/src/routes`).
+- ADR-009 point 10 keeps both endpoints as the version 1 health signal while metrics are `Deferred`.
 
 ---
 
 # 23. Liveness vs Readiness
+
+**Status:** `Implemented` (`apps/api/src/controllers/health.controller.ts`); readiness during shutdown not decided
 
 Health checks should distinguish between process health and dependency readiness.
 
@@ -928,23 +1031,28 @@ It may validate:
 - required internal services
 - critical configuration
 
-Example:
+Responses (`07-api-spec.md` §30):
 
-```json
-{
-  "status": "ok",
-  "service": "trading-api",
-  "checks": {
-    "database": "ok"
-  }
-}
-```
+| Endpoint | Check | Success | Failure |
+| --- | --- | --- | --- |
+| `GET /health` | None | 200 `{ "status": "ok", "service": "trading-api", "timestamp": "..." }` | None; always 200 while the process answers |
+| `GET /health/ready` | `SELECT 1` against the database | 200 with `"status": "ok"` and `"checks": { "database": "ok" }` | 503 with `"status": "unavailable"` and `"checks": { "database": "unavailable" }`, plus one `health.database.unavailable` log line (§1) |
+
+Both bodies carry an ISO 8601 `timestamp`. There is no "degraded" state: the only dependency is the database (NFR-051).
 
 The response schema should remain stable and machine-readable.
+
+Code vs ADR:
+
+- Readiness checks the database only. "Required internal services" have no counterpart yet: the job runner (ADR-008, B4) and the market simulator (ADR-007, B5) run in process, and no ADR adds them to readiness. "Critical configuration" is checked once at startup instead: `apps/api/src/config/env.ts` validates the environment and the process exits on invalid values, so a running process always has valid configuration.
+- The `health.database.unavailable` line logs `errorName` only, never the driver message or connection string (§24).
+- ADR-009 point 11 logs graceful shutdown (ADR-006), and `14-deployment-spec.md` §16 requires it. `apps/api/src/index.ts` only calls `app.listen` and handles no shutdown signal. Whether readiness answers 503 while shutting down depends on that pending decision.
 
 ---
 
 # 24. Health Check Security
+
+**Status:** `Implemented` (NFR-051, `09-security-spec.md` §28)
 
 Health endpoints must not expose:
 
@@ -957,9 +1065,15 @@ Health endpoints must not expose:
 
 Detailed diagnostics should remain development-only.
 
+What exists: both bodies hold only `status`, the fixed `service` name, `timestamp` and, for readiness, `checks.database` as `ok` or `unavailable` (§23). A database failure is reduced to `unavailable`; its error name goes to the server log only. The health routes run after `helmet`, so they carry the same security headers as every response.
+
+Code vs ADR: no detailed diagnostic mode exists in any environment, and no ADR plans one. Health routes need no token; this is acceptable because they expose nothing beyond the fields above and the backend runs locally only (ADR-006 point 2).
+
 ---
 
 # 25. Performance Observability
+
+**Status:** per operation (table below); performance metrics `Deferred` (ADR-009 point 10)
 
 Performance must be measurable rather than assumed.
 
@@ -975,9 +1089,24 @@ Examples:
 - frontend route/load timing
 - expensive table or chart computations where practical
 
+In version 1 a measurement is a log entry with `durationMs` (ADR-009 point 3), not a metric:
+
+| Operation | Measurement | Status |
+| --- | --- | --- |
+| API request duration | `durationMs` on `http.request.completed`; `warn` above a configurable threshold, default 500 ms | `Planned (B3)` (ADR-009 points 2-3 and 8) |
+| Analytics calculation | The reconstruction of the analytics series (ADR-004) is timed separately | `Planned (B3)` (ADR-009 point 8) |
+| Database operation duration | None | Not decided (§21) |
+| Background job duration | Job transition log entries (ADR-009 point 11); whether they carry a duration is an open detail | `Planned (B4)` |
+| Realtime event processing duration | None in ADR-007 or ADR-009 | Not decided; open detail of `08-realtime-spec.md` §58 (B5) |
+| Frontend route, load, table and chart timing | §27 | `Planned (FE)` |
+
+Today nothing is timed: no log line carries `durationMs`.
+
 ---
 
 # 26. Timing Instrumentation
+
+**Status:** request timing `Planned (B3)` (ADR-009 points 2 and 8); the shape of a generic timer is an open detail (B3)
 
 A generic timing abstraction should be available.
 
@@ -999,9 +1128,18 @@ stopTimer()
 
 Timing instrumentation should not require every function to manually implement logging logic.
 
+Code vs ADR:
+
+- Request timing needs no hand-written timer: `pino-http` records the duration of every request (ADR-009 point 2), and the slow-request `warn` builds on it (point 8).
+- The analytics series reconstruction is the one non-request operation ADR-009 times (point 8). Whether it uses a shared timer helper or measures inline is an open detail (B3).
+- Application code that measures time reads it from the `Clock` port (ADR-001 point 8, `Planned (B0)`), so tests can control durations; any timer helper follows the same rule.
+- A timer that writes a log entry goes through the `Logger` port (ADR-009 point 1), so the same code runs in the API and in the demo.
+
 ---
 
 # 27. Frontend Performance Diagnostics
+
+**Status:** `Planned (FE)` (ADR-009 point 12)
 
 The frontend should provide development-friendly visibility into expensive operations.
 
@@ -1017,6 +1155,13 @@ Potential areas:
 - background operation progress
 
 Development diagnostics must be removable or disabled in production builds when they create unnecessary overhead.
+
+Code vs ADR:
+
+- No frontend code exists yet (§14). The list above is a starting point for the frontend-stage checklist (ADR-009 point 12).
+- The public demo is a static production build with no backend (ADR-006 points 1 and 7), so development diagnostics must be off in it.
+- Realtime update frequency is bounded on the server side: the simulator ticks every 1 second (ADR-007 point 15).
+- "Background operation progress" is the CSV import progress (`processed`, `total`) delivered by `JOB_PROGRESS_UPDATED` (ADR-008 points 3 and 11).
 
 ---
 
