@@ -1,7 +1,7 @@
 # SDD 10 — Testing Strategy
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft  
+**Status:** All sections reconciled with the code and ADRs on 2026-10-06  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`, `07-api-spec.md`, `08-realtime-spec.md`, `09-security-spec.md`
 
@@ -117,10 +117,10 @@ Additional specialized testing covers:
 
 | Specialized testing | Section | Status |
 | --- | --- | --- |
-| Security | `09-security-spec.md` §55 and later sections of this document | partial `Implemented` (ownership, auth, rate limit); rest by block |
-| Accessibility | later sections of this document | `Planned (FE)` |
-| Realtime | §21 and later | `Planned (B5)` |
-| Performance | later sections of this document | `Deferred` unless a block names it |
+| Security | `09-security-spec.md` §55; §29-§31 | partial `Implemented` (ownership, auth, rate limit); rest by block |
+| Accessibility | §36 | `Planned (FE)` |
+| Realtime | §21-§23, §40 | `Planned (B5)` server; `Planned (FE)` client |
+| Performance | §39-§42 | `Planned (FE)` client; `Planned (B5)` server limits; no load test |
 | Simulation determinism | §20 | `Planned (B5)` |
 
 ---
@@ -1000,7 +1000,7 @@ No frontend and no E2E suite exist. Playwright is a working assumption, not a de
 
 # 33. Critical E2E Flows
 
-**Status:** `Planned (FE)`; logout depends on `Planned (B2)`, realtime on `Planned (B5)`
+**Status:** `Planned (FE)`; logout depends on `Planned (B2)`, CSV import on `Planned (B4)`, realtime on `Planned (B5)`
 
 The following flows should have E2E coverage:
 
@@ -1074,12 +1074,27 @@ Retry
 Success
 ```
 
+### CSV Transaction Import
+
+```text
+Upload CSV (with Idempotency-Key)
+ ↓
+Job QUEUED
+ ↓
+PROCESSING, progress { processed, total }
+ ↓
+COMPLETED (positions updated)  or  FAILED / TIMED_OUT
+ ↓
+Retry when allowed → QUEUED
+```
+
 Notes against the ADRs:
 
 - **Authentication:** the logout step needs the B2 logout endpoint (§29).
 - **Transaction:** creation is synchronous (ADR-008 point 12): the updated position is visible as soon as the request returns, with no job. A `SELL` above the held quantity, or an earlier date that would make history negative, fails validation (ADR-003 point 6). Any mutation on an archived portfolio returns 409 (ADR-010 point 5).
 - **Realtime:** the market update arrives as `MARKET_PRICE_UPDATED` and the client recomputes values (ADR-007 point 6).
 - **Failure recovery:** realtime failure shows the stale-data indicator, not an error page (`08-realtime-spec.md` §57).
+- **CSV transaction import** (added 2026-10-06, approved by the user; `Planned (FE)`, server side `Planned (B4)`): CSV import is a P1 feature (ADR-008 point 1), so it is a critical flow. The test uploads a file through `POST /api/v1/portfolios/:portfolioId/imports`, follows progress `{ processed, total }` (§25), and asserts the final state: `COMPLETED` with the rows applied, or `FAILED` with a per-row report and nothing written (ADR-008 point 2). Repeating the upload with the same `Idempotency-Key` returns the stored response and creates no second job (point 8). Retry is offered only where ADR-008 point 6 allows it; a `VALIDATION_FAILED` job is not retryable and the user uploads a corrected file.
 
 ---
 
@@ -1264,6 +1279,8 @@ The targets are those of the NFRs, which replace the product-specification wordi
 
 # 41. Large Dataset Testing
 
+**Status:** `Planned (FE)` (NFR-008); server pagination `Implemented` for transactions and assets (NFR-012); other sizes not decided
+
 The application should have representative generated datasets.
 
 Examples:
@@ -1284,26 +1301,35 @@ The goal is to identify where:
 - filtering slows;
 - chart interaction becomes unstable.
 
+The only measurable target is NFR-008: a chart with 5 years of daily points per asset (about 1,260 candles) keeps INP ≤ 200 ms and renders within 500 ms, measured with a browser trace on a generated dataset in demo mode. The sizes above are examples, not targets; no transaction-count or memory target exists. Server lists of transactions and assets are already paginated (FR-014, NFR-012), so a large transaction table is a client concern only when a list is loaded in full (§27). `MarketEvent` retention is bounded in B5 (ADR-007 point 8), so "100,000 market points" is a client-side generated series, not stored history. No dataset generator exists yet; the demo dataset is `Deferred` (ADR-010 point 6, NFR-059).
+
 ---
 
 # 42. Simulation Load Testing
 
-The simulation engine should support controlled rates.
+**Status:** modes `Planned (B5)` (ADR-007 points 7 and 15); configurable tick rate and stress load `Deferred`
 
-Example:
+The simulation engine should support controlled modes.
+
+Modes (wire identifiers, ADR-007 point 15):
 
 ```text
-Low
-Normal
-High
-Stress
+PAUSED
+NORMAL
+VOLATILE
+BULLISH
+BEARISH
 ```
 
 This allows realtime behavior to be evaluated without requiring external services.
 
+Code vs ADR: the previous `Low`, `Normal`, `High` and `Stress` rates do not exist. ADR-007 fixes one tick per second (point 15); modes change price behavior, not the tick rate. Load is bounded by the per-connection limits (50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer, 5 connections per user; ADR-007 points 15-16), which B5 tests at their thresholds. A faster tick rate or a stress mode is not decided, so it is `Deferred`. No `@trading/market-sim` package exists yet.
+
 ---
 
 # 43. Regression Testing
+
+**Status:** `Reference`
 
 Every significant bug fixed in the project should result in a regression test when practical.
 
@@ -1321,16 +1347,20 @@ Fix
 Permanent Protection
 ```
 
+Regression tests live in the suite of the layer where the bug was found (§6-§17); there is no separate regression suite. The audits recorded in the ADRs follow this rule: for example, the frozen value series corrected in ADR-007 point 8 gets a B5 test that candles close at each UTC day rollover.
+
 ---
 
 # 44. Test Naming
+
+**Status:** `Reference`; followed by the existing suites
 
 Tests should describe behavior.
 
 Preferred:
 
 ```text
-should reject a transaction when available balance is insufficient
+should reject a SELL when the held quantity is insufficient
 ```
 
 Avoid implementation-oriented names such as:
@@ -1341,9 +1371,13 @@ should call validateBalance()
 
 unless the function itself is the intended unit under test.
 
+The example now speaks of held quantity, not balance: the portfolio holds no cash (ADR-003). The existing `it(...)` names already describe behavior, mostly as `should ...`, with some in the present tense (`returns ...`, `rejects ...`); both forms are acceptable.
+
 ---
 
 # 45. Test Independence
+
+**Status:** `Implemented` across test files; shared state within a file
 
 Tests must be independent.
 
@@ -1357,9 +1391,13 @@ A test must not rely on another test having:
 
 Each test should establish its own required state.
 
+Each database and API test file creates its own users, portfolios and assets with unique emails and symbols (`crypto.randomUUID()`, `apps/api/src/test-utils/fixtures.ts`) and removes them in `afterAll`, so files never depend on each other or on seed data. Gap: within a file, most suites create the user and portfolio once in `beforeAll` and their tests share them, so a test that mutates that state can affect later tests in the same file. Where order matters, the test should create its own data; no ADR requires more.
+
 ---
 
 # 46. Test Isolation
+
+**Status:** database isolation by unique data `Implemented`; in-memory stores `Planned (B0)`; browser contexts `Planned (FE)`; deterministic seeds `Planned (B5)`
 
 Tests should use isolated state.
 
@@ -1373,9 +1411,21 @@ Possible mechanisms:
 
 The chosen mechanism depends on the test layer.
 
+| Layer | Mechanism | Status |
+| --- | --- | --- |
+| Domain unit tests | Pure functions, no shared state | `Implemented` |
+| Database and API tests | One shared test database (`.env.test.local`); unique rows per file, deleted in `afterAll`. No per-test transaction rollback and no truncation between runs | `Implemented` |
+| Application services | Fresh in-memory fakes per test (ADR-001 point 7) | `Planned (B0)` |
+| Simulator | Fixed seed and injected clock (ADR-007 point 7) | `Planned (B5)` |
+| Component and E2E | Isolated browser contexts; tool `Deferred` to the frontend-stage ADR (ADR-006 point 11) | `Planned (FE)` |
+
+`packages/database/src/seed/wipe.ts` deletes every table; it is a seed step, never used by tests.
+
 ---
 
 # 47. Flaky Test Policy
+
+**Status:** `Reference`
 
 Flaky tests must not be ignored.
 
@@ -1388,9 +1438,13 @@ If a test fails intermittently:
 
 Retries may be used temporarily for diagnostics but should not hide real instability.
 
+No Vitest config sets `retry`, and no test is skipped (`.skip`) or focused (`.only`). Rate-limit tests use an isolated limiter instead of timing the real one (§29).
+
 ---
 
 # 48. Mocking Policy
+
+**Status:** `Reference`; fakes for repositories `Planned (B0)`; realtime transport double `Planned (FE)`
 
 Mocks should be used at architectural boundaries.
 
@@ -1407,9 +1461,13 @@ Avoid mocking the unit under test itself.
 
 The goal is to test behavior, not mock interactions.
 
+Today no test uses `vi.mock`, fake timers or a mocked repository: domain tests need no doubles, and database and API tests use real PostgreSQL. ADR-001 point 7 prefers in-memory fakes that implement the repository contracts over interaction mocks, so the same fakes later serve the demo (§18). There is no external API to mock: all market data is synthetic (ADR-007 point 8). The realtime client is tested through a transport test double (`08-realtime-spec.md` §42-43).
+
 ---
 
 # 49. Time Control
+
+**Status:** simulator clock `Planned (B5)` (ADR-007 point 7); a clock for the rest of the system not decided; no controllable clock exists today
 
 Time-dependent functionality should use controllable clocks where practical.
 
@@ -1425,9 +1483,13 @@ This is important for:
 
 Tests must not rely on arbitrary real-world delays.
 
+Only the simulator has a decided injected clock (ADR-007 point 7), which also drives alerts and candle rollover in B5. Elsewhere the code reads the system clock directly: `validateNewTransaction` rejects a future `executedAt` against `new Date()` (`packages/domain/src/entities/transaction.ts`), the API services stamp `readAt` and end the overview's candle range at `new Date()`, and the mappers default timestamps the same way. No test uses fake timers, and none waits on real time. Token expiration (B2), job timeouts (B4) and time ranges (B1) need a controllable clock to be tested without delays; whether that is one `Clock` port in `@trading/application` or per-feature injection is not decided.
+
 ---
 
 # 50. Randomness Control
+
+**Status:** `Planned (B5)` (ADR-007 point 7, NFR-059); demo determinism `Planned (FE)` (NFR-045)
 
 Random simulation behavior must support deterministic seeds.
 
@@ -1440,9 +1502,13 @@ This allows:
 
 Randomness should be isolated behind an explicit abstraction.
 
+The abstraction is the seeded pseudo-random generator inside `@trading/market-sim` (ADR-007 point 7): the same seed and clock produce the same price series, asserted by a B5 test (NFR-059). The demo test runs initialization twice with one seed and compares the state (NFR-045). Domain calculations use no randomness (NFR-042). Today no production code calls `Math.random`; test fixtures use `crypto.randomUUID()` only to make rows unique, never to drive behavior.
+
 ---
 
 # 51. Network Failure Testing
+
+**Status:** realtime failures `Planned (FE)`; demo simulated latency and scripted failures `Deferred` (ADR-010 point 6)
 
 The demo and automated tests should simulate:
 
@@ -1455,11 +1521,15 @@ The demo and automated tests should simulate:
 
 The application must provide recovery behavior where appropriate.
 
+Decided recovery behavior to test: a dropped socket triggers reconnection with backoff, HTTP polling every 10 s and a stale-data indicator (§23, ADR-007 point 12); a malformed realtime event is dropped (§21); the server answers a 500 or a 503 `DEPENDENCY_ERROR` with the error envelope `{ error: { code, message, requestId, details? } }` (ADR-002 points 2 and 10), and the UI shows the error state with a retry (§13). Offline state, latency and timeouts in the demo are demo specifics, decided in the frontend-stage ADR (ADR-010 point 6). The HTTP client's timeout and retry policy is not decided.
+
 ---
 
 # 52. API Contract Testing
 
-API request and response contracts should be verified against the OpenAPI specification.
+**Status:** `Planned (B0)` (ADR-002 point 6); OpenAPI generation `Planned (B6)` (ADR-002 point 7)
+
+API request and response contracts should be verified against the `@trading/contracts` Zod schemas.
 
 Contract tests should detect:
 
@@ -1471,9 +1541,13 @@ Contract tests should detect:
 
 This reduces frontend/backend integration regressions.
 
+Code vs ADR: the previous text verified contracts against an OpenAPI document. ADR-002 makes the Zod schemas the single source: the API integration tests validate every response against its schema (point 6), and OpenAPI is generated from the same schemas in B6 (point 7), so a separate OpenAPI check would test the generator, not the API. The demo adapter validates responses during development (point 6). Error responses are checked against the error envelope schema (points 2 and 10). Contract tests are one of the named mandatory tests that replace a coverage threshold (ADR-006 point 11). No `packages/contracts` exists yet; today the route tests assert shape by hand (§16).
+
 ---
 
 # 53. CI Test Pipeline
+
+**Status:** backend stages `Planned (B0)` (ADR-006 points 10-11); component, E2E and accessibility stages `Deferred` to the frontend-stage ADR; no CI workflow exists today
 
 The CI pipeline should follow:
 
@@ -1499,9 +1573,26 @@ Accessibility Checks
 
 Performance tests may run separately when they are too expensive for every pull request.
 
+The decided workflow is one GitHub Actions workflow on pushes and pull requests to `develop` and `main`, with no continuous deployment (ADR-006 points 10-11):
+
+| Stage | Command | Status |
+| --- | --- | --- |
+| Install | `pnpm install --frozen-lockfile` | `Planned (B0)` |
+| Typecheck | `pnpm typecheck` | `Planned (B0)` |
+| Lint | `pnpm lint` | `Planned (B0)` |
+| Formatting | `pnpm format:check` | `Planned (B0)` (point 11) |
+| Build | `pnpm build` | `Planned (B0)` (point 11) |
+| Unit and integration tests | `pnpm test` (domain, database and API suites; the latter two against a PostgreSQL service container, migrated before the run) | `Planned (B0)` |
+| Component, E2E, accessibility | tools chosen in the frontend-stage ADR | `Deferred` |
+| Performance | browser traces of §39-§41 | `Deferred` |
+
+`pnpm build` passes today (`pnpm -r build`, `tsc --build`). The stage order inside the workflow is not fixed by the ADR, apart from install first. Whether component, E2E and accessibility checks join this workflow is not decided. There is no coverage stage (§55).
+
 ---
 
 # 54. Pull Request Quality Gate
+
+**Status:** local checks and PR template `Implemented`; automated gate `Planned (B0)` (ADR-006 points 10-11); E2E gate `Deferred`
 
 A pull request should not be considered complete when:
 
@@ -1513,9 +1604,13 @@ A pull request should not be considered complete when:
 
 Tests should be treated as part of implementation rather than a final manual step.
 
+Today nothing blocks a merge automatically. The pre-commit hook only formats and lints staged files (§5), and the checklist in `.github/PULL_REQUEST_TEMPLATE.md` asks for `pnpm typecheck` and `pnpm lint` only, not formatting, build or tests. From B0 the CI workflow of §53 is the gate: type checking, lint, formatting, build and the backend test suites must pass. "Critical E2E flows fail" applies once E2E tests exist (`Planned (FE)`); no coverage percentage is part of the gate (§55).
+
 ---
 
 # 55. Coverage Strategy
+
+**Status:** `Reference`; coverage threshold `Deferred` (ADR-006 point 11)
 
 Coverage should be used as a diagnostic metric rather than a target to game.
 
@@ -1536,9 +1631,20 @@ Lower coverage may be acceptable for:
 
 Critical behavior matters more than a global percentage.
 
+Version 1 sets no coverage threshold and CI has no coverage gate (ADR-006 point 11); no coverage provider is configured. "High coverage" for the areas above is met by named mandatory tests, not a percentage:
+
+| Area | Mandatory tests | Status |
+| --- | --- | --- |
+| Domain rules, calculations | Domain unit tests (§7) | `Implemented` |
+| Critical application services | Use-case tests with in-memory fakes (ADR-001 point 7) | `Planned (B0)` |
+| Validation, response shape | Contract tests against `@trading/contracts` (ADR-002 point 6, §52) | `Planned (B0)` |
+| Authorization | Cross-user 404 tests and permission tests by role (§30) | ownership `Implemented`; roles `Planned (B2)` |
+
 ---
 
 # 56. Test Environments
+
+**Status:** development and test `Implemented`; local production-like stack `Planned (B7)`; demo `Planned (FE)` (ADR-006 points 1 and 8)
 
 The project should distinguish:
 
@@ -1563,11 +1669,24 @@ Public-facing mock-powered experience.
 
 ### Production-like
 
-Local or optional deployment environment using the complete backend architecture.
+Local environment using the complete backend architecture.
+
+ADR-006 point 8 names three environments, `development`, `test` and local `production`, plus the demo as a separate target (point 1):
+
+| Environment | What it is | Status |
+| --- | --- | --- |
+| Development | Local API against the default Docker Compose profile (PostgreSQL only) | `Implemented` |
+| Test | Local PostgreSQL test database from `.env.test.local` (`.env.test.example`); in CI, a PostgreSQL service container | `Implemented` locally; CI `Planned (B0)` |
+| Demo | Static build of `apps/web` with `APP_MODE=demo` (`VITE_APP_MODE`), no backend calls, served under a subpath (ADR-006 point 7) | `Planned (FE)` |
+| Production-like | Compose `full` profile (PostgreSQL and the built API, `node dist/index.js`) on the author's machine | `Planned (B7)` |
+
+There is no hosted or optional deployment environment: hosting the backend needs a new ADR (ADR-006 point 2).
 
 ---
 
 # 57. Demo vs Production Testing
+
+**Status:** shared repository contract suite `Planned (B0)` (ADR-001); demo wiring `Planned (FE)`
 
 The same application behavior should be exercised against both:
 
@@ -1585,9 +1704,13 @@ where practical.
 
 The purpose is to demonstrate that infrastructure is replaceable without rewriting product behavior.
 
+"Where practical" becomes three concrete mechanisms: one repository contract suite runs against both the Prisma and the in-memory implementations (§18, NFR-044); the same use cases from `@trading/application` run in the API and in the browser (ADR-001); and both sides validate against the same `@trading/contracts` schemas (ADR-002 point 6, NFR-057). The realtime client port has an in-process demo adapter fed by the same `@trading/market-sim` engine (ADR-007 point 13). Today only the Prisma side exists.
+
 ---
 
 # 58. Testability Requirements
+
+**Status:** partial `Implemented` (isolated domain logic, repository contracts); the rest by block, listed below
 
 The architecture must make important behavior easy to test.
 
@@ -1603,9 +1726,23 @@ Required properties:
 - controllable randomness;
 - transport abstractions.
 
+| Property | Today | Decision and status |
+| --- | --- | --- |
+| Dependency injection at infrastructure boundaries | API services create Prisma repositories at module level (for example `new PrismaPortfolioRepository()`) | Factories receive dependencies; composition root in `apps/api/src/composition.ts` (ADR-001 points 2 and 4), `Planned (B0)` |
+| Deterministic simulation | No simulator | `@trading/market-sim`, `Planned (B5)` (ADR-007 point 7) |
+| Isolated domain logic | Pure calculations, no database (NFR-042) | `Implemented`; gap: `validateNewTransaction` reads the system clock (§49) |
+| Explicit state transitions | None | Jobs `Planned (B4)` (ADR-008 point 3); simulator lifecycle `RUNNING <-> HALTED` `Planned (B5)` (ADR-007 point 16); realtime client states `Planned (FE)` |
+| Typed contracts | Hand-written DTOs | `@trading/contracts`, `Planned (B0)` (ADR-002) |
+| Replaceable repositories | Repository interfaces in `@trading/domain` with Prisma implementations | Interfaces `Implemented`; in-memory implementations `Planned (B0)` (NFR-044) |
+| Controllable clocks | None | Simulator `Planned (B5)`; elsewhere not decided (§49) |
+| Controllable randomness | None needed yet | Seeded generator `Planned (B5)` (§50) |
+| Transport abstractions | None in the client | Realtime client port with a demo adapter, `Planned (FE)` (ADR-007 point 13); HTTP through a DTO client (ADR-002 point 5) |
+
 ---
 
 # 59. Required Test Matrix
+
+**Status:** `Reference`; per-column status below the table
 
 | Area | Unit | Component | Integration | E2E |
 |---|---:|---:|---:|---:|
@@ -1627,9 +1764,18 @@ Required properties:
 | Accessibility | — | Required | — | Required |
 | Performance | Required | Required | Required | Selected |
 
+How the columns map to the code and blocks:
+
+- **Unit.** Domain calculations, validation and entity rules are `Implemented` (§7-§9). Application-service unit tests (authorization, portfolios, transactions, notifications) are `Planned (B0)` (ADR-001 point 7); analytics `Planned (B1)`; background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
+- **Component** and **E2E.** `Planned (FE)` for every row; tools `Deferred` to the frontend-stage ADR (ADR-006 point 11).
+- **Integration.** Authentication, authorization, portfolios, transactions and notifications are `Implemented` (§16, §26, §29-§30). Analytics has no HTTP test yet: `analytics.routes.ts` has no route test file, and analytics is tested with the B1 rework (ADR-004). Gap without an assigned block: `positions.routes.ts`, `assets.routes.ts` and `market.routes.ts` have no route test file either (the overview is exercised once, in `transactions.routes.test.ts`). Background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
+- **Background jobs** means the CSV import (ADR-008), whose E2E flow is in §33. **Tables** follow ADR-010 points 4 and 9 (§27). **Performance** targets are those of §39-§41; no server load test is planned.
+
 ---
 
 # 60. Minimum Automated Test Suite
+
+**Status:** unit and integration partial `Implemented`; component and E2E `Planned (FE)`
 
 Before the project is considered portfolio-ready, the following must exist:
 
@@ -1668,12 +1814,22 @@ Before the project is considered portfolio-ready, the following must exist:
 - transaction workflow;
 - analytics workflow;
 - realtime workflow;
+- CSV import workflow;
 - error/retry workflow;
 - logout/reset.
+
+| Group | Exists today | Still to build |
+| --- | --- | --- |
+| Unit | Domain calculations, `Money`, transaction input rules (`transaction.test.ts`), position rules, request validation middleware (`validate.test.ts`) | Chronological validation and application services `Planned (B0)`; permissions `Planned (B2)`; simulation and realtime event processing `Planned (B5)` |
+| Component | Nothing | All items `Planned (FE)` |
+| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests `Planned (B0)`; analytics API `Planned (B1)`; import API `Planned (B4)`; realtime events `Planned (B5)` |
+| E2E | Nothing | All items `Planned (FE)`; CSV import added on 2026-10-06 (§33); reset `Deferred` (ADR-010 point 6), so "logout/reset" means logout |
 
 ---
 
 # 61. Definition of Done — Feature
+
+**Status:** `Reference`; automated part enforced by CI from B0 (ADR-006 points 10-11)
 
 A feature is considered complete when:
 
@@ -1693,9 +1849,13 @@ A feature is considered complete when:
 - demo mode supports the feature;
 - documentation is updated when architectural behavior changes.
 
+TypeScript, lint, formatting, build and the backend test suites become CI checks in B0 (§53); until then they are run by hand. The mandatory tests that a feature in its block names (ADR-001 point 7, ADR-002 point 6) replace any coverage percentage (ADR-006 point 11). Items about components, UI states, responsiveness and demo support apply to features with a UI, built in the frontend stage; the demo items stay subject to the frontend-stage ADR (ADR-010 point 6). Every user-facing string exists in English and Spanish (ADR-010 point 8).
+
 ---
 
 # 62. Definition of Done — Demo
+
+**Status:** `Planned (FE)`; reset `Deferred` (ADR-010 point 6)
 
 The public demo is considered complete when a visitor can experience the platform without backend dependencies.
 
@@ -1729,9 +1889,13 @@ Logout / Reset
 
 No screen should exist only as a visual mock.
 
+Mapping to the decisions: the demo is a static build with no backend calls and no secrets (ADR-006 point 7), running the same use cases in the browser on in-memory repositories (ADR-001). "Authentication simulation" is the controlled demo identity with the `Viewer`, `Trader` and `Admin` selector (ADR-005 point 11). "Background processes" is the CSV import with simulated progress and injectable failures (ADR-008 point 13). "Realtime simulation" is `@trading/market-sim` behind the in-process realtime adapter (ADR-007 point 13). "Logout / Reset": logout is decided; reset is `Deferred` with the other demo specifics (ADR-010 point 6). Today no `apps/web` code exists.
+
 ---
 
 # 63. Failure Scenarios Required in Demo
+
+**Status:** import job failures and simulation pause `Planned (FE)`; scripted failures `Deferred` (ADR-010 point 6)
 
 The demo should intentionally support selected reproducible failures.
 
@@ -1753,9 +1917,22 @@ Simulation Pause
 
 These scenarios should be controllable without making the normal user flow frustrating.
 
+| Scenario | Decision | Status |
+| --- | --- | --- |
+| Background Job Failure, Background Job Timeout | Injectable failures in the in-process CSV import (ADR-008 point 13; states `FAILED` and `TIMED_OUT`, point 3) | `Planned (FE)` |
+| Simulation Pause | Mode `PAUSED` (ADR-007 point 15); in real mode the lifecycle state is `HALTED` (point 16) | `Planned (FE)` |
+| Empty Dataset | Empty states of §15 | `Planned (FE)` |
+| Forbidden | The `Viewer` role is refused mutations through the same permission checks (ADR-005 points 3 and 11) | `Planned (FE)` |
+| Validation Error | Real validation from the shared use cases, for example a `SELL` above the held quantity (ADR-003 point 6) | `Planned (FE)` |
+| Network Timeout, API 500, Unauthorized, Realtime Disconnect, Realtime Reconnect | Scripted failures and simulated latency are demo specifics | `Deferred` (ADR-010 point 6) |
+
+The demo has no network (ADR-006 point 7), so network and HTTP failures can only be scripted; they wait for the frontend-stage ADR.
+
 ---
 
 # 64. Interview Demonstration Mode
+
+**Status:** realtime scenario `Planned (B5)` (server) and `Planned (FE)` (client); failure scenario `Deferred` (ADR-010 point 6); architecture scenario `Planned (FE)` as two builds
 
 The application should provide deterministic scenarios suitable for technical interviews.
 
@@ -1800,9 +1977,17 @@ where technically feasible.
 
 The objective is to make architectural decisions observable rather than merely documented.
 
+Notes against the ADRs:
+
+- **Realtime scenario.** Deterministic scenarios are the simulator's (ADR-007 point 7), with wire identifiers `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN` and `RECOVERY` (point 15). Starting the simulation requires `simulation:control`, held only by `ADMIN` (ADR-005 point 13). The client recomputes the portfolio value from prices (ADR-007 point 6); the alert fires once per false-to-true edge (point 9).
+- **Failure scenario.** Needs scripted failures, `Deferred` (ADR-010 point 6). The CSV import with an injected failure and a retry (ADR-008 points 6 and 13) is the decided failure-and-recovery path.
+- **Architecture scenario.** There is no runtime switch: `APP_MODE` is fixed at build time through `VITE_APP_MODE` (ADR-006 point 8), and the public demo calls no backend (point 7). The scenario is shown by running the demo build and the local full stack side by side on the same use cases (§57).
+
 ---
 
 # 65. Testing Acceptance Criteria
+
+**Status:** `Reference`; per-criterion status below
 
 Testing is considered complete when:
 
@@ -1820,9 +2005,27 @@ Testing is considered complete when:
 - CI executes the required quality gates;
 - tests are reproducible and isolated.
 
+| Criterion | Status |
+| --- | --- |
+| Core business rules have unit tests | `Implemented` for the domain; application services `Planned (B0)` |
+| Critical components have interaction tests | `Planned (FE)` |
+| API boundaries have integration tests | `Implemented` for most routes (gaps in §59); contract tests `Planned (B0)` |
+| Authentication and authorization are tested | partial `Implemented` (§29-§30); sessions and roles `Planned (B2)` |
+| Realtime behavior is tested | `Planned (B5)` and `Planned (FE)` |
+| Simulation is deterministic | `Planned (B5)` (ADR-007 point 7) |
+| Critical E2E flows pass | `Planned (FE)` (§33) |
+| Demo flows are covered | `Planned (FE)`; reset and scripted failures `Deferred` (§34) |
+| Failure and recovery states are covered | Server error responses `Implemented` (§13); UI and demo `Planned (FE)` |
+| Accessibility has automated and manual verification | `Planned (FE)` (§36) |
+| Representative performance scenarios are validated | `Planned (FE)` (§39-§41) |
+| CI executes the required quality gates | `Planned (B0)` (ADR-006 points 10-11); no coverage gate |
+| Tests are reproducible and isolated | `Implemented` across files (§45-§46); controllable clock not decided outside the simulator (§49) |
+
 ---
 
 # 66. Testing Philosophy Summary
+
+**Status:** `Reference`
 
 The testing strategy follows one principle:
 
