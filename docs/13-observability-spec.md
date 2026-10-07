@@ -416,6 +416,7 @@ The convention is a guide, not a fixed length: ADR-009 uses two segments (`job.f
 | `auth.login.succeeded`, `auth.login.failed`, `authz.denied` | ADR-009 point 9, `09-security-spec.md` §50 | `Planned (B3)`; `authz.denied` on role checks from B2 and on realtime subscriptions from B5 |
 | `auth.refresh.reuse_detected` | ADR-009 point 9, ADR-005 | `Planned (B2)` / `Planned (B3)` |
 | `auth.logout` | ADR-009 point 9 (amended 2026-10-07) | `Planned (B2)`, with the endpoint |
+| `app.startup.started`, `app.startup.completed` | ADR-009 point 11 (startup entries added 2026-10-07), mirroring the shutdown pair | `Planned (B3)` |
 | `app.shutdown.started`, `app.shutdown.completed` | ADR-009 point 11, ADR-006 point 12 | `Planned (B3)` |
 | `simulation.started`, `simulation.paused`, `simulation.mode.changed` | ADR-009 point 11, ADR-007 point 15 | `Planned (B5)` |
 | `job.*` (transitions) | ADR-009 point 11, ADR-008 | `Planned (B4)` |
@@ -1059,7 +1060,7 @@ Code vs ADR:
 
 - Readiness checks the database only. "Required internal services" have no counterpart yet: the job runner (ADR-008, B4) and the market simulator (ADR-007, B5) run in process, and no ADR adds them to readiness. "Critical configuration" is checked once at startup instead: `apps/api/src/config/env.ts` validates the environment and the process exits on invalid values, so a running process always has valid configuration.
 - The `health.database.unavailable` line logs `errorName` only, never the driver message or connection string (§24).
-- Graceful shutdown is decided (ADR-006 point 12, added 2026-10-07; `14-deployment-spec.md` §16 requires it). `apps/api/src/index.ts` only calls `app.listen` and handles no shutdown signal today. On `SIGTERM` or `SIGINT` the server stops accepting connections, `GET /health/ready` returns 503 while the API is shutting down, in-flight requests drain with a timeout of 10 seconds, and Prisma is closed. The shutdown logs `app.shutdown.started` and `app.shutdown.completed` (ADR-009 point 11). `Planned (B3)`. No decision fixes the level of the shutdown entries; open detail (B3).
+- Graceful shutdown is decided (ADR-006 point 12, added 2026-10-07; `14-deployment-spec.md` §16 requires it). `apps/api/src/index.ts` only calls `app.listen` and handles no shutdown signal today. On `SIGTERM` or `SIGINT` the server stops accepting connections, `GET /health/ready` returns 503 while the API is shutting down, in-flight requests drain with a timeout of 10 seconds, and Prisma is closed. The shutdown logs `app.shutdown.started` and `app.shutdown.completed` (ADR-009 point 11). If the 10-second drain expires, the remaining connections are closed and the process exits with code 1; otherwise it exits with 0 (ADR-006 point 12, exit code). The startup likewise logs `app.startup.started` and `app.startup.completed` (ADR-009 point 11, added 2026-10-07). `Planned (B3)`. No decision fixes the level of the startup or shutdown entries; open detail (B3).
 
 ---
 
@@ -2179,7 +2180,7 @@ The only dependency is PostgreSQL.
 | Errors are logged | Readiness writes one JSON line, `health.database.unavailable`, with `requestId` and `errorName`; other requests log `request.failed` (§1) | `Implemented` as `console` lines; on the `Logger` port `Planned (B3)` (`http.request.failed`, ADR-009 point 6) |
 | Appropriate error responses | A request that fails because the database is unreachable gets 500 `INTERNAL_ERROR` | 503 `DEPENDENCY_ERROR` `Planned (B0)` (ADR-002 point 10, `07-api-spec.md`), logged at `error` with the stack `Planned (B3)` (ADR-009 point 6) |
 | Recovery is observable | Readiness is checked on every call, so it returns 200 again once the database answers; no entry records the recovery | No recovery entry in v1 (ADR-009 point 11); `Deferred` until a poller exists (B7, §58) |
-| No unnecessary crash | A failed query is handled per request by the error handler; there are no process-level handlers | Startup logging and graceful shutdown (ADR-006 point 12) with `app.shutdown.started` and `app.shutdown.completed` `Planned (B3)` (ADR-009 point 11) |
+| No unnecessary crash | A failed query is handled per request by the error handler; there are no process-level handlers | Startup logging (`app.startup.started`, `app.startup.completed`) and graceful shutdown (ADR-006 point 12) with `app.shutdown.started` and `app.shutdown.completed` `Planned (B3)` (ADR-009 point 11) |
 | Demo dependency failures | Simulated failures are a demo specific | `Deferred` (ADR-010 point 6) |
 
 Code vs ADR: readiness answers 503 while the API is shutting down (ADR-006 point 12, `Planned (B3)`; §23).
@@ -2657,7 +2658,7 @@ Code vs ADR:
 
 - `apps/api/src/config/env.ts` validates `NODE_ENV` (`development`, `test`, `production`), `PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN_SECONDS` and `CORS_ORIGIN` with zod, and the process exits on invalid values without printing them (`Implemented`). None of the six variables above exists in code.
 - `NODE_ENV` is the environment that ADR-009 point 7 keys its levels to. The web build variable is `VITE_APP_MODE`, set from `APP_MODE` (ADR-006 point 8, `Planned (FE)`); no ADR adds an observability variable to the web build.
-- `14-deployment-spec.md` §10 lists `LOG_LEVEL` but also `DEMO_MODE` and `JWT_EXPIRES_IN`, which differ from ADR-006 point 8 (`APP_MODE`) and `env.ts` (`JWT_EXPIRES_IN_SECONDS`). That belongs to the `14` reconciliation.
+- `14-deployment-spec.md` §10 now uses the canonical names `APP_MODE` and `JWT_EXPIRES_IN_SECONDS` (ADR-006 point 8, reconciled in slice A of `14`), so it no longer differs from `env.ts` on those two names.
 - Secrets never reach the logs: the environment validator prints key names only, and the redaction list of ADR-009 point 4 covers tokens, cookies and passwords (`Planned (B3)`).
 
 ---

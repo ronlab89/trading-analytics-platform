@@ -1097,7 +1097,7 @@ ADR:
 | Stage | persisted (validate or apply), used by compare-and-set transitions (Deferred detail) |
 | Attempt | incremented on retry (point 6) |
 | Progress | `processed`, `total`; a field, not a state (point 3) |
-| Input | the CSV content, stored in the row at creation and bounded (points 4 and 10) |
+| Input | the CSV content, stored in the row at creation and bounded (points 4 and 10); kept while the job can still be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` (point 4, amended 2026-10-07) |
 | Result | per-row validation report on `VALIDATION_FAILED` (point 2) |
 | Timing | queued time per attempt, for the timeout (Deferred detail) |
 

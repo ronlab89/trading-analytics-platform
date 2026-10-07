@@ -35,7 +35,10 @@ realtime provider (ADR-007 point 13).
 **Status:** `Planned (B5)` (ADR-007 point 1)
 
 The server uses WebSocket through the `ws` library, behind a transport port
-so no other code depends on it. Socket.IO and Server-Sent Events are
+so no other code depends on it. The WebSocket is served by the same HTTP
+server and port as the API (7001) on a fixed path, proposed `/ws` and
+confirmed in B5; there is no `WEBSOCKET_PATH` variable (ADR-007 point 1,
+amended 2026-10-07). Socket.IO and Server-Sent Events are
 rejected (ADR-007, Alternatives Considered).
 
 The UI never depends on the WebSocket implementation:
@@ -179,7 +182,11 @@ Server rules (ADR-007 point 15):
 
 - When the server closes a socket for exceeding a limit, it uses close
   code `4008` (§9). An excess connection beyond the per-user cap of 5 is
-  closed with `4008` (ADR-005 point 13).
+  closed with `4008` (ADR-005 point 13). The excess connection is the new
+  one; existing connections stay open (ADR-007 point 16, amended
+  2026-10-07).
+- The WebSocket `maxPayload` equals the inbound message limit of this
+  section and adds no new number (ADR-007 Deferred detail, `Planned (B5)`).
 - The server closes a socket not authenticated within 5 seconds (`4001`),
   or whose token expired without re-authentication (`4002`) (§9).
 

@@ -627,7 +627,9 @@ POST /api/v1/portfolios/:portfolioId/imports
 it in `QUEUED`. Every row is validated first; if any row fails, the job ends
 `FAILED` with a per-row report and nothing is written. Valid rows are applied
 in one unit of work. Rows follow the §13 rules (`BUY` and `SELL` only). File
-size and row count are bounded (values fixed in B4). Accepts
+size and row count are bounded (values fixed in B4). The route needs its own
+body limit, set in B4 with the input limits (ADR-008 point 10 and Deferred
+detail), because the global JSON body limit is 100 kB. Accepts
 `Idempotency-Key`.
 
 ---
@@ -1603,7 +1605,10 @@ the server log (`health.database.unavailable`).
 Realtime is separate from the HTTP API. The full protocol lives in
 `08-realtime-spec.md`; §31-§38 only summarize it.
 
-- Transport: WebSocket (`ws`) behind a transport port.
+- Transport: WebSocket (`ws`) behind a transport port. It is served by the
+  same HTTP server and port as the API (7001) on a fixed path, proposed
+  `/ws` and confirmed in B5; there is no `WEBSOCKET_PATH` variable (ADR-007
+  point 1, amended 2026-10-07).
 - Authentication: the access token goes in the first message, never in the
   URL; a socket not authenticated within 5 seconds is closed.
 - Channels: `market:{assetId}`, `portfolio:{portfolioId}`, `notifications`

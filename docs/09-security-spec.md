@@ -1034,8 +1034,9 @@ Exceeding a limit closes the socket with `4008` (`08-realtime-spec.md`
 
 Decided (ADR-005 point 13, ADR-007 point 16, approved 2026-10-06):
 concurrent connections are capped per authenticated user, not per IP. The
-v1 value is 5 per user, and an excess connection closes with `4008`.
-Status `Planned (B5)`. Numeric tuning is an Open detail (B5).
+v1 value is 5 per user. The new (excess) connection is closed with `4008`
+and the existing connections stay open (ADR-007 point 16, amended
+2026-10-07). Status `Planned (B5)`. Numeric tuning is an Open detail (B5).
 Unauthenticated sockets stay bounded by the 5-second timeout.
 
 ---
