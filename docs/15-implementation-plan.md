@@ -160,7 +160,7 @@ Code vs ADR: phases 5 to 11 and 14 to 16 were written before the ADRs, and their
 
 ## 4.3 Frontend Blocks
 
-**Status:** `Planned (FE)`; the breakdown below is proposed on 2026-10-07 and waits for the user's approval
+**Status:** `Planned (FE)`; the breakdown below was approved by the user on 2026-10-07 and may be revised when the frontend stage starts
 
 | Block | Scope | Phases | Depends on |
 | --- | --- | --- | --- |
