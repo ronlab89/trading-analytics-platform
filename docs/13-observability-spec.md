@@ -1167,6 +1167,8 @@ Code vs ADR:
 
 # 28. Realtime Debugging
 
+**Status:** server connection logging `Planned (B5)` (ADR-009 point 11, `08-realtime-spec.md` §58); client diagnostics `Planned (FE)`; a payload debug mode not decided
+
 The realtime subsystem should expose enough diagnostic information to understand connection behavior.
 
 Development diagnostics may include:
@@ -1186,8 +1188,8 @@ Example:
 
 ```text
 [realtime] connected
-[realtime] subscribed: portfolio:123
-[realtime] event received: price.updated
+[realtime] subscribed: market:{assetId}
+[realtime] event received: MARKET_PRICE_UPDATED (sequence 42)
 [realtime] event applied
 ```
 
@@ -1195,9 +1197,29 @@ Sensitive payload data should not be dumped indiscriminately.
 
 A development-only debug mode may show sanitized payload summaries.
 
+The list above mixes protocol messages, client states and log entries. What each item is in version 1:
+
+| Item | Version 1 counterpart | Status |
+| --- | --- | --- |
+| `CONNECT`, `DISCONNECT`, `RECONNECT` | Client connection states `DISCONNECTED`, `CONNECTING`, `CONNECTED`, `RECONNECTING`, `FAILED` (`08-realtime-spec.md` §6); server connect and close log entries with a `connectionId` | Client `Planned (FE)`; server `Planned (B5)` |
+| `SUBSCRIBE` | Client message `SUBSCRIBE` (also `AUTHENTICATE`, `UNSUBSCRIBE`), answered by `ACK` or `ERROR` (ADR-007 point 15); a refused subscription is logged as `authz.denied` | `Planned (B5)` |
+| `ERROR` | `ERROR` reply with a `code`, or a close code `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | `Planned (B5)` |
+| `SYNC` | Resynchronization through HTTP after a gap, a reconnect or an epoch change (ADR-007 point 5, `08-realtime-spec.md` §26) | `Planned (FE)` |
+| `EVENT_RECEIVED`, `EVENT_APPLIED` | Client-side processing; the client counts dropped (invalid) events (`08-realtime-spec.md` §58) | `Planned (FE)` |
+
+Code vs ADR:
+
+- No realtime code exists: no `ws` dependency and no socket server in `apps/api` (ADR-007, `Planned (B5)`).
+- The example previously showed `price.updated`. Wire event types are `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED` and the three job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` (ADR-007 point 6, ADR-008 point 11). They are a different namespace from log event names (§8).
+- Server log event names and the level of per-event entries are open in `08-realtime-spec.md` §58 (B5), so continuous ticks (one per second, ADR-007 point 15) do not flood `info` logs.
+- The access token of an `AUTHENTICATE` message and payloads with user data are never logged (ADR-009 point 4 and Deferred detail, `08-realtime-spec.md` §58). The envelope `id` identifies an event in logs and diagnostics (`08-realtime-spec.md` §47).
+- No ADR decides a development-only debug mode with payload summaries. Pending user decision (frontend stage).
+
 ---
 
 # 29. Demo Mode Observability
+
+**Status:** `Planned (FE)` (ADR-009 points 1 and 12); demo event names `Deferred` with the demo specifics (ADR-010 point 6)
 
 The demo environment defined in `12-demo-mode-spec.md` must participate in the same observability architecture.
 
@@ -1221,9 +1243,18 @@ This makes the simulated infrastructure observable in the same way as real infra
 
 The goal is to demonstrate that the demo is an infrastructure substitution rather than a separate application.
 
+Code vs ADR:
+
+- "The same observability architecture" is the `Logger` port (ADR-009 point 1): application code logs the same way, and the demo supplies a browser-console adapter. The demo has no backend (ADR-006 point 7), so its entries go to the browser console, not to stdout.
+- Latency, failure injection, network changes and reset are demo specifics, `Deferred` to the frontend-stage demo ADR (ADR-010 point 6). The `demo.*` names above wait for that ADR (§8).
+- The demo runs the same use cases in process: realtime through an in-process adapter fed by `@trading/market-sim` (ADR-007 point 13), the CSV import with simulated progress (ADR-008 point 13). Whether those emit `demo.realtime.*` and `demo.job.*` or the same `realtime.*` and `job.*` names as the API is an open detail (FE).
+- The mode is selected by `APP_MODE=demo`, exposed to the web build as `VITE_APP_MODE` (ADR-006 point 8, `Planned (FE)`).
+
 ---
 
 # 30. Simulation Diagnostics
+
+**Status:** `Planned (FE)`; the diagnostics interface and most items `Deferred` with the demo specifics (ADR-010 point 6)
 
 When a demo simulation is active, diagnostics should identify:
 
@@ -1238,9 +1269,28 @@ When a demo simulation is active, diagnostics should identify:
 
 These details should be visible primarily to developers or through an explicit demo diagnostics interface.
 
+What each item is in version 1:
+
+| Item | Version 1 counterpart | Status |
+| --- | --- | --- |
+| Current scenario | Scenario wire IDs `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY` (ADR-007 point 15) | Engine `Planned (B5)`; demo scenario control `Deferred` |
+| Simulation mode | Mode wire IDs `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH` (ADR-007 point 15) | Engine `Planned (B5)` |
+| Realtime simulation state | Real-mode lifecycle `RUNNING <-> HALTED`; `PAUSED` is only a mode ID (ADR-007 point 16, `08-realtime-spec.md` §40) | `Planned (B5)`; demo lifecycle `Deferred` |
+| Deterministic seed | Always present: the engine is seeded (ADR-007 point 7) | `Planned (B5)` |
+| Latency and failure profiles | Demo specifics (ADR-010 point 6) | `Deferred` |
+| Background jobs | The CSV import job and its state (ADR-008 points 3 and 13) | `Planned (FE)` |
+| Persistence state | Namespaced browser storage (ADR-006 point 7) | `Planned (FE)` |
+
+Code vs ADR:
+
+- `@trading/market-sim` does not exist yet (ADR-007 point 7, B5); the API and the demo will share it.
+- No ADR decides an explicit demo diagnostics interface; `12-demo-mode-spec.md` §75 lists the same items as optional. Pending user decision (frontend-stage demo ADR, ADR-010 point 6).
+
 ---
 
 # 31. Local Observability
+
+**Status:** per item (table below); the local-only principle is `Reference` (ADR-006 points 1-2)
 
 The project must be fully observable locally without requiring paid services.
 
@@ -1267,11 +1317,25 @@ Development diagnostics
        └── Application diagnostics
 ```
 
-The exact tooling may evolve during implementation.
+The tooling is decided: `pino` JSON lines on the API's stdout, `pino-pretty` in development (ADR-009 points 2-3), the two health endpoints, and the browser developer tools.
+
+| Item | Mechanism | Status |
+| --- | --- | --- |
+| Request IDs in logs | `requestId` on every log line of a request (ADR-009 point 5) | `Planned (B3)`; added by hand to two lines today (§9) |
+| Error events | Category logging (ADR-009 point 6) | `Planned (B3)`; `request.failed` line today (§1) |
+| Realtime events | Connection lifecycle entries (§28) | `Planned (B5)` |
+| Background jobs | Job transition entries (§20) | `Planned (B4)` |
+| Demo simulations | Browser-console adapter (§29), not the API logs | `Planned (FE)` |
+| Health: API, Database | `GET /health`, `GET /health/ready` (§22-23) | `Implemented` |
+| Development diagnostics | Browser console, network panel, application diagnostics (§39-40) | `Planned (FE)` |
+
+Code vs ADR: logs are read where the API process runs: the terminal in development, or the container output under the Docker Compose `full` profile (ADR-006 point 4, `Planned (B7)`). There are no log files (ADR-009 point 3).
 
 ---
 
 # 32. No Paid Observability Dependency
+
+**Status:** `Reference` (ADR-006 points 1-2, ADR-009); met today: no observability vendor SDK in any `package.json`
 
 The project must not require a recurring paid service for:
 
@@ -1292,9 +1356,16 @@ Potential future integrations may include:
 
 These are optional extensions, not project requirements.
 
+Code vs ADR:
+
+- The only planned observability dependencies are `pino`, `pino-http` and `pino-pretty` (ADR-009 point 2), all free and local; none is installed yet (§6.1).
+- None of the integrations above is planned. Hosting the backend later (ADR-006 point 2) reopens metrics (ADR-009 point 10); any provider would then be a new adapter of the `Logger` port (§33). OpenTelemetry is covered in §34.
+
 ---
 
 # 33. Provider-Agnostic Observability
+
+**Status:** `Logger` port `Planned (B3)` (ADR-009 point 1); metrics and spans `Deferred`
 
 Application code should depend on internal interfaces rather than directly on a third-party observability SDK.
 
@@ -1325,9 +1396,20 @@ interface Observability {
 
 The exact API should be determined during implementation.
 
+Code vs ADR:
+
+- The decided interface is a `Logger` port in `@trading/application` (ADR-009 point 1), with a `pino` adapter in the API and a browser-console adapter in the demo. `@trading/application` is created in B0 (ADR-001 point 1); its method signatures are an open detail (B3).
+- `metric` has no counterpart: metrics are `Deferred` (ADR-009 point 10), so "Local Metrics" is not built.
+- `error` is not a separate channel: errors are log entries at a level set by category, with the stack for internal errors (ADR-009 point 6).
+- `startSpan` has no counterpart: tracing is not planned (§35).
+- "Future Provider Adapter" would be another `Logger` adapter (§32).
+- `@trading/domain` takes no logger (§4).
+
 ---
 
 # 34. OpenTelemetry Consideration
+
+**Status:** `Deferred` (no ADR adopts it; ADR-009 point 10 defers metrics)
 
 The architecture should remain compatible with OpenTelemetry concepts where practical.
 
@@ -1353,9 +1435,13 @@ For the initial implementation, complexity should remain proportional to the pro
 
 OpenTelemetry should be introduced when it provides meaningful architectural value rather than simply because it is available.
 
+Code vs ADR: no package depends on OpenTelemetry, and ADR-009 does not plan it. Version 1 keeps one JSON line per event with dotted `event` names and correlation identifiers (ADR-009 points 3 and 5), which a later exporter could map. Adopting it needs a new decision, like hosting the backend (ADR-006 point 2).
+
 ---
 
 # 35. Tracing Strategy
+
+**Status:** distributed tracing `Deferred`; trace-compatible fields per item (table below)
 
 Distributed tracing is not a mandatory initial feature because the project is primarily a single application architecture.
 
@@ -1369,9 +1455,21 @@ However, trace-compatible concepts should be preserved:
 
 This allows future distributed tracing to be introduced without changing domain behavior.
 
+| Concept | Version 1 counterpart | Status |
+| --- | --- | --- |
+| Request ID | `requestId` (§9) | `Implemented`; in every log line `Planned (B3)` |
+| Operation ID | `jobId`, `connectionId`; no generic `operationId` (§10) | `Planned (B4)`, `Planned (B5)`; `operationId` `Deferred` |
+| Parent/child relationships | None decided. Whether a job's log entries also carry the `requestId` of the request that created it is an open detail (B4) | Not decided |
+| Duration | `durationMs` (ADR-009 point 3, §26) | `Planned (B3)` |
+| Service/module boundaries | `service` and `source` are not in ADR-009 (§7) | Open detail (B3) |
+
+The API is a single process: the job runner and the simulator run inside it (ADR-008 point 4, ADR-007), so there is no cross-service hop to trace.
+
 ---
 
 # 36. Debugging Workflow
+
+**Status:** `Reference`; step 3 depends on `requestId` in every log line, `Planned (B3)` (ADR-009 point 5)
 
 The system should support a predictable debugging workflow.
 
@@ -1386,7 +1484,7 @@ Example:
 Example:
 
 ```text
-requestId: req_123
+requestId: 3f2b8c1e-6a4d-4e0f-9b7a-1c2d3e4f5a6b
 ```
 
 ### Step 3 — Search logs
@@ -1394,7 +1492,7 @@ requestId: req_123
 Find events associated with:
 
 ```text
-req_123
+3f2b8c1e-6a4d-4e0f-9b7a-1c2d3e4f5a6b
 ```
 
 ### Step 4 — Identify the failing layer
@@ -1432,9 +1530,20 @@ Enable more detailed logging only when necessary.
 
 Confirm that retries, rollback, reconnect or user-facing recovery work correctly.
 
+Code vs ADR:
+
+- Step 2: the `requestId` is in the `X-Request-ID` response header and in every error body (§9). The example previously showed `req_123`, which fails the `^[a-zA-Z0-9-]{1,64}$` check and would be replaced (§9). Asynchronous work has no operation ID: use the `jobId` or `connectionId` (§10).
+- Step 3: logs are JSON lines on the API's stdout (ADR-009 point 3), filtered by the `requestId` field. Today only the `request.failed` and `health.database.unavailable` lines carry it (§1).
+- Step 4: there is no application service layer yet; services call Prisma repositories directly until B0 (ADR-001, §4).
+- Step 5: the logged category is `errorCategory` (ADR-009 point 3), and the client sees an `AppErrorCode` (§12.2): validation is `VALIDATION_ERROR`, authentication `UNAUTHORIZED`, authorization `FORBIDDEN`, an unreachable database `DEPENDENCY_ERROR` (`Planned (B0)`), and unexpected failures `INTERNAL_ERROR`. "Domain" and "database" are not separate codes (§12.2).
+- Step 7: more detailed logging is `LOG_LEVEL=debug`, already the development default (ADR-009 point 7, §38).
+- Step 8: a job is retried only on request (ADR-008 point 6); a realtime client reconnects with backoff and resynchronizes through HTTP (`08-realtime-spec.md` §26-27). "Rollback" means a database transaction that does not commit, such as the atomic apply stage of the CSV import (ADR-008 point 2); deployments are forward-fix only (ADR-006 point 6).
+
 ---
 
 # 37. Debug Context
+
+**Status:** `Planned (B3)` (ADR-009 points 3 and 5)
 
 Debug information should provide context without creating noise.
 
@@ -1461,35 +1570,48 @@ entered another function
 
 unless temporarily enabled for focused debugging.
 
+Code vs ADR:
+
+| Field above | ADR-009 counterpart |
+| --- | --- |
+| `requestId`, `event` | Same name (point 3) |
+| `duration` | `durationMs` (point 3) |
+| `operationId` | `jobId` or `connectionId` (point 5, §10) |
+| `errorCode` | `errorCategory` (point 3, §7) |
+| `status` | The response status of the request log entry (§17) |
+| `module`, `resource` | Not in ADR-009; open detail (B3, §7) |
+
+Function entry and exit messages have no level of their own: `TRACE` is not used (§6.2), and `debug` is the most detailed level.
+
 ---
 
 # 38. Logging Configuration
 
+**Status:** `Planned (B3)` (ADR-009 points 2-4, 6-7); `LOG_LEVEL` not in `apps/api/src/config/env.ts` yet
+
 Logging should be configurable by environment.
 
-Example conceptual configuration:
+Decided configuration (`development`, `test` and local `production`, ADR-006 point 8):
 
-```text
-development
-  level: debug
-  pretty output: enabled
-  stack traces: enabled
+| Setting | `development` | `test` | `production` |
+| --- | --- | --- | --- |
+| `LOG_LEVEL` (point 7) | `debug` | `silent`; integration tests that assert log content inject a capturing logger at `info` (Deferred detail) | `info` |
+| Output (points 2-3) | `pino-pretty` | JSON lines | JSON lines on stdout |
+| Stack traces (point 6) | For internal errors | For internal errors | For internal errors |
+| Redaction (point 4) | On | On | On |
 
-test
-  level: warn/error
-  deterministic output
+Code vs ADR:
 
-production
-  level: info
-  structured output
-  sensitive data filtering
-```
-
-The exact values may change during implementation.
+- The previous text set `test` to `warn/error` with "deterministic output"; ADR-009 point 7 sets `silent`.
+- Stack traces are not a development-only setting: ADR-009 point 6 logs them for every internal error, never in the response (§13).
+- Redaction is not production-only: the fixed list of ADR-009 point 4 applies everywhere and is enforced by tests.
+- `apps/api/src/config/env.ts` validates `NODE_ENV` (`development`, `test`, `production`) but has no `LOG_LEVEL` today. Whether `LOG_LEVEL` is validated there like the other keys, and whether its default follows `NODE_ENV`, is an open detail (B3). `04-tech-stack.md` and `14-deployment-spec.md` already list the variable.
 
 ---
 
 # 39. Development Diagnostic Mode
+
+**Status:** not decided (pending user decision, frontend stage); its data sources are `Planned (FE)` or `Deferred` (below)
 
 A development-only diagnostic mode may provide:
 
@@ -1504,9 +1626,25 @@ A development-only diagnostic mode may provide:
 
 This mode must not be enabled automatically in production.
 
+Code vs ADR: no ADR decides a diagnostic mode, and no frontend code exists. Where each item would come from:
+
+| Item | Source | Status |
+| --- | --- | --- |
+| Request IDs | `requestId` in error bodies; `X-Request-ID` header (§9) | `Implemented` (API) |
+| API timings | §27 | `Planned (FE)` |
+| Realtime connection status | Always visible in the status bar, not development-only (FR-046, `08-realtime-spec.md` §28) | `Planned (FE)` |
+| Active subscriptions | Realtime client diagnostics (`08-realtime-spec.md` §58) | `Planned (FE)` |
+| Background job state | The CSV import job's HTTP status and job events (ADR-008 points 9 and 11) | `Planned (B4)` / `Planned (FE)` |
+| Demo simulation and failure injection state | Demo specifics (ADR-010 point 6, §30) | `Deferred` |
+| Cache/query diagnostics | The server-state library is not chosen (§42) | `Deferred` |
+
+The public demo is a static production build (ADR-006 points 1 and 7), so any such mode must be off there (§27).
+
 ---
 
 # 40. Browser Diagnostics
+
+**Status:** `Planned (FE)` (ADR-009 point 12)
 
 The frontend should integrate naturally with standard browser developer tools.
 
@@ -1535,9 +1673,17 @@ Developers should be able to inspect:
 
 No secrets should be intentionally exposed through diagnostics.
 
+Code vs ADR:
+
+- Console: the demo logs through the browser-console `Logger` adapter (ADR-009 point 1). How the real-mode web app reports unexpected errors is decided in the frontend stage (§14). Realtime lifecycle entries "in debug mode" depend on the debug mode of §28 and §39, which is not decided.
+- Network: the panel shows `X-Request-ID` on every API response. Page code can read it only from error bodies, because `cors` does not expose the header (§9). WebSocket messages appear there too; an `AUTHENTICATE` message carries the access token (ADR-007 point 2).
+- Application: the demo keeps its state in namespaced browser storage (ADR-006 point 7); storage versioning is a demo specific (`Deferred`, ADR-010 point 6). The access token is kept in memory only, never in browser storage, and the refresh token is an `HttpOnly` cookie that page code cannot read (ADR-005).
+
 ---
 
 # 41. Observability and State Management
+
+**Status:** `Planned (FE)`; the client-state library is not chosen (`Deferred`, `08-realtime-spec.md` §34)
 
 Observability must not create unnecessary global state.
 
@@ -1558,9 +1704,17 @@ Observability service
 
 Only information that is genuinely needed by the UI should enter application state.
 
+Code vs ADR:
+
+- No ADR selects Zustand; the client-state library is chosen in a frontend-stage decision (`04-tech-stack.md`, `08-realtime-spec.md` §34). The rule above applies to whichever store is chosen.
+- The "Observability service" is the `Logger` port (ADR-009 point 1). "Local metrics" are `Deferred` (ADR-009 point 10), and no exporter is planned (§32).
+- Realtime client state (connection state, active subscriptions, last processed sequence and epoch per channel) is the one observability-related state the UI needs; it lives in the client-state store (`08-realtime-spec.md` §34) and drives the status bar (FR-046).
+
 ---
 
 # 42. Observability and TanStack Query
+
+**Status:** `Planned (FE)`; the server-state library is not chosen (`Deferred`, `08-realtime-spec.md` §33)
 
 TanStack Query operations should remain observable through existing query lifecycle mechanisms.
 
@@ -1576,6 +1730,12 @@ Useful diagnostics include:
 - invalidation
 
 The application should avoid logging complete query payloads by default.
+
+Code vs ADR:
+
+- No ADR selects TanStack Query; the server-state cache library is chosen in a frontend-stage decision (`04-tech-stack.md`, `08-realtime-spec.md` §33). The list above applies to whichever library is chosen.
+- Retries follow the HTTP client's retry policy, decided in the frontend-stage ADR (ADR-006 point 11). Invalidation is also driven by realtime events (`08-realtime-spec.md` §32-33).
+- Which of these lifecycle events are logged, and at what level, is an open detail (FE). Payloads stay out of logs, in line with ADR-009 point 4.
 
 ---
 
