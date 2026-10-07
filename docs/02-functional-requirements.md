@@ -648,6 +648,8 @@ and the absolute P/L. Periods are `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`,
   2027-03-01. `ALL` starts on the first `COMPLETED` transaction day.
 - Custom ranges are inclusive UTC dates: `from > to` is 400; `from = to` is a
   valid one-day period.
+- `period` and `from`/`to` are mutually exclusive: sending both is 400
+  `VALIDATION_ERROR`; with neither, the period is `1M` (ADR-002 point 10).
 - The daily return is `r(d) = (V(d) + S(d)) / (V(d−1) + B(d)) − 1` with
   `BUY` fees in `B` and `SELL` fees subtracted in `S`; given `V(d−1) = 100`
   fully sold for `110`, then `r(d) = +10%`.
@@ -1585,8 +1587,10 @@ into a portfolio as a background job.
 - (B5) `jobs:{jobId}` carries `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED` and
   `JOB_FAILED`.
 - (B4) A job reaching `COMPLETED` creates a `SUCCESS` notification and a job
-  reaching `FAILED` creates an `ERROR` notification for its owner (ADR-010
-  point 9).
+  reaching `FAILED` or `TIMED_OUT` creates an `ERROR` notification for its
+  owner; `CANCELLED` creates none (ADR-008 point 6, ADR-010 point 9).
+- (B4) Retry or cancel in a state that does not allow it returns 409
+  `CONFLICT` and changes nothing (ADR-008 point 6).
 
 ---
 
@@ -1724,6 +1728,9 @@ portfolio, reduced motion and notification preferences.
   400 `VALIDATION_ERROR`.
 - (B0) `language` accepts only `en` or `es` (ADR-010 point 8); any other
   value returns 400 `VALIDATION_ERROR` and changes nothing.
+- (B0) `theme` accepts only `light`, `dark` or `system` (default `system`);
+  any other value returns 400 `VALIDATION_ERROR` and changes nothing
+  (ADR-002 point 10).
 - `defaultPortfolioId` set to another user's portfolio, or to one that does
   not exist, returns 404 and changes nothing; `null` clears it.
 - Preferences are always the caller's: there is no user identifier in the

@@ -100,6 +100,53 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
     tick-to-tick delta exists only in the event payload. This keeps the
     overview's
     `dailyChange` and ADR-004's `1D` period correct while prices tick.
+15. **Protocol and simulation details** (added 2026-10-06, approved by the
+    user, from the `08-realtime-spec.md` reconciliation):
+    - **Alert channel.** `ALERT_TRIGGERED` is delivered on `notifications`,
+      because alerts are user-scoped.
+    - **Cancelled and timed-out jobs.** `CANCELLED` and `TIMED_OUT` emit no
+      realtime event. Clients learn them from the job's HTTP status, and
+      `TIMED_OUT` also from its import notification (ADR-008 point 6;
+      `CANCELLED` creates none). The three job events of ADR-008 point 11
+      are unchanged.
+    - **Protocol messages.** Client messages are `AUTHENTICATE`,
+      `SUBSCRIBE` and `UNSUBSCRIBE`. The server replies `ACK` or `ERROR`;
+      `ERROR` carries a `code`.
+    - **Close codes.** `4001` unauthenticated or invalid token, including
+      the 5-second authentication timeout (point 2); `4002` token expired;
+      `4008` limit exceeded; `1001` server going away.
+    - **Limit values** (point 11). 50 subscriptions per connection; 20
+      inbound messages per second per connection; 1 MB outbound buffer per
+      connection. With a ping every 30 seconds, the server closes the
+      socket after 2 consecutive missed pongs (about 60 seconds).
+    - **`tickChange`.** The tick-to-tick delta in `MARKET_PRICE_UPDATED`
+      (point 14) keeps the name `tickChange`.
+    - **Control endpoints** (point 10). `POST /api/v1/simulation/start`,
+      `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode` with
+      body `{ "mode": "<wire id>" }`, all requiring `simulation:control`.
+      Errors follow ADR-002 point 10.
+    - **Real-mode lifecycle.** Only `RUNNING <-> HALTED` (renamed from
+      `PAUSED` by point 16). Real mode has no
+      stop and no seed reset; reset belongs to the frontend-stage demo ADR
+      (ADR-010 point 6).
+    - **Timing.** The simulator ticks every 1 second. While the socket is
+      down, the client polls HTTP every 10 seconds (point 12).
+    - **Wire identifiers.** SCREAMING_SNAKE_CASE. Modes: `PAUSED`,
+      `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH`. Scenarios:
+      `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`,
+      `SHARP_DRAWDOWN`, `RECOVERY`.
+16. **Lifecycle state name and connection cap** (added 2026-10-06, approved
+    by the user, from the `09-security-spec.md` and `08-realtime-spec.md`
+    reconciliation):
+    - **`HALTED`.** The internal lifecycle state is `HALTED`, not `PAUSED`.
+      `PAUSED` stays only as a mode wire identifier (point 15), so the two
+      no longer share a name. The lifecycle is `RUNNING <-> HALTED`.
+      `POST /api/v1/simulation/pause` moves `RUNNING` to `HALTED` and
+      `POST /api/v1/simulation/start` moves `HALTED` to `RUNNING`; the
+      endpoint paths are unchanged.
+    - **Connection cap.** Concurrent WebSocket connections are capped per
+      authenticated user, not per IP (ADR-005 point 13; v1 value 5, tuned
+      in B5).
 
 ## Consequences
 
@@ -123,7 +170,8 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
 
 **Documents to align**
 
-- `07-api-spec.md` §31 and §36-37 (transport, event examples).
+- `07-api-spec.md` §31 and §36-37 (transport, event examples), and §54
+  (control endpoints, point 15).
 - `08-realtime-spec.md` (catalog, envelope, money format, auth handshake).
 - `09-security-spec.md` §31-35 (realtime security).
 - `12-demo-mode-spec.md` §36-45 (shared engine, alert behavior).
@@ -156,6 +204,7 @@ specified and tested in the listed block.
 | Alert armed/triggered state is not persisted (re-fires after restart), oscillation around the threshold fires repeatedly, and the initial state of a new, already-true alert is undefined. | Persist `armed` and `lastTriggeredAt` in the same transaction as the notification. Re-arm only past a hysteresis band or after a cooldown. Define the initial state. | B5 |
 | After a restart the simulator restarts from the seed state and `MarketEvent.sequence` restarts. | Initialize the engine from persisted `MarketPrice` and `MAX(sequence)` per asset. Make `(assetId, sequence)` unique. | B5 |
 | Re-authentication on the same socket with another user's token keeps the previous user's `notifications` subscription. | Reject re-authentication when `sub` changes and close the socket. | B5 |
+| What the `PAUSED` mode does (point 16 renamed the lifecycle state to `HALTED`): whether `PUT /api/v1/simulation/mode` with `PAUSED` stops ticking like `POST /api/v1/simulation/pause`, and which mode `start` resumes into. | Define the `PAUSED` mode's behavior relative to `HALTED`, and which mode `start` resumes. | B5 |
 
 ## Related
 

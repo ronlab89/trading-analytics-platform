@@ -166,8 +166,55 @@ needs a product decision is asked to the user, not invented.
 
 ### Phase 4 — Contracts
 
-- [ ] T4.1 `07-api-spec.md` full reconciliation with per-endpoint status
-- [ ] T4.2 `08`, `09`, `10`
+Branch `docs/sdd-contracts` (from `develop` after PR #12, 2026-10-05). Route:
+delegated writers in slices of 300-500 lines, one commit per slice.
+
+- `07` (1715 lines, 62 real routes) is split into 5 slices: §1-9, §10-16,
+  §17-24, §25-30 and §31-61.
+- `08`, `09` and `10` get 3 slices each.
+
+Product decisions that no ADR covers are asked to the user in batches.
+
+- [x] T4.1 `07-api-spec.md` full reconciliation with per-endpoint status, done in 5 delegated slices.
+  - Every endpoint is checked against the 62 real routes, and code-vs-ADR differences are recorded per block.
+  - The user approved 11 API contract decisions (2026-10-05), recorded in three places:
+    - ADR-002 point 10: error codes, validation detail codes, no server timeout, performance and risk response shapes, the `status` field, period parameters, theme values.
+    - ADR-008 point 6: retry and cancel 409, and the import notifications including `TIMED_OUT`.
+    - ADR-010 point 5: deleting on an archived portfolio returns 409.
+  - The decisions are propagated to `07`, `16`, `02`, `05` and `11`.
+  - Simulator control routes are left to `08`.
+- [x] T4.2 `08`, `09`, `10` — complete 2026-10-06.
+  - [x] `08` slice A (§1-22, `5f0d43e`) and slice B (§23-41) done.
+  - [x] `08` slice C (§42-62), route: delegated writer; `pnpm docs:check` and `pnpm lint` pass.
+    - All 21 sections have a status. Nothing is `Implemented`: no realtime code exists yet.
+    - No new product decisions. Open details went to B5 (5 items) and FE (3 items).
+    - Follow-up: §7 has no transition out of `CONNECTED`; §42 assumes `RECONNECTING`.
+    - For T5.3: `BACKEND-ROADMAP.md` B5 predates ADR-007 (`notifications:{userId}`, "eleven events", settled open decisions, stale §47-51 citations).
+    - Mismatch: `06` §20 says job events are `Planned (B4)`, while `08` §13 and §20 say B5.
+    - `12` and `13` will need their realtime event names and disconnect scenarios aligned (T5.1).
+    - Commit `f98cb86`, assess `passive`. The stop-hook candidate (base `d55fce2`, 312 files, high) was declined by the user on 2026-10-06.
+  - [x] User decision on the pending `08` items, one batch (all 9 approved 2026-10-06; recorded as ADR-007 point 15; applied to `08`, `07` §54 and `06` §20-21 by a delegated writer; `pnpm docs:check` and `pnpm lint` pass). Also fixed: `08` §7 `CONNECTED → RECONNECTING` / `DISCONNECTED`; job events are `Planned (B5)` in `06` and `08` (the transport arrives in B5). Decision 2 is stated precisely: only `TIMED_OUT` has a notification (ADR-008 point 6). Open: `PAUSED` is both a mode wire ID and a lifecycle state (ADR-007 Deferred detail, B5, needs a user decision). The batch items were:
+    - the `ALERT_TRIGGERED` channel;
+    - whether `CANCELLED` and `TIMED_OUT` jobs emit events;
+    - protocol message names, close codes and errors;
+    - numeric limits and the missed-pong rule;
+    - the `tickChange` field name;
+    - simulator control paths and payloads (`07` §54 points to `08`, but ADR-007 has none);
+    - whether real mode has stop or seed reset;
+    - the tick interval and the HTTP polling interval while the socket is down;
+    - wire identifiers for modes and scenarios.
+  - [x] `09` in 3 slices (2026-10-06), route: delegated writer per slice; `pnpm docs:check` and `pnpm lint` pass each time. A §1-17 `3ad8727`, B §18-35 `4982b6e`, C §36-58 `d737cc5`. Each stop-hook candidate (base `d55fce2`) was declined by the user. Scoped RDD review of the `09` range (base `c07677b`, 4 lenses) approved and acknowledged; its two readability suggestions (commit reference here, `09` §3 paragraph density) were applied.
+    - Every section has a status; code-vs-ADR differences are recorded per block (roles `USER`/`ADMIN` vs ADR-005, no refresh/logout, params not schema-validated, `{ field, message }` details, superuser DB role, unbound Postgres port, `DATABASE_URL` not validated, login timing).
+    - Pending user decisions: (1) `VIEWER` self-service mutations (preferences, mark notifications read); (2) `ADMIN` permissions beyond `simulation:control`; (3) WebSocket connection cap per user or IP; (4) separate runtime DB role; (5) login timing equalization; (6) confirm route-param validation in B0.
+    - For later tasks: `BACKEND-ROADMAP.md` B2 (`requireRole`, settled decisions) and B7 (CI) are stale (T5.3); `07` §45 and NFR-021 claim params are validated; NFR-019/022/023 name missing tests; `13` names `auth.logout`, which ADR-009 lacks (T5.1); `PROGRESS.md` §7 search debt is assets only (T5.3).
+  - [x] The 7 pending decisions (six `09` items and `PAUSED`) approved by the user 2026-10-06, route: delegated writer, commit `00b307a`: ADR-005 point 13 (VIEWER self-service, no extra ADMIN permissions, per-user WebSocket cap of 5 closing with `4008`, runtime DB role Planned B0, login timing equalization Planned B0), ADR-002 point 10 (malformed route param 400 `VALIDATION_ERROR`; well-formed unknown or foreign ID 404 `NOT_FOUND`; Planned B0), ADR-007 point 16 (lifecycle state renamed `HALTED`; `PAUSED` stays the public mode wire ID). Alignment follow-up `9e1af65` (`03` NFR-021, `08` §7/§9 cap, `12` lifecycle diagram). The stop-hook candidate (base `d55fce2`) was declined again by the user.
+    - Open: which connection closes when the cap is hit (new or oldest), B5.
+    - Open: whether the `simulation.paused` event in `13` follows `HALTED` or stays tied to `/pause` (needs a user decision).
+    - For T5.3: `BACKEND-ROADMAP.md` B0 needs the runtime DB role, login timing and route-param schemas; B2 the VIEWER self-service permissions; B5 the cap and the `HALTED` rename.
+  - [x] `10` in 3 slices (2026-10-06), route: delegated writer per slice; `pnpm docs:check` and `pnpm lint` pass each time. A §1-20 `f2d52c3`, B §21-40 `aa561b0`, C §41-65 `87b688c`. User decisions: `simulation.paused` in `13` stays tied to `/pause` (no change); ADR-006 point 11 `7f84431` (CI also runs `format:check` and `build`; no coverage threshold in v1; frontend test tooling goes to the frontend-stage ADR); CSV import is a critical E2E flow in §33, `Planned (FE)`.
+    - Six `10` decisions approved by the user 2026-10-06, route: delegated writer, commit `d676429`: ADR-001 point 8 (one shared `Clock` port, B0; route tests for analytics, positions, assets and market in B0 before the layering refactor); ADR-006 point 11 extended (component/E2E/a11y CI checks, a11y tool and HTTP client timeout/retry go to the frontend-stage ADR); NFR-008 is enough for v1 and the memory target stays `Deferred` (`10` §41).
+    - For T5.3: `BACKEND-ROADMAP.md` and `15` B0 scope need the `Clock` port and the four route test files. For later: `06` line 214 and 781 should cite ADR-001 point 8; ADR-007 point 7 could cross-reference it; `04` §33 should point the a11y tool to the frontend-stage ADR; `03` NFR-008 could state no larger target in v1.
+    - For later tasks: PR template checklist lacks format, build and tests (T5.2); `CONTRIBUTING.md` CI wording (T5.2); `08` and `09` headers still say `Draft`; `validateNewTransaction` reads `new Date()` directly (B0); `transactions.routes.test.ts` lacks a cross-user case; no test asserts notification ordering.
 
 ### Phase 5 — Operations and living docs
 
@@ -204,4 +251,11 @@ needs a product decision is asked to the user, not invented.
 
 ## Next step
 
-Phase 2 merged in PR #11. Phase 3 is complete on `docs/sdd-product` (T3.1-T3.3, 14 commits, all assessed passive against `develop`, so no review was due). Next: the user pushes and opens the PR into `develop`; then Phase 4 (contracts: `07`, `08`, `09`, `10`). Delegated work is split into slices of 300-500 lines. PR reviews use `develop` as base.
+Phase 4 is complete on `docs/sdd-contracts` (2026-10-06): T4.1 `07`, T4.2 `08`, `09`, `10`, and every user decision recorded as an ADR amendment. `pr-body.md` is written and the user runs the push and `gh pr create` (base `develop`).
+
+Resume with:
+
+1. After PR merge: Phase 5 on a new branch from `develop`. T5.3 (`BACKEND-ROADMAP.md` B0) collects the "For T5.3" items above.
+2. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
+
+PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.

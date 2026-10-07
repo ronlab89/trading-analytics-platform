@@ -730,6 +730,8 @@ ERROR
 | Triggered alert | `WARNING` |
 | CSV import job `COMPLETED` | `SUCCESS` |
 | CSV import job `FAILED` | `ERROR` |
+| CSV import job `TIMED_OUT` | `ERROR` |
+| CSV import job `CANCELLED` | none (ADR-008 point 6) |
 
 Do not rely on color alone (NFR-029). Severity also uses:
 

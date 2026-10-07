@@ -9,71 +9,71 @@
 
 # 1. Purpose
 
-This document defines the real-time communication architecture for Trading Analytics Platform.
+**Status:** `Reference`
 
-Realtime functionality is a core product capability.
+This document owns the realtime protocol of Trading Analytics Platform:
+transport, handshake, channels, envelope, event catalog, ordering,
+reconnection and limits. `07-api-spec.md` §31-§38 only summarize it.
+Nothing here is implemented yet; the server side is built in B5 (ADR-007)
+and the client side in the frontend stage.
 
-The system must support:
+Realtime covers:
 
-- live market price updates;
-- portfolio metric updates;
-- background job progress;
-- notifications;
-- connection state;
-- reconnection;
-- event ordering;
-- stale-event protection;
-- selective state updates;
-- simulated realtime behavior in Demo Mode.
+- live market prices from the shared simulator (ADR-007 point 7);
+- portfolio changes after a transaction commits;
+- CSV import job progress (ADR-008 point 11);
+- notifications and triggered alerts;
+- connection state, reconnection, ordering and stale-event protection.
 
-The public demo must reproduce these behaviors without requiring an external realtime provider.
+The demo reproduces the same contract in process, without an external
+realtime provider (ADR-007 point 13).
 
 ---
 
 # 2. Realtime Technology
 
-The production implementation will use:
+**Status:** `Planned (B5)` (ADR-007 point 1)
 
-```text
-WebSockets
-```
+The server uses WebSocket through the `ws` library, behind a transport port
+so no other code depends on it. Socket.IO and Server-Sent Events are
+rejected (ADR-007, Alternatives Considered).
 
-The frontend communicates with the realtime layer through a dedicated adapter.
-
-The UI must never depend directly on the WebSocket implementation.
-
-Architecture:
+The UI never depends on the WebSocket implementation:
 
 ```text
 UI
  ↓
-Realtime Client
+Realtime Client (client port)
  ↓
 Realtime Adapter
  ↓
-WebSocket Transport
+WebSocket Transport | In-process demo adapter
 ```
 
 ---
 
 # 3. Realtime Principles
 
-The realtime system must follow these principles:
+**Status:** `Reference`
 
 1. Transport is infrastructure.
-2. Events use application-defined contracts.
-3. Raw WebSocket messages must never leak into feature modules.
-4. Events must be validated before entering application state.
-5. Events must be ordered where ordering information exists.
-6. Stale events must not overwrite newer state.
-7. Reconnection must be automatic.
-8. Realtime failure must degrade gracefully.
-9. Unrelated UI must not re-render.
-10. Demo Mode must reproduce the same event contract.
+2. Events use the contracts in `@trading/contracts` (ADR-002).
+3. Raw WebSocket messages never leak into feature modules.
+4. Events are validated before entering application state.
+5. `sequence` orders events per channel.
+6. Stale events never overwrite newer state.
+7. Reconnection is automatic.
+8. Realtime failure degrades to HTTP refetching (ADR-007 point 12).
+9. Unrelated UI does not re-render.
+10. Demo Mode reproduces the same event contract.
+11. An event carries only what the client cannot derive itself; valuations
+    are recomputed on the client from prices (ADR-007).
 
 ---
 
 # 4. Realtime Architecture
+
+**Status:** `Planned (FE)`
 
 ```text
                   ┌──────────────────────┐
@@ -110,44 +110,34 @@ The realtime system must follow these principles:
 
 # 5. Transport Abstraction
 
-The application must depend on a transport-independent interface.
+**Status:** client port `Planned (FE)`; server transport port `Planned (B5)` (ADR-007 points 1 and 13)
 
-Conceptually:
+The client depends on a transport-independent port:
 
 ```text
 RealtimeTransport
+  connect()
+  disconnect()
+  subscribe(channel)
+  unsubscribe(channel)
+  send(message)
+  getConnectionState()
 ```
 
-The interface should support:
+Implementations:
 
 ```text
-connect()
-disconnect()
-subscribe()
-unsubscribe()
-send()
-getConnectionState()
+WebSocketRealtimeTransport   real mode
+InProcessRealtimeTransport   demo, fed by @trading/market-sim in the browser
 ```
 
-The concrete implementation may be:
-
-```text
-WebSocketRealtimeTransport
-```
-
-Demo Mode may use:
-
-```text
-MockRealtimeTransport
-```
-
-Both must satisfy the same contract.
+Both satisfy the same contract. Adapter class names are decided in FE.
 
 ---
 
 # 6. Connection States
 
-The realtime client exposes the following states:
+**Status:** `Planned (FE)`
 
 ```text
 DISCONNECTED
@@ -157,51 +147,55 @@ RECONNECTING
 FAILED
 ```
 
-Optional transient states may be introduced if implementation requires them.
+`CONNECTED` means the socket is open and authenticated (§9). These are
+client transport states, not domain entities (`07-api-spec.md` §37).
 
 ---
 
 # 7. Connection Lifecycle
 
-Normal lifecycle:
+**Status:** client transitions `Planned (FE)`; heartbeat and limits `Planned (B5)` (ADR-007 points 2, 11 and 15)
+
+Client transitions:
 
 ```text
-DISCONNECTED
-      ↓
-CONNECTING
-      ↓
-CONNECTED
+DISCONNECTED → CONNECTING → CONNECTED
+CONNECTING   → RECONNECTING → CONNECTED
+CONNECTED    → RECONNECTING      (unintended socket loss, §42)
+CONNECTED    → DISCONNECTED      (intentional close, no reconnection, §54)
+RECONNECTING → FAILED
+FAILED       → CONNECTING        (manual retry)
 ```
 
-Connection failure:
+Server rules (ADR-007 point 15):
 
-```text
-CONNECTING
-      ↓
-RECONNECTING
-      ↓
-CONNECTED
-```
+| Rule | Value |
+|---|---|
+| Heartbeat | WebSocket ping every 30 s; socket closed after 2 consecutive missed pongs (about 60 s) |
+| Subscriptions per connection | 50 |
+| Inbound messages per connection | 20 per second |
+| Outbound buffer per connection | 1 MB |
+| Concurrent connections per authenticated user (not per IP) | 5, `Planned (B5)` (ADR-005 point 13, ADR-007 point 16); numeric value tuned in B5 |
 
-Persistent failure:
+- When the server closes a socket for exceeding a limit, it uses close
+  code `4008` (§9). An excess connection beyond the per-user cap of 5 is
+  closed with `4008` (ADR-005 point 13).
+- The server closes a socket not authenticated within 5 seconds (`4001`),
+  or whose token expired without re-authentication (`4002`) (§9).
 
-```text
-RECONNECTING
-      ↓
-FAILED
-```
+Open details (B5):
 
-Manual retry:
-
-```text
-FAILED
-      ↓
-CONNECTING
-```
+- The close code for a missed-pong close. ADR-007 assigns none, and the
+  custom codes of §9 do not cover it.
+- Whether a `SUBSCRIBE` beyond the subscription limit is refused with an
+  `ERROR` reply or closes the socket with `4008`.
+- Outbound buffer overflow handling (§48).
 
 ---
 
 # 8. Initial Connection
+
+**Status:** `Planned (FE)`
 
 When an authenticated session starts:
 
@@ -210,1134 +204,1200 @@ Application Bootstrap
         ↓
 Initialize Realtime Client
         ↓
-Connect
+Open socket
         ↓
-Authenticate Connection
+Authenticate (first message, within 5 s)
         ↓
-Subscribe Required Channels
+Subscribe required channels
 ```
 
-The application must not assume the connection is immediately available.
+The application never assumes the connection is immediately available.
 
 ---
 
 # 9. Authentication
 
-The realtime connection must be associated with the authenticated user.
+**Status:** `Planned (B5)` (ADR-007 points 2 and 15, ADR-005)
 
-The exact authentication mechanism will be defined by the backend implementation.
+- The first client message carries the access token; the token is never
+  put in the URL.
+- A socket not authenticated within 5 seconds is closed.
+- The socket is bound to the expiry of the token it authenticated with.
+- After a token refresh (ADR-005) the client re-authenticates over the same
+  socket, which extends the bound. If the token expires without
+  re-authentication, the server closes the socket.
+- Every re-authentication reloads role and ownership and drops any
+  subscription the actor may no longer hold, so role changes take effect
+  within the same 15-minute window as HTTP.
+- Re-authentication with another user's token (`sub` changes) is rejected
+  and the socket is closed (ADR-007 Deferred detail, B5).
 
-The realtime layer must not duplicate authentication logic already handled by the application.
+Authentication message, shape only:
+
+```json
+{ "type": "AUTHENTICATE", "accessToken": "..." }
+```
+
+Protocol (ADR-007 point 15), defined as Zod schemas in `@trading/contracts`:
+
+- Client messages: `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE` (§10).
+- Server replies: `ACK`, or `ERROR` carrying a `code`.
+
+| Close code | Meaning |
+|---|---|
+| `4001` | Unauthenticated or invalid token, including the 5-second authentication timeout |
+| `4002` | Token expired without re-authentication |
+| `4008` | Limit exceeded (§7), including an excess connection beyond the per-user cap of 5 (`Planned (B5)`) |
+| `1001` | Server going away |
+
+Open detail (B5): the `ACK` and `ERROR` field shapes and the set of `ERROR`
+codes.
 
 ---
 
 # 10. Channel Model
 
-The system should use logical channels rather than exposing infrastructure-specific subscriptions to features.
+**Status:** `Planned (B5)` (ADR-007 point 3, ADR-008 point 11)
 
-Examples:
+| Channel | Scope | Authorization |
+|---|---|---|
+| `market:{assetId}` | One asset's prices | Any authenticated actor |
+| `portfolio:{portfolioId}` | One portfolio | Ownership |
+| `notifications` | The authenticated user | Implicit; no id in the name |
+| `jobs:{jobId}` | One CSV import job | Ownership |
 
-```text
-user:{userId}
-portfolio:{portfolioId}
-market:{assetId}
-jobs:{jobId}
-notifications:{userId}
+Every subscription is authorized in the application layer by permission and
+ownership (ADR-001, ADR-005); an unauthorized or unknown channel is refused.
+`user:{userId}` and `notifications:{userId}` are removed.
+
+Subscription messages, shape only:
+
+```json
+{ "type": "SUBSCRIBE", "channel": "market:asset_001" }
 ```
 
-Feature modules request subscriptions through the realtime client.
+```json
+{ "type": "UNSUBSCRIBE", "channel": "market:asset_001" }
+```
+
+Feature modules subscribe through the realtime client, never directly.
 
 ---
 
 # 11. Market Data Channel
 
-Market updates are grouped by asset or market subscription.
+**Status:** `Planned (B5)` (ADR-007 points 3 and 7)
 
-Example:
-
-```text
-market:asset_001
-```
-
-The client subscribes only to assets currently required by the application.
-
-The system should avoid subscribing to every available asset by default.
+`market:{assetId}` carries `MARKET_PRICE_UPDATED` (§16) from the shared
+simulator. The client subscribes only to the assets it currently shows, not
+to every asset.
 
 ---
 
 # 12. Portfolio Channel
 
-A portfolio-specific channel may publish events relevant to:
+**Status:** `Planned (B5)` (ADR-007 points 3 and 6)
 
-- positions;
-- portfolio metrics;
-- transaction processing;
-- analytics;
-- alerts.
-
-Example:
-
-```text
-portfolio:portfolio_001
-```
+`portfolio:{portfolioId}` carries only `PORTFOLIO_UPDATED` (§18), emitted
+when holdings change after a transaction commits. Price-driven valuation
+changes are not pushed; the client recomputes them from market events.
 
 ---
 
 # 13. Job Channel
 
-Long-running operations can expose a dedicated job channel.
+**Status:** `Planned (B5)` (ADR-008 point 11)
 
-Example:
+`jobs:{jobId}` carries the CSV import job events (§20), so the UI follows
+progress without polling. A job can finish before the subscription exists;
+the client then reads the final state through `GET /api/v1/jobs/:jobId`
+(ADR-007 Deferred detail).
 
-```text
-jobs:job_001
-```
-
-This allows the UI to receive progress updates without polling continuously.
+The job lifecycle itself lands in B4 (ADR-008); its events are `Planned
+(B5)` because they need the WebSocket transport of B5 (ADR-007), and
+`BACKEND-ROADMAP.md` lists job event producers in the B5 scope.
 
 ---
 
 # 14. Event Envelope
 
-All application realtime events use a normalized envelope.
+**Status:** `Planned (B5)` (ADR-007 points 4 and 5, ADR-002)
 
-```text
+```json
 {
   "id": "event_001",
   "type": "MARKET_PRICE_UPDATED",
-  "timestamp": "2026-08-29T14:30:00Z",
+  "channel": "market:asset_001",
   "sequence": 1024,
+  "timestamp": "2026-08-29T14:30:00Z",
   "payload": {}
 }
 ```
 
-Required properties:
-
-```text
-id
-type
-timestamp
-payload
-```
-
-`sequence` is required for event streams where ordering is relevant.
+- All six fields are required on every server event.
+- `sequence` is a monotonic integer per channel (§24).
+- `timestamp` is an ISO-8601 UTC string; money and prices are decimal
+  strings (ADR-002).
+- Defined as Zod schemas in `@trading/contracts`.
+- A per-process epoch field, so clients reset their baseline after a server
+  restart, is added in B5 (ADR-007 Deferred detail).
 
 ---
 
 # 15. Event Types
 
-Initial event catalog:
+**Status:** `Planned (B5)` (ADR-007 points 6 and 15, ADR-008 point 11)
 
-```text
-MARKET_PRICE_UPDATED
-PORTFOLIO_UPDATED
-POSITION_UPDATED
-TRANSACTION_CREATED
-TRANSACTION_COMPLETED
-JOB_CREATED
-JOB_PROGRESS_UPDATED
-JOB_COMPLETED
-JOB_FAILED
-NOTIFICATION_CREATED
-ALERT_TRIGGERED
-```
+Catalog, version 1:
 
-Additional events may be introduced when justified by product requirements.
+| Type | Channel |
+|---|---|
+| `MARKET_PRICE_UPDATED` | `market:{assetId}` |
+| `PORTFOLIO_UPDATED` | `portfolio:{portfolioId}` |
+| `JOB_PROGRESS_UPDATED` | `jobs:{jobId}` |
+| `JOB_COMPLETED` | `jobs:{jobId}` |
+| `JOB_FAILED` | `jobs:{jobId}` |
+| `NOTIFICATION_CREATED` | `notifications` |
+| `ALERT_TRIGGERED` | `notifications` (ADR-007 point 15) |
+
+Removed: `POSITION_UPDATED`, `TRANSACTION_CREATED` and
+`TRANSACTION_COMPLETED` (ADR-007 point 6), and `JOB_CREATED` (not in
+ADR-008 point 11). A new event requires a new decision.
 
 ---
 
 # 16. Market Price Event
 
-Example:
+**Status:** `Planned (B5)` (ADR-007 points 6 and 14, ADR-002)
 
-```text
+```json
 {
   "id": "event_001",
   "type": "MARKET_PRICE_UPDATED",
-  "timestamp": "...",
+  "channel": "market:asset_001",
   "sequence": 1201,
+  "timestamp": "2026-08-29T14:30:00Z",
   "payload": {
     "assetId": "asset_001",
-    "price": 184.22,
-    "previousPrice": 183.90,
-    "change": 0.32,
-    "changePercent": 0.17
+    "price": "184.22",
+    "previousPrice": "182.10",
+    "change": "2.12",
+    "changePercent": "1.16",
+    "tickChange": "0.32"
   }
 }
 ```
+
+- All numeric payload fields are decimal strings.
+- `previousPrice`, `change` and `changePercent` match `MarketPrice`: they
+  are measured against the last closed daily candle, never the previous
+  tick (ADR-007 point 14).
+- `tickChange` is the tick-to-tick delta, which exists only in this event.
 
 ---
 
 # 17. Position Update Event
 
-```text
-{
-  "type": "POSITION_UPDATED",
-  "payload": {
-    "portfolioId": "portfolio_001",
-    "positionId": "position_001",
-    "reason": "MARKET_PRICE_UPDATED"
-  }
-}
-```
+**Status:** `Deferred` (removed by ADR-007 point 6)
 
-The event may contain only the identifiers and reason.
-
-The client should not receive unnecessarily large payloads.
+`POSITION_UPDATED` is not emitted. Position values follow from market
+events (§16), and holdings changes from `PORTFOLIO_UPDATED` (§18).
 
 ---
 
 # 18. Portfolio Update Event
 
-```text
+**Status:** server event `Planned (B5)`; client reaction `Planned (FE)` (ADR-007 point 6)
+
+```json
 {
   "type": "PORTFOLIO_UPDATED",
+  "channel": "portfolio:portfolio_001",
   "payload": {
     "portfolioId": "portfolio_001",
-    "reason": "POSITION_UPDATED"
+    "reason": "TRANSACTION_COMMITTED"
   }
 }
 ```
 
-The application decides whether to:
-
-- update cached data;
-- invalidate a query;
-- calculate a derived value;
-- fetch additional information.
+Envelope fields `id`, `sequence` and `timestamp` are omitted from this and
+the following examples. Emitted only after a transaction commits. It does
+not carry the portfolio; the client invalidates and refetches it through
+HTTP.
 
 ---
 
 # 19. Transaction Events
 
-Transaction lifecycle:
+**Status:** `Deferred` (removed by ADR-007 point 6 and ADR-008 point 12)
 
-```text
-CREATED
-   ↓
-PROCESSING
-   ↓
-COMPLETED
-```
-
-Failure:
-
-```text
-PROCESSING
-   ↓
-FAILED
-```
-
-Relevant events:
-
-```text
-TRANSACTION_CREATED
-TRANSACTION_COMPLETED
-```
+Transactions are created synchronously; the HTTP response is the result.
+There is no asynchronous transaction lifecycle and no `TRANSACTION_CREATED`
+or `TRANSACTION_COMPLETED` event. Deposits and withdrawals do not exist
+(ADR-003), so they emit no events.
 
 ---
 
 # 20. Background Job Events
 
-A job may emit:
+**Status:** `Planned (B5)` (ADR-008 points 3, 6 and 11, ADR-007 point 15)
 
-```text
-JOB_CREATED
-JOB_PROGRESS_UPDATED
-JOB_COMPLETED
-JOB_FAILED
-```
+Events on `jobs:{jobId}` for CSV import jobs:
 
-Example:
+| Type | When | Payload |
+|---|---|---|
+| `JOB_PROGRESS_UPDATED` | Progress changes while `PROCESSING` | `jobId`, `status`, `progress` |
+| `JOB_COMPLETED` | Job reaches `COMPLETED` | `jobId`, `status` |
+| `JOB_FAILED` | Job reaches `FAILED` | `jobId`, `status`, `reason` |
 
-```text
+```json
 {
   "type": "JOB_PROGRESS_UPDATED",
+  "channel": "jobs:job_001",
   "payload": {
     "jobId": "job_001",
     "status": "PROCESSING",
-    "progress": 75,
-    "message": "Updating analytics."
+    "progress": { "processed": 60, "total": 100 }
   }
 }
 ```
+
+- `status` uses the job states of ADR-008 point 3: `QUEUED`, `PROCESSING`,
+  `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`.
+- Progress is the `{ processed, total }` field, not a percentage
+  (`07-api-spec.md` §15).
+- `reason` is one of `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`,
+  `APPLY_REJECTED`.
+- `CANCELLED` and `TIMED_OUT` emit no realtime event (ADR-007 point 15).
+  The client learns both from the job's HTTP status
+  (`GET /api/v1/jobs/:jobId`), and `TIMED_OUT` also from its `ERROR`
+  notification (§21). `CANCELLED` creates no notification, because the
+  user caused it (ADR-008 point 6).
 
 ---
 
 # 21. Notification Events
 
-New notifications may be pushed through:
+**Status:** server event `Planned (B5)`; client fetch `Planned (FE)` (ADR-007 point 9, ADR-010 point 9)
 
-```text
-NOTIFICATION_CREATED
-```
-
-Example:
-
-```text
+```json
 {
   "type": "NOTIFICATION_CREATED",
+  "channel": "notifications",
   "payload": {
     "notificationId": "notification_001"
   }
 }
 ```
 
-The client may then retrieve the complete notification through the HTTP API.
+Sources: a triggered alert (`WARNING`), and a CSV import job reaching
+`COMPLETED` (`SUCCESS`), `FAILED` or `TIMED_OUT` (`ERROR`). `CANCELLED` jobs
+and connection changes create none. The client fetches the notification
+through `07-api-spec.md` §28.
 
 ---
 
 # 22. Alert Events
 
-When a configured alert condition is satisfied:
+**Status:** `Planned (B5)` (ADR-007 points 9 and 15)
 
-```text
-ALERT_TRIGGERED
-```
-
-Example:
-
-```text
+```json
 {
   "type": "ALERT_TRIGGERED",
+  "channel": "notifications",
   "payload": {
     "alertId": "alert_001",
     "assetId": "asset_001",
-    "triggerValue": 200,
-    "condition": "ABOVE"
+    "condition": "ABOVE",
+    "threshold": "200.00",
+    "price": "200.15"
   }
 }
 ```
+
+- Edge-triggered: fires when the condition changes from false to true, and
+  re-arms when it becomes false again; never on every tick (FR-053).
+- Each trigger also creates a `WARNING` notification and emits
+  `NOTIFICATION_CREATED`.
+- `threshold` and `price` are decimal strings.
+
+Decided in ADR-007 point 15 (2026-10-06):
+
+| Topic | Decision | Section |
+|---|---|---|
+| Channel of `ALERT_TRIGGERED` | `notifications`, because alerts are user-scoped | §15 |
+| `CANCELLED` and `TIMED_OUT` jobs | No realtime event; the client reads the job's HTTP status (and the `TIMED_OUT` notification) | §20 |
+| Protocol messages and close codes | `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`; `ACK` and `ERROR` with a `code`; `4001`, `4002`, `4008`, `1001` | §9 |
+| Limits and missed pongs | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer; closed after 2 missed pongs | §7 |
 
 ---
 
 # 23. Event Validation
 
-Every incoming event must be validated before entering application state.
+**Status:** `Planned (FE)` (ADR-007 point 4, ADR-002)
 
-Validation includes:
+The client parses every incoming event with the `@trading/contracts` Zod
+schemas before it reaches application state:
 
-- event type;
-- envelope structure;
-- payload structure;
-- required identifiers;
-- timestamp;
-- sequence where applicable.
+- envelope: all six fields of §14 present and well typed;
+- `type` is in the version 1 catalog (§15) and matches its `channel`;
+- `payload` matches the schema for `type`, including decimal-string money;
+- `channel` is one the client is subscribed to.
 
-Invalid events must be rejected safely.
+An event that fails validation is dropped and logged; it never updates
+state and does not advance `lastProcessedSequence`.
 
 ---
 
 # 24. Event Ordering
 
-For ordered streams, the client maintains:
+**Status:** server `Planned (B5)`; client `Planned (FE)` (ADR-007 point 5, NFR-018)
 
-```text
-lastProcessedSequence
-```
-
-Incoming event:
-
-```text
-incomingSequence
-```
-
-Processing rule:
+`sequence` is monotonic per channel. The client keeps one
+`lastProcessedSequence` per channel and applies an event only when:
 
 ```text
 incomingSequence > lastProcessedSequence
 ```
 
-If:
-
-```text
-incomingSequence <= lastProcessedSequence
-```
-
-the event is considered stale and must not overwrite current state.
+An event with `incomingSequence <= lastProcessedSequence` is a duplicate or
+stale event and is discarded (NFR-018).
 
 ---
 
 # 25. Event Gaps
 
-If the client receives:
+**Status:** `Planned (FE)` (ADR-007 point 5)
+
+A gap exists when `incomingSequence > lastProcessedSequence + 1`:
 
 ```text
 sequence 101
 sequence 102
-sequence 105
+sequence 105   -> 103 and 104 missing
 ```
 
-then events `103` and `104` may be missing.
-
-The client should detect the gap.
-
-Depending on the stream:
-
-```text
-Event Gap
-   ↓
-Request State Resynchronization
-```
-
-The exact recovery strategy may use HTTP state refresh.
+On a gap the client resynchronizes that channel through HTTP (§26). There
+is no server-side replay buffer in version 1, so missed events are never
+replayed (ADR-007 point 5).
 
 ---
 
 # 26. State Resynchronization
 
-When realtime state may be inconsistent:
+**Status:** `Planned (FE)` (ADR-007 point 5 and Deferred detail, NFR-018)
 
 ```text
-Realtime Event
+Gap, reconnect or epoch change
       ↓
-Consistency Check
+HTTP refetch of the affected resources
       ↓
-Gap / Invalid State
+Authoritative state
       ↓
-HTTP Refetch
-      ↓
-Authoritative State
+lastProcessedSequence reset from the snapshot
 ```
 
-HTTP APIs remain the authoritative recovery mechanism.
+- Triggers: a `sequence` gap (§25), every reconnect (§27), and a change of
+  the per-process epoch (§14).
+- HTTP is the authoritative source; realtime events only update or
+  invalidate it.
+- Subscribe first and buffer, then fetch a snapshot carrying its sequence,
+  so events between fetch and subscription are not lost (ADR-007 Deferred
+  detail, B5).
 
 ---
 
 # 27. Reconnection Strategy
 
-Reconnection should use exponential backoff.
+**Status:** `Planned (FE)` (NFR-018)
 
-Conceptually:
-
-```text
-1s
-2s
-4s
-8s
-16s
-...
-```
-
-A maximum retry delay must be enforced.
-
-Random jitter should be introduced to prevent synchronized reconnect storms.
+- Exponential backoff starting at 1 s and doubling each attempt
+  (1 s, 2 s, 4 s, 8 s, 16 s), capped at 30 s.
+- Random jitter on every delay to avoid synchronized reconnect storms.
+- After reconnecting, the client re-authenticates in the first message
+  (§9), restores each subscription exactly once and resynchronizes (§26).
 
 ---
 
 # 28. Reconnection UX
 
-The application should communicate connection state without unnecessarily interrupting the user.
+**Status:** `Planned (FE)` (ADR-007 point 12)
 
-Examples:
+| Connection state (§6) | UI |
+|---|---|
+| `CONNECTED` | No indicator. |
+| `CONNECTING`, `RECONNECTING`, `DISCONNECTED` | Subtle, non-blocking stale-data indicator. |
+| `FAILED` | Persistent stale-data warning with a manual retry action. |
 
-```text
-CONNECTED
-```
-
-Normal state.
-
-```text
-RECONNECTING
-```
-
-Subtle non-blocking indicator.
-
-```text
-FAILED
-```
-
-Persistent warning with manual retry.
+Connection changes create no notification (§21).
 
 ---
 
 # 29. Graceful Degradation
 
-If realtime becomes unavailable:
+**Status:** `Planned (FE)` (ADR-007 point 12)
 
-The application should continue functioning wherever possible.
-
-For example:
-
-```text
-Realtime unavailable
-       ↓
-Connection warning
-       ↓
-Fallback to HTTP refresh
-```
-
-Realtime failure must not make the entire platform unusable.
+While the socket is down the application stays usable: HTTP reads and
+writes keep working, the UI shows the stale-data indicator (§28), and data
+is refreshed through HTTP (§30). Realtime failure never blocks a screen.
 
 ---
 
 # 30. Polling Fallback
 
-Polling may be used as a fallback for data where realtime is unavailable.
-
-It must not run simultaneously with an active realtime subscription unless explicitly required.
-
-Example:
+**Status:** `Planned (FE)` (ADR-007 points 12 and 15, NFR-014, NFR-017)
 
 ```text
-CONNECTED
-    ↓
-Realtime updates
-
-DISCONNECTED
-    ↓
-Controlled polling
-
-RECONNECTED
-    ↓
-Stop polling
+CONNECTED              -> realtime updates, no polling
+socket down            -> periodic HTTP refetch of visible data
+reconnected            -> stop polling, resynchronize once (§26)
 ```
+
+- Polling never runs alongside an active subscription for the same data.
+- While the socket is down, visible data is refetched every 10 seconds
+  (ADR-007 point 15).
+- Polling requests use the 15 s client timeout (NFR-017).
 
 ---
 
 # 31. Selective Updates
 
-A market price event must not trigger a complete application render.
+**Status:** `Planned (FE)` (ADR-007 point 6, NFR-006)
 
-Example:
+A market price event updates only what depends on that asset:
 
 ```text
-Price Event
+MARKET_PRICE_UPDATED
     ↓
-Asset State
+Asset price
     ↓
-Affected Position
+Positions holding the asset
     ↓
-Affected Portfolio
+Their portfolio metrics (recomputed on the client)
 ```
 
-Unrelated portfolios and screens remain untouched.
+Unrelated portfolios and screens do not re-render. A burst of 100 events in
+1 s keeps INP ≤ 200 ms and is applied in at most one render per animation
+frame (NFR-006).
 
 ---
 
 # 32. State Update Strategy
 
-Realtime updates should prefer targeted state updates over global invalidation.
+**Status:** `Planned (FE)` (ADR-007 point 6)
 
-Bad:
+| Event | Client action |
+|---|---|
+| `MARKET_PRICE_UPDATED` | Write the price into cached state; recompute dependent values locally. |
+| `PORTFOLIO_UPDATED` | Invalidate and refetch the portfolio through HTTP (§18). |
+| `JOB_PROGRESS_UPDATED` | Update the job progress in cached state. |
+| `JOB_COMPLETED`, `JOB_FAILED` | Refetch the job through HTTP. |
+| `NOTIFICATION_CREATED` | Fetch the notification (§21). |
+| `ALERT_TRIGGERED` | Update the alert state; the paired `NOTIFICATION_CREATED` drives the notification fetch (§22). |
 
-```text
-MARKET_PRICE_UPDATED
-      ↓
-Invalidate Everything
-```
-
-Preferred:
-
-```text
-MARKET_PRICE_UPDATED
-      ↓
-Update Asset
-      ↓
-Update Affected Position
-      ↓
-Update Relevant Portfolio Metrics
-```
-
-Full refetch should be used when local reconciliation becomes more complex than retrieving authoritative state.
+Events that carry authoritative data update state directly; events that
+only signal a change trigger a refetch. Global invalidation on a price tick
+is not allowed.
 
 ---
 
 # 33. TanStack Query Integration
 
-Server state updated through realtime events should integrate with TanStack Query.
+**Status:** `Planned (FE)`; library choice `Deferred` (`04-tech-stack.md`)
 
-Possible strategies:
+Library-agnostic server-state cache rules:
 
-```text
-Event
- ↓
-queryClient.setQueryData()
-```
+- Server data lives in one server-state cache keyed by resource.
+- An event with authoritative data writes into the cached entry (direct
+  update); an event that only signals a change marks the entry stale and
+  refetches it (invalidation), per §32.
+- Resynchronization (§26) refetches the affected entries.
 
-or:
-
-```text
-Event
- ↓
-queryClient.invalidateQueries()
-```
-
-The strategy should depend on whether the event contains enough authoritative data.
+No ADR selects TanStack Query; the library is chosen in a frontend-stage
+decision.
 
 ---
 
 # 34. Zustand Integration
 
-Zustand should primarily handle realtime-related client state such as:
+**Status:** `Planned (FE)`; library choice `Deferred` (`04-tech-stack.md`)
 
-```text
-connectionState
-activeSubscriptions
-simulationState
-replayState
-```
+Library-agnostic client-state rules:
 
-Domain server data should not automatically be duplicated in Zustand.
+- Realtime client state (connection state, active subscriptions,
+  `lastProcessedSequence` per channel, current epoch) lives in a client
+  state store separate from the server-state cache.
+- Server data is never duplicated into that store.
+
+No ADR selects Zustand; the library is chosen in a frontend-stage decision.
 
 ---
 
 # 35. Market Simulation
 
-Demo Mode requires a realtime simulation engine.
+**Status:** server simulator `Planned (B5)`; demo adapter `Planned (FE)` (ADR-007 points 7, 8 and 13)
 
-The simulator generates controlled market events without external APIs.
-
-Architecture:
+There is no external market data provider. One engine, the pure package
+`@trading/market-sim`, produces all prices in both modes:
 
 ```text
-Simulation Engine
-       ↓
-Price Generator
-       ↓
-Event Scheduler
-       ↓
-Mock Realtime Transport
-       ↓
-Same Event Pipeline
-       ↓
-Application
+@trading/market-sim (seeded PRNG, injected clock)
+   ├─ real mode: API process -> MarketPrice + MarketEvent -> WebSocket
+   └─ demo: browser -> in-process realtime adapter (same client port)
 ```
+
+- The engine depends only on `@trading/domain`.
+- Real mode: each tick updates `MarketPrice` and appends a `MarketEvent`
+  (bounded retention defined in B5).
+- At every UTC day rollover the simulator closes a daily `HistoricalPrice`
+  candle per asset and rolls `MarketPrice.previousPrice` to that close.
+- On startup it deterministically generates the candles for the days the
+  server was offline, so the daily series has no gaps.
 
 ---
 
 # 36. Price Simulation
 
-The simulator should produce realistic-looking but deterministic-enough price movements.
+**Status:** `Planned (B5)` (ADR-007 points 7 and 14, ADR-002)
 
-It must avoid purely random values that cause visually meaningless behavior.
-
-The simulation may incorporate:
-
-- trend;
-- volatility;
-- momentum;
-- noise;
-- event spikes.
-
-The simulator is not intended to model real markets accurately.
-
-Its purpose is to reproduce application behavior.
+- Prices come from the seeded generator, never from an unseeded random
+  source.
+- Prices are emitted as decimal strings (ADR-002).
+- The simulator does not model real markets; it reproduces application
+  behavior (alerts, valuations, charts).
+- The price model (trend, volatility, noise) is a B5 implementation detail.
 
 ---
 
 # 37. Simulation Profiles
 
-The simulator should support configurable behavior.
+**Status:** `Planned (B5)` (ADR-007 points 7 and 15)
 
-Potential profiles:
+The engine implements the modes and scenarios of `12-demo-mode-spec.md`
+§37 and §39:
 
 ```text
-CALM
-NORMAL
-VOLATILE
-BREAKOUT
-SELL_OFF
-RECOVERY
+Modes:     Paused, Normal, Volatile, Bullish, Bearish
+Scenarios: Stable Market, Bullish Session, Volatile Session,
+           Sharp Drawdown, Recovery
 ```
 
-Profiles allow different product states to be demonstrated.
+This replaces the earlier profile list (`CALM`, `BREAKOUT`, `SELL_OFF` and
+others). Wire identifiers are SCREAMING_SNAKE_CASE (ADR-007 point 15):
+
+| Kind | Wire identifiers |
+|---|---|
+| Modes | `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH` |
+| Scenarios | `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY` |
+
+`PAUSED` is only a mode wire identifier; the lifecycle state is `HALTED`
+(§40, ADR-007 point 16). What the `PAUSED` mode does is an Open detail (B5)
+of §40.
 
 ---
 
 # 38. Simulation Timing
 
-The simulator should allow configurable update frequency.
+**Status:** `Planned (B5)` (ADR-007 points 7, 8 and 15)
 
-Example:
-
-```text
-FAST
-NORMAL
-SLOW
-PAUSED
-```
-
-The default demo should prioritize visual clarity and browser performance over maximum event frequency.
+- Time comes from an injected clock, so tests and the demo can accelerate
+  or freeze it (`12-demo-mode-spec.md` §40).
+- Daily candles close at the UTC day rollover of that clock.
+- The simulator ticks every 1 second (ADR-007 point 15). NFR-006 sets no
+  tick interval; its client target (a burst of 100 events within 1 s keeps
+  INP ≤ 200 ms) applies at this interval too.
 
 ---
 
 # 39. Simulation Determinism
 
-The simulation engine should support a seed.
-
-Conceptually:
+**Status:** `Planned (B5)`; demo `Planned (FE)` (ADR-007 point 7, NFR-045)
 
 ```text
-simulationSeed
-+
-simulationProfile
-+
-initialState
+seed + mode or scenario + initial state + clock -> same event sequence
 ```
 
-produce a reproducible event sequence.
-
-This is important for:
-
-- testing;
-- bug reproduction;
-- interviews;
-- deterministic demos.
+The same seed produces the same initial state and the same simulated
+series (NFR-045). After a server restart the engine resumes from persisted
+`MarketPrice` and `MAX(sequence)` per asset, not from the seed state
+(ADR-007 Deferred detail, B5).
 
 ---
 
 # 40. Simulation Lifecycle
 
+**Status:** `Planned (B5)` (ADR-007 points 8, 10 and 15)
+
 ```text
-STOPPED
-   ↓
-STARTING
-   ↓
-RUNNING
-   ↓
-PAUSED
-   ↓
-RUNNING
-   ↓
-STOPPING
-   ↓
-STOPPED
+RUNNING <-> HALTED
 ```
+
+- The server simulator runs with the API process; on startup it backfills
+  missing daily candles (§35).
+- `ADMIN` can pause it, start it again and change its mode (§41).
+- Real mode has no stop and no seed reset, so there is no `STOPPED`,
+  `STARTING` or `STOPPING` state. Reset belongs to the frontend-stage demo
+  ADR (ADR-010 point 6).
+
+The internal lifecycle state is `HALTED`; `PAUSED` stays only as a mode
+wire identifier (§37, ADR-007 point 16). `POST /api/v1/simulation/pause`
+moves `RUNNING` to `HALTED` and `start` moves it back.
+
+Open detail (B5): whether `PUT /api/v1/simulation/mode` with `PAUSED` stops
+ticking like `pause`, and which mode `start` resumes, are not decided
+(ADR-007 Deferred detail).
 
 ---
 
 # 41. Demo Simulation Controls
 
-The demo may expose a dedicated simulation panel.
+**Status:** real-mode control `Planned (B5)` (ADR-007 points 10 and 15); demo controls `Deferred` (ADR-010 point 6)
 
-Controls may include:
+Real mode: each endpoint requires the `simulation:control` permission
+(`ADMIN` only, ADR-005):
 
-```text
-Start
-Pause
-Resume
-Reset
-Speed
-Market Profile
-Simulate Disconnect
-Simulate Error
-```
+| Operation | Endpoint |
+|---|---|
+| Start the simulation | `POST /api/v1/simulation/start` |
+| Pause the simulation | `POST /api/v1/simulation/pause` |
+| Change the simulation mode | `PUT /api/v1/simulation/mode` with `{ "mode": "<wire id>" }` (§37) |
 
-These controls should be visually separated from normal product functionality.
+- Errors follow ADR-002 point 10: 400 `VALIDATION_ERROR` for an unknown
+  mode; 403 `FORBIDDEN` without `simulation:control`.
+- The lifecycle is only `RUNNING <-> HALTED` (§40).
+
+Demo: the simulation panel, reset, speed, simulated disconnect and
+simulated errors are decided in the frontend-stage demo ADR (ADR-010
+point 6).
+
+Decided in ADR-007 point 15 (2026-10-06):
+
+| Topic | Decision | Section |
+|---|---|---|
+| Control endpoints | The three endpoints above | §41 |
+| Stop, seed reset and `STOPPED` | None in real mode | §40 |
+| Tick and polling intervals | Tick every 1 s; HTTP polling every 10 s while the socket is down | §30, §38 |
+| Wire identifiers | SCREAMING_SNAKE_CASE modes and scenarios | §37 |
+
+Open detail (B5): the success response bodies, and the response when
+`start` or `pause` finds the simulator already in the target state.
+`07-api-spec.md` §54 points here.
 
 ---
 
 # 42. Simulated Disconnect
 
-The demo must be able to reproduce:
+**Status:** demo control `Deferred` (ADR-010 point 6, FR-046); disconnect in client tests `Planned (FE)` (NFR-014, NFR-018)
+
+The client must survive this sequence without a page reload:
 
 ```text
 CONNECTED
-    ↓
-DISCONNECTED
-    ↓
-RECONNECTING
-    ↓
-CONNECTED
+    ↓  socket lost (§7)
+RECONNECTING        stale-data indicator, HTTP polling (§28, §30)
+    ↓  backoff succeeds (§27)
+CONNECTED           re-authenticate, resubscribe once, resynchronize (§26)
 ```
 
-This demonstrates that the realtime UX is not merely decorative.
+- Client tests drive it with a transport test double that drops the
+  socket; this is the "simulated disconnect" of NFR-018.
+- A demo control that triggers it on demand is decided in the
+  frontend-stage demo ADR (ADR-010 point 6).
 
 ---
 
 # 43. Simulated Event Failure
 
-The simulator may intentionally produce:
+**Status:** test fault injection `Planned (FE)`; demo scripted failures `Deferred` (ADR-010 point 6, NFR-058)
 
-- delayed events;
-- duplicated events;
-- out-of-order events;
-- dropped events.
+Client tests inject these faults through the transport test double:
 
-These scenarios are useful for validating event handling.
+| Fault | Expected handling |
+|---|---|
+| Duplicate event | Discarded (§44) |
+| Out-of-order event | Discarded if superseded (§45) |
+| Delayed event | Applied only if not superseded (§46) |
+| Dropped event | Detected as a gap and resynchronized (§25) |
+| Invalid event | Dropped and logged (§23) |
 
-They should be controllable and reproducible.
+- Faults are injected at the transport port, not in `@trading/market-sim`
+  or the API. Failure injection is demo-only or test-only code and never
+  reaches the API build (NFR-058).
+- Each fault scenario is a fixed event list or a seeded sequence, so it is
+  reproducible (NFR-045).
 
 ---
 
 # 44. Duplicate Events
 
-Example:
+**Status:** `Planned (FE)` (ADR-007 point 5, NFR-018)
 
 ```text
-101
-102
-102
-103
+101  applied
+102  applied
+102  discarded (102 <= 102)
+103  applied
 ```
 
-The second `102` must be ignored when sequence ordering applies.
+Every server event carries a `sequence` (§14), so the §24 rule always
+applies; a duplicate never updates state twice.
 
 ---
 
 # 45. Out-of-Order Events
 
-Example:
+**Status:** `Planned (FE)` (ADR-007 point 5, NFR-018)
 
 ```text
-101
-103
-102
-104
+101  applied
+103  applied; gap (102 missing) -> resynchronize (§25, §26)
+102  discarded (102 <= 103)
+104  applied
 ```
 
-Event `102` must not overwrite state after `103` has already been processed.
+- `102` never overwrites state produced after `103`.
+- The client does not hold events waiting for a missing one; a gap is
+  resolved by HTTP resynchronization, since there is no replay buffer
+  (ADR-007 point 5).
 
 ---
 
 # 46. Delayed Events
 
-An event may arrive significantly later than expected.
+**Status:** `Planned (FE)` (ADR-007 point 5 and Deferred detail)
 
-The client should determine whether the event is still valid based on:
+A late event is judged only by its `sequence` against
+`lastProcessedSequence` for its channel (§24):
 
-- sequence;
-- timestamp;
-- current state.
+- not superseded (`sequence` greater): applied;
+- superseded: discarded, however recent its `timestamp`.
 
-It must not blindly apply delayed data.
+`timestamp` is informational on the client and never decides ordering.
+After an epoch change (§14) the baseline is reset by resynchronization
+(§26), so sequences from before a server restart are not compared with the
+new ones.
+
+Open detail (B5): handling of an event carrying the previous epoch that
+arrives after the client has adopted the new one (expected: discarded).
 
 ---
 
 # 47. Event Deduplication
 
-Event IDs should be used as an additional deduplication mechanism.
+**Status:** `Planned (FE)` (ADR-007 points 4 and 5, NFR-018)
 
-The client may maintain a bounded set of recently processed event IDs.
+Deduplication uses `sequence` per channel (§24). Version 1 has no server
+replay and no transport-level redelivery, so a second, ID-based
+deduplication set is not required. The envelope `id` identifies an event
+in logs and diagnostics (§58).
 
-This prevents duplicate processing when transport retries occur.
+Open detail (B5): scope of `id` uniqueness (global or per channel) and its
+format, defined with the envelope schema in `@trading/contracts`.
 
 ---
 
 # 48. Event Backpressure
 
-High-frequency market updates must not overwhelm the browser.
+**Status:** client `Planned (FE)` (NFR-006); server limits `Planned (B5)` (ADR-007 point 11)
 
-The client may:
+Client:
 
-- batch updates;
-- throttle visual updates;
-- coalesce intermediate values;
-- update charts at controlled intervals.
+- Every valid event updates state in order; only rendering is coalesced
+  (§49), so state stays consistent with the last processed `sequence`.
+- Several price events for one asset within a frame collapse to the latest
+  price for display.
+- A burst of 100 events in 1 s keeps INP ≤ 200 ms (NFR-006).
 
-The underlying state should remain consistent.
+Server: the subscription limit, inbound rate limit and bounded memory per
+connection of §7 apply: 50 subscriptions, 20 inbound messages per second
+and a 1 MB outbound buffer (ADR-007 point 15).
+
+Open detail (B5): behavior when a slow client's outbound buffer reaches
+1 MB (drop messages, or close the socket with `4008`, §9). Either choice
+ends in a client resynchronization (§26).
 
 ---
 
 # 49. Rendering Frequency
 
-Realtime data frequency and visual rendering frequency do not have to be identical.
+**Status:** `Planned (FE)` (NFR-004, NFR-005, NFR-006, NFR-032)
 
-Example:
+Event processing and rendering run at different rates:
 
 ```text
-Incoming Events
-20 / second
-
-UI Render
-10 / second
+Incoming events  -> processed one by one into state
+Rendering        -> at most one render per animation frame
 ```
 
-Intermediate values may be coalesced when the product does not require displaying every single tick.
+- A price update is visible within 100 ms of the client receiving it
+  (NFR-004).
+- Only components that display the affected asset, or a value derived from
+  it, re-render (NFR-005).
+- Intermediate ticks may be skipped on screen; the latest value is always
+  shown.
+- Update highlights follow `11-ui-ux-spec.md` §15 and are disabled under
+  reduced motion (NFR-032).
+- The simulator ticks every 1 second (§38).
 
 ---
 
 # 50. Chart Realtime Updates
 
-Charts must use an optimized update strategy.
+**Status:** `Planned (FE)` (NFR-005, NFR-006, FR-045); chart library `Deferred` (`04-tech-stack.md` §16)
 
-The chart layer should not cause the entire dashboard to rerender.
-
-Conceptually:
-
-```text
-Market Event
-     ↓
-Chart Data Buffer
-     ↓
-Controlled Update
-     ↓
-Canvas Rendering
-```
-
-The implementation should favor canvas-based rendering for high-frequency visualization.
+- A chart redraws only when an asset it plots changes (NFR-005), at most
+  once per animation frame (NFR-006).
+- Period analytics charts (FR-025 to FR-031) cover closed days only; they
+  change when a daily candle closes, not on ticks (FR-045).
+- A chart that plots ticks keeps them in a bounded window (§51).
+- The rendering technique (canvas or SVG) depends on the chart library and
+  is decided with it.
 
 ---
 
 # 51. Memory Management
 
-The realtime client must avoid unbounded in-memory event history.
+**Status:** client `Planned (FE)`; server per-connection bound `Planned (B5)` (ADR-007 point 11)
 
-Strategies may include:
+Client:
 
-- bounded buffers;
-- event expiration;
-- chart window limits;
-- cleanup on unsubscribe.
+- No event history is kept: per channel only the derived state, the
+  `lastProcessedSequence` and the current epoch.
+- The buffer used while resynchronizing (§26) is bounded.
+- Tick-level chart data uses a bounded window (§50).
+- Unsubscribing a channel (§52) discards its buffer and sequence state.
+
+Server: memory per connection is bounded (§7, §48).
+
+Open detail (FE): size of the resynchronization buffer and the behavior
+when it overflows (expected: discard it and resynchronize again).
 
 ---
 
 # 52. Subscription Lifecycle
 
-Subscriptions must be created and destroyed according to component/application needs.
+**Status:** client `Planned (FE)`; server subscription handling `Planned (B5)` (ADR-007 points 3 and 11, FR-086)
 
-Example:
+| Channel | Subscribed while |
+|---|---|
+| `notifications` | The session is authenticated |
+| `portfolio:{portfolioId}` | A view shows that portfolio |
+| `market:{assetId}` | A view shows that asset's price |
+| `jobs:{jobId}` | A view follows that import, until its final event |
 
 ```text
-Open Portfolio
-      ↓
-Subscribe Portfolio
-      ↓
-View Asset
-      ↓
-Subscribe Asset
-      ↓
-Leave Asset
-      ↓
-Unsubscribe Asset
+Open portfolio  -> SUBSCRIBE portfolio:{portfolioId}
+Show asset      -> SUBSCRIBE market:{assetId}
+Leave asset     -> UNSUBSCRIBE market:{assetId}
 ```
 
-Unused subscriptions must not remain active.
+- Unused subscriptions do not stay active.
+- On socket close the server drops all of that connection's
+  subscriptions; the client restores the needed ones after reconnecting
+  (§27).
+- Re-authentication can drop subscriptions the actor may no longer hold
+  (§9).
+- The subscription limit is 50 per connection (§7); the client keeps its
+  active set below it.
 
 ---
 
 # 53. Multiple Subscribers
 
-Multiple UI consumers may subscribe to the same logical event stream.
-
-The realtime infrastructure should maintain a shared subscription rather than creating unnecessary duplicate WebSocket subscriptions.
-
-Conceptually:
+**Status:** `Planned (FE)` (ADR-007 point 11, NFR-054)
 
 ```text
 Component A ─┐
-Component B ─┼→ Shared Subscription
+Component B ─┼→ one subscription per channel → one connection
 Component C ─┘
 ```
+
+- The realtime client counts consumers per channel: the first one sends
+  `SUBSCRIBE`, the last one to leave sends `UNSUBSCRIBE`.
+- Each client holds at most one realtime connection (NFR-054).
+
+Open detail (B5): server handling of a repeated `SUBSCRIBE` to a channel the
+connection already holds (`ACK` or `ERROR`, §9).
 
 ---
 
 # 54. Realtime and Authentication Changes
 
-When the authenticated user changes:
+**Status:** client `Planned (FE)`; server rules `Planned (B5)` (ADR-007 point 2 and Deferred detail, ADR-005 points 6 and 9)
 
-```text
-Logout
- ↓
-Close User Channels
- ↓
-Clear Realtime State
-```
+| Event | Client | Server |
+|---|---|---|
+| Token refresh | Re-authenticate over the same socket (§9). | Extends the socket bound; reloads role and ownership. |
+| Role change | — | Applied at the next re-authentication (ADR-005 point 9). |
+| Refresh fails | Close the socket; clear realtime state. | Closes the socket when the token expires. |
+| Logout | Close the socket; clear realtime state and cached server data. | — |
+| Login as another user | Open a new socket. | Rejects re-authentication when `sub` changes and closes the socket. |
 
-New session:
+- An intentional close goes to `DISCONNECTED` and does not trigger
+  reconnection.
+- Logout revokes the session, but the access token stays valid until it
+  expires (ADR-005 point 6); the client closing the socket is what ends
+  delivery at logout.
+- Data from a previous session never leaks into the next one.
 
-```text
-Login
- ↓
-Initialize Connection
- ↓
-Subscribe New User Channels
-```
-
-Data from a previous session must not leak into the next session.
+A `4002` close means the token expired, so the client refreshes and
+reconnects; a `1001` close, or a socket lost without a close code, is a
+network loss and goes to `RECONNECTING` (§7).
 
 ---
 
 # 55. Security Requirements
 
-The realtime layer must enforce:
+**Status:** `Planned (B5)` (ADR-007 points 2, 3 and 11, ADR-005 points 3 and 12, FR-086, NFR-020, NFR-026)
 
-- authenticated connections;
-- authorized channel subscriptions;
-- server-side ownership checks;
-- validated event payloads;
-- no sensitive information in public events.
+| Requirement | Section |
+|---|---|
+| Token in the first message, never in the URL; 5 s authentication limit | §9 |
+| Socket bound to token expiry; re-authentication reloads permissions | §9 |
+| Every subscription authorized in the application layer by permission and ownership | §10 |
+| Subscription limit, inbound rate limit, bounded memory, heartbeat | §7 |
+| Server events validated against `@trading/contracts` schemas | §14 |
+| Tokens never logged | §58 |
 
-The client must never be trusted to enforce authorization.
+- The client is never trusted to enforce authorization (NFR-026); client
+  validation (§23) protects state, not access.
+- A refused subscription to another user's channel is indistinguishable
+  from an unknown channel, so existence is not revealed (ADR-005
+  point 12).
+- `market:{assetId}`, the only channel open to any authenticated actor,
+  carries only simulated prices.
+- `09-security-spec.md` §31-35 covers the same rules from the security
+  view.
 
 ---
 
 # 56. Demo Security
 
-Demo Mode may bypass real authentication infrastructure, but the application architecture must still preserve the concept of:
+**Status:** `Planned (FE)` (ADR-005 points 3 and 11, ADR-007 point 13, NFR-026)
 
 ```text
-User
- ↓
-Session
- ↓
-Authorization
- ↓
-Subscription
+Demo identity (role selector) -> Actor -> application-layer checks -> subscription
 ```
 
-This keeps the demo representative of the production architecture.
+- The demo uses a controlled identity with a role selector (ADR-005
+  point 11); there is no token handshake in the in-process adapter.
+- Subscription authorization is an application-layer use case (§10), so
+  the demo composition root runs the same check as the API (ADR-005
+  point 3).
+- This is behavior parity, not security: the demo runs without a server
+  (NFR-026 accepted exception).
 
 ---
 
 # 57. Realtime Error Handling
 
-Transport errors should be normalized.
+**Status:** `Planned (FE)`; wire messages and close codes `Planned (B5)` (ADR-007 point 15)
 
-Example:
-
-```text
-WEBSOCKET_CONNECTION_ERROR
-```
-
-becomes:
+The realtime client maps transport and protocol errors to one normalized
+error, so feature modules never handle WebSocket objects (ADR-007 point 1):
 
 ```text
 RealtimeError {
-  type: CONNECTION_ERROR
-  recoverable: true
+  type        // a category below
+  recoverable // true -> reconnect with backoff (§27)
 }
 ```
 
-Feature modules should not need to understand WebSocket-specific error objects.
+| Category | Source rule | Client reaction |
+|---|---|---|
+| Connection lost or failed | §7, §27 | Reconnect; `FAILED` after retries |
+| Authentication refused or expired | §9 | Refresh the token, then reconnect; otherwise end the session |
+| Subscription refused | §10, §52 | Drop the consumer's subscription; show no data for it |
+| Limit exceeded | §7 | Report as non-recoverable for that request |
+| Invalid event | §23 | Drop and log; never shown to the user |
+
+- Category and field names are client-side and not part of the wire
+  contract. The wire carries `ERROR` replies with a `code` and the close
+  codes of §9 (`4001`, `4002` and `4008` map to the authentication and
+  limit categories). The `ERROR` code set is an Open detail (B5), §9.
+- Realtime errors show the stale-data indicator (§28), not an error page
+  (NFR-013).
 
 ---
 
 # 58. Observability
 
-Realtime infrastructure should expose useful diagnostic information:
+**Status:** server logging `Planned (B5)` on the B3 `Logger` port (ADR-009 points 3-5, 9 and 11); client diagnostics `Planned (FE)`; metrics `Deferred` (ADR-009 point 10)
+
+Server:
+
+- Connection lifecycle events (connect, authenticate, close) are logged as
+  JSON lines with stable dotted `event` names (ADR-009 points 3 and 11).
+- Each entry carries `connectionId` and, once authenticated, `userId`
+  (ADR-009 point 5).
+- A refused subscription is logged as `authz.denied` (ADR-009 point 9).
+- Access tokens from `AUTHENTICATE` messages and event payloads with user
+  data are never logged (ADR-009 point 4).
+
+Client diagnostics, exposed through the realtime client:
 
 ```text
 connection state
 reconnect attempts
-last received event
-last processed sequence
+last processed sequence and epoch per channel
 active subscriptions
-event processing errors
+dropped (invalid) event count
 ```
 
-Production logs must avoid sensitive payloads.
+The demo writes through the browser-console `Logger` adapter (ADR-009
+point 1).
+
+Open detail (B5): the level for per-event entries, so continuous ticks do
+not flood `info` logs, and the final event names, aligned with
+`13-observability-spec.md`.
 
 ---
 
 # 59. Testing Requirements
 
-Realtime functionality must be tested for:
+**Status:** server `Planned (B5)`; client `Planned (FE)` (NFR-004, NFR-005, NFR-006, NFR-018, NFR-045)
 
-### Connection
+Tests use the injected clock and seeded engine, never wall time or
+unseeded randomness.
 
-- successful connection;
-- connection failure;
-- reconnection;
-- permanent failure;
-- manual retry.
+### Server connection and authorization (B5)
 
-### Events
+- Unauthenticated socket closed after 5 s; token accepted only in the
+  first message (§9).
+- Socket closed when the token expires without re-authentication;
+  re-authentication extends the bound (§9).
+- Re-authentication with another `sub` closes the socket; a role change
+  drops subscriptions no longer allowed (§9).
+- Subscribing to another user's `portfolio:{portfolioId}` or `jobs:{jobId}`
+  is refused like an unknown channel (§10, §55).
+- Heartbeat every 30 s and close after 2 missed pongs; 50 subscriptions
+  and 20 inbound messages per second enforced (§7).
 
-- valid events;
-- invalid events;
-- duplicate events;
-- stale events;
-- out-of-order events;
-- missing sequence ranges.
+### Server events (B5)
 
-### State
+- Every event matches its `@trading/contracts` schema; money is a decimal
+  string (§14, §16).
+- `sequence` is monotonic per channel; the epoch changes after a restart
+  (§14).
+- `PORTFOLIO_UPDATED` only after a transaction commits, never on ticks
+  (§18).
+- Job events on `jobs:{jobId}` match the job state (§20).
+- Alerts are edge-triggered and each trigger emits `ALERT_TRIGGERED` and
+  `NOTIFICATION_CREATED` (§22).
 
-- targeted updates;
-- cache synchronization;
-- state resynchronization.
+### Simulation (B5)
 
-### Simulation
+- Same seed, mode and clock produce the same event sequence (§39,
+  NFR-045).
+- The UTC rollover closes one daily candle per asset and rolls
+  `previousPrice`; startup backfills offline days (§35).
+- After a restart the engine resumes from persisted `MarketPrice` and
+  `MAX(sequence)` (§39).
+- Start, pause and mode change require `simulation:control` (§41).
+- The simulator ticks every 1 second on the injected clock (§38).
 
-- deterministic seed;
-- simulation profiles;
-- pause/resume;
-- disconnect;
-- event failures.
+### Client (FE)
+
+- Connection states and transitions (§6, §7); manual retry from `FAILED`.
+- Backoff 1 s doubling to a 30 s cap, with jitter (§27, NFR-018).
+- Each subscription restored exactly once after reconnecting (§27).
+- Invalid events dropped (§23); duplicate, stale and out-of-order events
+  discarded (§44-§46).
+- Resynchronization on a gap, a reconnect and an epoch change (§26).
+- Polling every 10 s only while the socket is down; stops on reconnect
+  (§30).
+- Render counting: one price event renders only affected components
+  (§31, NFR-005).
+- Burst of 100 events in 1 s: INP ≤ 200 ms, one render per frame (§48,
+  NFR-006); visible update within 100 ms (§49, NFR-004).
+- Shared subscriptions and cleanup on unsubscribe (§52, §53).
+- Logout closes the socket and clears realtime state (§54).
+- Disconnect and fault scenarios through the transport test double (§42,
+  §43).
 
 ---
 
 # 60. Realtime Acceptance Criteria
 
-The realtime architecture is considered complete when:
+**Status:** server `Planned (B5)`; client `Planned (FE)`
 
-- WebSockets are isolated behind an adapter;
-- normalized events are used;
-- event payloads are validated;
-- stale events are ignored;
-- duplicate events are handled;
-- connection state is explicit;
-- reconnection works;
-- realtime failure degrades gracefully;
-- subscriptions are cleaned up;
-- high-frequency events do not cause uncontrolled rendering;
-- charts update efficiently;
-- mock realtime implements the same event contract;
-- simulation can reproduce failure scenarios;
-- demo behavior is deterministic enough for demonstrations.
+The realtime layer is complete when every §59 test passes and:
+
+- [ ] `ws` is used only inside the transport adapter; no other module
+      imports it (§2, §5).
+- [ ] Real and demo transports satisfy the same client port and event
+      contract (§5, ADR-007 point 13).
+- [ ] Only the version 1 event catalog is emitted (§15).
+- [ ] Every event is validated before it reaches state (§23).
+- [ ] Duplicate, stale and out-of-order events never overwrite newer state
+      (§44-§46).
+- [ ] Gaps, reconnects and epoch changes resynchronize through HTTP (§26).
+- [ ] Connection state is explicit and shown as in §28.
+- [ ] With the socket down, the application stays usable through HTTP
+      (§29, NFR-014).
+- [ ] Subscriptions are authorized on the server and cleaned up on the
+      client (§10, §52).
+- [ ] Bursts meet NFR-006 and updates meet NFR-004 and NFR-005.
+- [ ] No demo or failure-injection module is in the API build (§43,
+      NFR-058).
+
+Demo failure scenarios (§42, §43) join these criteria once the
+frontend-stage demo ADR decides them (ADR-010 point 6).
 
 ---
 
 # 61. Final Realtime Architecture
 
-```text
-                         ┌──────────────────┐
-                         │   React Client   │
-                         └────────┬─────────┘
-                                  │
-                         ┌────────▼─────────┐
-                         │ Realtime Client  │
-                         └────────┬─────────┘
-                                  │
-                         ┌────────▼─────────┐
-                         │ Event Validator  │
-                         └────────┬─────────┘
-                                  │
-                         ┌────────▼─────────┐
-                         │ Event Processor  │
-                         └────────┬─────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    ▼                           ▼
-              Server State                 Client State
-             TanStack Query                  Zustand
-                    │                           │
-                    └─────────────┬─────────────┘
-                                  ▼
-                                  UI
-```
+**Status:** `Reference` (ADR-007, ADR-001)
 
-Production:
+Server (B5):
 
 ```text
-WebSocket Transport
+Use case commits (application layer, ADR-001)
         ↓
-Realtime Adapter
+Realtime emitter port (in process, after commit)
         ↓
-Normalized Events
+Subscription authorization (permission + ownership)
+        ↓
+ws transport adapter  ← @trading/market-sim (API process)
+        ↓
+WebSocket
 ```
 
-Demo:
+Client (FE):
 
 ```text
-Simulation Engine
-        ↓
-Mock Realtime Transport
-        ↓
-Normalized Events
+WebSocket transport (real)  |  In-process adapter + @trading/market-sim (demo)
+                      ↓
+           Realtime client port
+                      ↓
+     Validation (@trading/contracts schemas)
+                      ↓
+     Sequence and epoch check per channel
+                      ↓
+   ┌──────────────────┴──────────────────┐
+   ▼                                     ▼
+Server-state cache                 Client-state store
+(update or refetch, §32)           (connection, subscriptions)
+   └──────────────────┬──────────────────┘
+                      ▼
+                     UI
 ```
 
-Both converge into the **same realtime application pipeline**.
+- Both transports converge into the same client pipeline (ADR-007
+  point 13).
+- Cache and store libraries are not decided (§33, §34).
+- HTTP remains the authoritative source for every resynchronization.
 
 ---
 
 # 62. Architectural Principle
 
-The realtime system must not exist merely to make the dashboard appear “live”.
+**Status:** `Reference`
 
-It exists to demonstrate a realistic engineering problem:
+The realtime layer is not there to make the dashboard look live. It
+addresses a real engineering problem:
 
 > How can a high-frequency event stream update only the state that matters, remain consistent when events arrive late or out of order, recover from connection failures, and degrade gracefully when realtime infrastructure is unavailable?
 
-That behavior is part of the product itself.
+That behavior is part of the product.

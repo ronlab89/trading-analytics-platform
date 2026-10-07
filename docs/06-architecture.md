@@ -344,7 +344,9 @@ down it shows a stale-data indicator and refetches periodically.
 
 - Transport: WebSocket with the `ws` library, behind a transport port.
 - Channels: `market:{assetId}`, `portfolio:{portfolioId}`, `notifications`
-  (per user), and `jobs:{jobId}` (ADR-008 point 11, `Planned (B4)` events).
+  (per user), and `jobs:{jobId}` (ADR-008 point 11). Job events are
+  `Planned (B5)`: the job lifecycle lands in B4, but the events need this
+  B5 transport.
 - Every subscription is authorized in the application layer by permission
   and ownership.
 - Envelope `{ id, type, channel, sequence, timestamp, payload }` as Zod
@@ -358,15 +360,15 @@ Today the API has no WebSocket server and no `ws` dependency.
 
 # 21. Event Model
 
-**Status:** `Planned (B5)`; job events `Planned (B4)`.
+**Status:** `Planned (B5)`, including job events (§20).
 
 | Event | Emitted when |
 | --- | --- |
 | `MARKET_PRICE_UPDATED` | Each simulator tick |
 | `PORTFOLIO_UPDATED` | Holdings change, after the transaction commits |
 | `NOTIFICATION_CREATED` | A notification is created |
-| `ALERT_TRIGGERED` | An alert condition turns from false to true |
-| `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` | Job progress and terminal states (ADR-008) |
+| `ALERT_TRIGGERED` | An alert condition turns from false to true (on `notifications`) |
+| `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` | Job progress, `COMPLETED` and `FAILED` (ADR-008); `CANCELLED` and `TIMED_OUT` emit none (ADR-007 point 15) |
 
 `TRANSACTION_CREATED`, `TRANSACTION_COMPLETED` and `POSITION_UPDATED` are
 removed (ADR-007 point 6).
