@@ -3,7 +3,7 @@
 **Project:** Trading Analytics Platform  
 **Document:** Implementation Plan  
 **Version:** 1.0  
-**Status:** Backend-first override added and §1-62 reconciled with the ADRs and the code on 2026-10-08; §63-end are reconciled in the next slice  
+**Status:** Backend-first override added and the whole document (§1-67) reconciled with the ADRs and the code on 2026-10-08  
 **Previous document:** `14-deployment-spec.md`
 
 ---
@@ -3500,6 +3500,68 @@ The following are explicitly prohibited unless later justified:
 
 ## 63. Final Implementation Sequence
 
+**Status:** per item (table below); the order of execution is the backend-first order of §4.1 (blocks B0 to B7, then FE0 to FE6), not the numeric order of the original list
+
+**Owning blocks:** Backend: B0 to B7. Frontend: FE0 to FE6. Decisions: ADR-006 point 1 (backend-first, two targets), ADR-001, ADR-005, ADR-007, ADR-008, ADR-009.
+
+Execution order by block:
+
+```text
+Minimal CI → B0 → B1 → B2 → B3 → B4 → B5 → B6 → B7 → FE0 → FE1 → FE2 → FE3 → FE4 → FE5 → FE6
+```
+
+Each original step belongs to the block(s) below. The original numbers are kept so the steps can be traced; the list is not executed in that order.
+
+| Step | Status | Block |
+| --- | --- | --- |
+| 01 Repository | `Implemented` | none |
+| 02 Tooling | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Planned (B0)` (ADR-006 point 10) | B0 |
+| 03 Docker | `Implemented` for the default Compose profile (PostgreSQL); `full` profile and API Dockerfile `Planned (B7)` | B7 |
+| 04 PostgreSQL | `Implemented` | none |
+| 05 Migrations | `Implemented` (Prisma); runtime database role `Planned (B0)` | B0 |
+| 06 Domain model | `Implemented` (`packages/domain`); analytics additions `Planned (B1)` | B1 |
+| 07 Repository layer | `Implemented` (`packages/database`, repository contracts in `packages/domain`); the application layer over it `Planned (B0)` (ADR-001) | B0 |
+| 08 Express/API foundation | `Implemented`; layering over `@trading/application` and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002); OpenAPI `Planned (B6)` | B0, B6 |
+| 09 Observability foundation | `Planned (B3)` (ADR-009) | B3 |
+| 10 Authentication | login and `me` `Implemented`; refresh and logout `Planned (B2)` (ADR-005) | B2 |
+| 11 RBAC | `Planned (B2)`; the permission mechanism `Planned (B0)` (ADR-005 point 3) | B0, B2 |
+| 12 Frontend shell | `Planned (FE0)`; `apps/web` holds only a wireframe | FE0 |
+| 13 Auth UI | `Planned (FE1)` | FE1 |
+| 14 Dashboard | overview endpoint `Implemented`; `performance` field and What Changed `Planned (B1)`; views `Planned (FE2)` | B1, FE2 |
+| 15 Portfolio | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
+| 16 Positions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
+| 17 Transactions | endpoints `Implemented`; chronological validation `Planned (B0)`; screens `Planned (FE1)` | B0, FE1 |
+| 18 Analytics | allocation and attribution `Implemented`; performance and risk `Planned (B1)`; views `Planned (FE2)` | B1, FE2 |
+| 19 Tables/filters | `Planned (FE2)` (sorting is client-side, ADR-010 point 4) | FE2 |
+| 20 Realtime | server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
+| 21 Background operations | `Planned (B4)` (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
+| 22 Notifications | alerts and notifications from the realtime and job paths `Planned (B4)`, `Planned (B5)`; screens `Planned (FE3)` | B4, B5, FE3 |
+| 23 Demo adapters | `Planned (FE4)`; needs the application layer and in-memory repositories from B0 | FE4 |
+| 24 Demo simulations | `@trading/market-sim` `Planned (B5)`; demo wiring `Planned (FE4)` | B5, FE4 |
+| 25 Unit/integration/component tests | domain, database and API tests `Implemented`; application and contract tests `Planned (B0)`; tests per block; component tests `Planned (FE5)` | B0, FE5 |
+| 26 E2E tests | `Deferred` until the frontend-stage ADR (ADR-006 point 11) | FE5 |
+| 27 Accessibility validation | `Planned (FE5)` | FE5 |
+| 28 Security review | see Pending decisions | not assigned |
+| 29 Performance measurement | see Pending decisions; no metrics exist (ADR-009 point 10) | not assigned |
+| 30 Production build | backend `Planned (B7)` (ADR-006 point 3); demo build `Planned (FE4)` | B7, FE4 |
+| 31 Deployment | local full stack `Planned (B7)`; demo publication `Planned (FE4)`; hosted deployment `Deferred` (ADR-006 point 2) | B7, FE4 |
+| 32 Smoke tests | `Planned (B7)` | B7 |
+| 33 Documentation | kept current in every pull request (`docs/README.md`, maintenance rule); `Implemented` as a practice | every block |
+| 34 Case study | `Planned (FE6)` | FE6 |
+| 35 Interview preparation | `Planned (FE6)` | FE6 |
+
+Code vs ADR:
+
+- The original list interleaves backend and frontend steps (for example step 12 frontend shell before step 20 realtime). Under the backend-first order the frontend steps 12 to 19 and 23 to 24 run after B7, except the simulation engine of step 24, which is built in B5.
+- The closing sentence of the original ("adjusted when real implementation dependencies reveal a better order") is the mechanism of §4.1: the order was adjusted by the ADRs, not by this list.
+
+Pending decisions:
+
+- Step 28 (security review): §61 and §57 point to B2, while `BACKEND-ROADMAP.md` calls B7 "deployment readiness and hardening". Which block runs the review, or whether it runs in both, is not decided in any ADR.
+- Step 29 (performance measurement): no ADR or block owns it. ADR-009 point 10 defers metrics and §3 rule 1 says to measure first. Which block measures what, and with which tool, is not decided.
+
+Original text:
+
 The recommended execution sequence is:
 
 ```text
@@ -3545,6 +3607,34 @@ This sequence should be adjusted when real implementation dependencies reveal a 
 ---
 
 ## 64. Final Architecture Validation
+
+**Status:** `Reference` as a checklist; each check below is answered with evidence when its owning block closes, and none is demonstrated beyond the domain and persistence layers today
+
+**Owning blocks:** Backend: B0 (layers, ports, composition root), B5 (realtime adapter). Frontend: FE0 (features, presentation), FE4 (Demo Mode substitution). Decisions: ADR-001, ADR-002, ADR-006 point 7, ADR-007 point 13.
+
+| Check | Evidence | Status | Block |
+| --- | --- | --- | --- |
+| `domain` depends on nothing above it | `packages/domain` holds the entities, calculations and repository contracts; it imports no Prisma, Express or browser API | `Implemented` | none |
+| `application` exists and depends only on `@trading/domain` (ADR-001 point 1) | `packages/application` does not exist; the routes build the Prisma repositories directly (ADR-001, Context) | `Planned (B0)` | B0 |
+| `infrastructure` is replaceable through ports | Prisma repositories exist in `packages/database`; the swap to in-memory fakes is not demonstrated until the application layer and its fakes exist (ADR-001 point 7) | `Planned (B0)` | B0 |
+| One composition root builds the adapters (ADR-001 point 4) | `apps/api/src/composition.ts` does not exist | `Planned (B0)` | B0 |
+| Shared typed contracts at the boundary (ADR-002) | `packages/contracts` holds only `.gitkeep` | `Planned (B0)` | B0 |
+| WebSocket adapter behind a transport port (ADR-007 point 1) | no WebSocket code exists | `Planned (B5)` | B5 |
+| `features` and `presentation` | `apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md` | `Planned (FE0)` | FE0 |
+| Demo Mode shares `application` and `domain`, and replaces only infrastructure (ADR-001, ADR-006 point 7, ADR-007 point 13) | no demo code exists | `Planned (FE4)` | FE4 |
+| Layer boundaries are enforced mechanically (ADR-001 point 1) | ADR-001 point 1 enforces it with lint rules, which land with the application layer | `Planned (B0)` | B0 |
+
+Code vs ADR:
+
+- The first diagram uses the layer names of the original plan. In the code the layers are packages: `domain`, `database` (infrastructure), and `apps/api` (transport); `application` and `contracts` are added in B0.
+- The "External APIs" box has no counterpart in version 1: ADR-007 uses the simulator as the price source and rules out a paid market data provider. The "Mock API" box of the Demo Mode diagram is the in-process application layer, not a mocked HTTP server.
+- "Mock DB" in the Demo Mode diagram means the in-memory repositories of ADR-001 point 7, which B0 creates as test fakes and FE4 reuses.
+
+Pending decisions:
+
+- Whether the "External APIs" box is removed from the diagram or kept as a placeholder for a future provider is a documentation choice not covered by an ADR; ADR-007 only decides that none is used in version 1.
+
+Original text:
 
 At the end of implementation, verify that the conceptual architecture remains:
 
@@ -3596,6 +3686,14 @@ The product/application layer remains shared.
 
 ## 65. Final Project Principle
 
+**Status:** `Reference`; the list is a statement of intent, and the evidence for each item is collected in the question groups of §61 and the criteria of §66
+
+**Owning blocks:** Backend and Frontend: every block, closing in FE6. Decisions: ADR-001 to ADR-010.
+
+Code vs ADR: no ADR changes this section. "Infrastructure substitution" is the mechanism of ADR-001 and ADR-006 point 7, and `Planned (B0)`; "realtime capability" is ADR-007, `Planned (B5)`.
+
+Original text:
+
 The complete project should communicate:
 
 > **The system is designed so that complexity can evolve without forcing the product to become fragile.**
@@ -3619,6 +3717,39 @@ The portfolio should demonstrate:
 ---
 
 ## 66. Final Definition of Done
+
+**Status:** per group (table below); no checkbox is checked. The backend groups close with B7 and the frontend groups with FE5 and FE6; the full list is the last gate of the project
+
+**Owning blocks:** Backend: B0 to B7. Frontend: FE0 to FE6. Decisions: ADR-001 to ADR-010. This section is the union of the completion rules of §39 to §42 (feature, technical, product and portfolio completion) and the gates of §60 and §61; where they overlap, those sections carry the per-item statuses.
+
+| Group | Where it is delivered | Status | Block |
+| --- | --- | --- | --- |
+| Product | Core workflows: endpoints `Implemented`, screens in FE1 to FE3; analytics from B1 (ADR-004); no win/loss or transaction statistics in version 1 (ADR-010 point 10); holdings only, no cash balance (ADR-003 points 1 and 2); see §41 | `Implemented` in part; `Planned (B1)`; `Planned (FE1)` | B1, FE1 to FE3 |
+| Architecture | Application layer, contracts and ports (ADR-001, ADR-002) in B0; Demo Mode substitution in FE4; boundaries documented by the ADRs; see §64 | `Planned (B0)`; `Planned (FE4)` | B0, FE4 |
+| Frontend | The frontend blocks; the libraries named in the original list are not decided by any ADR (see Pending decisions); see §40 | `Planned (FE0)` | FE0 to FE5 |
+| Backend | Node.js and TypeScript API, PostgreSQL persistence, validation, error envelope and health routes `Implemented`; contracts `Planned (B0)`; authentication and RBAC `Planned (B2)` (ADR-005); OpenAPI `Planned (B6)`; see §40 | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2, B6 |
+| Realtime | Server `Planned (B5)` (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Planned (B5)`; `Planned (FE3)` | B5, FE3, FE4 |
+| Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Planned (B4)`; screens `Planned (FE3)` | `Planned (B4)` | B4, FE3 |
+| Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E `Deferred` until the frontend-stage ADR; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
+| Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Planned (B0)`; roles and sessions `Planned (B2)` (ADR-005); production configuration guard `Planned (B0)` (ADR-006 point 13); the security review of §57 | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2 |
+| Observability | Request IDs and health routes `Implemented`; structured logs, redaction and security events `Planned (B3)` (ADR-009); job and realtime lifecycle events `Planned (B4)`, `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` in part; `Planned (B3)` | B3, B4, B5 |
+| Deployment | Minimal CI `Planned (B0)` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Planned (B0)`; `Planned (B7)`; `Planned (FE4)` | B0, B7, FE4 |
+| Demo | No paid infrastructure (ADR-007); reset, simulated latency and failure scenarios (ADR-010 point 6); in-process adapters (ADR-001, ADR-007 point 13); see §56 | `Planned (FE4)` | B5, FE4 |
+| Portfolio | Case study, architecture visuals, tradeoffs and walkthrough; measured outcomes only when measured; see §42 and §59 | `Planned (FE6)` | FE6 |
+
+Code vs ADR:
+
+- The checkboxes of the original are kept unchecked on purpose: none of them is verified end to end today. A box is checked only with evidence recorded in the owning block.
+- "Authorization is server-side" is partly true today (ownership checks in the API); the permission model that ADR-005 enforces in the application layer is `Planned (B0)`.
+- "Measured outcomes are real" depends on a measurement that no block owns yet (see §63 Pending decisions, step 29).
+- Version 1 has no exposure, benchmark or win/loss statistics (ADR-010 points 7 and 10), so "analytics are coherent" is judged against the analytics ADR-004 defines.
+
+Pending decisions:
+
+- "TanStack Query", "Zustand", "TanStack Table" and the form validation approach are named in the original but are decided by no ADR. They are settled in the frontend-stage ADR (§4.3); until then this list does not bind the choice.
+- "Responsive behavior is validated", "component tests exist where valuable" and "E2E tests cover critical flows" need the tooling choice of the same frontend-stage ADR (ADR-006 point 11).
+
+Original text:
 
 ### Product
 
@@ -3732,6 +3863,12 @@ The portfolio should demonstrate:
 ---
 
 ## 67. Closing Principle
+
+**Status:** `Reference`
+
+**Owning blocks:** Backend and Frontend: every block, closing in FE6. Decisions: none specific; ADR-001 to ADR-010 are the recorded reasoning (§51).
+
+Original text:
 
 The implementation should not be judged by how many features or technologies it contains.
 
