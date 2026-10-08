@@ -282,7 +282,15 @@ malformed payload) — never reveals which one applies.
 
 ---
 
-## 3. Hardening & Extensions Done This Session (beyond original phase scope)
+## 3. Hardening & Extensions Done Before the SDD Reconciliation (history)
+
+> **History (reconciled 2026-10-08).** This section is a log of what was
+> built on the feature branches before the SDD source-of-truth work; it is
+> not current work. Wording such as "this session" or "at the time" refers
+> to those earlier sessions. A "Since then" note cites the ADR or the
+> roadmap block (`docs/BACKEND-ROADMAP.md`) that changed or took over an
+> item. Where the text and a note disagree, the note, the ADRs and the code
+> win.
 
 After Phase 3's core endpoints were built, a self-review pass surfaced
 technical debt and gaps, closed in order (§3.1-3.4), followed by the
@@ -296,6 +304,9 @@ Market Data extension (§3.5).
   in 4 `apps/api` files — root cause was `@trading/domain` missing from
   `apps/api/package.json` dependencies. Now imports by package name
   everywhere.
+  *Since then:* the production build path is still open: `@trading/domain`
+  and `@trading/database` point `main` at `src`; the fix is assigned to B7
+  (`BACKEND-ROADMAP.md`, §7 of this file).
 - Prisma Studio issue: **deliberately not fixed** — user uses TablePlus
   instead and has no need for it.
 
@@ -317,6 +328,22 @@ Market Data extension (§3.5).
 - The mock/demo repositories (when built) can implement the same
   `UnitOfWork` interface with in-memory snapshot/rollback — the
   contract doesn't assume Prisma.
+- *Since then (reconciled 2026-10-08):* this log describes the service as
+  it was. B0 changes it (ADR-001, ADR-003, `BACKEND-ROADMAP.md` B0): the
+  use cases move from `apps/api/src/services` into `@trading/application`
+  and receive the `UnitOfWork` from the composition root. The in-memory
+  `UnitOfWork` (serialized with an async mutex or rolling back only its own
+  write log) is built there. The unit gives atomicity but **not isolation**:
+  `createTransaction` still reads the position and then upserts it, so two
+  concurrent `SELL`s can both pass; the `UnitOfWork` contract will
+  guarantee isolation for position updates (FR-017, B0). Two more B0 items
+  live in this same path: chronological validation of backdated
+  transactions (FR-018, ADR-003 point 6) and the archived-portfolio guard
+  (409 `CONFLICT`, ADR-010 point 5); `createTransaction` today checks only
+  that the portfolio belongs to the user. `calculatePositionAfterTransaction`
+  ignores `fees`; fees enter the cost basis and realized P/L in B1
+  (ADR-004 point 15). The `Clock` port (ADR-001 point 8) replaces the
+  `new Date()` inside `validateNewTransaction`.
 
 ### 3.3 Step A — API hardening
 
@@ -330,6 +357,13 @@ Market Data extension (§3.5).
   **7001**, not the earlier mismatched default of 3000); `index.ts`
   reads `env.PORT` instead of `process.env.PORT` directly.
   `.env.example` updated to match.
+- *Since then:* B0 changes the error contract (ADR-002): validation
+  details become `{ field, code, message }`, `TIMEOUT` leaves
+  `AppErrorCode`, a database outage returns 503 `DEPENDENCY_ERROR`, and
+  route parameters are validated with a Zod schema (a malformed value is
+  400). The 100 kB limit stays global; the CSV import route gets its own
+  limit in B4 (ADR-008). `CORS_ORIGIN` validation and a seed production
+  guard are B0 configuration safety (ADR-006 point 13).
 - `/health` and `/health/ready` moved before the rate limiter in the
   middleware chain, so uptime monitors/orchestrators never receive 429.
 
@@ -349,6 +383,8 @@ rationale). `packages/database`'s `test`/`test:watch` scripts now load
   shared in-process app instance in the integration suite would
   otherwise trip the IP-based counter across unrelated test cases.
   The 429 behavior itself is verified separately (see below), not lost.
+  *Since then:* rate limits stay on in development (ADR-006); only the
+  test environment skips them.
 - Added `vitest`, `supertest`, `@types/supertest` to `apps/api`. New
   `test`/`test:watch` scripts, also loading `.env.test.local`.
 - Smoke test (`app.test.ts`) written first to validate the wiring
@@ -392,13 +428,21 @@ rationale). `packages/database`'s `test`/`test:watch` scripts now load
   `rateLimitHandler` (now exported from `rate-limit.ts` specifically
   for this reuse) to verify the 429 response shape independently.
 
-**Result at the time:** 22 tests across 6 files, all passing.
+**Result at the time:** 22 tests across 6 files, all passing. *Since
+then:* `apps/api` holds 14 test files; the routes with no route test file
+(analytics, positions, assets, market, health) get theirs in B0, written
+before the services move (`BACKEND-ROADMAP.md` §1 and B0). The fixtures
+create users directly because registration is out of scope (ADR-005 point
+10: users come from the seed). `tokenFor` signs the access-token claims of
+today; B2 changes the token shape (ADR-005) and the helper with it. In CI
+the test variables come from the job `env`, not from `.env.test.local`
+(B0, ADR-006).
 
-### 3.5 Step C — Market Data (this session's final block)
+### 3.5 Step C — Market Data (final block of that stage)
 
 **Correction to an earlier version of this file:** `HistoricalPrice`
-seeding was **already implemented** before this session (it was
-mistakenly listed as "not started" previously) — only `MarketPrice`
+seeding was **already implemented** before that session (it was
+mistakenly listed as "not started" at the time) — only `MarketPrice`
 seeding and all price/history API endpoints were actually missing.
 
 **C.1 — MarketPrice + price/history endpoints:**
@@ -414,7 +458,8 @@ seeding and all price/history API endpoints were actually missing.
   `refine` ensuring `from <= to`, `interval` restricted to the literal
   `"1d"` — user confirmed this is fine for now, with weekly/monthly
   aggregation planned as a distinct future addition once actually
-  needed, not before).
+  needed, not before; the roadmap lists it as deliberately parked,
+  `BACKEND-ROADMAP.md` §7).
 - New `services/market.service.ts`: `getAssetPrice` (two distinct 404
   messages: asset missing vs. asset exists but no price yet),
   `getBatchPrices` (never 404s, same "missing means absent" contract
@@ -436,6 +481,11 @@ seeding and all price/history API endpoints were actually missing.
   - Deliberately uses `MarketPrice.previousPrice`/`.change` (the "since
     last tick" comparison), not `HistoricalPrice` — a different, later
     concept already used by drawdown/volatility.
+    *Since then:* ADR-007 point 14 fixes the semantics: `previousPrice`,
+    `change` and `changePercent` are always measured against the last
+    daily close, not the last tick, so `dailyChange` and the `1D` period
+    stay correct while prices tick (B5). The seed already derives them from
+    the last two daily candles.
   - Same "insufficient data vs. valid empty state" distinction as the
     rest of the domain layer (see §2.4 cross-cutting notes).
 - `overview.service.ts` extended:
@@ -466,7 +516,12 @@ seeding and all price/history API endpoints were actually missing.
     this codebase for any future optional-field construction.
   - `performance` by period (FR-025/026) remains explicitly deferred —
     user confirmed treating it as a distinct future step, not part of
-    Step C.
+    Step C. *Since then:* assigned to **B1** (ADR-004), together with the
+    real portfolio volatility and drawdown for Pulse: the largest-position
+    proxy used by `getPulseInputs()` is replaced (ADR-004 point 11), and
+    volatility annualizes with the square root of 365 over at least 20
+    returns (point 8). The overview integration test for `dailyChange`
+    and `pulse` is added in B1.
 
 **Verification:** typecheck, lint, and all existing test suites passed
 after both C.1 and C.2 (no new automated tests were added for the
@@ -496,6 +551,16 @@ small, deliberate changes:
   `notificationPreferences={}`) stay solely in `schema.prisma` — not
   duplicated in TypeScript. Test added for the first-write path.
 - **Alerts:** no domain/database changes needed.
+- *Since then (reconciled 2026-10-08):* notifications are `unread` or
+  `read` only, `dismissed` is removed from version 1 (ADR-010 point 3).
+  B0 moves these services to the application layer and validates
+  `UserPreference.theme` (`light`, `dark`, `system`) and
+  `language` (`en`, `es`) (ADR-002 point 10, ADR-010 point 8); mutations
+  on an archived portfolio, alerts included, return 409 (ADR-010 point 5).
+  Alerts that actually trigger and their notifications are B5 (ADR-007);
+  notifications for finished imports are B4 (ADR-008 point 6). Until then
+  no alert fires. B2 limits `VIEWER` to its own preferences and
+  notifications (ADR-005 point 13).
 
 **Deliberate divergences from the SDD (to reflect back into it):**
 - `07-api-spec.md` §28 lists `read`/`type`/`page`/`pageSize` filters for
@@ -507,7 +572,9 @@ small, deliberate changes:
 - `GET /api/v1/preferences` returns `{ data: null }` for a user with no
   saved preferences (absence is a valid state, same principle as the
   null `dailyChange` in Overview). `07-api-spec.md` §29 does not
-  specify this case.
+  specify this case. For the first item, ADR-010 point 4 confirms that
+  pagination applies only to assets and transactions and that sorting is
+  client-side for lists loaded in full.
 
 **Integration tests (4 new files in `apps/api/src/routes/`):**
 `watchlist.routes.test.ts`, `alerts.routes.test.ts`,
@@ -577,6 +644,13 @@ decision and its events are created atomically (FR-074), repeated later
 in the demo mock. If the frontend needs to create decisions, design it
 then together with an event-journal endpoint
 (`POST .../decisions/:decisionId/events`) with the screen in view.
+*Since then:* still deliberately parked, outside B0 to B7
+(`BACKEND-ROADMAP.md` §7). B0 does touch this slice: `decision-replay.ts`
+parses `price` and `quantity` with `Decimal` and accepts only decimal
+strings, reporting other values as issues, with the seed and fixtures
+rewritten to strings (ADR-002 point 9). Replay and the other composite reads
+move to the application layer. Any future decision mutation on an archived
+portfolio is a 409 (ADR-010 point 5).
 
 **Verification:** typecheck, lint and the domain, database and api test
 suites passed after slices 1 to 3.
@@ -613,12 +687,15 @@ Response: `scenarioId`, `baseline`, `result`, `difference`,
 not hold; the calculation ignores them, reporting avoids a silent
 no-op). Outputs are total value and unrealized P/L only; allocation,
 risk and exposure from FR-038 are not computed because the domain cannot
-derive them honestly.
+derive them honestly. *Since then:* parked in the roadmap (§7); B1 may
+unlock part of it.
 
 **Slice 3 — write API.** Create (201, always a `DRAFT`), `PATCH`
 (`name`, `description`, `status` DRAFT or SAVED, `changes`; at least one
 field), archive, delete (204). `changes` replaces the whole list, so
 reset (FR-039) is `changes: []` and save (FR-040) is `status: "SAVED"`.
+*Since then:* a mutation of a scenario on an archived portfolio will
+also be 409 `CONFLICT` (ADR-010 point 5, B0).
 The repository `update` now accepts `changes` so a combined edit is a
 single write (an invalid part of a request changes nothing; covered by a
 test). `ARCHIVED` is read-only: `PATCH` returns 409 `CONFLICT`, and
@@ -647,6 +724,14 @@ plus repository tests (changes read/write/reset, defensive reads, list
 order). New fixtures `createTestPosition` and `createTestScenario`. One
 lint fix: zod v4 `z.number()` already rejects infinity, so `.finite()` is
 deprecated and was removed (the domain still validates finiteness).
+
+**Since then (reconciled 2026-10-08):** B0 builds the percentage factor in
+`scenario-impact.ts` with `Decimal` (`Decimal(percentChange)
+.div(100).plus(1)`, with an exact-result test for `-12.3`) and applies the
+decimal-string rule to persisted money (ADR-002 point 9).
+Duplicating a scenario (FR-041, P2) stays parked (`BACKEND-ROADMAP.md`
+§7). `calculate` and `compare` are composite reads and move to the
+application layer in B0.
 
 **Verification:** lint, typecheck and the domain, database and api test
 suites passed.
