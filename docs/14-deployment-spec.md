@@ -1360,7 +1360,7 @@ The exact structure belongs to `15-implementation-plan.md` and implementation.
 | `docs/`, `scripts/` | SDD and ADRs; `scripts/check-docs.mjs` | `Implemented` |
 | `docker/` | `.gitkeep` only | `Deferred`: the Dockerfile is `apps/api/Dockerfile` (ADR-006 point 4; §26), so no ADR gives `docker/` content |
 | `package.json` | Root manifest and scripts | `Implemented` |
-| Not in the diagram | `packages/domain` and `packages/database` `Implemented`; `packages/application` `Planned (B0)` (ADR-001); `@trading/market-sim` `Planned (B5)`, path not fixed (ADR-007 point 7) | per package |
+| Not in the diagram | `packages/domain` and `packages/database` `Implemented`; `packages/application` `Planned (B0)` (ADR-001); `@trading/market-sim` `Planned (B5)` at `packages/market-sim` (ADR-007 point 7) | per package |
 
 Code vs ADR:
 

@@ -119,7 +119,7 @@ references to `packages/domain`, `packages/database` and `apps/api`.
 | `apps/api` | `@trading/api` | `Implemented` |
 | `packages/application` | `@trading/application` | `Planned (B0)` — ADR-001 |
 | `packages/contracts` | `@trading/contracts` | `Planned (B0)` — ADR-002; folder exists with `.gitkeep` only |
-| `@trading/market-sim` | `@trading/market-sim` | `Planned (B5)` — ADR-007 point 7; path not fixed |
+| `@trading/market-sim` | `@trading/market-sim` | `Planned (B5)` — ADR-007 point 7; the package lives at `packages/market-sim` |
 | `apps/web` | none | `Planned (FE)` — ADR-002 point 5, ADR-006 point 1; wireframe files only, not a workspace package |
 | `packages/config` | none | `Deferred` — `.gitkeep` only; no decision gives it content |
 

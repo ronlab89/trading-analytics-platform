@@ -700,12 +700,12 @@ A user can complete the primary portfolio workflow against the real backend.
 | Role check on create: a `VIEWER` is denied (ADR-005) | `Planned (B2)` | B2 |
 | Duplicate prevention: `Idempotency-Key` on `POST .../transactions`; a repeated key and request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Planned (B4)` | B4 |
 | `PORTFOLIO_UPDATED` emitted after the commit (ADR-007 point 6) | `Planned (B5)` | B5 |
-| Edit, delete and cancel of a transaction | No endpoint in version 1: transactions are immutable except for `status` (`05-data-model.md` §43, `07-api-spec.md` §13) | none |
+| Edit, delete and cancel of a transaction | No endpoint in version 1: transactions are immutable except for `status` (ADR-003 point 7, `05-data-model.md` §43, `07-api-spec.md` §13) | none |
 | Screens: transaction form, transaction history with the FR-016 filters, positions, derived values (market value, unrealized P/L) and user feedback; submit disabled while pending and dependent views updated without reload (FR-017, FR-077) | `Planned (FE1)` | FE1 |
 
 Code vs ADR:
 
-- The original task list includes "edit transaction where permitted" and "delete/cancel where permitted". The API has no update or delete route (`transactions.routes.ts`), `07-api-spec.md` §13 states that transactions are immutable, and no FR asks for either action. The tasks stay below as the original intent, not as scope.
+- The original task list includes "edit transaction where permitted" and "delete/cancel where permitted". The API has no update or delete route (`transactions.routes.ts`), `07-api-spec.md` §13 and ADR-003 point 7 state that transactions are immutable, and no FR asks for either action. The tasks stay below as the original intent, not as scope.
 - "Conflict handling" has two sources in version 1: 409 `CONFLICT` on an archived portfolio (B0) and on a repeated `Idempotency-Key` with a different request (B4). Overselling stays a 400 validation error.
 - Nothing checks the order of transactions today: a `SELL` dated before an earlier `BUY` passes when the current position is large enough, and the position is rebuilt only from the current row. ADR-003 point 6 and `05-data-model.md` §8 put both fixes in B0.
 - The fee handling change is visible in the code as well: `position-recalculation.ts` ignores `fees`, so `averageEntryPrice` excludes the `BUY` fees and unrealized P/L is higher than ADR-004 point 15 will report.
@@ -775,7 +775,7 @@ Domain/application services remain responsible for business behavior.
 Code vs ADR:
 
 - The original text names TanStack Table and lists "sorting, filtering, pagination, column visibility" as features. No ADR decides the table library. Filtering is the API filters of FR-016, pagination comes from the API only for assets and transactions, sorting is client-side only for fully loaded lists, and configurable columns are `Deferred`. The list is kept as the original intent, not as a decision.
-- The original category list names win/loss statistics, exposure and transaction statistics. No FR or ADR defines win/loss or transaction statistics, and exposure is `Deferred` (`01-product-spec.md` §5 and §11, `07-api-spec.md` §21). The phase rule "implement only metrics defined by the product specification" therefore leaves them out until an FR defines them. Open: confirm they are dropped from the phase.
+- The original category list names win/loss statistics, exposure and transaction statistics. No FR or ADR defines win/loss or transaction statistics, and exposure is `Deferred` (`01-product-spec.md` §5 and §11, `07-api-spec.md` §21). The phase rule "implement only metrics defined by the product specification" therefore leaves them out until an FR defines them. Decided (ADR-010 point 10, approved by the user on 2026-10-07): win/loss and transaction statistics are not part of version 1.
 - The code has no portfolio-level performance, volatility or drawdown. `calculateVolatility` and `calculateDrawdown` work on one asset's closes, and volatility annualizes with √252 only when asked. ADR-004 point 8 changes this to a return series, √365 and a 20-return minimum (B1).
 - Wire details that ADR-004 and ADR-002 fix and that the original text does not: the period return is the field `twrPercent` (`16-analytics-spec.md` §2), `asOf` is the end date after clamping to the last closed day, a valid range with no closed day answers 200 with `status: "INSUFFICIENT_DATA"` and not 400 (`16-analytics-spec.md` §8), and `from > to` is 400. `InsufficientData` is a domain error in `16-analytics-spec.md` and `INSUFFICIENT_DATA` is its wire status.
 - Mixed currencies in a portfolio surface as a 500 in allocation today (`CurrencyMismatchError`); the 400 on the transaction that would create them is `Planned (B1)` (ADR-004 point 12, `16-analytics-spec.md` §2).
@@ -986,7 +986,7 @@ The frontend should expose:
 | --- | --- | --- |
 | Application layer `@trading/application` that the demo runs in the browser, with in-memory implementations of the repository contracts and of `UnitOfWork` (rollback included) | `Planned (B0)`; the package does not exist yet | B0 |
 | `@trading/contracts`: the DTOs and schemas both adapters return | `Planned (B0)` | B0 |
-| `@trading/market-sim`: a pure, deterministic package with a seeded pseudo-random generator, an injected clock and the modes and scenarios of `12-demo-mode-spec.md` §37-§40; depends only on `@trading/domain`; the API and the demo use the same engine (ADR-007 point 7) | `Planned (B5)`; its directory is an open detail, settled in B5 | B5 |
+| `@trading/market-sim`: a pure, deterministic package with a seeded pseudo-random generator, an injected clock and the modes and scenarios of `12-demo-mode-spec.md` §37-§40; depends only on `@trading/domain`; the API and the demo use the same engine (ADR-007 point 7) | `Planned (B5)`; the package lives at `packages/market-sim` (ADR-007 point 7) | B5 |
 | Runtime mode selection: `APP_MODE` is `real` or `demo`, fixed at build time through `VITE_APP_MODE` (ADR-006 point 8) | `Planned (FE0)` for the build-time values; `Planned (FE4)` for the demo build | FE0, FE4 |
 | In-process adapter of the `TradingClient` port, calling `@trading/application` and the same presenters, so the UI cannot tell which mode it runs in (ADR-002 point 5); the HTTP adapter is FE0 | `Planned (FE4)` | FE4 |
 | Demo composition root with in-memory repositories (ADR-001 point 4); the in-memory fakes written for the application tests are its starting point | `Planned (FE4)` | FE4 |
