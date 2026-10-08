@@ -3,7 +3,7 @@
 **Project:** Trading Analytics Platform  
 **Document:** Implementation Plan  
 **Version:** 1.0  
-**Status:** Backend-first override added and §1-4 reconciled with the ADRs and the code on 2026-10-07 (§4.1-4.3); §5-end are reconciled in later slices  
+**Status:** Backend-first override added and §1-37 reconciled with the ADRs and the code on 2026-10-08; §38-end are reconciled in later slices  
 **Previous document:** `14-deployment-spec.md`
 
 ---
@@ -1604,6 +1604,27 @@ Same flow
 
 ## 24. Contract-First Boundaries
 
+**Status:** `Reference` as a rule; per item for the five boundaries (table below)
+
+**Owning blocks:** Backend: B0 (application layer and `@trading/contracts`), B6 (OpenAPI), and each later block for the contracts of its own endpoints; Frontend: FE0 (HTTP adapter), FE4 (in-process adapter). Decisions: ADR-001 points 1 to 6, ADR-002 points 1 to 7.
+
+| Boundary | Status | Block |
+| --- | --- | --- |
+| Domain behavior: entities, validators, calculations and the repository and `UnitOfWork` contracts in `packages/domain` | `Implemented` | none |
+| Application use case: `@trading/application`, one factory per resource (ADR-001 points 1 and 2); `packages/application` does not exist yet | `Planned (B0)` | B0 |
+| API contract: request schemas exist in `apps/api/src/schemas/`; `@trading/contracts` with request schemas, response schemas, the error envelope, pagination `meta` and presenters (ADR-002 points 1 to 4) | Requests `Implemented` in the API only; `@trading/contracts` `Planned (B0)` (the package holds only `.gitkeep`) | B0 |
+| API document generated from the schemas (ADR-002 point 7) | `Planned (B6)` | B6 |
+| Persistence contract: the repository interfaces of `packages/domain/src/repositories/`, with Prisma implementations in `packages/database` | `Implemented`; in-memory implementations `Planned (B0)` (ADR-001 points 4 and 7) | B0 |
+| Frontend data contract: DTOs from `@trading/contracts` consumed through a `TradingClient` port (ADR-002 point 5) | DTOs `Planned (B0)`; HTTP adapter `Planned (FE0)`; in-process adapter `Planned (FE4)` | B0, FE0, FE4 |
+
+Code vs ADR:
+
+- The rule stays valid, but the order of the original list is not an order of work. The domain exists, the application, contract and frontend boundaries are all created in B0 (ADR-001, ADR-002), and the frontend adapters wait for the frontend stage (§4.1).
+- Today only requests are typed. Responses have no declared shape: controllers return domain objects and Express serializes them (ADR-002 Context), so the "API contract" boundary is half defined until B0.
+- Each block from B1 to B5 adds its endpoints and events to `@trading/contracts` with the feature (ADR-002 point 2; the realtime envelope is in ADR-007 point 4), so "define the contract, then implement each side" repeats inside every block.
+
+Original text:
+
 Before implementing a major feature, define:
 
 ```text
@@ -1622,7 +1643,33 @@ This reduces accidental coupling.
 
 ## 25. API Implementation Order
 
-Recommended:
+**Status:** per item (table below); the order below is the original recommendation and is overridden by the block order of §4.1
+
+**Owning blocks:** Backend: B0 to B6, one row per resource below; Frontend: none. Decisions: ADR-001, ADR-002 point 7, ADR-005 points 5 and 6, ADR-007 points 1 and 15, ADR-008 point 9, ADR-010 points 1 and 5.
+
+| Resource | Status | Block |
+| --- | --- | --- |
+| Health: `GET /health` and `GET /health/ready` | `Implemented`; route test `Planned (B0)`; readiness 503 while shutting down `Planned (B3)` | B0, B3 |
+| Auth: login | `Implemented` | none |
+| Auth: refresh and logout | `Planned (B2)` | B2 |
+| Users and session: `GET /auth/me` | `Implemented`; there is no users resource, because registration is out of scope (ADR-005 point 10) | none |
+| Portfolios, positions, transactions: list, read and create (no edit, delete or cancel, ADR-003 point 7) | `Implemented`; archived-portfolio guard (ADR-010 point 5) and chronological validation (ADR-003 point 6) `Planned (B0)`; `Idempotency-Key` on transaction creation `Planned (B4)` | B0, B4 |
+| Decisions, scenarios, assets, market, overview, watchlist, alerts, preferences | `Implemented` | none |
+| Analytics: allocation and attribution | `Implemented` | none |
+| Analytics: performance, risk and What Changed | `Planned (B1)` | B1 |
+| Notifications: list and mark as read | `Implemented`; creation by import jobs `Planned (B4)` (ADR-008 point 6, ADR-010 point 9) | B4 |
+| Background jobs: `POST /api/v1/portfolios/:portfolioId/imports` and the `jobs` endpoints (ADR-008 point 9) | `Planned (B4)` | B4 |
+| Simulation control: `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode` (ADR-007 point 15) | `Planned (B5)` | B5 |
+| API document | `Planned (B6)` | B6 |
+
+Code vs ADR:
+
+- The original list is now mostly done: `apps/api/src/app.ts` already mounts every router in the first six rows plus decisions, scenarios, assets, market, overview, watchlist, alerts, notifications and preferences. What remains is analytics additions, jobs, simulation control and the document. The remaining order is the block order of §4.1: B0 reshapes the existing routes, B1 adds analytics, B2 adds the session endpoints, B4 adds jobs, B5 adds simulation control.
+- The original last row, "Notifications", is not the last piece: the notification endpoints exist, and what ADR-008 and ADR-010 add are new creators of notifications (import jobs, triggered alerts).
+- "Realtime capabilities should be implemented alongside the corresponding domain capabilities" does not hold. The WebSocket server is its own block (B5), after B4, because job progress is a realtime event (ADR-008 point 11). The WebSocket shares the HTTP server and port (ADR-007 point 1), so it is not a separate API resource.
+- Every route stays under `/api/v1` and changes inside it are additive (ADR-002 point 8).
+
+Original recommendation:
 
 ```text
 Health
@@ -1650,7 +1697,32 @@ Realtime capabilities should be implemented alongside the corresponding domain c
 
 ## 26. Database Implementation Order
 
-Recommended:
+**Status:** per item (table below); the order below is the original recommendation and is overridden by the block order of §4.1
+
+**Owning blocks:** Backend: B0 (runtime database role), B2 (sessions, role migration), B4 (`Job`, `IdempotencyKey`), B5 (price data retention and daily candles); Frontend: none. Decisions: ADR-003, ADR-005 points 1, 5 and 13, ADR-006 points 5 and 6, ADR-007 points 8 and 14, ADR-008 points 4 and 8.
+
+| Group | Status | Block |
+| --- | --- | --- |
+| Users and roles: `User`, `Credential` and `UserRole` (`USER`, `ADMIN`) | `Implemented`; `UserRole` becomes `VIEWER`, `TRADER`, `ADMIN` and the `USER` rows migrate to `TRADER` `Planned (B2)` | B2 |
+| Sessions: a table of hashed refresh tokens with token families (ADR-005 point 5) | `Planned (B2)` | B2 |
+| Portfolios: `Portfolio` with its status | `Implemented` | none |
+| Instruments: `Asset` | `Implemented` | none |
+| Transactions and positions: `Transaction` (`BUY` and `SELL`, `fees` as a field) and `Position` | `Implemented` | none |
+| Price data: `MarketPrice`, `MarketEvent` and `HistoricalPrice` | `Implemented`; bounded `MarketEvent` retention, daily candle rollover and startup catch-up `Planned (B5)` | B5 |
+| Product data: `Decision`, `DecisionEvent`, `Scenario`, `WatchlistItem`, `Alert`, `Notification`, `UserPreference` | `Implemented` | none |
+| Analytics support data | `Reference`: the schema has no analytics table, and ADR-001 point 6 and ADR-010 point 1 place analytics in application read models | none |
+| Jobs: `Job` and `IdempotencyKey` | `Planned (B4)` | B4 |
+| Runtime database role: a non-superuser role for the API; only the migration role keeps DDL rights | `Planned (B0)` | B0 |
+
+Code vs ADR:
+
+- The schema already holds 16 models and ten migrations (`packages/database/prisma/`). The original order lists them as future work; only the groups marked above remain. "Jobs / Notifications" splits: `Notification` exists, `Job` is B4.
+- Migrations are forward-fix only (ADR-006 point 6), so the sessions table, the role enum migration and the B4 tables each ship as a forward migration with their block. The seed never runs automatically and refuses to run when `NODE_ENV=production` (ADR-006 points 5 and 13, `Planned (B0)`).
+- ADR-003 point 7 needs no schema change: transactions are not edited or deleted in version 1, and the API has no route for it. ADR-003 point 6 (chronological validation) is application-layer logic in B0 and adds no column.
+- JSON columns (`DecisionEvent.payload`, and the `Job` and `IdempotencyKey` payloads) hold money, prices and quantities as decimal strings (ADR-002 point 9), `Planned (B0)` for the existing decision payloads.
+- The rule that foreign keys and constraints reflect domain ownership applies to the new tables when they are added.
+
+Original recommendation:
 
 ```text
 Users / Roles
@@ -1676,7 +1748,31 @@ Foreign keys and constraints should reflect domain ownership.
 
 ## 27. Frontend Implementation Order
 
-Recommended:
+**Status:** `Planned (FE)`; nothing exists yet because `apps/web` holds only a wireframe (`apps/web/wireframe.html`); the order below is the original recommendation and the blocks of §4.3 refine it
+
+**Owning blocks:** Backend: none; Frontend: FE0 to FE4 as the table shows. Decisions: ADR-010 points 6 to 9; the frontend-stage ADR settles routing, state, rendering, charts and shared UI (§4.3).
+
+| Step | Status | Block |
+| --- | --- | --- |
+| App shell | `Planned (FE0)` | FE0 |
+| Authentication: session screens | `Planned (FE1)`; needs refresh and logout from B2 | FE1 |
+| Dashboard | `Planned (FE)`; the block that owns it is not named in §4.3 | none |
+| Portfolio, positions and transactions | `Planned (FE1)` | FE1 |
+| Analytics: performance, risk, pulse, allocation and attribution | `Planned (FE2)` | FE2 |
+| Realtime: client, notifications and alerts | `Planned (FE3)` | FE3 |
+| Background operations: CSV import screens and job progress | `Planned (FE3)` | FE3 |
+| Demo controls: role selector, simulation controls | `Planned (FE4)` | FE4 |
+| Markets, watchlist, decisions, scenarios, preferences and language selection screens | `Planned (FE)`; the block that owns each is not named in §4.3 | none |
+| Shared component library, routing, rendering approach and charts | `Deferred` to the frontend-stage ADR | FE0 |
+
+Code vs ADR:
+
+- The original order matches the block order for its listed steps: the shell in FE0, then the core workflow, analytics, realtime and jobs, and the demo last. The session screens need the `TradingClient` port and its HTTP adapter from FE0 (ADR-002 point 5).
+- The original list names no screen for the Markets, watchlist, decisions, scenarios or preferences areas, although the API for each is `Implemented`, and ADR-010 point 9 places the alerts tab under Markets. The block mapping for these screens and for the Dashboard is left to the frontend stage and is not decided here.
+- The two languages (`en` and `es`, ADR-010 point 8) apply to every screen from FE0, so no step is "translate later".
+- The Activity view of the wireframe is `Deferred` (ADR-010 point 9).
+
+Original recommendation:
 
 ```text
 App shell
@@ -1705,6 +1801,28 @@ Shared components should be extracted when repetition is demonstrated, not merel
 ---
 
 ## 28. State Management Strategy
+
+**Status:** the principle is `Reference`; the libraries named below are `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §53: server and client state are `Deferred`)
+
+**Owning blocks:** Backend: none; Frontend: FE0 (state foundation), then FE1 to FE4 as screens use it. Decisions: ADR-002 point 5 (`TradingClient` port), ADR-005 point 4 (access token in memory), ADR-007 points 5 and 12 (resynchronization and degradation), ADR-010 point 8 (language).
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Rule: use the smallest state scope that works, and do not put server state in a client store without a reason | `Reference` | none |
+| Server-state cache library (TanStack Query in the original text) | `Deferred` to the frontend-stage ADR; no ADR selects it (`08-realtime-spec.md` §33) | FE0 |
+| Client/global state library (Zustand in the original text) | `Deferred` to the frontend-stage ADR; no ADR selects it (`08-realtime-spec.md` §34) | FE0 |
+| Access token held in memory only, never in `localStorage` or `sessionStorage` (ADR-005 point 4) | `Planned (FE1)` | FE1 |
+| Language preference: English until the user selects Spanish, stored through the `language` preference (ADR-010 point 8) | `Planned (FE)` | FE0 |
+| Realtime connection state, stale-data indicator and HTTP resynchronization on a sequence gap (ADR-007 points 5 and 12) | `Planned (FE3)` | FE3 |
+| Demo state (role selector, simulation controls) | `Planned (FE4)`; its persistence and reset are `Deferred` (ADR-010 point 6) | FE4 |
+
+Code vs ADR:
+
+- TanStack Query and Zustand appear in this section, in `08-realtime-spec.md` and in `13-observability-spec.md` as the expected choices, but no ADR selects either one, and `04-tech-stack.md` lists server and client state as `Deferred`. The text below uses them as the original candidates, not as decisions. The rule it states (smallest scope, no server state in a client store) holds with any library.
+- Whatever library is chosen must work over the `TradingClient` port (ADR-002 point 5), so server state looks the same when the HTTP adapter or the in-process demo adapter answers.
+- The web app does not exist yet, so all of this is `Planned (FE)` or `Deferred`.
+
+Original text:
 
 Use the smallest appropriate state scope.
 
@@ -1741,6 +1859,28 @@ Avoid putting server state into Zustand without a clear reason.
 
 ## 29. Form Strategy
 
+**Status:** per item (table below); the form library is `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §53: forms are `Deferred`)
+
+**Owning blocks:** Backend: B0 (shared request schemas, validation detail codes); Frontend: FE0 (form foundation), FE1 to FE3 (forms of each area). Decisions: ADR-001 point 5, ADR-002 points 1, 2 and 10, ADR-003 point 6, ADR-010 point 8.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Zod as the validation library (`zod@4.6.5`) | `Implemented` in the API | none |
+| API validation of body, query and headers through the `validate` middleware | `Implemented`; route parameters `Planned (B0)` | B0 |
+| Domain invariants (for example the oversell rule) | `Implemented`; chronological validation `Planned (B0)` | B0 |
+| Request schemas importable by the frontend, in `@trading/contracts` | `Planned (B0)` | B0 |
+| Validation details as `{ field, code, message }` with the Zod issue `code`, so the client can localize them | `Planned (B0)` | B0 |
+| Form library (React Hook Form in the original text) | `Deferred` to the frontend-stage ADR | FE0 |
+| UI validation in the forms, with localized messages from the `code` (ADR-010 point 8) | `Planned (FE1)` for the first forms | FE1 |
+
+Code vs ADR:
+
+- Three validation boundaries stay as written: UI, API, domain. The first one is the only one that does not exist; frontend validation improves UX and does not replace the other two (ADR-001 point 5).
+- Moving the request schemas into `@trading/contracts` is what makes it possible for a form to reuse them (ADR-002 context). Whether the forms reuse those schemas directly or write their own is a frontend-stage choice and is not decided here.
+- React Hook Form is not selected by any ADR; the line below is the original candidate.
+
+Original text:
+
 Use:
 
 ```text
@@ -1769,6 +1909,33 @@ Backend/domain validation protects correctness.
 
 ## 30. Error Handling Strategy
 
+**Status:** per item (table below); the backend half is mostly `Implemented`, and the logging, realtime, job and frontend halves are planned in their blocks
+
+**Owning blocks:** Backend: B0 (contract details, transport-free errors), B2 (`FORBIDDEN`), B3 (logging by category), B4 (job failures), B5 (realtime failures); Frontend: FE0 (error mapping), FE1 to FE3. Decisions: ADR-001 point 3, ADR-002 points 2 and 10, ADR-008 point 6, ADR-009 point 6, ADR-007 point 15, ADR-010 point 8, ADR-006 point 11.
+
+| Category | Backend representation | Status | Block |
+| --- | --- | --- | --- |
+| Validation | 400 `VALIDATION_ERROR` with `details` | `Implemented`; detail `code` `Planned (B0)` | B0 |
+| Authentication | 401 `UNAUTHORIZED` | `Implemented`; refresh failures `Planned (B2)` | B2 |
+| Authorization | 403 `FORBIDDEN` for a missing permission; 404 for another user's resource (ADR-005 point 12) | 404 `Implemented`; 403 `Planned (B2)` | B2 |
+| Not Found | 404 `NOT_FOUND` | `Implemented` | none |
+| Conflict | 409 `CONFLICT` (archived portfolio, job retry or cancel in the wrong state, idempotency key reuse) | Code `Implemented`; those causes `Planned (B0)` and `Planned (B4)` | B0, B4 |
+| Rate Limit | 429 `RATE_LIMITED` | `Implemented` (`apps/api/src/middleware/rate-limit.ts`) | none |
+| Dependency Failure | 503 `DEPENDENCY_ERROR` when the database is unreachable (ADR-002 point 10) | The code is declared in `AppErrorCode` and not raised: a database outage surfaces as `INTERNAL_ERROR` today, and the readiness endpoint answers 503 on its own; the mapping to `DEPENDENCY_ERROR` `Planned (B0)` (`07-api-spec.md` §6) | B0 |
+| Internal Error | 500 `INTERNAL_ERROR`, stack logged and not returned | `Implemented` | none |
+| Network Failure | None on the server: a client concern; the API has no request timeout (ADR-002 point 10) and `TIMEOUT` is removed from `AppErrorCode` in B0 | Handling `Planned (FE0)`; the client timeout and retry policy `Deferred` to the frontend-stage ADR (ADR-006 point 11) | FE0 |
+| Realtime Failure | Socket `ERROR` message with a `code` and close codes `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | Server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
+| Background Job Failure | Job state `FAILED` with a reason (`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED`) or `TIMED_OUT` (ADR-008 points 3 and 6), and an `ERROR` notification | `Planned (B4)`; screens `Planned (FE3)` | B4, FE3 |
+
+Code vs ADR:
+
+- Logging behavior by category is one rule for the whole API: validation and authentication at `warn`, not found and conflict at `info`, internal errors at `error` with the stack, `FORBIDDEN` and `RATE_LIMITED` at `warn`, `DEPENDENCY_ERROR` at `error` (ADR-009 point 6). It is `Planned (B3)`; today only unexpected errors are logged (§18).
+- User-facing messages are localized on the client from the stable `code`; the API keeps an English `message` for logs (ADR-010 point 8). That mapping is `Planned (FE0)`. Server-side error text is never shown as is.
+- Application code throws transport-free errors (`NotFoundError`, `ConflictError` and similar); the API error handler maps them to the HTTP codes above, and the demo maps them to its own UI states (ADR-001 point 3). Today 11 services throw `AppError` with an HTTP status, which B0 changes.
+- Categories like "Network Failure" and "Realtime Failure" are not API errors, so they have no wire representation beyond the socket protocol above. The demo scripts these failures only when the frontend-stage ADR decides them (ADR-010 point 6).
+
+Original text:
+
 Errors should be designed by category:
 
 ```text
@@ -1796,6 +1963,33 @@ Each category should have appropriate:
 
 ## 31. Realtime Implementation Strategy
 
+**Status:** per item (table below); nothing in this section exists in the code yet
+
+**Owning blocks:** Backend: B5 (server, simulation engine, contracts), with job events from B4; Frontend: FE3 (client), FE4 (in-process adapter). Decisions: ADR-007 (all points), ADR-008 point 11, ADR-002 point 4, ADR-001, ADR-009 point 11.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| WebSocket with `ws` behind a transport port, served by the same HTTP server and port as the API on a fixed path (proposed `/ws`, confirmed in B5) | `Planned (B5)` | B5 |
+| Authentication in the first message, a 5-second deadline, socket bound to the token expiry and re-authentication after a refresh (ADR-007 point 2) | `Planned (B5)`; needs the refresh endpoint of B2 | B5 |
+| Channels `market:{assetId}`, `portfolio:{portfolioId}`, `notifications` and `jobs:{jobId}`, each subscription authorized in the application layer | `Planned (B5)`; the job channel with B4 events | B4, B5 |
+| Envelope `{ id, type, channel, sequence, timestamp, payload }` as Zod schemas in `@trading/contracts` | `Planned (B5)` | B5 |
+| Event catalog: `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED`, and the three job events | `Planned (B5)`; job events `Planned (B4)` | B4, B5 |
+| Shared simulation engine `@trading/market-sim` in `packages/market-sim` (seeded generator, injected clock) | `Planned (B5)`; the package does not exist yet | B5 |
+| Limits, heartbeat and degradation (ADR-007 points 11, 12 and 15) | Server `Planned (B5)`; client polling and stale-data indicator `Planned (FE3)` | B5, FE3 |
+| Realtime lifecycle log entries and simulator entries (ADR-009 point 11) | `Planned (B5)` | B5 |
+| Client WebSocket adapter and event handlers | `Planned (FE3)` | FE3 |
+| In-process realtime adapter fed by `@trading/market-sim` running in the browser | `Planned (FE4)` | FE4 |
+| Mechanism that carries an event from the application layer to the realtime adapter (the "Domain event" and "Application event" steps of the chain below) | `Planned (B5)` as a need; the mechanism itself is not decided by any ADR (see the note below) | B5 |
+
+Code vs ADR:
+
+- ADR-007 point 6 defines which events exist and when they fire (for example `PORTFOLIO_UPDATED` only after a transaction commits), but it does not say how the application layer hands an event to the realtime adapter. `13-observability-spec.md` states that no ADR defines domain events. The chain below is the original sketch of that hand-off, not a decision, and the choice is made in B5.
+- Rule that holds: realtime is an adapter over the application layer (ADR-001), not a second application architecture. Subscriptions use the same permission and ownership checks as HTTP (ADR-007 point 3).
+- The UI reacts to meaningful state changes: `TRANSACTION_CREATED`, `TRANSACTION_COMPLETED` and `POSITION_UPDATED` are removed from the catalog because transactions are synchronous (ADR-007 point 6).
+- The sequence per channel is monotonic and a gap triggers resynchronization through HTTP; there is no server replay buffer in version 1 (ADR-007 point 5).
+
+Original sketch:
+
 Realtime should not become a second application architecture.
 
 Use:
@@ -1817,6 +2011,27 @@ The UI should react to meaningful state changes rather than infrastructure detai
 ---
 
 ## 32. Performance Measurement Strategy
+
+**Status:** the method is `Reference`; the measurements are per item (table below), and none has been taken yet
+
+**Owning blocks:** Backend: B3 (slow-request and series timing); Frontend: FE5 (measurement against the NFR targets), FE6 (what the case study may cite). Decisions: rule 1 and rule 2 of §3, ADR-009 point 8, `03-non-functional-requirements.md` NFR-001 to NFR-008, `12-demo-mode-spec.md` §84.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Method: hypothesis, measurement, diagnosis, change, measurement, comparison | `Reference` | none |
+| Server timing: a `warn` entry for a request above `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms) and separate timing of the analytics series reconstruction; no other timing in version 1 (ADR-009 point 8) | `Planned (B3)` | B3 |
+| Frontend measurement against the approved targets of NFR-001 to NFR-008 | `Planned (FE5)` | FE5 |
+| Realtime update frequency and burst handling (NFR-005, NFR-006) | `Planned (FE5)`, after the realtime client of FE3 exists | FE5 |
+| Measurement tooling for the frontend (Lighthouse, profiler, bundle analysis or others) | `Deferred` to the frontend-stage ADR | FE5 |
+| Published performance claims | `Planned (FE6)`, only for what a block measured | FE6 |
+
+Code vs ADR:
+
+- No performance measurement has been taken, so the project makes no performance claim today. The three quoted claims below are examples of what must not be written without a measurement, not targets. The only approved targets are the NFRs; this section adds none (rule 2 of §3).
+- The server-side part is a log entry, not a benchmark (ADR-009 point 8), and database operations are not timed. A larger server benchmark would need a new decision.
+- The frontend part of the method is the same as §20; §20 lists the areas, and this section states how the measurement is made.
+
+Original text:
 
 Performance work should follow:
 
@@ -1846,6 +2061,33 @@ unless measured and documented.
 
 ## 33. Security Validation Strategy
 
+**Status:** per item (table below); the review happens block by block, with the final hardening in B7
+
+**Owning blocks:** Backend: B0 (permission mechanism, route parameters, `CORS_ORIGIN` validation, production guard), B2 (sessions, roles), B4 (CSV), B5 (realtime), B7 (hardening, header test, asset-search wildcard escaping, dependency audit); Frontend: FE0 and FE1 (client side). Decisions: ADR-005, ADR-006 points 10 and 13, ADR-007 points 2, 11 and 15, ADR-008 point 10; the mechanisms and their tests are in `09-security-spec.md`.
+
+| Review item | Status | Block |
+| --- | --- | --- |
+| Authentication | Login and `me` `Implemented`; refresh, logout and sessions `Planned (B2)` | B2 |
+| Authorization | Ownership checks `Implemented`; `Actor` and permission checks `Planned (B0)`; roles and 403 `Planned (B2)` | B0, B2 |
+| Input validation | Body, query and headers `Implemented`; route parameters `Planned (B0)`; CSV `Planned (B4)`; WebSocket messages `Planned (B5)` | B0, B4, B5 |
+| CORS | Origin allow-list `Implemented`; origin format validation `Planned (B0)`; credentials for the refresh cookie `Planned (B2)` | B0, B2 |
+| Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Planned (B7)`; the seed and reset production guard `Planned (B0)` | B0, B7 |
+| Rate limiting | HTTP `Implemented`; realtime limits `Planned (B5)` | B5 |
+| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Planned (B4)`; WebSocket limits `Planned (B5)` | B4, B5 |
+| Error exposure | `Implemented`; redaction in logs `Planned (B3)` | B3 |
+| File handling | CSV import `Planned (B4)`; no file is accepted today | B4 |
+| Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Planned (B0)`; audit `Planned (B7)` | B0, B7 |
+| Security headers | `helmet` `Implemented`; header test `Planned (B7)` | B7 |
+| Runtime database role | `Planned (B0)` | B0 |
+
+Code vs ADR:
+
+- The review is not one checklist at the end. Each mechanism is tested in the block that builds it, and `09-security-spec.md` §55 lists the test per mechanism. The items marked `Planned (B7)` are the hardening work that closes the list before the backend counts as done (§4.1).
+- Public hosting, TLS and WSS are out of scope in version 1 (ADR-006 point 2), so transport security items are `Deferred` with the hosted backend. The public demo has no backend and no secrets (ADR-006 point 7).
+- Client-side items (the access token held in memory only, ADR-005 point 4, and the refresh flow) are `Planned (FE)` and join the frontend blocks that build them.
+
+Original text:
+
 Before completion, review:
 
 ```text
@@ -1867,6 +2109,26 @@ Security is an architectural property, not only a final checklist.
 
 ## 34. Accessibility Validation Strategy
 
+**Status:** `Planned (FE5)`; nothing can be validated yet because `apps/web` holds only a wireframe; the scanning tool is `Deferred` to the frontend-stage ADR (ADR-006 point 11)
+
+**Owning blocks:** Backend: none; Frontend: built in FE0 to FE4, validated in FE5. Decisions: ADR-006 point 11, ADR-010 points 8 and 9; targets in `03-non-functional-requirements.md` NFR-029 to NFR-032; method in `10-testing-strategy.md` §36.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Checks per primary flow: keyboard navigation, focus management, labels, semantic controls, error association, modal behavior, table interaction, reduced motion | `Planned (FE5)` | FE5 |
+| Targets: WCAG 2.2 AA with 0 serious or critical automated violations on core routes (NFR-029), keyboard-only workflows (NFR-030), live regions and chart text alternatives (NFR-031), reduced motion (NFR-032) | `Planned (FE5)` | FE5 |
+| Error messages announced in the active language, mapped from the error `code` (ADR-010 point 8) | `Planned (FE5)` | FE5 |
+| Automated accessibility scanning tool and its CI step | `Deferred` to the frontend-stage ADR | FE5 |
+| Manual inspection | `Planned (FE5)` | FE5 |
+
+Code vs ADR:
+
+- Accessibility is built into each frontend block and checked in FE5, so FE5 finds problems and does not build the behavior from scratch.
+- Table interaction is limited to what version 1 builds: sorting happens in the client for fully loaded lists, and configurable columns and row selection are `Deferred` (ADR-010 points 4 and 9).
+- Automated testing complements, and does not replace, manual keyboard inspection.
+
+Original text:
+
 Every primary flow should be tested for:
 
 - keyboard navigation
@@ -1883,6 +2145,33 @@ Automated accessibility testing should complement manual inspection.
 ---
 
 ## 35. Demo Validation Strategy
+
+**Status:** per item (table below); the demo does not exist yet
+
+**Owning blocks:** Backend: B0 (in-memory repositories, application layer), B5 (shared simulation engine); Frontend: FE4 (demo mode), FE5 (E2E demo flows). Decisions: ADR-001, ADR-005 point 11, ADR-006 point 7, ADR-007 points 7 and 13, ADR-008 point 13, ADR-010 point 6; the scenario list follows `10-testing-strategy.md` §63.
+
+| Scenario | Status | Block |
+| --- | --- | --- |
+| Demo tested independently from real infrastructure: no backend and no database, the application layer runs in the browser over in-memory repositories (ADR-001, ADR-006 point 7) | `Planned (FE4)`; in-memory repositories `Planned (B0)` | B0, FE4 |
+| Normal flow | `Planned (FE4)` | FE4 |
+| Slow network | `Deferred`: simulated latency is a demo specific (ADR-010 point 6) | FE4 |
+| API failure | `Deferred`: scripted failures are a demo specific (ADR-010 point 6) | FE4 |
+| Realtime disconnect and reconnect | `Deferred`: scripted failures are a demo specific (ADR-010 point 6); the real-mode reconnect behavior is `Planned (FE3)` | FE4 |
+| Background job failure and timeout | `Planned (FE4)`: injectable failures in the in-process CSV import (ADR-008 point 13) | FE4 |
+| Empty state | `Planned (FE4)` | FE4 |
+| Simulation pause | `Planned (FE4)`; the engine `Planned (B5)` | B5, FE4 |
+| Forbidden, validation error | `Planned (FE4)`: the Viewer role is refused mutations by the same permission checks, and validation comes from the shared use cases | FE4 |
+| Reset | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
+| Persistence | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
+| Determinism of the shared simulation engine | `Planned (B5)` | B5 |
+
+Code vs ADR:
+
+- Ten scenarios are required by the original text, and six of them (slow network, API failure, realtime disconnect, realtime reconnect, reset and persistence) depend on decisions that ADR-010 point 6 defers to the frontend-stage ADR. The coherence check after each scenario applies only to the scenarios that exist.
+- `10-testing-strategy.md` §63 and §17 of this document list the same split.
+- The demo runs the same use cases as the real application (ADR-001), so a validation or authorization scenario is real behavior and not a scripted one.
+
+Original text:
 
 Demo Mode must be tested independently from real infrastructure.
 
@@ -1906,6 +2195,26 @@ The demo must remain coherent after each scenario.
 ---
 
 ## 36. Observability Validation Strategy
+
+**Status:** per item (table below); the validation depends on B3, B4 and B5, so it closes with B5
+
+**Owning blocks:** Backend: B3 (request and database paths), B4 (job path), B5 (realtime path). Frontend: none in version 1. Decisions: ADR-009 points 5, 9, 11 and 13; spec in `13-observability-spec.md`.
+
+| Scenario | Status | Block |
+| --- | --- | --- |
+| Request problem: request ID, structured log, error | `X-Request-ID` and the error body `Implemented`; propagation to every log line and the log of handled errors `Planned (B3)` | B3 |
+| Database problem: health and readiness, dependency error, diagnostic log | Endpoints and the `health.database.unavailable` line `Implemented`; mapping to `DEPENDENCY_ERROR` `Planned (B0)`; shutdown readiness `Planned (B3)` | B0, B3 |
+| Realtime problem: connection ID, lifecycle event, reconnect | `Planned (B5)` (ADR-009 points 5 and 11) | B5 |
+| Background problem: job ID, progress, failure or timeout | `Planned (B4)` | B4 |
+| Tests that prove the paths: redaction and event-name unit tests, and an integration test that the `requestId` appears in its log entries | `Planned (B3)` | B3 |
+
+Code vs ADR:
+
+- Today the request ID header and the error body exist, but the API logs with `console`, only unexpected errors produce a line, and the request ID is not on any log line (§18). The acceptance of this section therefore cannot be shown before B3.
+- A developer follows each path with `LOG_LEVEL=debug` and `pino-pretty` locally; no external monitoring service is involved (ADR-009 point 2).
+- The server sees a client reconnect as a new connection with a new `connectionId`. Whether the log links it to the earlier connection is not decided in ADR-009.
+
+Original text:
 
 Verify that developers can identify:
 
@@ -1944,6 +2253,31 @@ job ID
 ---
 
 ## 37. Deployment Validation Strategy
+
+**Status:** per item (table below); the scope is the local full stack, because there is no hosted target (ADR-006 points 1 and 2)
+
+**Owning blocks:** Backend: B0 (CI), B7 (production build, `full` profile, smoke test); Frontend: FE4 (demo build). Decisions: ADR-006 points 3, 4, 5, 10, 11 and 13; spec in `14-deployment-spec.md`.
+
+| Step | Status | Block |
+| --- | --- | --- |
+| Checkout and install with the lockfile, in CI on a clean runner | `Planned (B0)` | B0 |
+| Build: `pnpm build` compiles every package; running the built API is a separate step | Compile in CI `Planned (B0)`; `node dist/index.js` `Planned (B7)` | B0, B7 |
+| Database: PostgreSQL through Docker Compose | `Implemented` (default profile); `full` profile `Planned (B7)` | B7 |
+| Migrate: `prisma migrate deploy` through the one-shot `migrate` service | `Planned (B7)` | B7 |
+| Seed: an explicit development command, never automatic, refusing to run when `NODE_ENV=production` | Command `Implemented`; production guard `Planned (B0)` | B0 |
+| Start: API container with `node dist/index.js` | `Planned (B7)` | B7 |
+| Health: container healthcheck on `GET /health/ready` | Endpoint `Implemented`; healthcheck `Planned (B7)` | B7 |
+| Smoke: one script after `docker compose --profile full up`, with no frontend step | `Planned (B7)` | B7 |
+| Demo build from a clean checkout (static, no secrets) | `Planned (FE4)` | FE4 |
+| No hidden developer-machine state: one `.nvmrc`, environment values supplied through the CI job `env` and not generated | `Planned (B0)` | B0 |
+
+Code vs ADR:
+
+- The original sequence is kept, with two changes. CI covers checkout to build (and the test suites) from B0; the full sequence through smoke runs on the local stack from B7. The deployment is local only, so there is no "deploy" step.
+- The seed and the smoke test pull in opposite directions: ADR-006 point 5 says the seed never runs automatically, and point 13 says it refuses to run when `NODE_ENV=production`, while the `full` profile is a production-like run that the smoke test logs in to. How the stack obtains its data for the smoke test is not decided in the ADRs.
+- Today the clean-checkout path is not proven: there is no CI, no `.nvmrc`, no `Dockerfile` and no `full` profile (§19).
+
+Original text:
 
 Test from a clean environment:
 
