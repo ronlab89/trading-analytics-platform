@@ -3,7 +3,7 @@
 **Project:** Trading Analytics Platform  
 **Document:** Implementation Plan  
 **Version:** 1.0  
-**Status:** Backend-first override added and §1-37 reconciled with the ADRs and the code on 2026-10-08; §38-end are reconciled in later slices  
+**Status:** Backend-first override added and §1-51 reconciled with the ADRs and the code on 2026-10-08; §52-end are reconciled in later slices  
 **Previous document:** `14-deployment-spec.md`
 
 ---
@@ -2307,6 +2307,38 @@ The system should not depend on hidden developer-machine state.
 
 ## 38. Git Workflow
 
+**Status:** per item (table below); the written rules live in `CONTRIBUTING.md` and the practice is partly enforced
+
+**Owning blocks:** Backend: B0 (CI gate), B7 (final repository check); Frontend: none. Decisions: ADR-006 points 10 and 11 (minimal CI); `CONTRIBUTING.md` for the branching and commit rules.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Branches `feat/*`, `fix/*`, `docs/*` and `chore/*` opened from `develop`, one pull request each, base `develop` (`CONTRIBUTING.md` §1 and §7) | `Implemented` (13 pull requests merged so far) | none |
+| `develop` to `main` only when a milestone closes, by merge commit (`CONTRIBUTING.md` §3 and §4) | `Reference`; nothing here is built from it | none |
+| Conventional Commits in the form `type(scope): description` (`CONTRIBUTING.md` §6) | `Implemented` as practice: 238 of 257 commit subjects follow it; the other 19 are 13 pull request merge commits and 6 `style(...)` commits | none |
+| Commit message check (for example a `commit-msg` hook or `commitlint`) | Not present: `.husky/` holds only the `pre-commit` hook. No ADR decides one | none |
+| Husky `pre-commit` running `lint-staged` (ESLint and Prettier on staged files) | `Implemented` | none |
+| Pull request template with summary, type, related specification, verification and checklist (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist lists `pnpm typecheck` and `pnpm lint` only, so `pnpm format:check`, `pnpm build` and `pnpm docs:check` (ADR-006 point 11) are `Planned (B0)` | B0 |
+| Minimal CI: one GitHub Actions workflow on pushes and pull requests to `develop` and `main`, with lockfile install, typecheck, lint, format check, build, `pnpm docs:check` and the domain, database and API test suites (ADR-006 points 10 and 11) | `Planned (B0)`; `.github/` holds no workflow today | B0 |
+| Branch protection requiring CI green before a merge into `develop` or `main` (`CONTRIBUTING.md` §2) | `Planned (B0)` for the CI half; the protection rules are GitHub settings and cannot be verified from the repository | B0 |
+| `CONTRIBUTING.md` wording: CI "once implemented per `docs/04-tech-stack.md` §41", no local setup steps, no troubleshooting | `Planned (B0)`; ADR-006 lists "CI gate wording, local gate commands" among the documents to align; the file is edited in a later documentation task, not here | B0 |
+
+Code vs ADR:
+
+- The recommended prefixes below are the original list. `CONTRIBUTING.md` §6 extends it with `build` and `ci`, requires a scope, and states the description rules; the examples below have no scope and are kept as the original text.
+- `CONTRIBUTING.md` §4 says `docs/*` and the other topic branches are squash-merged into `develop`, but the history shows merge commits ("Merge pull request #13 from ronlab89/docs/sdd-contracts") and the branch commits kept. Which of the two is intended is not settled.
+- `style(...)` appears in 6 commits and is in neither list.
+- `CONTRIBUTING.md` §3 cites milestones in §52 to §59 of this document; those sections exist.
+- `CONTRIBUTING.md` §8 describes `docs/00` to `docs/15` and a `PROGRESS.md` "at the repository root"; the set is now `00` to `16` plus `adr/`, and the file is `docs/PROGRESS.md`.
+
+Pending decisions:
+
+- Whether the squash-merge rule of `CONTRIBUTING.md` §4 or the merge commits seen in the history are the intended practice.
+- Whether `style` becomes an accepted commit type or its use stops.
+- Whether a commit message check is added to the hooks or to CI.
+
+Original text:
+
 Use small, coherent commits.
 
 Recommended prefixes:
@@ -2336,6 +2368,31 @@ Avoid enormous commits containing unrelated systems.
 
 ## 39. Feature Completion
 
+**Status:** `Reference` as a rule; the table below says where each dimension is delivered under the backend-first order (§4.1)
+
+**Owning blocks:** Backend: B0 to B7, per dimension; Frontend: FE0 to FE5 for the UI dimensions. Decisions: ADR-001 point 7 (application services tested with in-memory fakes), ADR-002 point 6 (contract tests), ADR-006 point 11 (no coverage threshold), `docs/README.md` (maintenance rule).
+
+| Dimension | Where it is delivered | Status |
+| --- | --- | --- |
+| Domain | `packages/domain`; analytics additions in B1 | `Implemented`; `Planned (B1)` |
+| API | Endpoints in each backend block; OpenAPI document in B6 | `Implemented` in part; `Planned (B6)` |
+| Persistence | `packages/database` (Prisma); `Job` and `IdempotencyKey` models in B4 | `Implemented`; `Planned (B4)` |
+| UI | Frontend blocks FE1 to FE4 | `Planned (FE1)` |
+| Validation | Zod at the API, domain invariants; route parameters and chronological validation in B0 | `Implemented` in part; `Planned (B0)` |
+| Error states | Backend categories in §30; screens in FE1 to FE3 | `Implemented` in part; `Planned (FE1)` |
+| Loading states | Frontend only | `Planned (FE1)` |
+| Authorization | Ownership checks now; permissions in B0; roles in B2 | `Implemented` in part; `Planned (B0)`; `Planned (B2)` |
+| Tests | Mandatory tests named in ADR-001 point 7 and ADR-002 point 6, in the block that builds the behavior; frontend checks in FE5 | `Implemented` for domain, database and API; `Planned (B0)`; `Planned (FE5)` |
+| Observability | B3 for logs, B4 and B5 for their paths | `Planned (B3)` |
+| Documentation | Updated in the same pull request as the change (`docs/README.md`, maintenance rule); checked by `pnpm docs:check` | `Implemented` |
+
+Code vs ADR:
+
+- Under the backend-first order a backend block has no UI, loading state or screen error state, so those dimensions are omitted on purpose until the frontend stage. This table is where the omission is recorded; a feature is complete when it passes the dimensions that apply to the stage that builds it and the frontend dimensions are closed in the matching FE block.
+- Tests are judged by the named mandatory tests, not by a percentage: version 1 sets no coverage threshold (ADR-006 point 11).
+
+Original text:
+
 A feature is not complete when its UI exists.
 
 When applicable, completion should include:
@@ -2360,6 +2417,34 @@ Omissions must be intentional.
 
 ## 40. Technical Completion
 
+**Status:** per item (table below); the backend half closes with B7 and the frontend half with FE5
+
+**Owning blocks:** Backend: B0 to B7; Frontend: FE0 to FE5. Decisions: ADR-001, ADR-002, ADR-004 to ADR-009, ADR-006 point 11; the backend definition of done is in `BACKEND-ROADMAP.md` §2 and §4.1 of this document.
+
+| Criterion | Status | Block |
+| --- | --- | --- |
+| Core domain is implemented | `Implemented` (`packages/domain`); portfolio performance and risk `Planned (B1)` | B1 |
+| Backend is functional | `Planned (B7)`: the backend counts as done when B1 to B7 are closed (§4.1) | B7 |
+| Frontend is functional | `Planned (FE5)`: `apps/web` holds only a wireframe | FE5 |
+| Authentication works | Login and `me` `Implemented`; refresh and logout `Planned (B2)` | B2 |
+| RBAC works | `Planned (B2)`; the permission mechanism `Planned (B0)` (ADR-005) | B0, B2 |
+| PostgreSQL persists data | `Implemented` | none |
+| REST API works | `Implemented` in part; the remaining endpoints in B1, B2 and B4; the OpenAPI document `Planned (B6)` | B1, B2, B4, B6 |
+| WebSockets work | Server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
+| Background operations work | `Planned (B4)` (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
+| Demo Mode works | `Planned (FE4)`; needs B0 (in-memory repositories) and B5 (simulation engine) | FE4 |
+| Tests cover primary flows | Domain, database and API route tests `Implemented`; mandatory application and contract tests `Planned (B0)`; component, E2E and accessibility checks `Planned (FE5)`; no coverage percentage is set (ADR-006 point 11) | B0, FE5 |
+| Observability is available | `Planned (B3)`; metrics `Deferred` (ADR-009 point 10) | B3 |
+| Deployment is reproducible | CI from a clean checkout `Planned (B0)`; production build, `full` profile and smoke test `Planned (B7)`; hosted deployment `Deferred` (ADR-006 point 2) | B0, B7 |
+| Documentation is sufficient | `Planned (FE6)` for the case study; the SDD set is kept aligned by `pnpm docs:check` and the maintenance rule of `docs/README.md` | FE6 |
+
+Code vs ADR:
+
+- "Deployment is reproducible" means the local full stack and the static demo build (ADR-006 point 1), because there is no hosted target.
+- The line "Frontend is functional" is not required for the backend to count as done; it is reached only when the frontend stage closes.
+
+Original text:
+
 The project is technically complete when:
 
 - core domain is implemented
@@ -2380,6 +2465,29 @@ The project is technically complete when:
 ---
 
 ## 41. Product Completion
+
+**Status:** per item (table below); the API half of several steps exists, and no step is reachable by a user until the frontend stage builds the screens
+
+**Owning blocks:** Backend: B0 to B5; Frontend: FE1 to FE3. Decisions: ADR-003 (holdings-only portfolio, points 6 and 7), ADR-004 (analytics), ADR-010 points 1, 5 and 10, ADR-007, ADR-008.
+
+| Step | Status | Block |
+| --- | --- | --- |
+| Sign in | Login `Implemented` in the API; screens `Planned (FE1)` | FE1 |
+| View dashboard | Overview endpoint `Implemented`; `performance` field and the What Changed read model `Planned (B1)` (ADR-010 point 1); views `Planned (FE2)` | B1, FE2 |
+| Manage portfolio | Endpoints `Implemented`; archived portfolios read-only (409 `CONFLICT`) `Planned (B0)` (ADR-010 point 5); screens `Planned (FE1)` | B0, FE1 |
+| Inspect positions | Endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
+| Record transactions | `BUY` and `SELL` only, no cash balance (ADR-003 points 1 and 2); chronological validation `Planned (B0)` (ADR-003 point 6); a transaction cannot be edited or deleted, no such endpoint (ADR-003 point 7); the form `Planned (FE1)` | B0, FE1 |
+| Review analytics | Allocation and attribution `Implemented`; performance and risk `Planned (B1)`; views `Planned (FE2)`; win/loss and transaction statistics are not in version 1 (ADR-010 point 10) | B1, FE2 |
+| Experience realtime updates | `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
+| Receive operation feedback | Job progress and notifications `Planned (B4)`; screens `Planned (FE3)` | B4, FE3 |
+| Coherent loading, empty, success and failure states | API empty results and error envelope `Implemented`; UI states `Planned (FE1)` | FE1 |
+
+Code vs ADR:
+
+- The flow is kept as written, with two limits from the ADRs: the portfolio is a set of holdings without cash, and records cannot be edited after creation, so "record transactions" does not include corrections.
+- Benchmark comparison and the allocation-change events of What Changed are `Deferred` (ADR-010 points 1 and 7), so "review analytics" does not include them.
+
+Original text:
 
 The product is product-complete when a user can:
 
@@ -2407,6 +2515,29 @@ with coherent loading, empty, success, and failure states.
 
 ## 42. Portfolio Completion
 
+**Status:** per item (table below); it closes last, in FE6, after the demo and the quality work
+
+**Owning blocks:** Backend: none; Frontend: FE4 (demo), FE5 (quality evidence), FE6 (case study). Decisions: ADR-006 points 1 and 7 (the public demo is a static build under a subpath of the author's site; the backend runs locally only), ADR-010 point 6 (demo hosting decided in the frontend-stage ADR).
+
+| Reviewer capability | Status | Block |
+| --- | --- | --- |
+| 1 Understand the problem quickly | `Planned (FE6)`; the product text exists in `01-product-spec.md` | FE6 |
+| 2 Enter the functional demo | `Planned (FE4)`; where it is hosted is `Deferred` to the frontend-stage ADR | FE4 |
+| 3 Understand the product | `Planned (FE6)` | FE6 |
+| 4 Inspect the architecture | The ADRs and SDD set exist; the case study `Planned (FE6)` | FE6 |
+| 5 Inspect the repository | Public layout with `README.md` and `CONTRIBUTING.md`; both need the updates listed in §49 and §50 (`Planned`) | FE6 |
+| 6 Understand key engineering decisions | `Implemented`: ten ADRs in `docs/adr/`; the review of §44 `Planned (FE6)` | FE6 |
+| 7 Verify meaningful implementation | `Implemented` in part; completes with B7 and FE5 | FE5 |
+| 8 Understand tradeoffs | ADR "Alternatives Considered" sections `Implemented`; case study `Planned (FE6)` | FE6 |
+| 9 See testing and quality practices | Tests `Implemented` in part; CI `Planned (B0)`; frontend checks `Planned (FE5)` | B0, FE5 |
+| 10 Understand how the system could evolve | `Planned (FE6)`; the boundaries are listed in §46 | FE6 |
+
+Code vs ADR:
+
+- Because the backend is not hosted, a reviewer sees the real stack only on the author's machine or in a recording; the public experience is the demo (ADR-006 consequences). Whether a recording or screenshots accompany the case study is not decided in any ADR.
+
+Original text:
+
 The portfolio project is complete when a reviewer can:
 
 1. understand the problem quickly
@@ -2423,6 +2554,31 @@ The portfolio project is complete when a reviewer can:
 ---
 
 ## 43. Technical Interview Readiness
+
+**Status:** `Planned (FE6)`; the explanations are written with the case study, after the decisions they defend are built and measured
+
+**Owning blocks:** Backend: B0 to B7 supply the evidence; Frontend: FE6 (writing). Decisions: the ADRs named in the table.
+
+| Topic | Source of the answer | Status |
+| --- | --- | --- |
+| Architecture: why feature/domain-oriented | ADR-001 (application layer as a shared, injectable package) and `06-architecture.md` | Answer sources `Implemented`; layering in code `Planned (B0)` |
+| Database: why PostgreSQL | `04-tech-stack.md`; the code uses PostgreSQL through Prisma | `Implemented` |
+| API: why REST and where contracts are enforced | ADR-002 (`@trading/contracts`, explicit wire format) | `Planned (B0)`; OpenAPI `Planned (B6)` |
+| State: why TanStack Query and Zustand | No ADR decides them; `Deferred` to the frontend-stage ADR (§28) | `Deferred` |
+| Tables: why TanStack Table | No ADR decides it (§25 to §28); `Deferred` to the frontend-stage ADR | `Deferred` |
+| Realtime: why WebSockets | ADR-007 | `Planned (B5)` |
+| Demo: why mock adapters instead of a static prototype | ADR-001 and ADR-006 point 7: the demo runs the same application layer in process over in-memory repositories | `Planned (FE4)` |
+| Authentication: why JWT and RBAC | ADR-005 (15-minute JWT, roles and permissions) | Login `Implemented`; roles `Planned (B2)` |
+| Deployment: why Docker and a simple topology | ADR-006 (two targets, no public backend) | Compose default profile `Implemented`; `full` profile `Planned (B7)` |
+| Testing: why multiple test layers | ADR-001 point 7, ADR-002 point 6, ADR-006 point 11 | Layers in part `Implemented`; frontend layers `Planned (FE5)` |
+| Scalability: what changes when the system grows | §46 | `Planned (FE6)` |
+
+Code vs ADR:
+
+- Answers must describe what was built and measured, not what was planned. A topic whose block is not closed is not ready to be presented.
+- "Mock adapters" is a mismatch in wording: the demo does not mock the use cases, it replaces the infrastructure adapters under them (ADR-001).
+
+Original text:
 
 Prepare concise explanations for:
 
@@ -2474,6 +2630,28 @@ What changes when the system grows?
 
 ## 44. Architecture Decision Review
 
+**Status:** per item (table below); ten ADRs exist and use a shape close to the one asked for here, and the final review happens in FE6
+
+**Owning blocks:** Backend: none; Frontend: FE6. Decisions: `docs/adr/README.md` (ADR format, status values, amendment rule) and `docs/adr/template.md`.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Template fields: Context, Decision, Consequences, Alternatives Considered, Deferred detail, Related (enforced by `pnpm docs:check`) | `Implemented` | none |
+| ADRs for application layer, contracts, holdings-only portfolio, analytics, roles and authentication, deployment and CI, realtime, background jobs, observability and v1 scope | `Implemented` (ADR-001 to ADR-010) | none |
+| ADRs for the candidate decisions that are not decided yet: TanStack Query, Zustand, TanStack Table, the form library | `Deferred` to the frontend-stage ADR | FE0 |
+| Review of the decisions with Evidence and Future evolution before the case study is published | `Planned (FE6)` | FE6 |
+
+Code vs ADR:
+
+- Mapping of the seven review headings to the ADR sections: Problem to Context, Decision to Decision, Alternatives to Alternatives Considered, Reason and Tradeoffs to Consequences, Future evolution to Deferred detail and the `Deferred` markers. Evidence has no section in the template.
+- The candidate list below is partly stale: Docker, JWT, RBAC, PostgreSQL, REST, WebSockets and the demo adapters are covered by ADRs; Zustand, TanStack Query and TanStack Table are not decided.
+
+Pending decisions:
+
+- Whether the ADR template gets an Evidence section, or evidence is gathered only in the case study. This changes the template and `pnpm docs:check`, so it is not decided here.
+
+Original text:
+
 Before final case-study publication, review major decisions using:
 
 ```text
@@ -2503,6 +2681,26 @@ Candidate decisions include:
 
 ## 45. Avoiding Overengineering
 
+**Status:** `Reference`; the ADRs already apply the rule, and the table records where
+
+**Owning blocks:** Backend: B0 to B7 (each block); Frontend: FE0 to FE5. Decisions: ADR-006 point 2, ADR-007 (no broker), ADR-008 point 4 (no queue, no worker process), ADR-009 point 10, ADR-003 point 5, ADR-010 point 7.
+
+| Technology or pattern | Position in the documents | Status |
+| --- | --- | --- |
+| Kubernetes, service mesh, complex cloud orchestration | Out of scope: two targets only, no public backend (ADR-006 points 1 and 2) | `Deferred` |
+| Microservices | A single API process; jobs and realtime run in the same process (ADR-007, ADR-008 point 4) | `Deferred` |
+| Kafka, Redis, external queue or broker | No broker for realtime (ADR-007) and no external queue for jobs (ADR-008 point 4; the alternative with Redis was rejected) | `Deferred` |
+| GraphQL | REST is the API style; no ADR proposes GraphQL | `Deferred` |
+| Event sourcing | Transactions are an immutable ledger of holdings (ADR-003 point 7), not an event-sourced store | `Deferred` |
+| CQRS | Not adopted. The What Changed "application read model" (ADR-010 point 1) is a read function in the application layer and not a separate read store | `Deferred` |
+| Metrics stack | `Deferred` (ADR-009 point 10) | `Deferred` |
+
+Code vs ADR:
+
+- Introducing any listed item requires a new ADR that states the real requirement discovered during implementation (`docs/adr/README.md`), which is how "unless implementation discovers a real requirement" is applied.
+
+Original text:
+
 Do not introduce technologies only because they appear in modern stacks.
 
 Avoid premature introduction of:
@@ -2524,6 +2722,24 @@ The project should demonstrate engineering judgment by knowing what **not** to b
 ---
 
 ## 46. Scalability Demonstration
+
+**Status:** per item (table below); the repository boundary exists, the others are built in their blocks
+
+**Owning blocks:** Backend: B0 (repository ports, in-memory repositories), B3 (`Logger` port), B4 (job runner), B5 (realtime hub); Frontend: none. Decisions: ADR-001, ADR-007 (hub behind its own interface, no broker), ADR-008 point 4, ADR-009 point 1.
+
+| Boundary | What it allows later | Status | Block |
+| --- | --- | --- | --- |
+| Repository interface | Database replacement; the demo already uses it with in-memory repositories (ADR-001) | Repositories over Prisma `Implemented`; in-memory implementations `Planned (B0)` | B0 |
+| Realtime hub behind its own interface | A shared broker later (ADR-007 deferred detail: the hub is not tied to the transport or to a broker) | `Planned (B5)` | B5 |
+| Job runner behind an interface, state in a `jobs` table | A dedicated worker later (ADR-008 point 4 puts the runner in process today) | `Planned (B4)` | B4 |
+| Infrastructure ports such as `Logger` | An external provider later | `Planned (B3)` | B3 |
+
+Code vs ADR:
+
+- Each row is a boundary, not a claim of capacity. No number of users, requests or connections is stated anywhere in this plan, and none is to be claimed without a measurement (§32).
+- The ADRs do not state that the job runner is behind its own interface; the row follows the original text and ADR-008's description of the runner as in process with state in PostgreSQL.
+
+Original text:
 
 Scalability should be demonstrated through boundaries.
 
@@ -2549,6 +2765,26 @@ This is stronger than claiming that the initial system is infinitely scalable.
 
 ## 47. Performance Demonstration
 
+**Status:** per item (table below); the method is `Reference` and no measurement has been taken yet (§32)
+
+**Owning blocks:** Backend: B1 (data fetching for analytics), B5 (bounded realtime history), B7 (measurement of the local stack); Frontend: FE2, FE3 (renders), FE5 (measurement and refinement). Decisions: ADR-007 (limits and bounded history), ADR-010 point 4 (client-side sorting only for fully loaded lists).
+
+| Evidence | Status | Block |
+| --- | --- | --- |
+| Measurement and profiling before any claim | `Planned (FE5)` for the frontend; `Planned (B7)` for the API; nothing measured today | B7, FE5 |
+| Efficient data fetching | Not assessed | B1 |
+| Pagination | `Implemented` for assets and transactions (`apps/api/src/schemas/pagination.schema.ts`); other lists are returned in full and sorted in the client (ADR-010 point 4) | none |
+| Caching where justified | `Deferred` until a measured bottleneck | none |
+| Bounded realtime history | `Planned (B5)` | B5 |
+| Controlled renders | `Planned (FE3)` | FE3 |
+| Appropriate payload sizes | JSON body limit of 100 kB `Implemented`; response sizes not measured | B7 |
+
+Code vs ADR:
+
+- No performance figure is quoted in any document, and none is to be added without a recorded measurement (§3 rule 2, §32).
+
+Original text:
+
 Performance should be demonstrated through:
 
 - measurement
@@ -2565,6 +2801,27 @@ Optimize observed bottlenecks, not hypothetical ones.
 ---
 
 ## 48. Security Demonstration
+
+**Status:** per item (table below); it reuses the review of §33, so the evidence is complete only when the blocks named there close
+
+**Owning blocks:** Backend: B0, B2, B3, B4, B5, B7 as in §33; Frontend: FE0 and FE1 (client side). Decisions: ADR-005, ADR-006 points 10 and 13, ADR-007, ADR-008 point 10, ADR-009.
+
+| Evidence | Status | Block |
+| --- | --- | --- |
+| JWT | Login issues the token `Implemented`; refresh and logout `Planned (B2)` | B2 |
+| RBAC | `Planned (B2)`; permission mechanism `Planned (B0)` | B0, B2 |
+| Validation | Body, query and headers `Implemented`; route parameters `Planned (B0)` | B0 |
+| CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Planned (B0)` | B0 |
+| Rate limits | HTTP `Implemented`; realtime `Planned (B5)` | B5 |
+| Resource limits | Body limit `Implemented`; CSV and WebSocket limits `Planned (B4)` and `Planned (B5)` | B4, B5 |
+| Secret management | Environment separation `Implemented`; seed and reset production guard `Planned (B0)` | B0 |
+| Safe errors | `Implemented`; redaction in logs `Planned (B3)` | B3 |
+
+Code vs ADR:
+
+- The closing rule of the original text is kept: an item is presented as complete only when it is `Implemented` and has a test that shows it. The security tests are listed in `09-security-spec.md` §55.
+
+Original text:
 
 Security should be visible through implementation evidence:
 
@@ -2584,6 +2841,30 @@ Do not present security features as complete until they have actually been imple
 ---
 
 ## 49. Developer Experience
+
+**Status:** per item (table below); the commands exist, the documentation of them is incomplete
+
+**Owning blocks:** Backend: B0 (CI, `.nvmrc`, production guard), B3 (`LOG_LEVEL`), B7 (`full` profile); Frontend: FE0 (web app commands). Decisions: ADR-006 points 4, 5, 8, 10, 11 and 13; ADR-009 (`LOG_LEVEL`).
+
+| Step or document | Status | Block |
+| --- | --- | --- |
+| Clone and install: `pnpm install` (`packageManager` is `pnpm@12.3.4`; `engines.node` is `>=22.0.0`) | `Implemented`; a single `.nvmrc` as the version source `Planned (B0)` (ADR-006 point 13) | B0 |
+| Configure: `.env.example` and `.env.test.example` copied to local, gitignored files | `Implemented`; `CORS_ORIGIN` validation `Planned (B0)` | B0 |
+| Docker Compose for PostgreSQL (default profile) | `Implemented`; `full` profile with API and `migrate` `Planned (B7)` | B7 |
+| Migrate and seed: `pnpm --filter @trading/database db:seed` and `db:reset` | `Implemented`; refusal when `NODE_ENV=production` `Planned (B0)` | B0 |
+| Run the API | `Implemented` as a development command; the production start `node dist/index.js` `Planned (B7)` | B7 |
+| Quality commands: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build`, `pnpm docs:check` | `Implemented`; all of them in CI `Planned (B0)` | B0 |
+| `README.md`: prerequisites, commands, environment variables, database reset, tests | Database reset and setup `Implemented`; the status section is stale (it says Phase 2 is the latest and the API "not started yet") and the file has no steps to start the API, check `GET /health/ready`, set `LOG_LEVEL`, or run tests and `pnpm docs:check`: `Planned` in a later documentation task (slice H) | none |
+| `CONTRIBUTING.md`: setup, CI wording, troubleshooting | Branching, commits and pull requests `Implemented`; setup, CI wording and troubleshooting `Planned` in a later documentation task (slice I) | none |
+| Build and deployment documentation | `Planned (B7)` | B7 |
+| Troubleshooting | `Planned (B7)` | B7 |
+
+Code vs ADR:
+
+- The flow below is kept. The "run" step covers the API in development until B7 adds the production-like run; the web app is added in FE0 (it runs on the Vite dev server in real mode, ADR-006 point 8).
+- Backups are not applicable to the local environment and are documented as such, not claimed (ADR-006 point 9).
+
+Original text:
 
 The repository should aim for:
 
@@ -2618,6 +2899,36 @@ Documentation should cover:
 
 ## 50. Documentation Strategy
 
+**Status:** per item (table below); the specification side is `Implemented` and the repository entry points are being aligned
+
+**Owning blocks:** Backend: B6 (API documentation), B7 (deployment and troubleshooting); Frontend: FE6 (case study). Decisions: `docs/README.md` (document map, precedence, status legend, maintenance rule), ADR-002 (OpenAPI generated from the shared schemas, B6).
+
+| Category | Where it lives | Status | Block |
+| --- | --- | --- | --- |
+| README | `README.md` | Stale status and missing steps; `Planned` in a later documentation task (slice H) | none |
+| Architecture | `docs/06-architecture.md` and `docs/adr/` | `Implemented` | none |
+| API | `docs/07-api-spec.md`; OpenAPI document | Spec `Implemented`; generated document `Planned (B6)` | B6 |
+| Development | `CONTRIBUTING.md` | Gaps listed in §38 and §49; `Planned` in a later documentation task (slice I) | none |
+| Testing | `docs/10-testing-strategy.md` | `Implemented` | none |
+| Demo | `docs/12-demo-mode-spec.md` | `Implemented`; the demo specifics are `Deferred` to the frontend-stage ADR | FE4 |
+| Deployment | `docs/14-deployment-spec.md` | Spec `Implemented`; run instructions `Planned (B7)` | B7 |
+| Troubleshooting | None yet | `Planned (B7)` | B7 |
+| Case Study | Not written | `Planned (FE6)` | FE6 |
+
+Rules in force:
+
+- Precedence when two sources disagree: ADR, then SDD (`00` to `16`), then `BACKEND-ROADMAP.md`, then `PROGRESS.md` (`docs/README.md`). Code is evidence of what exists, not authority.
+- A change that diverges from a document updates that document in the same pull request.
+- `pnpm docs:check` verifies that `NN-*.md` and `adr/NNNN-*.md` references resolve, that code fences carry only a language, that each `NN-*.md` starts with `# SDD NN — Title`, and that each ADR has its required sections. It joins CI in B0 (ADR-006 point 11).
+- Every spec section carries one status from the legend in `docs/README.md`; the original text is kept under an "Original text" label when a section is reconciled.
+
+Code vs ADR:
+
+- The original text says implementation details override the SDDs. The documented precedence is different: an accepted ADR wins over an SDD, and code does not override either; a divergence becomes a correction of the SDD or a new ADR (§51).
+- `BACKEND-ROADMAP.md` and `PROGRESS.md` are working documents, not categories of this list; both are updated in the documentation tasks that follow this reconciliation.
+
+Original text:
+
 Maintain documentation during implementation.
 
 Recommended categories:
@@ -2641,6 +2952,26 @@ Meaningful deviations should be documented.
 ---
 
 ## 51. SDD Change Management
+
+**Status:** `Implemented` as a practice; the sequence below is kept and made concrete by `docs/adr/README.md`
+
+**Owning blocks:** Backend and Frontend: every block, through the maintenance rule of `docs/README.md`. Decisions: `docs/adr/README.md` (adding and amending an ADR), `docs/adr/template.md`.
+
+| Case | What to do | Status |
+| --- | --- | --- |
+| A document is out of date and no decision changes | Correct the document in the same pull request as the change (`docs/README.md`, maintenance rule) | `Implemented` |
+| A new open decision | Close it in a new ADR before the code depends on it: copy `docs/adr/template.md` to `NNNN-short-kebab-title.md`, fill every section, apply the failure-mode checklist, add a row to the index, run `pnpm docs:check` | `Implemented` |
+| A point of an accepted ADR needs correcting | Edit the point and add an italic, dated correction note under it; ADR-003 point 6 and ADR-006 (the "Amended" header line and point annotations) are examples | `Implemented` |
+| A decision is reversed | A new ADR that supersedes the old one, whose status becomes `Superseded` with a `**Superseded by:**` line (no ADR is superseded yet; ADR-006 records that it supersedes a `PROGRESS.md` decision) | `Implemented` |
+| A change that the user must approve | Recorded in the ADR with the wording "approved by the user" and the date, as in ADR-006 points 4, 5, 7, 8 and 11 to 13 | `Implemented` |
+| Check that a document is aligned | `pnpm docs:check` for structure; alignment of content is done by the section-by-section reconciliation | `Implemented` for structure |
+
+Code vs ADR:
+
+- The original sequence (identify, evaluate, update the SDD, document the decision, implement) is kept. Its fourth step is split by the ADR practice: a decision that closes an open question or reverses an accepted one is an ADR before the code, and a correction of an SDD that follows an ADR needs no new ADR.
+- `docs/adr/README.md` states that when an SDD disagrees with an accepted ADR, the SDD is wrong and is corrected; the template has no Evidence field, and `pnpm docs:check` does not verify the content of a point or the correction note format.
+
+Original text:
 
 The SDDs describe the target architecture, but they are not immutable.
 
