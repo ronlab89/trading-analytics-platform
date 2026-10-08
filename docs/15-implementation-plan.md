@@ -115,7 +115,7 @@ The phase list in §4 was written as one sequence that alternates backend and fr
    - B7: deployment readiness and hardening (ADR-006).
 3. **Frontend stage**, in the blocks of §4.3: the web app first, then the public demo build (ADR-006 points 1 and 7).
 
-The frontend stage starts when the backend counts as done: blocks B1 to B7 are closed against their own "Done when", the verification loop passes, every deliberate divergence from the SDD is reflected in the SDD, `PROGRESS.md` is current, and the handoff artifacts for the demo exist (`BACKEND-ROADMAP.md` §2 and §6).
+The frontend stage starts when the backend counts as done: blocks B0 to B7 are closed against their own "Done when", the verification loop passes, every deliberate divergence from the SDD is reflected in the SDD, `PROGRESS.md` is current, and the handoff artifacts for the demo exist (`BACKEND-ROADMAP.md` §2 and §6).
 
 What the override changes and what it leaves alone:
 
@@ -571,7 +571,7 @@ Backend authorization check
 Code vs ADR:
 
 - The task list below names React, Tailwind CSS, shadcn/ui, TanStack Query, Zustand and React Hook Form. No ADR decides them, and `04-tech-stack.md` marks them `Deferred`. The list is kept as the original intent, not as a decision. Only Vite is decided (ADR-006 point 8).
-- This phase was written to follow Phase 4 so the frontend could start early. Under the backend-first override (§4.1) it starts after B1 to B7 are closed, and FE0 is its only block.
+- This phase was written to follow Phase 4 so the frontend could start early. Under the backend-first override (§4.1) it starts after B0 to B7 are closed, and FE0 is its only block.
 - FE0 builds on backend deliverables: the DTOs and schemas in `@trading/contracts` (B0) and the documented API contract (B6). The web build reads no secrets, and the demo bundle contains no HTTP adapter (ADR-006 points 7 and 8).
 - `lang="es"` in `apps/web/wireframe.html` contradicts ADR-010 point 8, which makes English the initial language; the wireframe is a visual reference, not production code.
 - The API's `CORS_ORIGIN` defaults to `http://localhost:5173`, the Vite dev server default. The real-mode web app runs on the Vite dev server against the local API (ADR-006 point 8). The API does not expose `X-Request-ID` through CORS, so a browser client cannot read it until B3 adds that.
@@ -2431,7 +2431,7 @@ Omissions must be intentional.
 | Criterion | Status | Block |
 | --- | --- | --- |
 | Core domain is implemented | `Implemented` (`packages/domain`); portfolio performance and risk `Planned (B1)` | B1 |
-| Backend is functional | `Planned (B7)`: the backend counts as done when B1 to B7 are closed (§4.1) | B7 |
+| Backend is functional | `Planned (B7)`: the backend counts as done when B0 to B7 are closed (§4.1) | B7 |
 | Frontend is functional | `Planned (FE5)`: `apps/web` holds only a wireframe | FE5 |
 | Authentication works | Login and `me` `Implemented`; refresh and logout `Planned (B2)` | B2 |
 | RBAC works | `Planned (B2)`; the permission mechanism `Planned (B0)` (ADR-005) | B0, B2 |
@@ -3102,7 +3102,7 @@ observable runtime
 
 Code vs ADR:
 
-- This milestone cannot start before the backend is done: the frontend stage begins after B1 to B7 close (§4.1). The milestone is therefore the first one in time that sits entirely after B7.
+- This milestone cannot start before the backend is done: the frontend stage begins after B0 to B7 close (§4.1). The milestone is therefore the first one in time that sits entirely after B7.
 - The milestone text lists no statistics. Win/loss and transaction statistics are not part of version 1 (ADR-010 point 10), so the dashboard and analytics items must not be extended with them. Benchmark comparison is also out (ADR-010 point 7).
 - Decided 2026-10-08: the "primary user workflow" in real mode is: log in, create a portfolio, record a transaction, and view the resulting position and analytics (the flow §41 describes). The milestone does not depend on the frontend-stage ADR for this definition.
 
