@@ -220,6 +220,8 @@ Product decisions that no ADR covers are asked to the user in batches.
 
 Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10-06). Order approved by the user: `13` → `14` → T5.2 (`15`, `CONTRIBUTING.md`, `README.md`) → T5.3 (`BACKEND-ROADMAP.md`, `PROGRESS.md`, collecting every "For T5.3" item) → `12` last (frontend-only). Route: one delegated writer per slice of 300-500 lines, one commit per slice. `13` is split into 5 slices: §1-12, §13-27, §28-42, §43-57, §58-end.
 
+    - Gate for B0 decided by the user 2026-10-08: `11` and `12` are frontend documents, reconciled in the frontend stage after the frontend-stage ADR, and are not part of the gate that lets B0 start (T5.1 `12` stays open until then). Header labels fixed: `01`, `03`, `08`, `09` now say all sections are reconciled (every section of `03` already had a status); `11` and `12` say they are reconciled in the frontend stage; `docs/README.md` says the same. The five unassigned `PROGRESS.md` §7 items applied as recommended: `dateFrom`/`dateTo` filter on `createdAt` in the contracts query schema (B0), `Scenario.baseSnapshotId` stays a nullable string with no behavior (parked, snapshots `Deferred`), log entry for skipped scenario `changes` (B3), `riskLevel` replay limitation and `NEUTRAL` P/L parked until FE2. Roadmap updated (B0 deferred-detail rows, B3 list, parked list). `15` §23 already annotates the "Mock infrastructure" wording, so no change.
+
 - [ ] T5.1 `12`, `13`, `14`
   - [x] `13` in 5 slices. A §1-12 `a414592` (`pnpm docs:check` and `pnpm lint` pass). Pending user decisions from A (batched at the end of `13`): `errorCategory` vs `errorName` (§7); extra B3 log fields (§7); log levels for `FORBIDDEN`, `RATE_LIMITED`, `DEPENDENCY_ERROR` (§6.2); B3 names of `request.failed` and `health.database.unavailable` (§8); scrub error messages or only named fields (§11); expose `X-Request-ID` through CORS (§9, FE).
     - B §13-27 `54ba55f`. Pending: block for graceful shutdown and 503 readiness while shutting down (§23; code has no SIGTERM handling); DB operation timing or Prisma query logging in dev (§21, §25); health route tests for NFR-051, maybe B0 with the ADR-001 point 8 route tests (§22). Found: NFR-051 is `Implemented` but no test covers `/health` or `/health/ready`.
@@ -307,7 +309,7 @@ Phase 4 PR merged into `develop`. Phase 5 started on `docs/sdd-operations`; `13`
 Resume with:
 
 1. `14` is closed (2026-10-07): slices A-E (last `533e02d`), the 19 decisions approved and applied (`5c52b49`, `a2cb8bc`, `7609566`). The user decides when to continue.
-2. Next: `12` (frontend-only, T5.1 leftovers: job examples and `retrying` lifecycle beyond ADR-008, in-process adapter wording), then Phase 6 verification (T6.1 `docs:check`, T6.2 independent read-only contradiction review with one correction round). The user says when to continue after each slice and decides when to stop.
+2. Next: T6.1 `docs:check` (passes), T6.2 independent read-only contradiction review of the backend docs with one correction round, then the RDD review of the branch against `develop`, `pr-body.md`, and the user's push and PR (base `develop`); then B0 starts. `11` and `12` wait for the frontend stage. The user says when to continue after each step and decides when to stop.
 3. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
 
 PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.

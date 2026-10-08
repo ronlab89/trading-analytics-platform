@@ -1,7 +1,7 @@
 # SDD 01 — Product Specification
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft; all sections reconciled with `02-functional-requirements.md` and the ADRs on 2026-10-05 (task T3.1)  
+**Status:** All sections reconciled with `02-functional-requirements.md` and the ADRs on 2026-10-05 (task T3.1)  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`
 

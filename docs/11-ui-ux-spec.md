@@ -1,7 +1,7 @@
 # SDD 11 — UI/UX Specification
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft  
+**Status:** Draft; reconciled in the frontend stage, after the frontend-stage ADR (not part of the B0 gate)  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`, `07-api-spec.md`, `08-realtime-spec.md`, `09-security-spec.md`, `10-testing-strategy.md`
 

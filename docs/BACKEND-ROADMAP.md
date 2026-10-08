@@ -225,6 +225,8 @@ validation in production; no server request timeout in version 1.
 | `scenario-impact.ts` builds the price factor as `Decimal(percentChange).div(100).plus(1)`; a test asserts an exact result for `-12.3` | ADR-002 |
 | Transactions with the same `executedAt` are ordered by `executedAt`, then creation order (row order for an import), with a test for a `BUY` and a `SELL` sharing a timestamp | ADR-003 |
 | Rate limits stay on in development; restarting the API clears the counters | ADR-006 |
+| `dateFrom` and `dateTo` on the decisions list filter on `createdAt`; the contracts query schema states it and a test covers it (decided 2026-10-08) | `PROGRESS.md` §7 |
+| `Scenario.baseSnapshotId` stays a nullable string with no behavior in the contracts, because snapshots are `Deferred` (decided 2026-10-08) | `05-data-model.md` §14 |
 
 **Done when:** the CI workflow is green on a clean checkout; the new route
 tests pass before and after the layering refactor with HTTP behavior
@@ -390,6 +392,8 @@ refresh flow).
   (points 7 and 8).
 - Security events `auth.login.succeeded`, `auth.login.failed`,
   `auth.refresh.reuse_detected` and `authz.denied` (point 9).
+- One log entry when a stored scenario `changes` entry is skipped by the defensive
+  read, so corruption can surface (decided 2026-10-08, `PROGRESS.md` §7).
 - CORS `exposedHeaders` so the browser can read the `X-Request-ID` response
   header (point 5).
 - Graceful shutdown (ADR-006 point 12): on `SIGTERM` or `SIGINT` the server
@@ -741,6 +745,9 @@ must exist before starting them:
 - Allocation, risk and exposure in scenario `calculate` (FR-038): only total
   value and unrealized P/L are derivable honestly today. B1 may unlock part
   of it.
+- Decision replay limits, revisited with the FE2 decisions screens (decided
+  2026-10-08): the `riskLevel` replay limitation (needs a new field) and the
+  `NEUTRAL` direction P/L, computed as `LONG` (`PROGRESS.md` §7).
 - Metrics and a `/metrics` endpoint (ADR-009 point 10), hosting the backend
   (ADR-006 point 2) and benchmark comparison (ADR-010 point 7).
 

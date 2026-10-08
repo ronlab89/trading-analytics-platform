@@ -980,7 +980,7 @@ unassigned.
   `decision.riskLevel` because the model stores no original risk level;
   if a `RISK_CHANGED` is already reflected in the stored value, early
   frames show the later one. Documented in the code; only fixable with
-  a new field. Not assigned to a block.
+  a new field. Parked until FE2 (decisions screens), decided 2026-10-08.
 - **Event ordering ties:** events are ordered by `timestamp` only; two
   events with the exact same millisecond could swap. B5 (roadmap section 4,
   when events are created in bursts). Not an issue with the seed's real
@@ -988,10 +988,12 @@ unassigned.
   ADR-003.)
 - **`dateFrom`/`dateTo` on decisions** are assumed to filter on
   `createdAt` (covered by one integration test); confirm if the
-  semantics ever matter beyond that. Not assigned to a block.
+  semantics ever matter beyond that. Assigned to B0: the `@trading/contracts`
+  decision query schema states that they filter on `createdAt` (decided
+  2026-10-08).
 - **Decision statuses in the seed:** `NEUTRAL` direction P/L is computed
   as LONG in replay; revisit if NEUTRAL decisions with positions appear.
-  Not assigned to a block.
+  Parked until FE2 (decisions screens), decided 2026-10-08.
 - **Duplicate scenario (FR-041, P2)** is not implemented. Parked (roadmap
   section 7). It would be a `POST .../scenarios/:scenarioId/duplicate`
   creating a `DRAFT` copy of the name (suffixed) and `changes`.
@@ -1010,11 +1012,14 @@ unassigned.
   `scenario-impact.ts` moves to `Decimal` in B0 (ADR-002 point 9).
 - **`Scenario.baseSnapshotId` is never set:** nothing creates baseline
   snapshots; the baseline is always the live positions. Keep the column
-  unless a snapshot feature is ever designed. Not assigned to a block.
+  unless a snapshot feature is ever designed. Parked (snapshots are
+  `Deferred`, `05-data-model.md` §14); the B0 contract keeps it as a nullable
+  string with no behavior (decided 2026-10-08).
 - **Defensive read of scenario `changes` hides corruption:** malformed
   stored entries are skipped silently (by design, a read must not 500).
   If data integrity ever needs surfacing, log skipped entries (the logger
-  arrives in B3). Not assigned to a block.
+  arrives in B3). Assigned to B3: one log entry when a stored `changes` entry
+  is skipped (decided 2026-10-08).
 - **Dev database re-seed:** the scenario seed step changed (creates the
   scenario with its `changes` in one write); run `db:seed` once.
 - **Also parked (roadmap section 7):** `/metrics` (ADR-009 point 10), hosting

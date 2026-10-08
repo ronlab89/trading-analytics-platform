@@ -1,7 +1,7 @@
 # SDD 03 — Non-Functional Requirements
 
 **Project:** Trading Analytics Platform  
-**Status:** §1-§9 reconciled with the ADRs and the code on 2026-10-05 (task T3.2); later sections Draft  
+**Status:** All sections reconciled with the ADRs and the code on 2026-10-05 (task T3.2)  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`
 
