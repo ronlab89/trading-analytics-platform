@@ -43,7 +43,9 @@ Open detail (B0): the workspace resolves two TypeScript lines (`6.0.3` in
 the root and `apps/api`, `5.9.3` in `packages/domain` and
 `packages/database`) and two `@types/node` lines (`22.20.2` in `apps/api`,
 `26.4.1` elsewhere) against `engines.node >=22.0.0`. Aligning them, or
-recording why they differ, belongs to the B0 package work.
+recording why they differ, belongs to the B0 package work. For Node, a single
+`.nvmrc` becomes the source of truth, with `engines.node` and `@types/node`
+aligned to it (ADR-006 point 13).
 
 ---
 
@@ -183,6 +185,9 @@ jobs run in the API process (`Planned (B4)`, ADR-008 point 4); the realtime
 server runs in it too (`Planned (B5)`, ADR-007).
 
 Open detail (B7): the production build path is fixed in B7 (ADR-006 point 3).
+Open detail (B0): the pinned Node major lives in `.nvmrc`, reused by CI and
+the Dockerfile, and is chosen in B0 after confirming it is LTS (ADR-006
+point 13).
 
 ---
 
@@ -500,8 +505,12 @@ with `workspace:*`.
 `docker-compose.yml` runs PostgreSQL 18 with a named volume and a
 `pg_isready` health check; credentials and port come from `DATABASE_*`
 variables with development defaults. B7 adds a multi-stage, non-root API
-Dockerfile and a `full` profile (PostgreSQL and API); the default profile
-keeps only PostgreSQL. The frontend is not containerized.
+Dockerfile (`apps/api/Dockerfile`, built with the workspace root as context)
+and a `full` profile (PostgreSQL, a one-shot `migrate` service and the API);
+the default profile keeps only PostgreSQL. The API container starts with
+`node dist/index.js` directly, its healthcheck probes `GET /health/ready`, and
+the API and PostgreSQL containers run with `TZ=UTC` (ADR-006 point 4). The
+frontend is not containerized.
 
 ---
 
@@ -520,14 +529,16 @@ Install (frozen lockfile) → Typecheck → Lint → Domain, database and API te
 The database and API suites run against a PostgreSQL service container.
 Today `.github/` holds only `PULL_REQUEST_TEMPLATE.md`.
 
-Open detail (B0): adding `pnpm docs:check` and `pnpm format:check` to the
-workflow.
+The workflow also runs `pnpm format:check`, `pnpm build` and `pnpm docs:check`
+(`docs/` is in `.prettierignore`, so `format:check` does not cover it); test
+variables come from the job `env`, not a generated `.env.test.local`
+(ADR-006 point 11).
 
 ---
 
 # 42. Environment Configuration
 
-**Status:** `Implemented`; `LOG_LEVEL` `Planned (B3)` — ADR-009 point 7; `APP_MODE` `Planned (FE)` — ADR-006 point 8.
+**Status:** `Implemented`; `LOG_LEVEL` `Planned (B3)` — ADR-009 point 7; `SLOW_REQUEST_THRESHOLD_MS` `Planned (B3)` — ADR-009 point 8; `APP_MODE` `Planned (FE)` — ADR-006 point 8.
 
 | Variable | Read by | Rule |
 | --- | --- | --- |
@@ -539,6 +550,7 @@ workflow.
 | `DATABASE_URL` | Prisma | PostgreSQL connection string |
 | `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_PORT` | Docker Compose | development defaults |
 | `LOG_LEVEL` | API (B3) | `debug` in development, `info` in production, `silent` in tests |
+| `SLOW_REQUEST_THRESHOLD_MS` | API (B3) | milliseconds; default `500`; HTTP requests only |
 | `APP_MODE` | web build (FE) | `real` or `demo`, exposed as `VITE_APP_MODE` |
 
 The API validates its variables with Zod at startup and exits with code 1
@@ -567,10 +579,12 @@ Open detail (FE): the web build's API and WebSocket base URLs.
 
 `pino` for one JSON line per event on stdout, `pino-http` for request logs,
 `pino-pretty` in development only, behind a `Logger` port in
-`@trading/application`. Fields: `timestamp`, `level`, `event`, `requestId`,
-`userId`, `durationMs`, `errorCategory`. No log files. Today the API writes
-plain `console` output at startup, on invalid configuration and in the error
-handler.
+`@trading/application`. The format follows the environment (JSON on stdout;
+`pino-pretty` only in development), and `LOG_LEVEL` is the only logging
+variable. Fields: `timestamp`, `level`, `service`, `environment`, `event`,
+`message`, `requestId`, `userId`, `durationMs`, `errorCategory` (the
+`AppErrorCode` value). No log files. Today the API writes plain `console`
+output at startup, on invalid configuration and in the error handler.
 
 ---
 
@@ -579,7 +593,8 @@ handler.
 **Status:** request IDs and health endpoints `Implemented`; logging `Planned (B3)` — ADR-009; metrics `Deferred` — ADR-009 point 10.
 
 Request IDs come from `request-id` middleware; `/health` is liveness and
-`/health/ready` checks the database. No paid observability platform is used.
+`/health/ready` checks the database, and from B3 it answers 503 while the
+API shuts down (ADR-006 point 12). No paid observability platform is used.
 Details are in `13-observability-spec.md`.
 
 ---

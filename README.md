@@ -3,13 +3,26 @@
 Portfolio engineering project: a trading analytics workspace built as both (1) a full-stack
 application and (2) a fully functional public demo running on mocked infrastructure.
 
-Full specification lives in [`docs/`](./docs) (SDD 00 through 15).
+The full specification lives in [`docs/`](./docs): the SDD documents `00` to `15`, the analytics
+specification (`16-analytics-spec.md`) and the architecture decision records in
+[`docs/adr/`](./docs/adr/README.md).
 
 ## Status
 
-🚧 Phase 2 — Database and Infrastructure: complete. PostgreSQL + Prisma repositories for
-all 15 domain entities, plus a full seed workflow (`packages/database`). Backend API
-(Phase 3) not started yet.
+Work in progress; development is backend-first. The repository holds:
+
+- `packages/domain`: framework-agnostic domain logic.
+- `packages/database`: Prisma schema (16 models), repositories and the seed workflow.
+- `apps/api`: an Express REST API with 15 routers mounted (health, auth login and `me`,
+  portfolios, positions, transactions, decisions, scenarios, assets, market, analytics,
+  overview, watchlist, alerts, notifications, preferences).
+
+Not built yet: token refresh and logout, the application layer and shared contracts, background
+jobs, realtime, CI and the web app (`apps/web` holds only a wireframe). The remaining backend
+work is planned as blocks B0 to B7, followed by the frontend stage; the order and the
+phase-to-block mapping are in
+[`docs/15-implementation-plan.md`](./docs/15-implementation-plan.md) section 4.1.
+[`docs/PROGRESS.md`](./docs/PROGRESS.md) is a working log that is being updated.
 
 ## Requirements
 
@@ -22,6 +35,23 @@ all 15 domain entities, plus a full seed workflow (`packages/database`). Backend
 pnpm install
 pnpm typecheck
 ```
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) section 9 for the full list of quality commands.
+
+## Run the API
+
+```bash
+cp .env.example .env          # then edit it; JWT_SECRET needs at least 32 characters
+docker compose up -d          # PostgreSQL
+pnpm --filter @trading/database db:generate
+pnpm --filter @trading/database db:migrate
+pnpm --filter @trading/database db:seed       # optional, see Local Database below
+pnpm --filter @trading/api dev                # PORT defaults to 7001
+```
+
+Check that it is up: `GET /health` (liveness) and `GET /health/ready` (readiness, answers 503
+when PostgreSQL is not reachable). Environment notes and troubleshooting are in
+[`CONTRIBUTING.md`](./CONTRIBUTING.md) sections 9 and 10.
 
 ## Local Database
 
@@ -64,19 +94,22 @@ pnpm --filter @trading/database db:studio
 
 ```text
 apps/
-  web/        # React frontend (Vite) — not started yet
-  api/        # Node/Express backend — not started yet
+  web/        # Frontend: only a wireframe so far; the app is not started
+  api/        # Node/Express REST API (foundation implemented)
 packages/
   domain/     # Framework-agnostic domain logic (entities, validation, calculations)
   database/   # Prisma schema, repositories, seed workflow
-docs/         # SDD specification documents
-docker/       # Local infrastructure (PostgreSQL, etc.)
+  contracts/  # Placeholder (.gitkeep); planned for B0
+  config/     # Placeholder (.gitkeep)
+docs/         # SDD specification, ADRs and working documents
+docker/       # Placeholder (.gitkeep); PostgreSQL runs from docker-compose.yml
 ```
 
 ## Documentation
 
-See `docs/00-overview.md` for the full project overview and `docs/15-implementation-plan.md`
-for the implementation roadmap.
+See [`docs/README.md`](./docs/README.md) for the document map and precedence rules,
+`docs/00-overview.md` for the project overview and `docs/15-implementation-plan.md`
+for the implementation plan. Decisions are recorded in [`docs/adr/`](./docs/adr/README.md).
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the branching model, commit conventions,
 and pull request workflow used in this repository.

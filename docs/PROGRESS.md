@@ -1,22 +1,57 @@
 # Trading Analytics Platform — Progress
 
-> **Superseded in part (2026-10-04).** The architecture decision records in
-> `docs/adr/` take precedence over this file. In particular, the next block
-> is **B0** (application layer and shared contracts, ADR-001 and ADR-002),
-> not B1; CI is now adopted (ADR-006); token and logout semantics are
-> decided (ADR-005). This file is rewritten in Phase 5 of
-> `odd/tasks/sdd-source-of-truth.md`.
+> **Reconciled (2026-10-08).** The architecture decision records in
+> `docs/adr/` take precedence over this file. The status below is being
+> reconciled with them and with the code, slice by slice. The build order is
+> backend-first: blocks B0 to B7 close the backend, then the frontend stage
+> follows (`docs/BACKEND-ROADMAP.md`, `docs/15-implementation-plan.md` §4.1).
+> The next block is **B0**.
 
-**Last updated:** end of Scenarios (changes on the entity, read and
-write API, calculate, compare); duplicate scenario deferred
-**Branch:** `feat/scenarios`, created from `develop`. `feat/api-foundation`
-and `feat/decisions` were merged into `develop` via PR (not `main`).
+**Last updated:** 2026-10-08. §1 and §2 are reconciled with the ADRs and the
+code; later sections are reconciled in following slices and still describe
+the work as it was done.
+**Branch:** `docs/sdd-operations`, the source-of-truth work (ADRs 001-010,
+phases 0-5 of `odd/tasks/sdd-source-of-truth.md`). It is documentation only,
+carried on `docs/sdd-*` branches that are merged into `develop` through pull
+requests; phases 0-4 are merged and phase 5 is not merged yet. `main` still
+holds only the two initial commits (`42839b1` and `d55fce2`, the first SDD set); all earlier feature branches
+(`feat/api-foundation`, `feat/decisions`, `feat/scenarios`) were merged into
+`develop` through PRs #6, #7 and #8, not into `main`.
 
 ---
 
 ## 1. Current Phase & Step
 
-Per `15-implementation-plan.md`:
+**Build order (decided, `15-implementation-plan.md` §4.1):** minimal CI,
+then the backend blocks **B0 to B7**, then the frontend blocks **FE0 to
+FE6**. The two stages run in sequence; vertical slicing applies inside each
+block. The blocks are defined in `docs/BACKEND-ROADMAP.md`:
+
+- B0: application layer, shared contracts and minimal CI
+- B1: portfolio performance and risk analytics
+- B2: authentication and RBAC
+- B3: observability foundation
+- B4: background jobs and idempotency
+- B5: realtime and market simulation
+- B6: API documentation and contract
+- B7: deployment readiness and hardening
+
+**Where the project stands:** the backend API surface exists (§2), but the
+backend is not done. **The next block is B0**: the application layer
+(`packages/application`), shared contracts (`packages/contracts`), minimal
+CI, the `Clock` port, route tests, chronological transaction validation and
+the position-recalculation race. **No code for B0 has started**;
+`packages/application` does not exist, `packages/contracts` and
+`packages/config` hold only a `.gitkeep`, and `.github/` holds only the pull
+request template.
+
+**SDD reconciliation:** the spec set is `docs/00` to `docs/16` plus ADRs
+001-010 (`docs/adr/`). Phases 0-4 of `odd/tasks/sdd-source-of-truth.md` are
+merged into `develop`. Phase 5 (operations docs, roadmap and this file) is in
+progress on `docs/sdd-operations`: `docs/BACKEND-ROADMAP.md` and `docs/15`
+are reconciled, and this file is reconciled slice by slice.
+
+**History (the original phase list, `15` §4), kept for the record:**
 
 - **Phase 0 — Repository Foundation:** ✅ Complete
 - **Phase 1 — Product/Domain Foundation:** ✅ Complete
@@ -26,33 +61,31 @@ Per `15-implementation-plan.md`:
   (see §3 below)
 - **Phase 4 — Authentication/RBAC:** ⏸ Partially done. JWT login +
   `authenticate` middleware exist and are tested. **RBAC (`requireRole`
-  middleware) and a registration endpoint are deliberately deferred** —
-  no route currently needs role-based restriction, and users are seeded
-  directly (no self-registration flow exists yet).
+  middleware) and a registration endpoint are not built**; token and logout
+  semantics are decided in ADR-005 and the work belongs to **B2**.
 
-**We are between Phase 3 and Phase 4/5**, having extended the API
-surface with capabilities the original phase list under-specified
-(Assets, Analytics, Overview, Market Data) and hardened what already
-existed, before deciding the next block of work.
+The API was extended beyond the original phase list with the capabilities it
+under-specified (Assets, Analytics, Overview, Market Data), then with the
+small CRUD resources, Decisions and Scenarios:
 
-**Step D (small CRUD resources) is complete:** Watchlist, Alerts,
-Notifications, User Preferences, each with endpoints and HTTP-level
-integration tests (see §3.6).
-
-**Decisions + Replay is complete on the read side:** list, detail and
-replay endpoints, a pure `projectDecisionReplay` domain projection and
-real timestamps in the seed (see §3.7). The write endpoints (create,
-update, close) are **deliberately deferred**.
-
-**Scenarios is complete** (see §3.8): `changes` are now part of the
-`Scenario` entity, with list/detail/create/update/archive/delete,
-a stateless `calculate`, and a `compare` endpoint backed by a pure
-domain function. Only duplicating a scenario (FR-041, P2) is deferred.
+- **Step D (small CRUD resources) is complete:** Watchlist, Alerts,
+  Notifications, User Preferences, each with endpoints and HTTP-level
+  integration tests (see §3.6).
+- **Decisions + Replay is complete on the read side:** list, detail and
+  replay endpoints, a pure `projectDecisionReplay` domain projection and
+  real timestamps in the seed (see §3.7). The write endpoints (create,
+  update, close) are **deliberately deferred**.
+- **Scenarios is complete** (see §3.8): `changes` are part of the
+  `Scenario` entity, with list/detail/create/update/archive/delete, a
+  stateless `calculate`, and a `compare` endpoint backed by a pure domain
+  function. Only duplicating a scenario (FR-041, P2) is deferred.
 
 **Every resource in the data model now has an API**, except the
-explicitly deferred pieces (decision writes, scenario duplicate). The
-remaining backend work is RBAC/registration (Phase 4), `performance` by
-period, and the realtime/background phases (9-10).
+explicitly deferred pieces (decision writes, scenario duplicate, and
+`MarketEvent`, which has none). The remaining backend work is the blocks
+above: B0 first, then `performance` by period (B1), RBAC, registration,
+refresh and logout (B2), observability (B3), jobs (B4) and realtime (B5).
+None of the jobs, realtime, refresh or logout work is built.
 
 ---
 
@@ -66,7 +99,9 @@ apps/
 packages/
   domain/               Pure domain layer (entities, calculations, repository contracts)
   database/             Prisma schema, migrations, seed, repository implementations
-docs/                   SDD documents (00-15) + this file
+  contracts/            Placeholder (.gitkeep only); filled in B0
+  config/               Placeholder (.gitkeep only)
+docs/                   SDD documents (00-16), adr/ (ADRs 001-010) + this file
 ```
 
 ### 2.2 Domain layer (`packages/domain`)
@@ -123,8 +158,8 @@ docs/                   SDD documents (00-15) + this file
 ### 2.3 Database layer (`packages/database`)
 
 - PostgreSQL via Docker Compose (`docker-compose.yml`), Prisma schema
-  with the full `05-data-model.md` entity set already modeled
-  (migrations applied for all of it, even though several entities have
+  with the full `05-data-model.md` entity set already modeled (16
+  models; migrations applied for all of it, even though several entities have
   no API yet).
 - Prisma repository implementations exist for every entity in the data
   model, all exported from `packages/database/src/index.ts`.
@@ -179,7 +214,8 @@ resources follow it.
 configured Express app (all middleware + routes), no `listen()` call.
 `index.ts` just imports `createApp` and calls `.listen()`. This split
 exists specifically so integration tests can exercise the real app via
-supertest without binding a port.
+supertest without binding a port. `createApp()` mounts 15 routers (health
+plus 14 resource routers).
 
 **Middleware stack (in order, see `app.ts`):** `helmet()` → `cors()`
 (origin from `CORS_ORIGIN`) → `requestId` → `healthRouter` (before rate
@@ -246,7 +282,15 @@ malformed payload) — never reveals which one applies.
 
 ---
 
-## 3. Hardening & Extensions Done This Session (beyond original phase scope)
+## 3. Hardening & Extensions Done Before the SDD Reconciliation (history)
+
+> **History (reconciled 2026-10-08).** This section is a log of what was
+> built on the feature branches before the SDD source-of-truth work; it is
+> not current work. Wording such as "this session" or "at the time" refers
+> to those earlier sessions. A "Since then" note cites the ADR or the
+> roadmap block (`docs/BACKEND-ROADMAP.md`) that changed or took over an
+> item. Where the text and a note disagree, the note, the ADRs and the code
+> win.
 
 After Phase 3's core endpoints were built, a self-review pass surfaced
 technical debt and gaps, closed in order (§3.1-3.4), followed by the
@@ -260,6 +304,9 @@ Market Data extension (§3.5).
   in 4 `apps/api` files — root cause was `@trading/domain` missing from
   `apps/api/package.json` dependencies. Now imports by package name
   everywhere.
+  *Since then:* the production build path is still open: `@trading/domain`
+  and `@trading/database` point `main` at `src`; the fix is assigned to B7
+  (`BACKEND-ROADMAP.md`, §7 of this file).
 - Prisma Studio issue: **deliberately not fixed** — user uses TablePlus
   instead and has no need for it.
 
@@ -281,6 +328,22 @@ Market Data extension (§3.5).
 - The mock/demo repositories (when built) can implement the same
   `UnitOfWork` interface with in-memory snapshot/rollback — the
   contract doesn't assume Prisma.
+- *Since then (reconciled 2026-10-08):* this log describes the service as
+  it was. B0 changes it (ADR-001, ADR-003, `BACKEND-ROADMAP.md` B0): the
+  use cases move from `apps/api/src/services` into `@trading/application`
+  and receive the `UnitOfWork` from the composition root. The in-memory
+  `UnitOfWork` (serialized with an async mutex or rolling back only its own
+  write log) is built there. The unit gives atomicity but **not isolation**:
+  `createTransaction` still reads the position and then upserts it, so two
+  concurrent `SELL`s can both pass; the `UnitOfWork` contract will
+  guarantee isolation for position updates (FR-017, B0). Two more B0 items
+  live in this same path: chronological validation of backdated
+  transactions (FR-018, ADR-003 point 6) and the archived-portfolio guard
+  (409 `CONFLICT`, ADR-010 point 5); `createTransaction` today checks only
+  that the portfolio belongs to the user. `calculatePositionAfterTransaction`
+  ignores `fees`; fees enter the cost basis and realized P/L in B1
+  (ADR-004 point 15). The `Clock` port (ADR-001 point 8) replaces the
+  `new Date()` inside `validateNewTransaction`.
 
 ### 3.3 Step A — API hardening
 
@@ -294,6 +357,13 @@ Market Data extension (§3.5).
   **7001**, not the earlier mismatched default of 3000); `index.ts`
   reads `env.PORT` instead of `process.env.PORT` directly.
   `.env.example` updated to match.
+- *Since then:* B0 changes the error contract (ADR-002): validation
+  details become `{ field, code, message }`, `TIMEOUT` leaves
+  `AppErrorCode`, a database outage returns 503 `DEPENDENCY_ERROR`, and
+  route parameters are validated with a Zod schema (a malformed value is
+  400). The 100 kB limit stays global; the CSV import route gets its own
+  limit in B4 (ADR-008). `CORS_ORIGIN` validation and a seed production
+  guard are B0 configuration safety (ADR-006 point 13).
 - `/health` and `/health/ready` moved before the rate limiter in the
   middleware chain, so uptime monitors/orchestrators never receive 429.
 
@@ -313,6 +383,8 @@ rationale). `packages/database`'s `test`/`test:watch` scripts now load
   shared in-process app instance in the integration suite would
   otherwise trip the IP-based counter across unrelated test cases.
   The 429 behavior itself is verified separately (see below), not lost.
+  *Since then:* rate limits stay on in development (ADR-006); only the
+  test environment skips them.
 - Added `vitest`, `supertest`, `@types/supertest` to `apps/api`. New
   `test`/`test:watch` scripts, also loading `.env.test.local`.
 - Smoke test (`app.test.ts`) written first to validate the wiring
@@ -356,13 +428,21 @@ rationale). `packages/database`'s `test`/`test:watch` scripts now load
   `rateLimitHandler` (now exported from `rate-limit.ts` specifically
   for this reuse) to verify the 429 response shape independently.
 
-**Result at the time:** 22 tests across 6 files, all passing.
+**Result at the time:** 22 tests across 6 files, all passing. *Since
+then:* `apps/api` holds 14 test files; the routes with no route test file
+(analytics, positions, assets, market, health) get theirs in B0, written
+before the services move (`BACKEND-ROADMAP.md` §1 and B0). The fixtures
+create users directly because registration is out of scope (ADR-005 point
+10: users come from the seed). `tokenFor` signs the access-token claims of
+today; B2 changes the token shape (ADR-005) and the helper with it. In CI
+the test variables come from the job `env`, not from `.env.test.local`
+(B0, ADR-006).
 
-### 3.5 Step C — Market Data (this session's final block)
+### 3.5 Step C — Market Data (final block of that stage)
 
 **Correction to an earlier version of this file:** `HistoricalPrice`
-seeding was **already implemented** before this session (it was
-mistakenly listed as "not started" previously) — only `MarketPrice`
+seeding was **already implemented** before that session (it was
+mistakenly listed as "not started" at the time) — only `MarketPrice`
 seeding and all price/history API endpoints were actually missing.
 
 **C.1 — MarketPrice + price/history endpoints:**
@@ -378,7 +458,8 @@ seeding and all price/history API endpoints were actually missing.
   `refine` ensuring `from <= to`, `interval` restricted to the literal
   `"1d"` — user confirmed this is fine for now, with weekly/monthly
   aggregation planned as a distinct future addition once actually
-  needed, not before).
+  needed, not before; the roadmap lists it as deliberately parked,
+  `BACKEND-ROADMAP.md` §7).
 - New `services/market.service.ts`: `getAssetPrice` (two distinct 404
   messages: asset missing vs. asset exists but no price yet),
   `getBatchPrices` (never 404s, same "missing means absent" contract
@@ -400,6 +481,11 @@ seeding and all price/history API endpoints were actually missing.
   - Deliberately uses `MarketPrice.previousPrice`/`.change` (the "since
     last tick" comparison), not `HistoricalPrice` — a different, later
     concept already used by drawdown/volatility.
+    *Since then:* ADR-007 point 14 fixes the semantics: `previousPrice`,
+    `change` and `changePercent` are always measured against the last
+    daily close, not the last tick, so `dailyChange` and the `1D` period
+    stay correct while prices tick (B5). The seed already derives them from
+    the last two daily candles.
   - Same "insufficient data vs. valid empty state" distinction as the
     rest of the domain layer (see §2.4 cross-cutting notes).
 - `overview.service.ts` extended:
@@ -430,7 +516,12 @@ seeding and all price/history API endpoints were actually missing.
     this codebase for any future optional-field construction.
   - `performance` by period (FR-025/026) remains explicitly deferred —
     user confirmed treating it as a distinct future step, not part of
-    Step C.
+    Step C. *Since then:* assigned to **B1** (ADR-004), together with the
+    real portfolio volatility and drawdown for Pulse: the largest-position
+    proxy used by `getPulseInputs()` is replaced (ADR-004 point 11), and
+    volatility annualizes with the square root of 365 over at least 20
+    returns (point 8). The overview integration test for `dailyChange`
+    and `pulse` is added in B1.
 
 **Verification:** typecheck, lint, and all existing test suites passed
 after both C.1 and C.2 (no new automated tests were added for the
@@ -460,6 +551,16 @@ small, deliberate changes:
   `notificationPreferences={}`) stay solely in `schema.prisma` — not
   duplicated in TypeScript. Test added for the first-write path.
 - **Alerts:** no domain/database changes needed.
+- *Since then (reconciled 2026-10-08):* notifications are `unread` or
+  `read` only, `dismissed` is removed from version 1 (ADR-010 point 3).
+  B0 moves these services to the application layer and validates
+  `UserPreference.theme` (`light`, `dark`, `system`) and
+  `language` (`en`, `es`) (ADR-002 point 10, ADR-010 point 8); mutations
+  on an archived portfolio, alerts included, return 409 (ADR-010 point 5).
+  Alerts that actually trigger and their notifications are B5 (ADR-007);
+  notifications for finished imports are B4 (ADR-008 point 6). Until then
+  no alert fires. B2 limits `VIEWER` to its own preferences and
+  notifications (ADR-005 point 13).
 
 **Deliberate divergences from the SDD (to reflect back into it):**
 - `07-api-spec.md` §28 lists `read`/`type`/`page`/`pageSize` filters for
@@ -471,7 +572,9 @@ small, deliberate changes:
 - `GET /api/v1/preferences` returns `{ data: null }` for a user with no
   saved preferences (absence is a valid state, same principle as the
   null `dailyChange` in Overview). `07-api-spec.md` §29 does not
-  specify this case.
+  specify this case. For the first item, ADR-010 point 4 confirms that
+  pagination applies only to assets and transactions and that sorting is
+  client-side for lists loaded in full.
 
 **Integration tests (4 new files in `apps/api/src/routes/`):**
 `watchlist.routes.test.ts`, `alerts.routes.test.ts`,
@@ -541,6 +644,13 @@ decision and its events are created atomically (FR-074), repeated later
 in the demo mock. If the frontend needs to create decisions, design it
 then together with an event-journal endpoint
 (`POST .../decisions/:decisionId/events`) with the screen in view.
+*Since then:* still deliberately parked, outside B0 to B7
+(`BACKEND-ROADMAP.md` §7). B0 does touch this slice: `decision-replay.ts`
+parses `price` and `quantity` with `Decimal` and accepts only decimal
+strings, reporting other values as issues, with the seed and fixtures
+rewritten to strings (ADR-002 point 9). Replay and the other composite reads
+move to the application layer. Any future decision mutation on an archived
+portfolio is a 409 (ADR-010 point 5).
 
 **Verification:** typecheck, lint and the domain, database and api test
 suites passed after slices 1 to 3.
@@ -577,12 +687,15 @@ Response: `scenarioId`, `baseline`, `result`, `difference`,
 not hold; the calculation ignores them, reporting avoids a silent
 no-op). Outputs are total value and unrealized P/L only; allocation,
 risk and exposure from FR-038 are not computed because the domain cannot
-derive them honestly.
+derive them honestly. *Since then:* parked in the roadmap (§7); B1 may
+unlock part of it.
 
 **Slice 3 — write API.** Create (201, always a `DRAFT`), `PATCH`
 (`name`, `description`, `status` DRAFT or SAVED, `changes`; at least one
 field), archive, delete (204). `changes` replaces the whole list, so
 reset (FR-039) is `changes: []` and save (FR-040) is `status: "SAVED"`.
+*Since then:* a mutation of a scenario on an archived portfolio will
+also be 409 `CONFLICT` (ADR-010 point 5, B0).
 The repository `update` now accepts `changes` so a combined edit is a
 single write (an invalid part of a request changes nothing; covered by a
 test). `ARCHIVED` is read-only: `PATCH` returns 409 `CONFLICT`, and
@@ -612,6 +725,14 @@ order). New fixtures `createTestPosition` and `createTestScenario`. One
 lint fix: zod v4 `z.number()` already rejects infinity, so `.finite()` is
 deprecated and was removed (the domain still validates finiteness).
 
+**Since then (reconciled 2026-10-08):** B0 builds the percentage factor in
+`scenario-impact.ts` with `Decimal` (`Decimal(percentChange)
+.div(100).plus(1)`, with an exact-result test for `-12.3`) and applies the
+decimal-string rule to persisted money (ADR-002 point 9).
+Duplicating a scenario (FR-041, P2) stays parked (`BACKEND-ROADMAP.md`
+§7). `calculate` and `compare` are composite reads and move to the
+application layer in B0.
+
 **Verification:** lint, typecheck and the domain, database and api test
 suites passed.
 
@@ -619,12 +740,34 @@ suites passed.
 
 ## 4. Environment Files Reference
 
-| File | Committed? | Purpose |
-|---|---|---|
-| `.env.example` | Yes | Template for development (`.env`) |
-| `.env` | No (git-ignored) | Real dev config — `trading_analytics_dev`, port 7001 |
-| `.env.test.example` | Yes | Template for test config |
-| `.env.test.local` | No (git-ignored, matches `.env.*.local` pattern) | Real test config — `trading_analytics_test`, `NODE_ENV=test`, a test-only `JWT_SECRET` |
+| File                 | Committed?                                       | Purpose                                                                                                                         |
+| -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `.env.example`       | Yes                                              | Template for development (`.env`)                                                                                               |
+| `.env`               | No (git-ignored)                                 | Real dev config: `trading_analytics_dev`, port 7001                                                                             |
+| `.env.test.example`  | Yes                                              | Template for test config                                                                                                        |
+| `.env.test.local`    | No (git-ignored, matches `.env.*.local` pattern) | Real test config: `trading_analytics_test`, `NODE_ENV=test`, a test-only `JWT_SECRET`                                           |
+
+The setup steps and the troubleshooting table are in `CONTRIBUTING.md` §9 and
+§10; this section only records what each variable does today.
+
+**Variables the code reads** (`apps/api/src/config/env.ts`, plus Prisma):
+
+| Variable                 | Read by                    | Notes                                                                                   |
+| ------------------------ | -------------------------- | --------------------------------------------------------------------------------------- |
+| `NODE_ENV`               | API (`env.ts`)             | `development`, `test` or `production`; default `development`                            |
+| `PORT`                   | API (`env.ts`)             | Default `7001`                                                                          |
+| `JWT_SECRET`             | API (`env.ts`)             | Required, at least 32 characters                                                        |
+| `JWT_EXPIRES_IN_SECONDS` | API (`env.ts`)             | Default `900`                                                                           |
+| `CORS_ORIGIN`            | API (`env.ts`, `app.ts`)   | Passed to the `cors` middleware; origin validation is planned in B0 (roadmap B0)        |
+| `DATABASE_URL`           | Prisma (`schema.prisma`)   | Not validated by the API at startup; validation is planned in B7 (roadmap B7)           |
+
+`DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` and `DATABASE_PORT` in
+`.env.example` are Docker Compose variables; `DATABASE_URL` repeats their
+values, so keep them in step.
+
+**Planned, not read by the code yet:** `LOG_LEVEL` (B3, ADR-009 point 7) and
+`APP_MODE` with `VITE_APP_MODE` (ADR-006 point 8, frontend and demo stage).
+Do not add them to `.env` expecting an effect.
 
 **To set up a fresh clone:** copy both `.example` files, adjust
 Postgres credentials, then:
@@ -639,14 +782,18 @@ pnpm --filter @trading/database db:seed
 pnpm --filter @trading/database db:test:migrate   # test database
 ```
 
-**Note:** if resuming after this session, re-run `db:seed` against the
-dev database at least once — Step C widened the historical price
-series from 30 to 90 days and added `MarketPrice` rows that didn't
-exist before.
+**Note:** `db:seed` wipes the database first (`CONTRIBUTING.md` §9), and its
+`NODE_ENV=production` guard is `Planned (B0)`. If your dev database predates
+the 90-day price series (it was widened from 30 days and gained `MarketPrice`
+rows) or the scenario seed change (§7), re-run `db:seed` once.
 
 ---
 
-## 5. Last Commits (this session, chronological)
+## 5. Last Commits Before the SDD Reconciliation (history)
+
+The list below is the work done before the SDD reconciliation, in
+chronological order, kept as history. The SDD branches that came after it are
+listed at the end of this section.
 
 ```
 build(repo): add build scripts to domain, database and workspace root
@@ -716,91 +863,100 @@ docs(progress): update progress after scenarios
 into two, may differ slightly from what was actually typed — confirm
 against `git log` if precision matters.)
 
-A PR was opened and merged earlier in this session for the base Phase
-2-3 work (portfolios/positions/transactions CRUD, database
-infrastructure) from `feat/database-infrastructure` into `main`,
-**before** the hardening and Assets/Analytics/Overview/Market Data work
-described in this document — that work lived on `feat/api-foundation`,
-which was later merged via PR into `develop` (not `main`).
+**Where that work was merged.** Every feature branch was merged into
+`develop` through a pull request, not into `main`: `feat/database-infrastructure`
+(the base Phase 2-3 work, portfolios/positions/transactions CRUD and database
+infrastructure) in PR #5, `feat/api-foundation` (the hardening and
+Assets/Analytics/Overview/Market Data work described in §3) in PR #6,
+`feat/decisions` in PR #7 and `feat/scenarios` in PR #8. `main` holds only
+the two initial commits (`42839b1` and `d55fce2`, the SDD set).
+
+**SDD reconciliation branches (after the list above).** Documentation-only
+work, merged into `develop` through pull requests: `docs/sdd-source-of-truth`
+(PR #9), `docs/sdd-governance` (PR #10), `docs/sdd-foundations` (PR #11),
+`docs/sdd-product` (PR #12) and `docs/sdd-contracts` (PR #13), which are
+phases 0-4 of `odd/tasks/sdd-source-of-truth.md`. Phase 5 (operations docs,
+roadmap and this file) is on `docs/sdd-operations`, ahead of `develop` and
+not merged yet. Check `git log develop..docs/sdd-operations` for its commits.
 
 ---
 
-## 6. Immediate Next Step: finish the backend (see `BACKEND-ROADMAP.md`)
+## 6. Immediate Next Step: B0 (see `BACKEND-ROADMAP.md`)
 
-Agreed order of work, set earlier in this effort: (1) merge
-`feat/api-foundation` — done, into `develop`; (2) Decisions + Replay —
-done on the read side; (3) Scenarios — done; (4) Auth/RBAC; (5) Frontend
-and Demo Mode.
+**Decision (user):** finish the whole backend before starting the frontend
+and the public demo. The ordered plan, with scope, open decisions and "done
+when" criteria for each block, is in **`docs/BACKEND-ROADMAP.md`**: B0
+application layer, shared contracts and minimal CI, B1 performance and risk
+analytics, B2 auth and RBAC, B3 observability, B4 background jobs and
+idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
+Done before it (history): the `feat/api-foundation`, `feat/decisions` and
+`feat/scenarios` branches are merged into `develop` (§5).
 
-**Decision (user):** finish the whole backend before starting the
-frontend and the public demo. The ordered plan, with scope, open
-decisions and "done when" criteria for each block, is in
-**`docs/BACKEND-ROADMAP.md`**. Order: B1 performance and risk analytics,
-B2 auth and RBAC, B3 observability, B4 background jobs and idempotency,
-B5 realtime, B6 OpenAPI and contract, B7 deployment readiness. The
-`feat/scenarios` PR is merged into `develop`.
+**Next:** B0, once the phase 5 pull request (`docs/sdd-operations`) is merged
+into `develop`. Phase 5 itself still has the reconciliation of
+`docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
+B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
+`docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in
+this order: CI and configuration safety, then the route tests, then the
+`Clock` port and the layering refactor, then the contracts, then the
+transaction rules. Each block starts by re-verifying the roadmap evidence
+against the code and taking any real open question to the user (roadmap
+section 8). No code for B0 has started (§1).
 
-**Next:** the user picks the first block (B1 is the recommendation: it
-is the only P0 product requirement still missing, FR-025). Each block
-starts by taking its open decisions to the user; B2 first needs the
-role model reconciled (the SDD contradicts itself, roadmap section 5).
-The frontend-side questions (where `apps/web` lives, how it consumes
-`@trading/domain`, slice order) are listed in the roadmap's handoff
-section and are settled when that phase starts.
-
-Remaining backend work (summary; the roadmap is authoritative):
-- **RBAC + user registration** (Phase 4 proper).
-- **`performance` by period** (FR-025/026) — needs a transaction-aware
-  portfolio value time series, flagged in §2.4/§3.5 as intentionally
-  deferred rather than fabricated.
+After B0, the blocks run in the roadmap order (B1 is the only P0 product
+requirement still missing, FR-025; B2 first needs the role model migrated to
+`VIEWER`, `TRADER`, `ADMIN`, ADR-005 point 1). The frontend-side questions
+(where `apps/web` lives, how it consumes `@trading/domain`, slice order) are
+settled in the frontend-stage ADR before FE0 starts (roadmap section 6).
 
 ---
 
 ## 7. Deferred / Open Items (not urgent, tracked so they aren't forgotten)
 
-- **RBAC + user registration** (Phase 4 proper) — no route currently
-  needs role restriction, so this remains deferred by choice, not
-  oversight.
-- **CI (GitHub Actions)** — explicitly decided against for now. This
-  project's deployment model is: demo hosted on the portfolio site
-  (mocked infra, not yet built), backend runs **locally only** for
-  interview demonstrations. Without continuous deployment, CI adds
-  process overhead without protecting anything `pnpm test` run
-  locally doesn't already catch. Revisit only if a CI badge becomes
-  desirable for portfolio narrative purposes — isolated, low-cost
-  addition if/when wanted.
-- **`apps/api` production build path is untested/likely broken:**
-  `apps/api/package.json` has `"start": "node dist/index.js"`, but
-  `@trading/domain` and `@trading/database` currently point `main`/
-  `types` at `./src/index.ts` (not compiled output), so `node
-  dist/index.js` would not resolve those packages correctly in a real
-  production run. Not urgent — deployment is Phase 14, and local `dev`
-  (via `tsx watch`) is the only mode actually used today. Flagged here
-  so it isn't a surprise later.
-- **Concurrency on position recalculation:** two simultaneous
-  transactions against the same portfolio+asset could race between the
-  read-then-write of the position inside the Unit of Work. The Unit of
-  Work solves atomicity (all-or-nothing), not this isolation problem.
-  Not addressed yet — no concrete evidence it's caused a real issue,
-  and fixing it (e.g. `SELECT ... FOR UPDATE` or a higher isolation
-  level) is straightforward when it becomes relevant.
-- **Search filters (Assets, Transactions) don't escape SQL wildcard
-  characters** (`%`, `_`) in the `search`/`contains` filter — a search
-  term containing them would be interpreted as a Prisma/Postgres
-  pattern rather than literal text. Low severity (no injection risk,
-  Prisma parameterizes the query; worst case is a slightly wrong
+Each item cites the block that owns it in `docs/BACKEND-ROADMAP.md`. Items the
+roadmap parks (its section 7) stay parked; items with no block are still
+unassigned.
+
+- **RBAC + user registration** (Phase 4 proper) — B2 (ADR-005). No route
+  currently needs role restriction, so it stays out until that block.
+- **CI (GitHub Actions)** — adopted, not deferred: ADR-006 points 10 and 11
+  define a minimal CI that is built in B0. It earlier read as decided
+  against, because the backend runs locally only; the ADR changed that. No
+  continuous deployment and no coverage threshold. `.github/` holds only the
+  pull request template today.
+- **`apps/api` production build path is untested/likely broken** — B7
+  (ADR-006 point 3). `apps/api/package.json` has `"start": "dotenv -e
+  ../../.env -- node dist/index.js"`, but `@trading/domain`,
+  `@trading/database` (and the API itself) point `main`/`types` at
+  `./src/index.ts` (not compiled output), so the built API would not resolve
+  those packages in a real production run. Local `dev` (via `tsx watch`) is
+  the only mode actually used today.
+- **Concurrency on position recalculation** — B0 (ADR-001, FR-017), not B7:
+  two simultaneous transactions against the same portfolio+asset could race
+  between the read-then-write of the position inside the Unit of Work. The
+  Unit of Work solves atomicity (all-or-nothing), not this isolation problem.
+  The `UnitOfWork` contract will guarantee isolation for position updates,
+  with a concurrent test (two `SELL` of 6 on a holding of 10: exactly one
+  succeeds).
+- **The assets search filter does not escape SQL wildcard characters**
+  (`%`, `_`) — B7 (roadmap B7 "Known debts"). Only
+  `packages/database/src/repositories/prisma-asset-repository.ts:32-33` has a
+  `contains` filter; the transactions list has no free-text search
+  (ADR-010 point 2), so this debt is assets only. Low severity (no injection
+  risk, Prisma parameterizes the query; worst case is a slightly wrong
   match), but not yet verified or fixed.
+- **Graceful shutdown** — B3 (ADR-006 point 12). `index.ts` is `createApp()`
+  plus `listen()`; there is no signal handling today. B4 and B5 join the
+  shutdown sequence when the job runner and the realtime connections exist.
 - **`interval` on `/assets/:assetId/history` only supports `"1d"`.**
-  User has explicitly confirmed this is fine for now and that
-  weekly/monthly aggregation (a real rollup of existing daily candles,
-  not fabricated data) is a planned future addition — not urgent, not
-  forgotten.
+  Parked (roadmap section 7). User has explicitly confirmed this is fine for
+  now and that weekly/monthly aggregation (a real rollup of existing daily
+  candles, not fabricated data) is a planned future addition.
 - **No dedicated integration test for the Overview endpoint's new
-  `dailyChange`/`pulse` fields** (Step C) — only manually verified via
-  Postman. The underlying domain calculations are unit-tested; the
-  wiring itself (which market prices/historical candles get fetched
-  and passed through) is not covered by an automated HTTP-level test.
-  Consider adding one if this area sees further changes.
+  `dailyChange`/`pulse` fields** (Step C) — B1 (roadmap section 4); only
+  manually verified via Postman. The underlying domain calculations are
+  unit-tested; the wiring itself (which market prices/historical candles get
+  fetched and passed through) is not covered by an automated HTTP-level test.
 - ~~`07-api-spec.md` not yet updated for Step D divergences~~ — done:
   §26-29 now carry "Implementation note (Step D)" callouts documenting
   the real `unreadOnly` filter, no `type`/pagination on notifications,
@@ -808,71 +964,90 @@ Remaining backend work (summary; the roadmap is authoritative):
   ownership and error-code behavior.
 - **Notifications have no producer yet:** the API can list and mark
   them, but nothing creates them at runtime (only the seed does). The
-  producers (transaction completed, alert triggered, job events) belong
-  with Realtime/Background Operations (Phases 9-10).
-- **Alerts are configuration only:** nothing evaluates alert
-  conditions against market prices yet (FR-053 evaluation is part of
-  the realtime/market-simulation work, not CRUD).
+  producers (alert triggered, job events) belong to B5 and B4 (roadmap B4
+  and B5; ADR-007, ADR-008).
+- **Alerts are configuration only:** nothing evaluates alert conditions
+  against market prices yet. Edge-triggered evaluation (FR-053) is part of
+  B5 (ADR-007), not CRUD.
 - **`tokenFor` migration (optional):** `portfolios`/`transactions`
-  tests still sign JWTs inline; could adopt `test-utils/auth.ts`.
+  tests still sign JWTs inline; could adopt `test-utils/auth.ts`. B2
+  (roadmap section 4, marked unverified there).
 - **Decision write endpoints** (create/update/close) and the event
-  journal endpoint: deferred, see §3.7. Prerequisite when revisited:
-  extend `UnitOfWork` to cover decisions and events.
+  journal endpoint: parked (roadmap section 7), see §3.7. Revisit with the
+  frontend screen in view; prerequisite when revisited: extend `UnitOfWork`
+  to cover decisions and events.
 - **Replay `riskLevel` limitation:** `projectDecisionReplay` starts from
   `decision.riskLevel` because the model stores no original risk level;
   if a `RISK_CHANGED` is already reflected in the stored value, early
   frames show the later one. Documented in the code; only fixable with
-  a new field.
+  a new field. Parked until FE2 (decisions screens), decided 2026-10-08.
 - **Event ordering ties:** events are ordered by `timestamp` only; two
-  events with the exact same millisecond could swap. Not an issue with
-  the seed's real dates; add a tiebreaker if events ever get created
-  in bursts.
+  events with the exact same millisecond could swap. B5 (roadmap section 4,
+  when events are created in bursts). Not an issue with the seed's real
+  dates. (Transactions sharing an `executedAt` are a separate B0 item,
+  ADR-003.)
 - **`dateFrom`/`dateTo` on decisions** are assumed to filter on
   `createdAt` (covered by one integration test); confirm if the
-  semantics ever matter beyond that.
+  semantics ever matter beyond that. Assigned to B0: the `@trading/contracts`
+  decision query schema states that they filter on `createdAt` (decided
+  2026-10-08).
 - **Decision statuses in the seed:** `NEUTRAL` direction P/L is computed
   as LONG in replay; revisit if NEUTRAL decisions with positions appear.
-- **Duplicate scenario (FR-041, P2)** is not implemented. It would be a
-  `POST .../scenarios/:scenarioId/duplicate` creating a `DRAFT` copy of
-  the name (suffixed) and `changes`.
+  Parked until FE2 (decisions screens), decided 2026-10-08.
+- **Duplicate scenario (FR-041, P2)** is not implemented. Parked (roadmap
+  section 7). It would be a `POST .../scenarios/:scenarioId/duplicate`
+  creating a `DRAFT` copy of the name (suffixed) and `changes`.
 - **`ScenarioRepository.updateChanges` has no production caller:** the
   service uses `update`, which now also carries `changes` (single write).
-  It remains in the contract and tests as a changes-only shortcut;
-  candidate to remove if it is still unused when the demo mock is built.
+  It remains in the contract and tests as a changes-only shortcut; the
+  roadmap (section 4) decides it when the demo adapters are written.
 - **FR-038 outputs not computed:** `calculate` returns total value and
   unrealized P/L only. `compare` adds per-asset allocation, but risk and
   exposure are not derived anywhere (the domain has no honest way yet).
+  Parked (roadmap section 7); B1 may unlock part of it.
 - **`compare` is not in the original spec** (`07-api-spec.md` §25 lists
   only `calculate`); it is documented there as an addition. Percentages
   in it (`totalValuePercent`, allocation) use JS numbers, for display;
-  money values stay `Money`/decimal.
+  money values stay `Money`/decimal. Persisted-JSON money in
+  `scenario-impact.ts` moves to `Decimal` in B0 (ADR-002 point 9).
 - **`Scenario.baseSnapshotId` is never set:** nothing creates baseline
   snapshots; the baseline is always the live positions. Keep the column
-  unless a snapshot feature is ever designed.
+  unless a snapshot feature is ever designed. Parked (snapshots are
+  `Deferred`, `05-data-model.md` §14); the B0 contract keeps it as a nullable
+  string with no behavior (decided 2026-10-08).
 - **Defensive read of scenario `changes` hides corruption:** malformed
   stored entries are skipped silently (by design, a read must not 500).
-  If data integrity ever needs surfacing, log skipped entries.
+  If data integrity ever needs surfacing, log skipped entries (the logger
+  arrives in B3). Assigned to B3: one log entry when a stored `changes` entry
+  is skipped (decided 2026-10-08).
 - **Dev database re-seed:** the scenario seed step changed (creates the
   scenario with its `changes` in one write); run `db:seed` once.
+- **Also parked (roadmap section 7):** `/metrics` (ADR-009 point 10), hosting
+  the backend (ADR-006 point 2), benchmark comparison (ADR-010 point 7),
+  Expected vs Actual (FR-035) and global search (FR-054).
 
 ---
 
 ## 8. How to Resume Work in a New Chat
 
-1. Read this file first.
-2. Confirm current branch (`develop`, or the active feature branch)
-   and that
-   `git status` is clean.
-3. Run the full verification loop to confirm nothing regressed since
-   last session:
+1. Read the header and §1 of this file, then
+   `odd/tasks/sdd-source-of-truth.md` (phase status and the "Next" line),
+   `docs/BACKEND-ROADMAP.md` (the block and its status table) and
+   `docs/15-implementation-plan.md` §4.1 (build order).
+2. Confirm the current branch (`develop`, `docs/sdd-operations` or the active
+   feature branch) and that `git status` is clean. Phase 5 is on
+   `docs/sdd-operations` until its pull request is merged into `develop`.
+3. Run the full verification loop to confirm nothing regressed:
    ```powershell
    pnpm install
    pnpm typecheck
    pnpm lint
+   pnpm docs:check
    pnpm --filter @trading/domain test
    pnpm --filter @trading/database test
    pnpm --filter @trading/api test
    ```
-4. Re-seed the dev database if it wasn't done at the end of the last
-   session (see §4 note): `pnpm --filter @trading/database db:seed`.
-5. Ask the user which block comes next (§6), then proceed.
+4. Re-seed the dev database only if it predates the seed changes noted in §4
+   and §7: `pnpm --filter @trading/database db:seed` (it wipes first).
+5. Start the next block (B0, §6). Re-verify the roadmap evidence against the
+   code and take any real open question to the user before the first slice.

@@ -3,7 +3,7 @@
 **Project:** Trading Analytics Platform  
 **Document:** `12-demo-mode-spec.md`  
 **Version:** 1.0  
-**Status:** Specification  
+**Status:** Specification; reconciled in the frontend stage, after the frontend-stage ADR (not part of the B0 gate)  
 **Scope:** Public demo infrastructure and behavior
 
 ---

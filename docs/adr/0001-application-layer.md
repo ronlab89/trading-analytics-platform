@@ -58,8 +58,9 @@ contract, entities, validators and pure calculations.
    repositories. Existing HTTP integration tests in `apps/api` stay as they
    are and keep covering the Prisma path end to end.
 8. **Clock port and refactor safety net** (added 2026-10-06, approved by
-   the user, from the `10-testing-strategy.md` reconciliation;
-   `Planned (B0)`):
+   the user, from the `10-testing-strategy.md` reconciliation; health route
+   test added 2026-10-07, from the `13-observability-spec.md`
+   reconciliation; `Planned (B0)`):
    - **One `Clock` port.** The current time comes from one shared `Clock`
      port, injected through the composition root (point 4) like the
      repositories. Domain and application code receive the time instead of
@@ -74,6 +75,9 @@ contract, entities, validators and pure calculations.
      `@trading/application`. With the existing route tests, they are the
      safety net that shows the layering refactor keeps HTTP behavior
      unchanged.
+   - **Health route test.** The same B0 set includes a health route test
+     covering `GET /health` and `GET /health/ready`. NFR-051 is
+     `Implemented` with no test today.
 
 ## Consequences
 

@@ -267,7 +267,7 @@ Open detail:
 - (B5) `currentPrice` keeps the last trade price while `MarketPrice` ticks:
   drop it and read `MarketPrice`, or update it per tick (ADR-007 Deferred
   detail).
-- (B7) Two concurrent transactions on the same portfolio and asset race on
+- (B0) Two concurrent transactions on the same portfolio and asset race on
   the read-modify-write of this row (`BACKEND-ROADMAP.md` §4).
 
 ---
@@ -995,7 +995,7 @@ overwrites a newer value. See §12, §18 and §19 for open details.
 | --- | --- | --- |
 | Transaction and its position change | One database transaction (unit of work) | `Implemented` |
 | Duplicate watchlist entry | Unique `(userId, assetId)` | `Implemented` |
-| Two transactions on one position at once | See §8 Open detail | `Planned (B7)` |
+| Two transactions on one position at once | See §8 Open detail | `Planned (B0)` |
 | Duplicate `POST` with the same `Idempotency-Key` | Reservation under a unique constraint (§53) | `Planned (B4)` |
 | Job status transitions (resume, cancel, apply) | Compare-and-set on status (§52) | `Planned (B4)` |
 | Duplicate market tick | Unique `(assetId, sequence)` (§19) | `Planned (B5)` |
@@ -1097,7 +1097,7 @@ ADR:
 | Stage | persisted (validate or apply), used by compare-and-set transitions (Deferred detail) |
 | Attempt | incremented on retry (point 6) |
 | Progress | `processed`, `total`; a field, not a state (point 3) |
-| Input | the CSV content, stored in the row at creation and bounded (points 4 and 10) |
+| Input | the CSV content, stored in the row at creation and bounded (points 4 and 10); kept while the job can still be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` (point 4, amended 2026-10-07) |
 | Result | per-row validation report on `VALIDATION_FAILED` (point 2) |
 | Timing | queued time per attempt, for the timeout (Deferred detail) |
 

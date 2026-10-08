@@ -1,7 +1,7 @@
 # SDD 09 — Security Specification
 
 **Project:** Trading Analytics Platform  
-**Status:** Draft  
+**Status:** All sections reconciled with the code and ADRs on 2026-10-06 (task T4.2)  
 **Version:** 1.0  
 **Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`, `07-api-spec.md`, `08-realtime-spec.md`
 
@@ -1034,8 +1034,9 @@ Exceeding a limit closes the socket with `4008` (`08-realtime-spec.md`
 
 Decided (ADR-005 point 13, ADR-007 point 16, approved 2026-10-06):
 concurrent connections are capped per authenticated user, not per IP. The
-v1 value is 5 per user, and an excess connection closes with `4008`.
-Status `Planned (B5)`. Numeric tuning is an Open detail (B5).
+v1 value is 5 per user. The new (excess) connection is closed with `4008`
+and the existing connections stay open (ADR-007 point 16, amended
+2026-10-07). Status `Planned (B5)`. Numeric tuning is an Open detail (B5).
 Unauthenticated sockets stay bounded by the 5-second timeout.
 
 ---

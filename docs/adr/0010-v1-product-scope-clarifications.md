@@ -2,6 +2,9 @@
 
 **Status:** Accepted
 **Date:** 2026-10-05
+**Amended:** 2026-10-07 (point 6, demo hosting deferrals, approved by the user
+from the `14-deployment-spec.md` reconciliation; point 10, statistics, approved
+by the user from the `15-implementation-plan.md` reconciliation)
 **Implemented in:** roadmap block B0 (archived portfolios, language validation), B1 (What Changed); frontend stage (sorting, demo, translations)
 
 ## Context
@@ -54,7 +57,11 @@ requirements that no ADR or spec defines precisely enough to build or test:
 6. **Demo specifics.** Demo data layers, reset, simulated latency and
    scripted failures are decided in a frontend-stage ADR before the demo is
    built. They stay `Deferred` until then and do not block B0-B7. The demo
-   itself remains decided (ADR-001, ADR-006).
+   itself remains decided (ADR-001, ADR-006). (Amended 2026-10-07, approved
+   by the user from the `14-deployment-spec.md` reconciliation, §22, §24,
+   §28:) Demo hosting, the base path, the SPA fallback and the numeric bound
+   for the demo simulation are also decided in that frontend-stage ADR and
+   stay `Deferred` until then (ADR-006 point 7).
 7. **Benchmark comparison** (added 2026-10-05). Comparing portfolio
    performance with a market index or benchmark is `Deferred`. The system
    has no benchmark data, and no FR asks for it.
@@ -100,6 +107,12 @@ requirements that no ADR or spec defines precisely enough to build or test:
      calendar date, formatted with the UTC time zone and no time of day, so
      it never shifts with the user's time zone. Timestamps such as
      `executedAt` are shown in the user's local time zone.
+
+10. **Statistics** (added 2026-10-07, approved by the user). Win/loss
+    statistics and transaction statistics are not part of version 1: no
+    functional requirement defines them. Exposure stays `Deferred`
+    (`01-product-spec.md` §5 and §11). They return only if a functional
+    requirement defines them.
 
 ## Consequences
 

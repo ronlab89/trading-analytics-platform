@@ -2,6 +2,11 @@
 
 **Status:** Accepted
 **Date:** 2026-10-04
+**Amended:** 2026-10-07 (points 1 and 16, approved by the user from the
+`14-deployment-spec.md` reconciliation; Deferred detail rows; point 7,
+package location, approved by the user from the `15-implementation-plan.md`
+reconciliation; new point 17, event hand-off, approved by the user on
+2026-10-08 from the `15-implementation-plan.md` reconciliation)
 **Implemented in:** roadmap block B5 (not yet implemented)
 
 ## Context
@@ -31,7 +36,11 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
 ## Decision
 
 1. **Transport.** WebSocket using the `ws` library, behind a transport port
-   so the rest of the code does not depend on it.
+   so the rest of the code does not depend on it. (Amended 2026-10-07,
+   approved by the user from the `14-deployment-spec.md` reconciliation,
+   §10, §31, §72; `Planned (B5)`:) The WebSocket is served by the same HTTP
+   server and port as the API (7001) on a fixed path, proposed `/ws` and
+   confirmed in B5. There is no `WEBSOCKET_PATH` variable.
 2. **Authentication.** The client sends the access token in the first
    message, never in the URL. A connection not authenticated within 5
    seconds is closed. Each socket is bound to the expiry of the token it
@@ -65,7 +74,8 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
    `@trading/market-sim` with a seeded pseudo-random generator, an injected
    clock, and the modes and scenarios of `12-demo-mode-spec.md` §37-40. It
    depends only on `@trading/domain`. The API and the demo use the same
-   engine.
+   engine. The package lives at `packages/market-sim` (added 2026-10-07,
+   approved by the user).
 8. **Persistence in real mode.** Each tick updates `MarketPrice` and appends
    a `MarketEvent`, with bounded retention defined in B5. At every UTC day
    rollover the simulator closes a daily `HistoricalPrice` candle for each
@@ -146,7 +156,21 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
       endpoint paths are unchanged.
     - **Connection cap.** Concurrent WebSocket connections are capped per
       authenticated user, not per IP (ADR-005 point 13; v1 value 5, tuned
-      in B5).
+      in B5). (Amended 2026-10-07, approved by the user from the
+      `14-deployment-spec.md` reconciliation:) When a user is at the cap,
+      the new (excess) connection is closed with `4008` (point 15); the
+      existing connections stay open.
+17. **Event hand-off** (added 2026-10-08, approved by the user, from the
+    `15-implementation-plan.md` reconciliation, §31; `Planned (B5)`). The
+    application layer hands an event to the realtime adapter through a
+    `RealtimePublisher` port in `packages/application`; the adapter that
+    implements it lives in `apps/api`, behind the transport port of point 1.
+    Application services publish after the change commits (point 6, for
+    example `PORTFOLIO_UPDATED` after a transaction commits). Version 1 has no
+    domain events and no event bus; the "Domain event" and "Application event"
+    steps of the original sketch in `08-realtime-spec.md` and
+    `15-implementation-plan.md` §31 collapse into this one call. The demo
+    implements the same port in process (point 13).
 
 ## Consequences
 
@@ -204,6 +228,9 @@ specified and tested in the listed block.
 | Alert armed/triggered state is not persisted (re-fires after restart), oscillation around the threshold fires repeatedly, and the initial state of a new, already-true alert is undefined. | Persist `armed` and `lastTriggeredAt` in the same transaction as the notification. Re-arm only past a hysteresis band or after a cooldown. Define the initial state. | B5 |
 | After a restart the simulator restarts from the seed state and `MarketEvent.sequence` restarts. | Initialize the engine from persisted `MarketPrice` and `MAX(sequence)` per asset. Make `(assetId, sequence)` unique. | B5 |
 | Re-authentication on the same socket with another user's token keeps the previous user's `notifications` subscription. | Reject re-authentication when `sub` changes and close the socket. | B5 |
+| WebSocket `maxPayload` has no number of its own. | Equal to the inbound message limit already in `08-realtime-spec.md` §7; no new number. | B5 |
+| The realtime hub could be tied to the transport or to a broker. | It sits behind its own interface, and v1 has no broker. | B5 |
+| The application layer has no defined way to hand an event to the realtime adapter. | Point 17 (added 2026-10-08): the `RealtimePublisher` port in `packages/application`, its adapter in `apps/api`, no domain events in v1. Tests: a transaction service test with an in-memory publisher fake asserts `PORTFOLIO_UPDATED` is published only after commit. | B5 |
 | What the `PAUSED` mode does (point 16 renamed the lifecycle state to `HALTED`): whether `PUT /api/v1/simulation/mode` with `PAUSED` stops ticking like `POST /api/v1/simulation/pause`, and which mode `start` resumes into. | Define the `PAUSED` mode's behavior relative to `HALTED`, and which mode `start` resumes. | B5 |
 
 ## Related
