@@ -1,22 +1,57 @@
 # Trading Analytics Platform — Progress
 
-> **Superseded in part (2026-10-04).** The architecture decision records in
-> `docs/adr/` take precedence over this file. In particular, the next block
-> is **B0** (application layer and shared contracts, ADR-001 and ADR-002),
-> not B1; CI is now adopted (ADR-006); token and logout semantics are
-> decided (ADR-005). This file is rewritten in Phase 5 of
-> `odd/tasks/sdd-source-of-truth.md`.
+> **Reconciled (2026-10-08).** The architecture decision records in
+> `docs/adr/` take precedence over this file. The status below is being
+> reconciled with them and with the code, slice by slice. The build order is
+> backend-first: blocks B0 to B7 close the backend, then the frontend stage
+> follows (`docs/BACKEND-ROADMAP.md`, `docs/15-implementation-plan.md` §4.1).
+> The next block is **B0**.
 
-**Last updated:** end of Scenarios (changes on the entity, read and
-write API, calculate, compare); duplicate scenario deferred
-**Branch:** `feat/scenarios`, created from `develop`. `feat/api-foundation`
-and `feat/decisions` were merged into `develop` via PR (not `main`).
+**Last updated:** 2026-10-08. §1 and §2 are reconciled with the ADRs and the
+code; later sections are reconciled in following slices and still describe
+the work as it was done.
+**Branch:** `docs/sdd-operations`, the source-of-truth work (ADRs 001-010,
+phases 0-5 of `odd/tasks/sdd-source-of-truth.md`). It is documentation only,
+carried on `docs/sdd-*` branches that are merged into `develop` through pull
+requests; phases 0-4 are merged and phase 5 is not merged yet. `main` still
+holds only the initial commit (`42839b1`); all earlier feature branches
+(`feat/api-foundation`, `feat/decisions`, `feat/scenarios`) were merged into
+`develop` through PRs #6, #7 and #8, not into `main`.
 
 ---
 
 ## 1. Current Phase & Step
 
-Per `15-implementation-plan.md`:
+**Build order (decided, `15-implementation-plan.md` §4.1):** minimal CI,
+then the backend blocks **B0 to B7**, then the frontend blocks **FE0 to
+FE6**. The two stages run in sequence; vertical slicing applies inside each
+block. The blocks are defined in `docs/BACKEND-ROADMAP.md`:
+
+- B0: application layer, shared contracts and minimal CI
+- B1: portfolio performance and risk analytics
+- B2: authentication and RBAC
+- B3: observability foundation
+- B4: background jobs and idempotency
+- B5: realtime and market simulation
+- B6: API documentation and contract
+- B7: deployment readiness and hardening
+
+**Where the project stands:** the backend API surface exists (§2), but the
+backend is not done. **The next block is B0**: the application layer
+(`packages/application`), shared contracts (`packages/contracts`), minimal
+CI, the `Clock` port, route tests, chronological transaction validation and
+the position-recalculation race. **No code for B0 has started**;
+`packages/application` does not exist, `packages/contracts` and
+`packages/config` hold only a `.gitkeep`, and `.github/` holds only the pull
+request template.
+
+**SDD reconciliation:** the spec set is `docs/00` to `docs/16` plus ADRs
+001-010 (`docs/adr/`). Phases 0-4 of `odd/tasks/sdd-source-of-truth.md` are
+merged into `develop`. Phase 5 (operations docs, roadmap and this file) is in
+progress on `docs/sdd-operations`: `docs/BACKEND-ROADMAP.md` and `docs/15`
+are reconciled, and this file is reconciled slice by slice.
+
+**History (the original phase list, `15` §4), kept for the record:**
 
 - **Phase 0 — Repository Foundation:** ✅ Complete
 - **Phase 1 — Product/Domain Foundation:** ✅ Complete
@@ -26,33 +61,31 @@ Per `15-implementation-plan.md`:
   (see §3 below)
 - **Phase 4 — Authentication/RBAC:** ⏸ Partially done. JWT login +
   `authenticate` middleware exist and are tested. **RBAC (`requireRole`
-  middleware) and a registration endpoint are deliberately deferred** —
-  no route currently needs role-based restriction, and users are seeded
-  directly (no self-registration flow exists yet).
+  middleware) and a registration endpoint are not built**; token and logout
+  semantics are decided in ADR-005 and the work belongs to **B2**.
 
-**We are between Phase 3 and Phase 4/5**, having extended the API
-surface with capabilities the original phase list under-specified
-(Assets, Analytics, Overview, Market Data) and hardened what already
-existed, before deciding the next block of work.
+The API was extended beyond the original phase list with the capabilities it
+under-specified (Assets, Analytics, Overview, Market Data), then with the
+small CRUD resources, Decisions and Scenarios:
 
-**Step D (small CRUD resources) is complete:** Watchlist, Alerts,
-Notifications, User Preferences, each with endpoints and HTTP-level
-integration tests (see §3.6).
-
-**Decisions + Replay is complete on the read side:** list, detail and
-replay endpoints, a pure `projectDecisionReplay` domain projection and
-real timestamps in the seed (see §3.7). The write endpoints (create,
-update, close) are **deliberately deferred**.
-
-**Scenarios is complete** (see §3.8): `changes` are now part of the
-`Scenario` entity, with list/detail/create/update/archive/delete,
-a stateless `calculate`, and a `compare` endpoint backed by a pure
-domain function. Only duplicating a scenario (FR-041, P2) is deferred.
+- **Step D (small CRUD resources) is complete:** Watchlist, Alerts,
+  Notifications, User Preferences, each with endpoints and HTTP-level
+  integration tests (see §3.6).
+- **Decisions + Replay is complete on the read side:** list, detail and
+  replay endpoints, a pure `projectDecisionReplay` domain projection and
+  real timestamps in the seed (see §3.7). The write endpoints (create,
+  update, close) are **deliberately deferred**.
+- **Scenarios is complete** (see §3.8): `changes` are part of the
+  `Scenario` entity, with list/detail/create/update/archive/delete, a
+  stateless `calculate`, and a `compare` endpoint backed by a pure domain
+  function. Only duplicating a scenario (FR-041, P2) is deferred.
 
 **Every resource in the data model now has an API**, except the
-explicitly deferred pieces (decision writes, scenario duplicate). The
-remaining backend work is RBAC/registration (Phase 4), `performance` by
-period, and the realtime/background phases (9-10).
+explicitly deferred pieces (decision writes, scenario duplicate, and
+`MarketEvent`, which has none). The remaining backend work is the blocks
+above: B0 first, then `performance` by period (B1), RBAC, registration,
+refresh and logout (B2), observability (B3), jobs (B4) and realtime (B5).
+None of the jobs, realtime, refresh or logout work is built.
 
 ---
 
@@ -66,7 +99,9 @@ apps/
 packages/
   domain/               Pure domain layer (entities, calculations, repository contracts)
   database/             Prisma schema, migrations, seed, repository implementations
-docs/                   SDD documents (00-15) + this file
+  contracts/            Placeholder (.gitkeep only); filled in B0
+  config/               Placeholder (.gitkeep only)
+docs/                   SDD documents (00-16), adr/ (ADRs 001-010) + this file
 ```
 
 ### 2.2 Domain layer (`packages/domain`)
@@ -123,8 +158,8 @@ docs/                   SDD documents (00-15) + this file
 ### 2.3 Database layer (`packages/database`)
 
 - PostgreSQL via Docker Compose (`docker-compose.yml`), Prisma schema
-  with the full `05-data-model.md` entity set already modeled
-  (migrations applied for all of it, even though several entities have
+  with the full `05-data-model.md` entity set already modeled (16
+  models; migrations applied for all of it, even though several entities have
   no API yet).
 - Prisma repository implementations exist for every entity in the data
   model, all exported from `packages/database/src/index.ts`.
@@ -179,7 +214,8 @@ resources follow it.
 configured Express app (all middleware + routes), no `listen()` call.
 `index.ts` just imports `createApp` and calls `.listen()`. This split
 exists specifically so integration tests can exercise the real app via
-supertest without binding a port.
+supertest without binding a port. `createApp()` mounts 15 routers (health
+plus 14 resource routers).
 
 **Middleware stack (in order, see `app.ts`):** `helmet()` → `cors()`
 (origin from `CORS_ORIGIN`) → `requestId` → `healthRouter` (before rate
