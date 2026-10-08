@@ -1050,6 +1050,41 @@ The same product/application behavior should remain conceptually shared with the
 
 ## 17. Phase 12 — Testing Hardening
 
+**Status:** per item (table below); this is not a late phase: test work is spread across the blocks that build the behavior
+
+**Owning blocks:** Backend: B0 (route tests, `Clock` port, in-memory fakes, repository contract suite, contract tests, CI), B2 (token tests), with the tests of each of B1 to B7 written inside that block; Frontend: FE5 (component, E2E and accessibility checks), with the tests of FE0 to FE4 written inside those blocks. Decisions: ADR-001 points 7 and 8, ADR-002 point 6, ADR-006 points 10 and 11, ADR-009 point 13; method in `10-testing-strategy.md`.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Unit and integration suites that exist today: 28 domain test files (`packages/domain`), 17 database test files (repositories and `prisma-unit-of-work.test.ts`, against PostgreSQL), 14 API test files (`app.test.ts`, middleware and route tests, against PostgreSQL); Vitest in each package | `Implemented` | none |
+| Route tests for analytics, positions, assets and market, which have no route test file today, written before the services move into the application layer (ADR-001 point 8) | `Planned (B0)` | B0 |
+| Health route test for `GET /health` and `GET /health/ready` (ADR-001 point 8, ADR-009 point 13); NFR-051 is `Implemented` in `apps/api/src/routes/health.ts` but no test covers either route | `Planned (B0)` | B0 |
+| One shared `Clock` port injected through the composition root; domain and application code receive the time instead of calling `new Date()` (for example `validateNewTransaction`), and tests supply a fixed clock (ADR-001 point 8, `10` §49) | `Planned (B0)` | B0 |
+| Application services tested with in-memory fakes of the repository contracts (ADR-001 point 7) | `Planned (B0)` | B0 |
+| One repository contract suite that runs against the Prisma and the in-memory implementations, extracted from the existing Prisma repository tests (`10` §18, NFR-044) | `Planned (B0)` | B0 |
+| Contract tests against the `@trading/contracts` schemas (ADR-002 point 6) | `Planned (B0)` | B0 |
+| Token tests: expired token and wrong signature return 401, with refresh, logout and role enforcement tests (`10` §29); no test covers an expired or wrongly signed token today | `Planned (B2)` | B2 |
+| Redaction and event-name unit tests; an integration test that a request's `requestId` appears in its log entries (ADR-009 point 13) | `Planned (B3)` | B3 |
+| Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | `Planned (B1)` to `Planned (B6)`, per block | B1 to B6 |
+| Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Planned (B0)` | B0 |
+| Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the runner and React Testing Library `Deferred` to the frontend-stage ADR | FE5 |
+| Realtime client tests (connect, disconnect, reconnect, event processing) | Server `Planned (B5)`; client `Planned (FE3)` with the feature; component and E2E checks `Planned (FE5)` | B5, FE3, FE5 |
+| Demo tests: simulation determinism of the shared engine, and the demo flows with the CSV import failure | Engine `Planned (B5)`; demo flows `Planned (FE4)` | B5, FE4 |
+| E2E flows (login, portfolio workflow, transaction workflow, analytics, realtime, recovery), plus the CSV import flow as a critical flow (`10` §33) | `Planned (FE5)`; Playwright `Deferred` to the frontend-stage ADR | FE5 |
+| Accessibility checks | `Planned (FE5)`; the scanning tool `Deferred` to the frontend-stage ADR | FE5 |
+| Demo reset, local persistence and scripted failures other than the import failure | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
+| Frontend test tooling (component runner, React Testing Library, Playwright), the accessibility scanning tool, the HTTP client timeout and retry policy, and a coverage threshold | `Deferred` (ADR-006 point 11) | none |
+
+Code vs ADR:
+
+- The original phase reads as one late hardening pass. ADR-001 point 8 and ADR-006 point 11 move most of it earlier: route tests, the `Clock` port and the contract suite are B0 work done before the layering refactor, and CI exists before B1. Each later block closes with its own tests, so FE5 keeps only the checks that need frontend code.
+- Token-expiry and wrong-signature tests belong to B2, not to B0, and the `Clock` port from B0 is what lets them run without waiting for real time (decided by the user on 2026-10-07; `10` §29 and §49).
+- The `Domain` priority area is `Implemented` (calculations, invariants and transaction rules have domain tests). The `API` priority area is partial: validation, authentication, authorization and error paths are covered in route tests, while expired tokens and role enforcement are `Planned (B2)` and malformed path parameters are `Planned (B0)` (`10` §29 to §31).
+- Original layer "Component" and "E2E" have no tooling decision. ADR-006 point 11 leaves the runner, React Testing Library and Playwright to the frontend-stage ADR, and says component, E2E and accessibility checks join the CI workflow once frontend code exists. They do not block B0 to B7.
+- ADR-006 point 11 sets no coverage threshold in version 1. The quality bar is the named mandatory tests (application services with in-memory fakes, contract tests against the schemas), not a percentage.
+- "Demo: persistence" and "reset" are `Deferred` (ADR-010 point 6, `10` §34); only the CSV import failure and the real validation rules are decided demo failures.
+- `.github/` holds only `PULL_REQUEST_TEMPLATE.md`; no workflow exists today, and the Husky pre-commit hook runs `lint-staged` only.
+
 ### Objective
 
 Increase confidence across the system.
@@ -1117,6 +1152,38 @@ E2E
 
 ## 18. Phase 13 — Observability
 
+**Status:** per item (table below); the backend scope is `Planned (B3)`
+
+**Owning blocks:** Backend: B3 (ADR-009 points 1 to 13), with `auth.logout` landing with its endpoint in B2, job entries in B4 and realtime and simulator entries in B5; Frontend: FE0 (browser-console `Logger` adapter), FE4 (demo logging). Decisions: ADR-009, ADR-006 points 11 and 12, ADR-010 point 6.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| `Logger` port in `@trading/application` with a `pino` adapter in the API; `pino-http` for request logs; `pino-pretty` in development only; JSON on stdout, no log files, no rotation (ADR-009 points 1 to 3) | `Planned (B3)`; the port depends on `@trading/application` from B0 | B3 |
+| Log fields and stable dotted event names such as `http.request.completed` (ADR-009 point 3); `LOG_LEVEL` is the only logging variable: `debug` in development, `info` in production, `silent` in tests (point 7) | `Planned (B3)` | B3 |
+| Redaction of passwords, the `Authorization` header, cookies, access tokens and refresh tokens, with tests (ADR-009 point 4 and Deferred detail) | `Planned (B3)` | B3 |
+| Request IDs: the `requestId` middleware generates or accepts a safe `X-Request-ID` and sets it on the response (`apps/api/src/middleware/request-id.ts`) | `Implemented` | none |
+| Correlation: `requestId` propagated through `AsyncLocalStorage` to every log line of the request; `X-Request-ID` exposed through CORS (`exposedHeaders`); `jobId` and `connectionId` on job and realtime entries (ADR-009 point 5) | `Planned (B3)`; job and realtime fields with B4 and B5 | B3, B4, B5 |
+| Error categorization: the error handler returns a coded error body with the `requestId` (`apps/api/src/middleware/error-handler.ts`) | `Implemented` | none |
+| Error logging by category: levels by code, the event name `http.request.failed` (today `request.failed`), `errorCategory` and the stack on internal errors (ADR-009 points 3 and 6); today only unexpected errors are logged | `Planned (B3)` | B3 |
+| Health checks and readiness: `GET /health` and `GET /health/ready` (`SELECT 1`), the failure line `health.database.unavailable` | `Implemented`; their route test `Planned (B0)` | B0 |
+| Shutdown behavior of readiness (503 while shutting down) and the `app.startup.*` and `app.shutdown.*` entries (ADR-006 point 12, ADR-009 point 11) | `Planned (B3)` | B3 |
+| Security events `auth.login.succeeded`, `auth.login.failed`, `auth.refresh.reuse_detected`, `authz.denied` and `auth.logout` (ADR-009 point 9) | `Planned (B3)`; `auth.logout` with its endpoint `Planned (B2)` | B3, B2 |
+| Performance measurements: a `warn` entry when a request exceeds `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms), and separate timing of the analytics series reconstruction (ADR-009 point 8); individual database operations are not timed | `Planned (B3)` | B3 |
+| Realtime and background-job diagnostics: lifecycle entries for realtime connections (ADR-007) and job transitions (ADR-008); simulator entries `simulation.started`, `simulation.paused`, `simulation.mode.changed` (ADR-009 point 11) | Job entries `Planned (B4)`; realtime and simulator entries `Planned (B5)`; entry names and fields are open details | B4, B5 |
+| Local debugging tools: `LOG_LEVEL=debug` with `pino-pretty` covers local debugging | `Planned (B3)` | B3 |
+| Browser-console `Logger` adapter, so application code logs without knowing where it runs (ADR-009 point 1) | `Planned (FE0)`; demo event names `Deferred` (ADR-010 point 6) | FE0 |
+| Metrics, a `/metrics` endpoint and process metrics | `Deferred` (ADR-009 point 10) | none |
+| Realtime debug mode, diagnostics panel and demo diagnostics interface | `Deferred` to the frontend-stage ADR and the demo ADR (ADR-009 point 12, ADR-010 point 6) | none |
+
+Code vs ADR:
+
+- The API logs with `console` today (`apps/api/src/index.ts`, `apps/api/src/config/env.ts`) and has no logger module or logging dependency. Two lines already carry an `event` field: the unexpected-error line `request.failed` (`level`, `requestId`, `errorName`, `message`) and the readiness failure `health.database.unavailable`. Neither has a `timestamp` or `service` field, and handled errors are not logged. `X-Request-ID` is not exposed by CORS (`apps/api/src/app.ts` sets `cors({ origin })` only).
+- The original task list includes "metrics". ADR-009 point 10 defers it: nothing would consume a metrics endpoint in a local deployment (NFR-070). Hosting the backend later (ADR-006 point 2) reopens this decision.
+- "Realtime diagnostics", "background-job diagnostics" and "performance measurements" are read as log entries in version 1, not as dashboards or panels. Performance measurement means the slow-request entry and the series timing; broader measurement follows the measure-first rule of §3 and is planned in §32.
+- "Local debugging tools" is `LOG_LEVEL` plus `pino-pretty`. `LOG_FORMAT`, `ENABLE_DEBUG_LOGGING` and `ENABLE_DEV_DIAGNOSTICS` are not adopted (ADR-009 point 2).
+- The acceptance criterion "realtime disconnects" is met by connection lifecycle entries from B5, so it cannot be demonstrated before that block. "Authentication failures" depends on the security events, partly from B2.
+- The checklist of `13-observability-spec.md` mixes backend, frontend and demo items; ADR-009 point 12 limits B3 to the backend and moves the rest to the frontend stage.
+
 ### Objective
 
 Make runtime behavior diagnosable.
@@ -1152,6 +1219,40 @@ without requiring a paid external monitoring service.
 
 ## 19. Phase 14 — Deployment
 
+**Status:** per item (table below); there are two targets and no hosted backend (ADR-006 points 1 and 2)
+
+**Owning blocks:** Backend: B0 (minimal CI, configuration safety), B3 (graceful shutdown), B7 (build, container, local full stack, smoke test); Frontend: FE0 (build-time variables), FE4 (demo build and publication). Decisions: ADR-006 points 1 to 13, ADR-010 point 6; spec in `14-deployment-spec.md`.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Targets: a local full stack for demonstrations and a public static demo of `apps/web`; no public backend (ADR-006 points 1 and 2) | `Reference` | none |
+| Minimal CI workflow (see §17), with no continuous deployment (ADR-006 points 10 and 11) | `Planned (B0)` | B0 |
+| Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | `Planned (B0)` | B0 |
+| Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Planned (B7)` | B7 |
+| Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Planned (B7)` | B7 |
+| Environment configuration for `development`, `test` and local `production`: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT` and `JWT_EXPIRES_IN_SECONDS`; it does not read `APP_MODE`, `LOG_LEVEL` or `SLOW_REQUEST_THRESHOLD_MS` and does not validate `DATABASE_URL`; the rest is `Planned (B3)` (logging variables) and `Planned (B7)` (`DATABASE_URL`, `APP_MODE`) | B3, B7 |
+| Web build-time values `VITE_APP_MODE` and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) | `Planned (FE0)` | FE0 |
+| Local full stack: a Docker Compose `full` profile with PostgreSQL and the API; the default profile keeps only PostgreSQL; `TZ=UTC` on both containers; the real-mode web app runs on the Vite dev server against the local API (ADR-006 points 4 and 8) | `Planned (B7)` | B7 |
+| Migration deployment: a one-shot `migrate` service in the `full` profile runs `prisma migrate deploy` after PostgreSQL is healthy, and the API starts after it completes (ADR-006 points 4 and 5 and Deferred detail) | `Planned (B7)` | B7 |
+| Health checks: `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` (ADR-006 point 4) | Endpoints `Implemented`; container healthcheck `Planned (B7)` | B7 |
+| Graceful shutdown: on `SIGTERM` or `SIGINT` the server stops accepting connections, readiness returns 503 with `status: "unavailable"` and no `checks`, in-flight requests drain for up to 10 seconds, Prisma closes, and the exit code is 1 only if the drain times out (ADR-006 point 12) | `Planned (B3)` | B3 |
+| Smoke tests: one script that runs after `docker compose --profile full up`, with no frontend step (ADR-006 point 11) | `Planned (B7)` | B7 |
+| Deployment documentation: the documented steps that start and verify the local full stack | `Planned (B7)` | B7 |
+| Public demo build: a static build of `apps/web` in demo mode, no backend calls, no secrets, namespaced browser storage, configurable base path, SPA fallback, and its publication (ADR-006 point 7) | `Planned (FE4)` | FE4 |
+| Demo hosting, the base path value, the SPA fallback mechanism and the numeric bound of the demo simulation | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
+| Hosted backend, managed database, reverse proxy, public HTTPS and WSS, backups | `Deferred`; a hosted backend needs a new ADR (ADR-006 points 2 and 9) | none |
+| Original item "HTTPS/WSS configuration" | Removed (ADR-006 point 2) | none |
+| Original item "rollback documentation" | Removed: rollback is forward-fix only, because Prisma Migrate has no down migrations (ADR-006 point 6) | none |
+
+Code vs ADR:
+
+- The production build does not run today: `@trading/domain` and `@trading/database` set `main` to `./src/index.ts`, and the domain uses extensionless relative imports that `node dist/index.js` cannot resolve (ADR-006 Context). Fixing it is the B7 build item. `pnpm build` runs `pnpm -r build`; CI runs it from B0 to prove the packages compile, and running the built API stays in B7.
+- `.github/` holds only `PULL_REQUEST_TEMPLATE.md`, `docker/` holds only `.gitkeep`, there is no `apps/api/Dockerfile`, no `.nvmrc`, and `docker-compose.yml` defines no `full` profile. The seed wipes the database with no production guard.
+- The original "production frontend build" is split in two. The demo build is the only public frontend artifact (`Planned (FE4)`). The real-mode web app is not built for production in version 1 and runs on the Vite dev server (ADR-006 point 8).
+- The original "deployment documentation" assumed a hosted target. It now documents only the local full stack, and states that backups are not applicable to a local environment (ADR-006 point 9).
+- Graceful shutdown is B3, not B7, so `BACKEND-ROADMAP.md` (which lists it in B7) needs aligning (task T5.3). Shutdown steps for background jobs and realtime connections join the sequence in B4 and B5 (ADR-006 Deferred detail).
+- The acceptance criterion "a production-like deployment can be started and verified through documented steps" is met by the local full stack plus the smoke script, not by a hosted environment.
+
 ### Objective
 
 Make the system reproducibly deployable.
@@ -1178,6 +1279,27 @@ A production-like deployment can be started and verified through documented step
 ---
 
 ## 20. Phase 15 — UX, Accessibility and Performance Refinement
+
+**Status:** `Planned (FE5)`; nothing in this phase exists yet because `apps/web` holds only a wireframe (`apps/web/wireframe.html`)
+
+**Owning blocks:** Backend: none; Frontend: FE5 (§4.3), after FE1 to FE4. Decisions: ADR-010 point 9 (breakpoints and interface scope), ADR-006 point 11 (accessibility tool deferred); targets in `03-non-functional-requirements.md`.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| UX review (hierarchy, spacing, typography, visual consistency, feedback, empty states, error states, motion, responsive behavior) | `Planned (FE5)`; the breakpoints (900 px and 560 px) and the 360 px minimum viewport are decided in ADR-010 point 9 | FE5 |
+| Accessibility validation (keyboard navigation, focus management, labels, semantic structure, screen reader support, reduced motion, contrast) against NFR-029 to NFR-032 | `Planned (FE5)` | FE5 |
+| Accessibility scanning tool | `Deferred` to the frontend-stage ADR (ADR-006 point 11) | FE5 |
+| Performance measurement against the approved targets of NFR-001 to NFR-008 (load, navigation, interaction, market update propagation, update stability, burst handling, derived analytics, large historical datasets) | `Planned (FE5)`; the measurement approach is measure first (§32) | FE5 |
+| Performance fixes in the potential areas below (renders, query caching, table and chart rendering, bundle size, realtime update frequency, expensive calculations, network payloads) | `Planned (FE5)`, only where a measurement shows a miss | FE5 |
+| Frontend choices that these areas depend on (rendering approach, charts, table library, state and query caching) | `Deferred` to the frontend-stage ADR | FE0 |
+
+Code vs ADR:
+
+- The phase keeps its scope. What changes is its owner and its input: it runs once, in FE5, against a working frontend, and it uses the targets already approved in `03`. This document sets no new metric (rule 2 of §3). No NFR sets a bundle-size or network-payload target, so those two areas are measured and reported, not judged against a number, until a decision adds one.
+- The server side of performance is not part of this phase. Slow-request logging and the timing of the analytics series reconstruction are `Planned (B3)` (§18), and the server realtime limits are `Planned (B5)`.
+- NFR-008 is enough for large datasets in version 1; the memory target stays `Deferred` (`10` §41).
+- "Realtime update frequency" is bounded by NFR-005 and NFR-006 and needs the realtime client of FE3 to exist before it can be measured.
+- The accessibility checks of this phase are the same automated and manual checks listed in `10` §36; component and E2E tests that touch them are listed in §17.
 
 ### Objective
 
@@ -1228,6 +1350,25 @@ Potential areas:
 
 ## 21. Phase 16 — Portfolio Case Study
 
+**Status:** `Planned (FE6)`; written last, after the frontend stage closes
+
+**Owning blocks:** Backend: none; Frontend: FE6 (§4.3), after FE5. Source material: the ADRs, the SDDs, `PROGRESS.md`, the test and CI results, and the measured results of FE5. Rules: `00-overview.md` §15, `12-demo-mode-spec.md` §84 (no performance numbers until measured).
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Case study written in the recommended structure below, with content derived from the ADRs and from real evidence only | `Planned (FE6)` | FE6 |
+| Evidence the case study may cite: the ten ADRs (`docs/adr/`), the test suites, the CI runs from B0, the local full stack and the smoke script from B7, the public demo from FE4, and the measurements of FE5 | `Planned (FE6)`; each source exists only when its block closes | FE6 |
+| Performance and outcome statements | `Planned (FE6)`, and only for what FE5 or another block measured; unmeasured figures are not published | FE6 |
+| Technical interview readiness material (§43) | `Planned (FE6)` | FE6 |
+| Where the case study is published and its page format | Open: no ADR decides it; `00-overview.md` §15 says it follows the existing project-page structure of the portfolio site | FE6 |
+
+Code vs ADR:
+
+- No case study exists. `00-overview.md` §15 marks it `Deferred` until after the frontend stage; this plan gives it a block (FE6) so that it is scheduled, and the two statements agree on timing.
+- The recommended structure below and the structure in `00-overview.md` §15 (summary, context, architecture, decisions, challenges, security, performance, stack, outcomes, lessons, future evolution) differ in wording and order. Neither is a decision. Recommendation: use the structure of the portfolio site's project page when FE6 starts, and treat the list below as the content checklist.
+- The backend-first order of §4.1 (ADR-006 point 1, `00-overview.md` §1) and the ADR trail are recorded decisions, so the case study can cite them as evidence without invention.
+- Before FE6, claims about the demo, performance, security results or deployment are limited to what the blocks have produced. The local full stack is the only deployment evidence; there is no hosted backend (ADR-006 point 2).
+
 ### Objective
 
 Transform the implemented system into evidence of engineering capability.
@@ -1274,6 +1415,10 @@ Do not publish metrics or outcomes until they have actually been measured.
 
 ## 22. Dependency Graph
 
+**Status:** `Reference`; the original graph below is the intent, and the build order is the one in §4.1 and in the block graph that follows it
+
+The original graph, kept as the logical dependency of the capabilities:
+
 ```text
 Repository
     ↓
@@ -1310,10 +1455,90 @@ Case Study
 
 Once contracts are stable, some implementation work may proceed concurrently.
 
+The order in which the blocks are built (§4.1 to §4.3):
+
+```text
+Minimal CI (B0)
+    ↓
+B0  Application layer and shared contracts
+    ↓
+B1  Portfolio performance and risk analytics
+    ↓
+B2  Authentication and RBAC
+    ↓
+B3  Observability foundation
+    ↓
+B4  Background jobs and idempotency
+    ↓
+B5  Realtime and market simulation
+    ↓
+B6  API documentation and contract
+    ↓
+B7  Deployment readiness and hardening
+    ↓   the backend counts as done (§4.1)
+FE0 Foundation (needs B6)
+    ├─→ FE1 Core workflow (needs B2)
+    │      ├─→ FE2 Analytics and tables (needs B1)
+    │      └─→ FE3 Realtime and jobs (needs B4, B5)
+    └─→ FE4 Demo mode (needs B0, B5)
+FE1 to FE4
+    ↓
+FE5 Quality and refinement
+    ↓
+FE6 Case study
+```
+
+How the original nodes map to the blocks:
+
+| Original node | Where it lands | Status |
+| --- | --- | --- |
+| Repository | Phase 0 `Implemented`; the minimal CI is the new first step | `Implemented`; CI `Planned (B0)` |
+| Domain | Phase 1 `Implemented` in `packages/domain`; analytics additions in B1; application layer and contracts in B0 | `Implemented`; `Planned (B0)`, `Planned (B1)` |
+| Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented`; `Planned (B0)`, `Planned (B4)` |
+| Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Planned (B6)` |
+| Auth | Phase 4 login and `me` `Implemented`; refresh, logout and roles in B2; session screens in FE1 | `Planned (B2)`, `Planned (FE1)` |
+| Frontend | Phase 5, FE0 | `Planned (FE0)` |
+| Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | `Planned (FE1)` |
+| Analytics | Allocation and attribution `Implemented`; performance and risk in B1; views in FE2 | `Planned (B1)`, `Planned (FE2)` |
+| Realtime | Server B5; client FE3 | `Planned (B5)`, `Planned (FE3)` |
+| Background operations | Jobs B4; screens FE3 | `Planned (B4)`, `Planned (FE3)` |
+| Demo | Engine in B5 (with the application layer from B0); demo mode in FE4 | `Planned (B5)`, `Planned (FE4)` |
+| Testing | Spread across the blocks from B0; component, E2E and accessibility checks in FE5 | `Planned (B0)`, `Planned (FE5)` |
+| Observability | Backend B3; browser `Logger` adapter FE0 | `Planned (B3)`, `Planned (FE0)` |
+| Deployment | Local full stack B7; demo build and publication FE4 | `Planned (B7)`, `Planned (FE4)` |
+| Case Study | FE6 | `Planned (FE6)` |
+
+Code vs ADR:
+
+- The original graph runs Backend, Auth, Frontend, then the product features, with Testing, Observability and Deployment after Demo. Development does not follow that line. All backend work, including observability (B3), the testing foundation (B0, B2) and deployment (B7), comes before the frontend stage (ADR-006 point 1, `00-overview.md` §1), so Testing, Observability and Deployment move forward and the product features split into a backend part and a frontend part.
+- The block order is the order of `BACKEND-ROADMAP.md` §3, extended with B0 (ADR-001, ADR-002) and the minimal CI (ADR-006 point 11): B3 before B4 and B5 because asynchronous work is hardest to debug blind, and B4 before B5 because job progress is a realtime event (ADR-007 point 15). The roadmap does not list B0 yet (task T5.3).
+- The frontend edges are the "Depends on" column of §4.3. FE0 also needs the frontend-stage ADR (§4.3), which is not a block and is not drawn. The stage starts only when the backend counts as done (§4.1), which is stricter than the single B6 edge shown for FE0.
+- "Once contracts are stable, some implementation work may proceed concurrently" does not apply between the backend and the frontend stages in version 1 (§4 and §4.1). Whether FE2, FE3 and FE4, which depend on different blocks, overlap is not decided; the numeric order of §4.3 is the default.
+
 ---
 
 ## 23. Recommended Vertical Slices
 
+**Status:** per item (table below); slices run inside each block, not across the two stages (§4.1)
+
+**Owning blocks:** each slice has a backend part and, except the demo, a frontend part; the table maps both. Slice size inside a block follows the block method: read the code and the specs, propose small slices, apply, verify, commit.
+
+| Slice | Backend part | Frontend part (`Planned (FE)`) |
+| --- | --- | --- |
+| 1 Authentication | Login and `me` `Implemented`; refresh, logout and role enforcement `Planned (B2)` | Session screens and the authenticated shell: FE1, on the FE0 foundation |
+| 2 Portfolio | API and database `Implemented`; layering and archived-portfolio guard `Planned (B0)` | Portfolio screens: FE1 |
+| 3 Transaction | Validation, persistence and position update `Implemented`; `Clock` port and chronological validation `Planned (B0)`; fee handling `Planned (B1)`; `Idempotency-Key` `Planned (B4)` | Transaction and position screens: FE1 |
+| 4 Analytics | Allocation and attribution `Implemented`; performance and risk calculation and endpoints `Planned (B1)` | Table and chart views: FE2 |
+| 5 Realtime | Server and event contract `Planned (B5)` | Client, notifications and alerts: FE3 |
+| 6 Background operation | CSV import job, progress and completion `Planned (B4)`; job events over the socket `Planned (B5)` | Upload, progress and completion screens: FE3 |
+| 7 Demo | Application layer and in-memory repositories `Planned (B0)`; shared simulation engine `Planned (B5)` | In-process adapters, composition root and publication: FE4 |
+
+Code vs ADR:
+
+- The original slices cut through the whole stack at once (API, database and UI). With the backend-first order (§4.1), each slice is delivered in two passes: the backend part in its block, then the frontend part in its block after the backend counts as done. A slice is complete only when both passes are.
+- Slice 1 "Authenticated shell": the shell belongs to FE0 and FE1, and the session behavior it relies on (refresh, logout, roles) is B2, so slice 1 cannot be shown end to end before FE1.
+- Slice 7 says "Mock infrastructure". ADR-001 replaces mocks with in-memory implementations of the real repository contracts and the real application layer, run in the browser (see the Phase 11 note in §16). There is no mock HTTP layer.
+- The frontend parts of all slices are `Planned (FE)`. Slice 5 needs both B5 and FE3, and slice 6 needs B4, B5 and FE3 (§4.3), so they are the last backend-dependent slices to close.
 ### Slice 1 — Authentication
 
 ```text
