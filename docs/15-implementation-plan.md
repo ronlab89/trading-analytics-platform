@@ -614,6 +614,30 @@ The final structure may evolve during implementation.
 
 ## 11. Phase 6 — Core Portfolio Workflow
 
+**Status:** per item (table below); the backend endpoints are `Implemented` and every screen is frontend stage work
+
+**Owning blocks:** Backend: none for the endpoints themselves (B0 adds the archived-portfolio guard and route tests; B5 changes asset price semantics); Frontend: FE1 (§4.3), on top of FE0.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Portfolio endpoints: list, create, get by id, update (`PATCH`) and archive (`apps/api/src/routes/portfolios.routes.ts`) | `Implemented` | none |
+| Position endpoints: list and get by id (`positions.routes.ts`) | `Implemented` | none |
+| Overview endpoint with the Pulse (`overview.routes.ts`, `GET /api/v1/portfolios/:portfolioId/overview`) | `Implemented`; the period `performance` field `Planned (B1)` (`07-api-spec.md` §11) | B1 |
+| Asset endpoints: list, detail, price and history (`assets.routes.ts`), and the batch price endpoint (`market.routes.ts`) | `Implemented`; change semantics against the last closed candle `Planned (B5)` (ADR-007 point 14) | B5 |
+| Archived portfolio is read-only: any mutation scoped to it returns 409 `CONFLICT` and writes nothing; reads and the archive call are unchanged (ADR-010 point 5). A delete on an archived portfolio, such as deleting one of its alerts, is a mutation and returns 409 too | `Planned (B0)` | B0 |
+| Route tests for the positions, assets, market and analytics routes, before the services move into `@trading/application` (ADR-001 point 8) | `Planned (B0)` | B0 |
+| Session state: the access token kept in memory only (ADR-005 point 4), login and logout screens | `Planned (FE1)`; session endpoints `Planned (B2)` | FE1 |
+| Dashboard, portfolio listing, portfolio detail and positions screens, navigation | `Planned (FE1)`; the application shell is FE0 (§10) | FE1 |
+| Loading, empty and error states; responsive behavior (breakpoints 900 px and 560 px, minimum width 360 px, ADR-010 point 9) | `Planned (FE1)` | FE1 |
+| API integration through the `TradingClient` port and its HTTP adapter over `@trading/contracts` (ADR-002 point 5) | `Planned (FE0)` for the client; `Planned (FE1)` for its use in each screen | FE0, FE1 |
+
+Code vs ADR:
+
+- The archived-portfolio guard does not exist. Archiving is idempotent and never 409 (`portfolio.service.ts`, `alreadyArchived` in the response meta), `PATCH` on an archived portfolio is accepted, and `createTransaction` only checks that the portfolio belongs to the caller. ADR-010 point 5 makes the portfolio read-only after archive. Hard deletion and unarchiving are `Deferred` (FR-011).
+- The original objective calls this "the first complete vertical product slice". Under the backend-first override (§4.1) the slice is delivered inside FE1 over a finished backend, not as the first slice of the project. The acceptance criterion stays: a user completes the primary workflow against the real backend, in real mode. The same workflow in the demo is FE4 (§16).
+- Authentication state and the session screens belong to Phase 4 (§9) and are listed here only because the workflow starts with login.
+- The overview, positions, assets and market routes have no route test file today. ADR-001 point 8 lists analytics, positions, assets and market for B0 and does not list the overview, which has no route test either.
+
 ### Objective
 
 Deliver the first complete vertical product slice.
@@ -655,6 +679,39 @@ A user can complete the primary portfolio workflow against the real backend.
 
 ## 12. Phase 7 — Transactions and Positions
 
+**Status:** per item (table below)
+
+**Owning blocks:** Backend: B0 (chronological validation, position projection and isolation, archived guard, `Clock` port), B1 (fees, currency check), B2 (role checks), B4 (`Idempotency-Key`), B5 (`PORTFOLIO_UPDATED`); Frontend: FE1.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Transaction endpoints: list with filters (`assetId`, `type`, `dateFrom`, `dateTo`, `page`, `pageSize`), get by id and create (`apps/api/src/routes/transactions.routes.ts`) | `Implemented` | none |
+| Creation is synchronous: the transaction, its position recalculation and its `COMPLETED` status commit in one `UnitOfWork` (`transaction.service.ts`, `PrismaUnitOfWork`); a failure rolls the whole unit back | `Implemented` | none |
+| Position projection: `calculatePositionAfterTransaction` upserts the position, or deletes it when a `SELL` closes it exactly | `Implemented` (incremental, from the current row) | none |
+| Validation today: `BUY` or `SELL`, `quantity > 0`, `price > 0`, `fees ≥ 0`, fee currency equals price currency, `executedAt` not in the future, unknown `assetId` is 404, `SELL` above the held quantity is 400 | `Implemented` (FR-018) | none |
+| Current time from the `Clock` port instead of `new Date()` in `validateNewTransaction` (ADR-001 point 8) | `Planned (B0)` | B0 |
+| Chronological validation: the holding stays non-negative at `executedAt` and after every later transaction in date order; backdating is allowed; the same `executedAt` is ordered by creation order (ADR-003 point 6 and Deferred detail) | `Planned (B0)` | B0 |
+| Position projection rebuilt by replaying the asset's transactions in date order, so a backdated transaction gives the right `averageEntryPrice` and `openedAt` (`05-data-model.md` §8 Open detail) | `Planned (B0)` | B0 |
+| Position isolation under concurrency: two concurrent `SELL 6` on a holding of 10, exactly one succeeds (ADR-001 Deferred detail, FR-017) | `Planned (B0)` | B0 |
+| Archived portfolio: creating a transaction returns 409 `CONFLICT` and writes nothing (ADR-010 point 5) | `Planned (B0)` | B0 |
+| `BUY` fees in the cost basis (`averageEntryPrice` becomes `(held × average + quantity × price + fees) / (held + quantity)`) and `SELL` fees subtracted from realized P/L (ADR-004 point 15) | `Planned (B1)` | B1 |
+| A `SELL` with `fees > quantity × price` is rejected with 400; fees equal to the gross proceeds are accepted (ADR-004 point 2) | `Planned (B1)` | B1 |
+| An asset whose currency differs from the portfolio's `baseCurrency` is rejected with 400, never 500 (ADR-004 point 12) | `Planned (B1)` | B1 |
+| Role check on create: a `VIEWER` is denied (ADR-005) | `Planned (B2)` | B2 |
+| Duplicate prevention: `Idempotency-Key` on `POST .../transactions`; a repeated key and request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Planned (B4)` | B4 |
+| `PORTFOLIO_UPDATED` emitted after the commit (ADR-007 point 6) | `Planned (B5)` | B5 |
+| Edit, delete and cancel of a transaction | No endpoint in version 1: transactions are immutable except for `status` (`05-data-model.md` §43, `07-api-spec.md` §13) | none |
+| Screens: transaction form, transaction history with the FR-016 filters, positions, derived values (market value, unrealized P/L) and user feedback; submit disabled while pending and dependent views updated without reload (FR-017, FR-077) | `Planned (FE1)` | FE1 |
+
+Code vs ADR:
+
+- The original task list includes "edit transaction where permitted" and "delete/cancel where permitted". The API has no update or delete route (`transactions.routes.ts`), `07-api-spec.md` §13 states that transactions are immutable, and no FR asks for either action. The tasks stay below as the original intent, not as scope.
+- "Conflict handling" has two sources in version 1: 409 `CONFLICT` on an archived portfolio (B0) and on a repeated `Idempotency-Key` with a different request (B4). Overselling stays a 400 validation error.
+- Nothing checks the order of transactions today: a `SELL` dated before an earlier `BUY` passes when the current position is large enough, and the position is rebuilt only from the current row. ADR-003 point 6 and `05-data-model.md` §8 put both fixes in B0.
+- The fee handling change is visible in the code as well: `position-recalculation.ts` ignores `fees`, so `averageEntryPrice` excludes the `BUY` fees and unrealized P/L is higher than ADR-004 point 15 will report.
+- `05-data-model.md` §8 Open detail and §45 put the concurrent read-modify-write of the position in B7. ADR-001 Deferred detail and FR-017 put it in B0, and the ADR precedes (see `BACKEND-ROADMAP.md` B7, T5.3).
+- The "Important Principle" below holds and is stronger under ADR-001: business rules live in domain validators and, from B0, in `@trading/application`. Today they live in `apps/api/src/services/` and `packages/domain`. React holds none, and the demo runs the same use cases in process (§16).
+
 ### Objective
 
 Implement the core trading-domain workflows.
@@ -690,6 +747,40 @@ Domain/application services remain responsible for business behavior.
 ---
 
 ## 13. Phase 8 — Tables, Filters and Analytics
+
+**Status:** per item (table below)
+
+**Owning blocks:** Backend: B1 (performance, risk, range attribution, Pulse inputs, realized P/L, What Changed); Frontend: FE2 (§4.3), after FE1. Formulas, edge cases and hand-computed examples are in `16-analytics-spec.md`; the methodology is ADR-004.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Allocation: `GET /api/v1/portfolios/:portfolioId/analytics/allocation`, `groupBy` = `asset`, `assetType` or `currency` (`analytics.routes.ts`); sector is `Deferred` (ADR-004 point 13) | `Implemented` | none |
+| Attribution, current state: each position's contribution to unrealized P/L, no query parameters (`GET .../analytics/attribution`) | `Implemented` | none |
+| Attribution over a range: `period` or `from` / `to`, `groupBy` = `asset` or `assetType`, contributions in `Money` summing exactly to the period P/L (ADR-004 point 10) | `Planned (B1)` | B1 |
+| Performance: `GET .../analytics/performance`, periods `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL` or a custom `from` / `to` (default `1M`); TWR in `twrPercent`, `pnl` in `Money`, `series`, `asOf`, `effectiveFrom` and `status` (`OK`, `INSUFFICIENT_DATA`, `UNKNOWN`); unavailable values are `null`, never `0` (ADR-004 points 1 to 7, ADR-002 point 10) | `Planned (B1)`; `1D` `Implemented` as `dailyChange` in the overview | B1 |
+| Risk: `GET .../analytics/risk`, volatility annualized with √365 (at least 20 daily returns) and drawdown on the cumulative return index (at least 2 index points), with peak and trough dates (ADR-004 points 8 and 9) | `Planned (B1)` | B1 |
+| Pulse: stays inside the overview; volatility and drawdown come from the portfolio series over a trailing `1Y` window, volatility `HIGH` above 60 and `MODERATE` above 20 (ADR-004 point 11) | `Implemented` with the largest-position proxy; portfolio-series inputs `Planned (B1)`; a standalone endpoint, exposure and an `overall` classification `Deferred` | B1 |
+| Realized P/L reported per `SELL`, after fees (ADR-003 point 4, ADR-004 point 15) | `Planned (B1)` | B1 |
+| What Changed (FR-006): largest contributor and detractor, positions opened and closed, alerts triggered, over the same period as performance (ADR-010 point 1); "significant value change", "unusual volatility" and "allocation changes" | `Planned (B1)`; the three thresholded types `Deferred` | B1 |
+| Returns, ratios and percentages computed in `Decimal` end to end and converted to a number only in the presenter; day boundaries are UTC calendar dates (ADR-004 points 14 and Deferred detail) | `Planned (B1)` | B1 |
+| Analytics tests against hand-computed examples (ADR-004 Consequences, the examples in `16-analytics-spec.md`) | `Planned (B1)` | B1 |
+| Transaction filters (`assetId`, `type`, `dateFrom`, `dateTo`) and pagination for assets and transactions (FR-014, FR-016, FR-056) | `Implemented` | none |
+| Transaction search (FR-015): satisfied by the FR-016 filters and the asset search of FR-020; no free-text transaction search (ADR-010 point 2) | Satisfied by filters | none |
+| Sorting in the client, only for lists loaded in full (positions, watchlist, allocation, scenarios); paginated lists keep the API order; server-side sort parameters `Deferred` (ADR-010 point 4, FR-055) | `Planned (FE2)` | FE2 |
+| Table library (the original TanStack Table) | `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §12) | FE2 |
+| Configurable columns and row selection (the original "column visibility") | `Deferred` (ADR-010 point 9) | none |
+| Table screens for transactions, positions and portfolio datasets: pagination controls over the API `meta`, loading, empty and error states, responsive behavior | `Planned (FE2)` | FE2 |
+| Analytics views (performance, risk, Pulse, allocation, attribution) and charts; money and percentage display rules and the UTC calendar-day display (ADR-010 point 9); chart library | `Planned (FE2)`; chart library `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §16) | FE2 |
+
+Code vs ADR:
+
+- The original text names TanStack Table and lists "sorting, filtering, pagination, column visibility" as features. No ADR decides the table library. Filtering is the API filters of FR-016, pagination comes from the API only for assets and transactions, sorting is client-side only for fully loaded lists, and configurable columns are `Deferred`. The list is kept as the original intent, not as a decision.
+- The original category list names win/loss statistics, exposure and transaction statistics. No FR or ADR defines win/loss or transaction statistics, and exposure is `Deferred` (`01-product-spec.md` §5 and §11, `07-api-spec.md` §21). The phase rule "implement only metrics defined by the product specification" therefore leaves them out until an FR defines them. Open: confirm they are dropped from the phase.
+- The code has no portfolio-level performance, volatility or drawdown. `calculateVolatility` and `calculateDrawdown` work on one asset's closes, and volatility annualizes with √252 only when asked. ADR-004 point 8 changes this to a return series, √365 and a 20-return minimum (B1).
+- Wire details that ADR-004 and ADR-002 fix and that the original text does not: the period return is the field `twrPercent` (`16-analytics-spec.md` §2), `asOf` is the end date after clamping to the last closed day, a valid range with no closed day answers 200 with `status: "INSUFFICIENT_DATA"` and not 400 (`16-analytics-spec.md` §8), and `from > to` is 400. `InsufficientData` is a domain error in `16-analytics-spec.md` and `INSUFFICIENT_DATA` is its wire status.
+- Mixed currencies in a portfolio surface as a 500 in allocation today (`CurrencyMismatchError`); the 400 on the transaction that would create them is `Planned (B1)` (ADR-004 point 12, `16-analytics-spec.md` §2).
+- Period analytics cover closed days only and do not change on price ticks (FR-045). Current-state values (allocation, Pulse, `1D`) are recomputed in the client on ticks in FE3 (§14).
+- FR-015 needs no work in this phase beyond the FR-016 filters and the asset search (ADR-010 point 2).
 
 ### Objective
 
@@ -737,6 +828,41 @@ Exact formulas must be explicitly defined and tested.
 
 ## 14. Phase 9 — Realtime
 
+**Status:** per item (table below); nothing in this phase exists in the code yet
+
+**Owning blocks:** Backend: B5 (transport, protocol, simulation engine, control endpoints), with inputs from B0 (`@trading/contracts`, `Clock` port), B2 (token refresh, `simulation:control`) and B4 (job events); Frontend: FE3 (client), FE4 (in-process adapter for the demo). Decisions: ADR-007.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| WebSocket server with `ws` behind a transport port, served by the same HTTP server and port (7001) as the API on a fixed path, proposed `/ws` and confirmed in B5; there is no `WEBSOCKET_PATH` variable (ADR-007 point 1) | `Planned (B5)`; the path is an open detail | B5 |
+| Authentication: the access token in the first message, never in the URL; a connection not authenticated within 5 seconds is closed with `4001`; each socket is bound to its token's expiry and re-authenticates over the same socket after a refresh (ADR-007 point 2) | `Planned (B5)`; refresh itself `Planned (B2)` | B5 |
+| Channels `market:{assetId}`, `portfolio:{portfolioId}` and `notifications`, each subscription authorized in the application layer by permission and ownership (ADR-007 point 3); `jobs:{jobId}` for the job events of ADR-008 point 11 | `Planned (B5)` | B5 |
+| Envelope `{ id, type, channel, sequence, timestamp, payload }` and the event catalog `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED` (delivered on `notifications`), as Zod schemas in `@trading/contracts` (ADR-007 points 4, 6, 15); job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` | `Planned (B5)`; the package `Planned (B0)` | B5 |
+| Protocol messages `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`, with `ACK` or `ERROR` (carrying a `code`) as replies; event validation at the boundary (ADR-007 point 15) | `Planned (B5)` | B5 |
+| Close codes: `4001` unauthenticated or invalid token, `4002` token expired, `4008` limit exceeded, `1001` server going away (ADR-007 point 15) | `Planned (B5)` | B5 |
+| Limits: 50 subscriptions and 20 inbound messages per second per connection, 1 MB outbound buffer, ping every 30 seconds with close after 2 missed pongs (ADR-007 points 11, 15) | `Planned (B5)` | B5 |
+| Per-user cap of 5 concurrent connections (not per IP); when a user is at the cap, the new connection is closed with `4008` and the existing ones stay open (ADR-007 point 16, ADR-005 point 13) | `Planned (B5)`; the value is tuned in B5 | B5 |
+| Ordering: `sequence` monotonic per channel; on a gap the client resynchronizes through HTTP; no server replay buffer (ADR-007 point 5) | `Planned (B5)` for the sequence; resynchronization `Planned (FE3)` | B5, FE3 |
+| Simulation engine and persistence: tick every second, `MarketPrice` update and `MarketEvent` append, daily candle closing and startup backfill, edge-triggered alerts (ADR-007 points 7 to 9). The package is `@trading/market-sim` (§16) | `Planned (B5)` | B5 |
+| Control endpoints `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode`, requiring `simulation:control` (`ADMIN`) (ADR-007 points 10, 15) | `Planned (B5)`; the permission `Planned (B2)` | B5 |
+| Lifecycle state `RUNNING <-> HALTED`; `PAUSED` stays only as a mode wire identifier (ADR-007 point 16) | `Planned (B5)` | B5 |
+| Client connection manager with the states `Connected`, `Connecting`, `Reconnecting`, `Disconnected` and `Failed`; reconnection that authenticates first, resubscribes and resynchronizes through HTTP (FR-046, FR-047) | `Planned (FE3)` | FE3 |
+| UI update strategy: the client recomputes position value, unrealized P/L, portfolio value, `1D` change, allocation and Pulse from price events with the shared domain functions; the server pushes no valuations (FR-045, ADR-007 context) | `Planned (FE3)` | FE3 |
+| Degradation: a stale-data indicator and an HTTP refetch every 10 seconds while the socket is down (ADR-007 points 12, 15); cleanup of subscriptions and timers on unmount | `Planned (FE3)` | FE3 |
+| In-process realtime adapter implementing the same client-side port, fed by `@trading/market-sim` in the browser (ADR-007 point 13) | `Planned (FE4)` | FE4 |
+| Performance validation of the transport | Open: no ADR or NFR fixes a target; measured before it is optimized (§3 rule 1) | B5, FE3 |
+
+Code vs ADR:
+
+- The code has no WebSocket server, no `ws` dependency, no simulator and no `packages/market-sim`. `MarketPrice`, `MarketEvent` and `HistoricalPrice` exist as tables, and prices change only through the seed.
+- The task "market simulation" is split: the engine and its control are B5, the browser side of it is the demo adapter (FE4), and the client UI strategy is FE3. The recommended order below stays valid inside B5: the transport is stable before the simulation grows.
+- The recommended order puts "authentication" as its own step after the connection. ADR-007 point 2 makes it the first message of the connection, with a 5-second deadline, and the token is re-validated on every re-authentication.
+- `08-realtime-spec.md` §15 listed eleven event types. ADR-007 point 6 keeps four, and `TRANSACTION_CREATED`, `TRANSACTION_COMPLETED` and `POSITION_UPDATED` are removed because transactions are synchronous.
+- `PAUSED` names two things in the older documents: a lifecycle state and a mode. ADR-007 point 16 renames the state to `HALTED` and keeps `PAUSED` as a mode wire identifier only. The `pause` endpoint path does not change.
+- Job events travel on `jobs:{jobId}` and are produced by the job runner of B4 (§15). They reach the client when the transport exists in B5.
+- Real mode has no stop and no seed reset; reset belongs to the frontend-stage demo ADR (ADR-007 point 15, ADR-010 point 6).
+- Realtime depends on B2 for two things: `simulation:control` and the re-authentication that follows a token refresh. A socket cannot be bound to a refreshed token before B2 exists.
+
 ### Objective
 
 Introduce realtime behavior without creating a parallel application architecture.
@@ -782,6 +908,38 @@ Do not build complex market simulation before the transport itself is stable.
 
 ## 15. Phase 10 — Background Operations
 
+**Status:** per item (table below); nothing in this phase exists in the code yet
+
+**Owning blocks:** Backend: B4 (jobs, idempotency), with B0 (archived guard, chronological validation reused by the import rows), B2 (`transaction:create`) and B5 (job events over the socket); Frontend: FE3 (import screens and job progress), FE4 (in-process runner for the demo). Decisions: ADR-008.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Scope: the only background operation of version 1 is the CSV transaction import (ADR-008 point 1); transactions stay synchronous (point 12) | `Planned (B4)` | B4 |
+| `Job` and `IdempotencyKey` models and migrations (`05-data-model.md` §52 and §53) | `Planned (B4)` | B4 |
+| In-process runner backed by a `jobs` table in PostgreSQL, with no separate worker and no external queue; the CSV content is stored in the job row when the job is created; the stored input is kept while the job can be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` (ADR-008 point 4) | `Planned (B4)` | B4 |
+| States `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`; progress is the field `{ processed, total }`, not a state (ADR-008 point 3) | `Planned (B4)` | B4 |
+| Two stages: validate every row (a failure ends `FAILED` with `VALIDATION_FAILED`, a per-row report and nothing written), then apply all rows in one `UnitOfWork` that re-checks the invariants (`APPLY_REJECTED`, `APPLY_ERROR`); no partial import (ADR-008 point 2 and Deferred detail) | `Planned (B4)` | B4 |
+| Endpoints `POST /api/v1/portfolios/:portfolioId/imports`, `GET /api/v1/jobs/:jobId`, `POST /api/v1/jobs/:jobId/retry` and `POST /api/v1/jobs/:jobId/cancel`, checked for permission and ownership (ADR-008 point 9) | `Planned (B4)`; the permission `Planned (B2)` | B4 |
+| Retry returns a job to `QUEUED` and increments `attempt`; allowed for `TIMED_OUT`, `CANCELLED` and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`; not for `VALIDATION_FAILED`. Cancel is allowed while `QUEUED` or validating, never during apply. A retry or cancel that the state does not allow returns 409 `CONFLICT` and changes nothing (ADR-008 point 6) | `Planned (B4)` | B4 |
+| Timeout per job type, measured per attempt from when the job was queued, applying while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7 and Deferred detail); the timeout values are fixed in B4 | `Planned (B4)` | B4 |
+| Restart handling: a job left in `PROCESSING` becomes `FAILED` with `INTERRUPTED`, and every `QUEUED` job resumes; every status transition is a compare-and-set (ADR-008 points 5 and Deferred detail) | `Planned (B4)` | B4 |
+| Notifications: `COMPLETED` creates a `SUCCESS` notification, `FAILED` and `TIMED_OUT` an `ERROR` notification, `CANCELLED` none (ADR-008 point 6, ADR-010 point 9) | `Planned (B4)` | B4 |
+| `Idempotency-Key` on `POST .../transactions` and on import creation: stored per user with a request hash for 24 hours, same request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Planned (B4)` | B4 |
+| Input limits: file size and row count (values fixed in B4), a route-specific body limit because the global JSON limit is 100 kB, the way the CSV reaches the route, and the CSV parsing dependency (ADR-008 point 10 and Deferred detail) | `Planned (B4)`; values are open details | B4 |
+| Archived portfolio: creating an import is rejected with 409; a job whose portfolio is archived while `QUEUED` or `PROCESSING` fails with a non-retryable error and writes nothing (ADR-010 point 5 and Deferred detail) | `Planned (B0)` for the guard, `Planned (B4)` for the job check | B0, B4 |
+| Job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` on `jobs:{jobId}`; `CANCELLED` and `TIMED_OUT` emit no event and clients read them from the job's HTTP status (ADR-008 point 11, ADR-007 point 15) | `Planned (B5)`, with the transport | B5 |
+| Screens: CSV upload, progress, current state, per-row errors, cancel and retry where the state allows them, completion feedback, and the imported transactions | `Planned (FE3)` | FE3 |
+| Demo: the same use case runs in process with simulated progress and injectable import failures (ADR-008 point 13, FR-069, FR-071) | `Planned (FE4)`; other scripted failures `Deferred` (ADR-010 point 6) | FE4 |
+
+Code vs ADR:
+
+- The code has no `Job` or `IdempotencyKey` model (`packages/database/prisma/schema.prisma`), no CSV dependency and no job route.
+- The original examples (analytics recalculation, report generation, file generation, expensive portfolio processing) are not jobs in version 1. ADR-008 point 1 scopes the job system to the CSV import, because building a job system with nothing to run violates NFR-070. No FR defines the other examples.
+- The original state names are replaced: `queued` becomes `QUEUED`, `running` becomes `PROCESSING`, and `timeout` becomes `TIMED_OUT`. `completed`, `failed` and `cancelled` keep their meaning. `retrying` and `cancelling` (`12-demo-mode-spec.md` §41-43) are not states.
+- "Cancellation where supported" is exactly `QUEUED` or the validate stage. The apply stage is neither cancellable nor subject to the timeout, so a retry can never import the same rows twice.
+- "Resulting artifact/data" is the set of imported transactions and the per-row report of a failed validation. No file is generated.
+- `07-api-spec.md` §14 once described asynchronous transaction creation with a `jobId`; ADR-008 point 12 removes it, and `createTransaction` stays synchronous.
+
 ### Objective
 
 Implement long-running operations.
@@ -819,6 +977,41 @@ The frontend should expose:
 ---
 
 ## 16. Phase 11 — Demo Mode
+
+**Status:** per item (table below); the demo is frontend stage work that reuses backend deliverables of B0 and B5
+
+**Owning blocks:** Backend: B0 (`@trading/application`, in-memory `UnitOfWork`, `@trading/contracts`), B5 (`@trading/market-sim`); Frontend: FE4 (§4.3), after FE0. Decisions: ADR-001, ADR-002 point 5, ADR-005 point 11, ADR-006 points 1 and 7, ADR-007 points 7 and 13, ADR-008 point 13, ADR-010 point 6.
+
+| Deliverable | Status | Block |
+| --- | --- | --- |
+| Application layer `@trading/application` that the demo runs in the browser, with in-memory implementations of the repository contracts and of `UnitOfWork` (rollback included) | `Planned (B0)`; the package does not exist yet | B0 |
+| `@trading/contracts`: the DTOs and schemas both adapters return | `Planned (B0)` | B0 |
+| `@trading/market-sim`: a pure, deterministic package with a seeded pseudo-random generator, an injected clock and the modes and scenarios of `12-demo-mode-spec.md` §37-§40; depends only on `@trading/domain`; the API and the demo use the same engine (ADR-007 point 7) | `Planned (B5)`; its directory is an open detail, settled in B5 | B5 |
+| Runtime mode selection: `APP_MODE` is `real` or `demo`, fixed at build time through `VITE_APP_MODE` (ADR-006 point 8) | `Planned (FE0)` for the build-time values; `Planned (FE4)` for the demo build | FE0, FE4 |
+| In-process adapter of the `TradingClient` port, calling `@trading/application` and the same presenters, so the UI cannot tell which mode it runs in (ADR-002 point 5); the HTTP adapter is FE0 | `Planned (FE4)` | FE4 |
+| Demo composition root with in-memory repositories (ADR-001 point 4); the in-memory fakes written for the application tests are its starting point | `Planned (FE4)` | FE4 |
+| Demo identity with a role selector (Viewer, Trader, Admin) that goes through the same permission checks (ADR-005 point 11) | `Planned (FE4)` | FE4 |
+| Simulated realtime: the in-process realtime adapter fed by `@trading/market-sim` in the browser (ADR-007 point 13, FR-070) | `Planned (FE4)` | FE4 |
+| Market modes and scenarios (`STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY`) and their demo controls (FR-048) | Engine `Planned (B5)`; controls `Planned (FE4)` | B5, FE4 |
+| Background job simulation: the CSV import runs in process with simulated progress and injectable failures (ADR-008 point 13, FR-069, FR-071) | `Planned (FE4)` | FE4 |
+| Validation errors and rejected operations (for example an oversell) through the real rules, without scripting (FR-071) | `Planned (FE4)` | FE4 |
+| Static build of `apps/web` in demo mode: no call to any backend, no secrets in the build, namespaced browser storage, configurable base path, SPA fallback (ADR-006 point 7) and its publication | `Planned (FE4)` | FE4 |
+| Demo data layers and the deterministic seed data, local persistence, reset (FR-072) | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
+| Simulated latency and scripted failures other than the import failure (request failure, timeout, connection loss) | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
+| Diagnostics | `Deferred` (`12-demo-mode-spec.md` §75; the same item in the Phase 13 row of §4.2) | FE4 |
+| Demo hosting, the base path value, the SPA fallback mechanism and the numeric bound of the demo simulation | `Deferred` to the frontend-stage ADR (ADR-010 point 6, ADR-006 point 7) | FE4 |
+
+Code vs ADR:
+
+- The original task list says "mock repositories" and "mock services", and the objective asks for a demo that behaves like a product rather than a static prototype. ADR-001 rejects mocks at the HTTP client level: the demo runs the real application layer in the browser, and only the infrastructure differs (in-memory repositories, in-process realtime and job runner). There are no mock services, and `07-api-spec.md` §49 to §51 state that there is no mock API. In this document "mock" means an in-memory implementation of a real contract.
+- The last line of the original acceptance criteria, "The same product/application behavior should remain conceptually shared with the real implementation", is made concrete by ADR-001 and ADR-002 point 5: one application layer, one set of DTOs, two adapters. Responses of the demo adapter are validated against the schemas during development (ADR-002 point 6).
+- "Deterministic seed" has two meanings. The seeded pseudo-random generator of the market engine is decided (ADR-007 point 7, B5). The demo's initial data and its layers are not (ADR-010 point 6).
+- "Local persistence" is not decided. Only the requirement that browser storage is namespaced is (ADR-006 point 7).
+- "Failure injection" is decided only for the CSV import. Request failures, timeouts and connection loss are `Deferred` (FR-071, FR-046, FR-047).
+- "Diagnostics" is `Deferred`; the Phase 13 row of §4.2 lists the same item as deferred diagnostic modes.
+- The demo is one of the two deployment targets (ADR-006 point 1) and the only public one: there is no hosted backend in version 1. Its publication is `Planned (FE4)`; where it is hosted is `Deferred`.
+- `12-demo-mode-spec.md` is the demo specification this phase follows. It is reconciled last in the SDD alignment order (it is frontend-only), so some of its wording, including "mock infrastructure", still needs to follow ADR-001.
+- The `Deferred` items above (hosting, base path, SPA fallback, simulation bound, latency, scripted failures, reset, data layers) are decided in the frontend-stage ADR (ADR-010 point 6). They do not block B0 to B7.
 
 ### Objective
 
