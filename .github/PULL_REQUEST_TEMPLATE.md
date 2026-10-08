@@ -51,8 +51,13 @@ See CONTRIBUTING.md for branching model and commit conventions.
 
 ## Checklist
 
+- [ ] This PR targets `develop` (only a milestone PR targets `main`)
 - [ ] `pnpm typecheck` passes locally
 - [ ] `pnpm lint` passes locally
+- [ ] `pnpm format:check` passes locally
+- [ ] `pnpm build` passes locally
+- [ ] `pnpm test` passes locally
+- [ ] `pnpm docs:check` passes locally
 - [ ] No secrets, credentials, or `.env` values committed
 - [ ] Commit messages follow the [Conventional Commits](./CONTRIBUTING.md#6-commit-message-convention) convention
 - [ ] Documentation updated if this changes architecture, contracts, or behavior described in `docs/`
