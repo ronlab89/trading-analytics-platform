@@ -1360,7 +1360,7 @@ Potential areas:
 | Evidence the case study may cite: the ten ADRs (`docs/adr/`), the test suites, the CI runs from B0, the local full stack and the smoke script from B7, the public demo from FE4, and the measurements of FE5 | `Planned (FE6)`; each source exists only when its block closes | FE6 |
 | Performance and outcome statements | `Planned (FE6)`, and only for what FE5 or another block measured; unmeasured figures are not published | FE6 |
 | Technical interview readiness material (§43) | `Planned (FE6)` | FE6 |
-| Where the case study is published and its page format | Open: no ADR decides it; `00-overview.md` §15 says it follows the existing project-page structure of the portfolio site | FE6 |
+| Where the case study is published and its page format | Decided (user, 2026-10-07): it follows the existing project-page structure of the portfolio site (`00-overview.md` §15), decided when FE6 starts; the list in §21 is a content checklist, not a page layout | FE6 |
 
 Code vs ADR:
 
@@ -1513,7 +1513,7 @@ Code vs ADR:
 - The original graph runs Backend, Auth, Frontend, then the product features, with Testing, Observability and Deployment after Demo. Development does not follow that line. All backend work, including observability (B3), the testing foundation (B0, B2) and deployment (B7), comes before the frontend stage (ADR-006 point 1, `00-overview.md` §1), so Testing, Observability and Deployment move forward and the product features split into a backend part and a frontend part.
 - The block order is the order of `BACKEND-ROADMAP.md` §3, extended with B0 (ADR-001, ADR-002) and the minimal CI (ADR-006 point 11): B3 before B4 and B5 because asynchronous work is hardest to debug blind, and B4 before B5 because job progress is a realtime event (ADR-007 point 15). The roadmap does not list B0 yet (task T5.3).
 - The frontend edges are the "Depends on" column of §4.3. FE0 also needs the frontend-stage ADR (§4.3), which is not a block and is not drawn. The stage starts only when the backend counts as done (§4.1), which is stricter than the single B6 edge shown for FE0.
-- "Once contracts are stable, some implementation work may proceed concurrently" does not apply between the backend and the frontend stages in version 1 (§4 and §4.1). Whether FE2, FE3 and FE4, which depend on different blocks, overlap is not decided; the numeric order of §4.3 is the default.
+- "Once contracts are stable, some implementation work may proceed concurrently" does not apply between the backend and the frontend stages in version 1 (§4 and §4.1). The frontend blocks keep the numeric order of §4.3; FE2, FE3 and FE4 do not overlap (decided by the user, 2026-10-07).
 
 ---
 
