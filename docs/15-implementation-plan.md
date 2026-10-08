@@ -164,13 +164,17 @@ Code vs ADR: phases 5 to 11 and 14 to 16 were written before the ADRs, and their
 
 | Block | Scope | Phases | Depends on |
 | --- | --- | --- | --- |
-| FE0 Foundation | `apps/web` workspace, routing, state, shared UI, English and Spanish (ADR-010 point 8), API client over `@trading/contracts`, `APP_MODE` and base URLs at build time (ADR-006 point 8), browser-console `Logger` adapter | 5, part of 13 | B6; the frontend-stage ADR |
+| FE0 Foundation | `apps/web` workspace, routing, state, shared UI, English and Spanish (ADR-010 point 8) with the language selection and preferences screens (the `preferences` API), API client over `@trading/contracts`, `APP_MODE` and base URLs at build time (ADR-006 point 8), browser-console `Logger` adapter | 5, part of 13 | B6; the frontend-stage ADR |
 | FE1 Core workflow (real mode) | Session screens, portfolios, transactions, positions | 4 (screens), 6, 7 | FE0; B2 |
-| FE2 Analytics and tables | Performance, risk, pulse, allocation and attribution views; tables, filters and sorting | 8 | FE1; B1 |
-| FE3 Realtime and jobs | WebSocket client, notifications and alerts, CSV import screens and job progress | 9, 10 | FE1; B4; B5 |
+| FE2 Analytics and tables | Dashboard (the overview and Pulse API), performance, risk, pulse, allocation and attribution views; Markets and watchlist (the `assets`, `market` and `watchlist` APIs); decisions and scenarios (decision replay, scenario impact and comparison); tables, filters and sorting | 8 | FE1; B1 |
+| FE3 Realtime and jobs | WebSocket client, notifications and alerts (including the Alerts tab under Markets, ADR-010 point 9), CSV import screens and job progress | 9, 10 | FE1; B4; B5 |
 | FE4 Demo mode | In-process adapters over the same application layer, `@trading/market-sim`, role selector, static build and its publication | 11, demo part of 14 | FE0; B0; B5 |
 | FE5 Quality and refinement | Component, E2E and accessibility checks (ADR-006 point 11), performance, UX refinement | 12 (frontend part), 15 | FE1 to FE4 |
 | FE6 Case study | Portfolio case study and interview readiness | 16 | FE5 |
+
+Screen assignment (decided 2026-10-08): no new blocks. Each screen without a block goes to the existing block of the API it depends on, so FE2, FE3 and FE4 do not overlap: the Dashboard, Markets, watchlist, decisions and scenarios screens to FE2; the Alerts tab under Markets to FE3 with the notifications; the preferences and language screens to FE0 (ADR-010 point 8 fixes the language). A screen that needs a session (preferences) runs once FE1 delivers it; FE0 owns its build.
+
+Libraries (confirmed 2026-10-08): TanStack Query, TanStack Table, Zustand, the form validation approach, and the component and E2E tooling stay `Deferred` and are decided together in the frontend-stage ADR, before FE0 starts.
 
 Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides today: routing, state, rendering and charts, shared UI, the accessibility tool, the HTTP client timeout and retry (ADR-006 point 11), the frontend test tooling, and the demo specifics (ADR-010 point 6).
 
@@ -194,9 +198,9 @@ Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides t
 | Prettier (`.prettierrc.json`, `pnpm format`, `pnpm format:check`) | `Implemented` | none |
 | Editor conventions | Decided (user, 2026-10-07): nothing is added in version 1; no `.editorconfig` or `.vscode/` exists and Prettier is the only formatting convention | none |
 | `.env.example` and `.env.test.example` | `Implemented`; the content of `.env.example` is stale (see Code vs ADR) | the block that adds each variable |
-| Basic commands documented | `Implemented` in `README.md` (setup and local database); `CONTRIBUTING.md` has no setup section | none (documentation work, T5.2) |
+| Basic commands documented | `Implemented` in `README.md` (setup, run the API, local database; quality commands by reference) and `CONTRIBUTING.md` §9 (setup and quality commands) | none |
 | Commit workflow: Conventional Commits (`CONTRIBUTING.md` §6) and a Husky pre-commit hook running `lint-staged` | `Implemented` (`.husky/pre-commit`, `lint-staged` in the root `package.json`) | none |
-| Pull request template (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist asks only for `pnpm typecheck` and `pnpm lint` | none (documentation work, T5.2) |
+| Pull request template (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist asks for `pnpm typecheck`, `lint`, `format:check`, `build`, `test` and `docs:check` | none |
 | Minimal CI workflow: install with the lockfile, typecheck, lint, `format:check`, `docs:check`, `build`, and the domain, database and API suites against a PostgreSQL service container (ADR-006 points 10 and 11) | `Planned (B0)` | B0 |
 | Test variables supplied through the job `env`, not a generated `.env.test.local` (ADR-006 point 11) | `Planned (B0)` | B0 |
 | `.nvmrc` as the single Node.js version source, reused by CI and the Dockerfile (ADR-006 point 13) | `Planned (B0)`; `engines.node` is `>=22.0.0` today | B0 |
@@ -627,7 +631,8 @@ The final structure may evolve during implementation.
 | Archived portfolio is read-only: any mutation scoped to it returns 409 `CONFLICT` and writes nothing; reads and the archive call are unchanged (ADR-010 point 5). A delete on an archived portfolio, such as deleting one of its alerts, is a mutation and returns 409 too | `Planned (B0)` | B0 |
 | Route tests for the positions, assets, market and analytics routes, before the services move into `@trading/application` (ADR-001 point 8) | `Planned (B0)` | B0 |
 | Session state: the access token kept in memory only (ADR-005 point 4), login and logout screens | `Planned (FE1)`; session endpoints `Planned (B2)` | FE1 |
-| Dashboard, portfolio listing, portfolio detail and positions screens, navigation | `Planned (FE1)`; the application shell is FE0 (§10) | FE1 |
+| Portfolio listing, portfolio detail and positions screens, navigation | `Planned (FE1)`; the application shell is FE0 (§10) | FE1 |
+| Dashboard (the overview and Pulse API; decided 2026-10-08, §4.3) | `Planned (FE2)` | FE2 |
 | Loading, empty and error states; responsive behavior (breakpoints 900 px and 560 px, minimum width 360 px, ADR-010 point 9) | `Planned (FE1)` | FE1 |
 | API integration through the `TradingClient` port and its HTTP adapter over `@trading/contracts` (ADR-002 point 5) | `Planned (FE0)` for the client; `Planned (FE1)` for its use in each screen | FE0, FE1 |
 
@@ -1756,19 +1761,20 @@ Foreign keys and constraints should reflect domain ownership.
 | --- | --- | --- |
 | App shell | `Planned (FE0)` | FE0 |
 | Authentication: session screens | `Planned (FE1)`; needs refresh and logout from B2 | FE1 |
-| Dashboard | `Planned (FE)`; the block that owns it is not named in §4.3 | none |
+| Dashboard | `Planned (FE2)`; decided 2026-10-08, it depends on the overview and Pulse API | FE2 |
 | Portfolio, positions and transactions | `Planned (FE1)` | FE1 |
 | Analytics: performance, risk, pulse, allocation and attribution | `Planned (FE2)` | FE2 |
 | Realtime: client, notifications and alerts | `Planned (FE3)` | FE3 |
 | Background operations: CSV import screens and job progress | `Planned (FE3)` | FE3 |
 | Demo controls: role selector, simulation controls | `Planned (FE4)` | FE4 |
-| Markets, watchlist, decisions, scenarios, preferences and language selection screens | `Planned (FE)`; the block that owns each is not named in §4.3 | none |
+| Markets, watchlist, decisions and scenarios screens | `Planned (FE2)`; decided 2026-10-08 by the API each depends on (§4.3); the Alerts tab under Markets is `Planned (FE3)` | FE2, FE3 |
+| Preferences and language selection screens | `Planned (FE0)`; decided 2026-10-08 (ADR-010 point 8) | FE0 |
 | Shared component library, routing, rendering approach and charts | `Deferred` to the frontend-stage ADR | FE0 |
 
 Code vs ADR:
 
 - The original order matches the block order for its listed steps: the shell in FE0, then the core workflow, analytics, realtime and jobs, and the demo last. The session screens need the `TradingClient` port and its HTTP adapter from FE0 (ADR-002 point 5).
-- The original list names no screen for the Markets, watchlist, decisions, scenarios or preferences areas, although the API for each is `Implemented`, and ADR-010 point 9 places the alerts tab under Markets. The block mapping for these screens and for the Dashboard is left to the frontend stage and is not decided here.
+- The original list names no screen for the Markets, watchlist, decisions, scenarios or preferences areas, although the API for each is `Implemented`, and ADR-010 point 9 places the alerts tab under Markets. Decided 2026-10-08: the block mapping for these screens and for the Dashboard follows the API each depends on, with no new blocks (§4.3).
 - The two languages (`en` and `es`, ADR-010 point 8) apply to every screen from FE0, so no step is "translate later".
 - The Activity view of the wireframe is `Deferred` (ADR-010 point 9).
 
@@ -1979,11 +1985,11 @@ Each category should have appropriate:
 | Realtime lifecycle log entries and simulator entries (ADR-009 point 11) | `Planned (B5)` | B5 |
 | Client WebSocket adapter and event handlers | `Planned (FE3)` | FE3 |
 | In-process realtime adapter fed by `@trading/market-sim` running in the browser | `Planned (FE4)` | FE4 |
-| Mechanism that carries an event from the application layer to the realtime adapter (the "Domain event" and "Application event" steps of the chain below) | `Planned (B5)` as a need; the mechanism itself is not decided by any ADR (see the note below) | B5 |
+| Mechanism that carries an event from the application layer to the realtime adapter (the "Domain event" and "Application event" steps of the chain below): a `RealtimePublisher` port in `packages/application`, its adapter in `apps/api`, and no domain events in version 1 (ADR-007 point 17; decided 2026-10-08) | `Planned (B5)` | B5 |
 
 Code vs ADR:
 
-- ADR-007 point 6 defines which events exist and when they fire (for example `PORTFOLIO_UPDATED` only after a transaction commits), but it does not say how the application layer hands an event to the realtime adapter. `13-observability-spec.md` states that no ADR defines domain events. The chain below is the original sketch of that hand-off, not a decision, and the choice is made in B5.
+- ADR-007 point 6 defines which events exist and when they fire (for example `PORTFOLIO_UPDATED` only after a transaction commits), and ADR-007 point 17 (decided 2026-10-08) says how the application layer hands an event to the realtime adapter: through a `RealtimePublisher` port in `packages/application`, implemented by an adapter in `apps/api`, with no domain events in version 1. The "Domain event" and "Application event" steps of the chain below collapse into that one call; the chain is the original sketch, kept as written.
 - Rule that holds: realtime is an adapter over the application layer (ADR-001), not a second application architecture. Subscriptions use the same permission and ownership checks as HTTP (ADR-007 point 3).
 - The UI reacts to meaningful state changes: `TRANSACTION_CREATED`, `TRANSACTION_COMPLETED` and `POSITION_UPDATED` are removed from the catalog because transactions are synchronous (ADR-007 point 6).
 - The sequence per channel is monotonic and a gap triggers resynchronization through HTTP; there is no server replay buffer in version 1 (ADR-007 point 5).
@@ -2014,12 +2020,13 @@ The UI should react to meaningful state changes rather than infrastructure detai
 
 **Status:** the method is `Reference`; the measurements are per item (table below), and none has been taken yet
 
-**Owning blocks:** Backend: B3 (slow-request and series timing); Frontend: FE5 (measurement against the NFR targets), FE6 (what the case study may cite). Decisions: rule 1 and rule 2 of §3, ADR-009 point 8, `03-non-functional-requirements.md` NFR-001 to NFR-008, `12-demo-mode-spec.md` §84.
+**Owning blocks:** Backend: B3 (slow-request and series timing), B5 (performance measurement, taken after realtime exists; decided 2026-10-08); Frontend: FE5 (measurement against the NFR targets), FE6 (what the case study may cite). Decisions: rule 1 and rule 2 of §3, ADR-009 point 8, `03-non-functional-requirements.md` NFR-001 to NFR-008, `12-demo-mode-spec.md` §84.
 
 | Item | Status | Block |
 | --- | --- | --- |
 | Method: hypothesis, measurement, diagnosis, change, measurement, comparison | `Reference` | none |
 | Server timing: a `warn` entry for a request above `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms) and separate timing of the analytics series reconstruction; no other timing in version 1 (ADR-009 point 8) | `Planned (B3)` | B3 |
+| Backend and realtime measurement, taken after realtime exists (decided 2026-10-08); the frontend side is FE5; metrics stay `Deferred` (ADR-009 point 10) | `Planned (B5)` | B5 |
 | Frontend measurement against the approved targets of NFR-001 to NFR-008 | `Planned (FE5)` | FE5 |
 | Realtime update frequency and burst handling (NFR-005, NFR-006) | `Planned (FE5)`, after the realtime client of FE3 exists | FE5 |
 | Measurement tooling for the frontend (Lighthouse, profiler, bundle analysis or others) | `Deferred` to the frontend-stage ADR | FE5 |
@@ -2212,7 +2219,7 @@ Code vs ADR:
 
 - Today the request ID header and the error body exist, but the API logs with `console`, only unexpected errors produce a line, and the request ID is not on any log line (§18). The acceptance of this section therefore cannot be shown before B3.
 - A developer follows each path with `LOG_LEVEL=debug` and `pino-pretty` locally; no external monitoring service is involved (ADR-009 point 2).
-- The server sees a client reconnect as a new connection with a new `connectionId`. Whether the log links it to the earlier connection is not decided in ADR-009.
+- The server sees a client reconnect as a new connection with a new `connectionId`. Decided 2026-10-08 (ADR-009 point 5): the log does not link it in version 1; every connection has its own `connectionId`, and reconnects are correlated by `userId`.
 
 Original text:
 
@@ -2274,7 +2281,7 @@ job ID
 Code vs ADR:
 
 - The original sequence is kept, with two changes. CI covers checkout to build (and the test suites) from B0; the full sequence through smoke runs on the local stack from B7. The deployment is local only, so there is no "deploy" step.
-- The seed and the smoke test pull in opposite directions: ADR-006 point 5 says the seed never runs automatically, and point 13 says it refuses to run when `NODE_ENV=production`, while the `full` profile is a production-like run that the smoke test logs in to. How the stack obtains its data for the smoke test is not decided in the ADRs.
+- The seed and the smoke test pull in opposite directions: ADR-006 point 5 says the seed never runs automatically, and point 13 says it refuses to run when `NODE_ENV=production`, while the `full` profile is a production-like run that the smoke test logs in to. Decided 2026-10-08 (ADR-006 point 11, "Smoke test data"): the `full` stack is local-only and runs with `NODE_ENV` other than `production`, and the smoke test runs `db:seed` as an explicit step of its script, never automatically; points 5 and 13 stay valid.
 - Today the clean-checkout path is not proven: there is no CI, no `.nvmrc`, no `Dockerfile` and no `full` profile (§19).
 
 Original text:
@@ -2315,27 +2322,27 @@ The system should not depend on hidden developer-machine state.
 | --- | --- | --- |
 | Branches `feat/*`, `fix/*`, `docs/*` and `chore/*` opened from `develop`, one pull request each, base `develop` (`CONTRIBUTING.md` §1 and §7) | `Implemented` (13 pull requests merged so far) | none |
 | `develop` to `main` only when a milestone closes, by merge commit (`CONTRIBUTING.md` §3 and §4) | `Reference`; nothing here is built from it | none |
-| Conventional Commits in the form `type(scope): description` (`CONTRIBUTING.md` §6) | `Implemented` as practice: 238 of 257 commit subjects follow it; the other 19 are 13 pull request merge commits and 6 `style(...)` commits | none |
-| Commit message check (for example a `commit-msg` hook or `commitlint`) | Not present: `.husky/` holds only the `pre-commit` hook. No ADR decides one | none |
+| Conventional Commits in the form `type(scope): description` (`CONTRIBUTING.md` §6) | `Implemented` as practice: 238 of 257 commit subjects follow it; the other 19 are 13 pull request merge commits and 6 `style(...)` commits; `style` is an accepted type (decided 2026-10-08, `CONTRIBUTING.md` §6) | none |
+| Commit message check (for example a `commit-msg` hook or `commitlint`) | Not present: `.husky/` holds only the `pre-commit` hook. Decided 2026-10-08: none is added now; the check is revisited when the B0 CI exists | none |
 | Husky `pre-commit` running `lint-staged` (ESLint and Prettier on staged files) | `Implemented` | none |
-| Pull request template with summary, type, related specification, verification and checklist (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist lists `pnpm typecheck` and `pnpm lint` only, so `pnpm format:check`, `pnpm build` and `pnpm docs:check` (ADR-006 point 11) are `Planned (B0)` | B0 |
+| Pull request template with summary, type, related specification, verification and checklist (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist lists `pnpm typecheck`, `lint`, `format:check`, `build`, `test` and `docs:check` (ADR-006 point 11) | none |
 | Minimal CI: one GitHub Actions workflow on pushes and pull requests to `develop` and `main`, with lockfile install, typecheck, lint, format check, build, `pnpm docs:check` and the domain, database and API test suites (ADR-006 points 10 and 11) | `Planned (B0)`; `.github/` holds no workflow today | B0 |
 | Branch protection requiring CI green before a merge into `develop` or `main` (`CONTRIBUTING.md` §2) | `Planned (B0)` for the CI half; the protection rules are GitHub settings and cannot be verified from the repository | B0 |
-| `CONTRIBUTING.md` wording: CI "once implemented per `docs/04-tech-stack.md` §41", no local setup steps, no troubleshooting | `Planned (B0)`; ADR-006 lists "CI gate wording, local gate commands" among the documents to align; the file is edited in a later documentation task, not here | B0 |
+| `CONTRIBUTING.md` wording: CI gate wording ("planned, not yet in place", ADR-006 points 10 and 11), local setup, quality commands and troubleshooting | `Implemented` (§2, §9 and §10 of the file); the CI it describes stays `Planned (B0)` | none |
 
 Code vs ADR:
 
-- The recommended prefixes below are the original list. `CONTRIBUTING.md` §6 extends it with `build` and `ci`, requires a scope, and states the description rules; the examples below have no scope and are kept as the original text.
-- `CONTRIBUTING.md` §4 says `docs/*` and the other topic branches are squash-merged into `develop`, but the history shows merge commits ("Merge pull request #13 from ronlab89/docs/sdd-contracts") and the branch commits kept. Which of the two is intended is not settled.
-- `style(...)` appears in 6 commits and is in neither list.
+- The recommended prefixes below are the original list. `CONTRIBUTING.md` §6 extends it with `build`, `ci` and `style`, requires a scope, and states the description rules; the examples below have no scope and are kept as the original text.
+- `CONTRIBUTING.md` §4 now states merge commits for the topic branches (decided 2026-10-08), which matches the history ("Merge pull request #13 from ronlab89/docs/sdd-contracts") with the branch commits kept.
+- `style(...)` appears in 6 commits and is now in the list of `CONTRIBUTING.md` §6.
 - `CONTRIBUTING.md` §3 cites milestones in §52 to §59 of this document; those sections exist.
-- `CONTRIBUTING.md` §8 describes `docs/00` to `docs/15` and a `PROGRESS.md` "at the repository root"; the set is now `00` to `16` plus `adr/`, and the file is `docs/PROGRESS.md`.
+- `CONTRIBUTING.md` §8 now describes `docs/00` to `docs/15` plus `docs/16-analytics-spec.md`, `docs/adr/` and `docs/PROGRESS.md` (fixed in slice I).
 
-Pending decisions:
+Decided 2026-10-08:
 
-- Whether the squash-merge rule of `CONTRIBUTING.md` §4 or the merge commits seen in the history are the intended practice.
-- Whether `style` becomes an accepted commit type or its use stops.
-- Whether a commit message check is added to the hooks or to CI.
+- Pull requests are merged with merge commits, not squash (`CONTRIBUTING.md` §4), so the work-unit commits stay reviewable.
+- `style` is an accepted commit type (`CONTRIBUTING.md` §6).
+- No commit message validation now: only the `pre-commit` hook stays; this is revisited when the B0 CI exists.
 
 Original text:
 
@@ -2522,10 +2529,10 @@ with coherent loading, empty, success, and failure states.
 | Reviewer capability | Status | Block |
 | --- | --- | --- |
 | 1 Understand the problem quickly | `Planned (FE6)`; the product text exists in `01-product-spec.md` | FE6 |
-| 2 Enter the functional demo | `Planned (FE4)`; where it is hosted is `Deferred` to the frontend-stage ADR | FE4 |
+| 2 Enter the functional demo | `Planned (FE4)`; a hosted static demo (decided 2026-10-08); where it is hosted is `Deferred` to the frontend-stage ADR | FE4 |
 | 3 Understand the product | `Planned (FE6)` | FE6 |
 | 4 Inspect the architecture | The ADRs and SDD set exist; the case study `Planned (FE6)` | FE6 |
-| 5 Inspect the repository | Public layout with `README.md` and `CONTRIBUTING.md`; both need the updates listed in §49 and §50 (`Planned`) | FE6 |
+| 5 Inspect the repository | Public layout with `README.md` and `CONTRIBUTING.md`; their gaps from §49 and §50 are closed (`Implemented`); the CI run that proves a clean checkout is `Planned (B0)` | FE6 |
 | 6 Understand key engineering decisions | `Implemented`: ten ADRs in `docs/adr/`; the review of §44 `Planned (FE6)` | FE6 |
 | 7 Verify meaningful implementation | `Implemented` in part; completes with B7 and FE5 | FE5 |
 | 8 Understand tradeoffs | ADR "Alternatives Considered" sections `Implemented`; case study `Planned (FE6)` | FE6 |
@@ -2534,7 +2541,7 @@ with coherent loading, empty, success, and failure states.
 
 Code vs ADR:
 
-- Because the backend is not hosted, a reviewer sees the real stack only on the author's machine or in a recording; the public experience is the demo (ADR-006 consequences). Whether a recording or screenshots accompany the case study is not decided in any ADR.
+- Because the backend is not hosted, a reviewer sees the real stack only on the author's machine or in a recording; the public experience is the demo (ADR-006 consequences). Decided 2026-10-08: the case study links a hosted static demo (allowed because the demo bundle contains no HTTP adapter, ADR-006 point 8 and ADR-010 point 6) and adds a recorded video or screenshots of the real local stack.
 
 Original text:
 
@@ -2638,17 +2645,18 @@ What changes when the system grows?
 | --- | --- | --- |
 | Template fields: Context, Decision, Consequences, Alternatives Considered, Deferred detail, Related (enforced by `pnpm docs:check`) | `Implemented` | none |
 | ADRs for application layer, contracts, holdings-only portfolio, analytics, roles and authentication, deployment and CI, realtime, background jobs, observability and v1 scope | `Implemented` (ADR-001 to ADR-010) | none |
-| ADRs for the candidate decisions that are not decided yet: TanStack Query, Zustand, TanStack Table, the form library | `Deferred` to the frontend-stage ADR | FE0 |
-| Review of the decisions with Evidence and Future evolution before the case study is published | `Planned (FE6)` | FE6 |
+| ADRs for the candidate decisions that are not decided yet: TanStack Query, Zustand, TanStack Table, the form library | `Deferred` to the frontend-stage ADR (confirmed 2026-10-08) | FE0 |
+| Review of the decisions (Problem, Decision, Alternatives, Reason, Tradeoffs, Future evolution) before the case study is published; the evidence for each is gathered in the case study from the tests, CI runs and measurements | `Planned (FE6)` | FE6 |
 
 Code vs ADR:
 
-- Mapping of the seven review headings to the ADR sections: Problem to Context, Decision to Decision, Alternatives to Alternatives Considered, Reason and Tradeoffs to Consequences, Future evolution to Deferred detail and the `Deferred` markers. Evidence has no section in the template.
+- Mapping of the seven review headings to the ADR sections: Problem to Context, Decision to Decision, Alternatives to Alternatives Considered, Reason and Tradeoffs to Consequences, Future evolution to Deferred detail and the `Deferred` markers. Evidence has no section in the template and none is added (decided 2026-10-08).
 - The candidate list below is partly stale: Docker, JWT, RBAC, PostgreSQL, REST, WebSockets and the demo adapters are covered by ADRs; Zustand, TanStack Query and TanStack Table are not decided.
 
-Pending decisions:
+Decided 2026-10-08:
 
-- Whether the ADR template gets an Evidence section, or evidence is gathered only in the case study. This changes the template and `pnpm docs:check`, so it is not decided here.
+- The ADR template gets no Evidence section and `scripts/check-docs.mjs` is not changed: evidence is gathered only in the case study. The review above therefore does not require an Evidence field in each ADR.
+- The candidate libraries (TanStack Query, Zustand, TanStack Table, the form library) stay `Deferred` to the frontend-stage ADR (confirmed).
 
 Original text:
 
@@ -2767,17 +2775,17 @@ This is stronger than claiming that the initial system is infinitely scalable.
 
 **Status:** per item (table below); the method is `Reference` and no measurement has been taken yet (§32)
 
-**Owning blocks:** Backend: B1 (data fetching for analytics), B5 (bounded realtime history), B7 (measurement of the local stack); Frontend: FE2, FE3 (renders), FE5 (measurement and refinement). Decisions: ADR-007 (limits and bounded history), ADR-010 point 4 (client-side sorting only for fully loaded lists).
+**Owning blocks:** Backend: B1 (data fetching for analytics), B5 (bounded realtime history; performance measurement after realtime exists, decided 2026-10-08); Frontend: FE2, FE3 (renders), FE5 (measurement and refinement). Decisions: ADR-007 (limits and bounded history), ADR-010 point 4 (client-side sorting only for fully loaded lists).
 
 | Evidence | Status | Block |
 | --- | --- | --- |
-| Measurement and profiling before any claim | `Planned (FE5)` for the frontend; `Planned (B7)` for the API; nothing measured today | B7, FE5 |
+| Measurement and profiling before any claim | `Planned (FE5)` for the frontend; `Planned (B5)` for the backend and realtime, after realtime exists (decided 2026-10-08); nothing measured today | B5, FE5 |
 | Efficient data fetching | Not assessed | B1 |
 | Pagination | `Implemented` for assets and transactions (`apps/api/src/schemas/pagination.schema.ts`); other lists are returned in full and sorted in the client (ADR-010 point 4) | none |
 | Caching where justified | `Deferred` until a measured bottleneck | none |
 | Bounded realtime history | `Planned (B5)` | B5 |
 | Controlled renders | `Planned (FE3)` | FE3 |
-| Appropriate payload sizes | JSON body limit of 100 kB `Implemented`; response sizes not measured | B7 |
+| Appropriate payload sizes | JSON body limit of 100 kB `Implemented`; response sizes not measured; measured in B5 | B5 |
 
 Code vs ADR:
 
@@ -2854,8 +2862,8 @@ Do not present security features as complete until they have actually been imple
 | Migrate and seed: `pnpm --filter @trading/database db:seed` and `db:reset` | `Implemented`; refusal when `NODE_ENV=production` `Planned (B0)` | B0 |
 | Run the API | `Implemented` as a development command; the production start `node dist/index.js` `Planned (B7)` | B7 |
 | Quality commands: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build`, `pnpm docs:check` | `Implemented`; all of them in CI `Planned (B0)` | B0 |
-| `README.md`: prerequisites, commands, environment variables, database reset, tests | Database reset and setup `Implemented`; the status section is stale (it says Phase 2 is the latest and the API "not started yet") and the file has no steps to start the API, check `GET /health/ready`, set `LOG_LEVEL`, or run tests and `pnpm docs:check`: `Planned` in a later documentation task (slice H) | none |
-| `CONTRIBUTING.md`: setup, CI wording, troubleshooting | Branching, commits and pull requests `Implemented`; setup, CI wording and troubleshooting `Planned` in a later documentation task (slice I) | none |
+| `README.md`: prerequisites, commands, environment variables, database reset, tests | Database reset and setup `Implemented`; the status section states the real state (slice H) and the file has the steps to start the API and check `GET /health/ready`; tests and `pnpm docs:check` are listed in `CONTRIBUTING.md` §9, which the README links; `LOG_LEVEL` arrives with the logger in B3 | none |
+| `CONTRIBUTING.md`: setup, CI wording, troubleshooting | `Implemented` (slice I): branching, commits and pull requests, setup and quality commands (§9), CI wording (§2) and troubleshooting (§10); the CI itself stays `Planned (B0)` | none |
 | Build and deployment documentation | `Planned (B7)` | B7 |
 | Troubleshooting | `Planned (B7)` | B7 |
 
@@ -2905,10 +2913,10 @@ Documentation should cover:
 
 | Category | Where it lives | Status | Block |
 | --- | --- | --- | --- |
-| README | `README.md` | Stale status and missing steps; `Planned` in a later documentation task (slice H) | none |
+| README | `README.md` | `Implemented` (slice H): real status and the API run flow | none |
 | Architecture | `docs/06-architecture.md` and `docs/adr/` | `Implemented` | none |
 | API | `docs/07-api-spec.md`; OpenAPI document | Spec `Implemented`; generated document `Planned (B6)` | B6 |
-| Development | `CONTRIBUTING.md` | Gaps listed in §38 and §49; `Planned` in a later documentation task (slice I) | none |
+| Development | `CONTRIBUTING.md` | `Implemented` (slice I): the gaps listed in §38 and §49 are closed; the CI wording describes a CI that stays `Planned (B0)` | none |
 | Testing | `docs/10-testing-strategy.md` | `Implemented` | none |
 | Demo | `docs/12-demo-mode-spec.md` | `Implemented`; the demo specifics are `Deferred` to the frontend-stage ADR | FE4 |
 | Deployment | `docs/14-deployment-spec.md` | Spec `Implemented`; run instructions `Planned (B7)` | B7 |
@@ -3008,7 +3016,7 @@ Do not silently diverge from the documented architecture.
 
 Code vs ADR:
 
-- "Clean setup works" is only partly verifiable today: there is no CI run to prove it from a clean checkout, and `README.md` has a stale status section and no API start step (§49). The CI proof is `Planned (B0)`; the README is a later documentation task.
+- "Clean setup works" is only partly verifiable today: there is no CI run to prove it from a clean checkout, while the `README.md` status section and API start step are `Implemented` (§49). The CI proof is `Planned (B0)`.
 - "Domain tests work" is `Implemented`: `packages/domain` has a `test` script (`vitest run`).
 - This milestone closes the Phase 0 to 3 work of §4.2 plus the B0 additions; it does not add product behavior.
 
@@ -3096,7 +3104,7 @@ Code vs ADR:
 
 - This milestone cannot start before the backend is done: the frontend stage begins after B1 to B7 close (§4.1). The milestone is therefore the first one in time that sits entirely after B7.
 - The milestone text lists no statistics. Win/loss and transaction statistics are not part of version 1 (ADR-010 point 10), so the dashboard and analytics items must not be extended with them. Benchmark comparison is also out (ADR-010 point 7).
-- "Primary user workflow works end-to-end" needs a definition of that workflow in real mode; the frontend-stage ADR is the natural place, and it does not exist yet (§4.3).
+- Decided 2026-10-08: the "primary user workflow" in real mode is: log in, create a portfolio, record a transaction, and view the resulting position and analytics (the flow §41 describes). The milestone does not depend on the frontend-stage ADR for this definition.
 
 Original text:
 
@@ -3210,17 +3218,18 @@ public demo works without production infrastructure
 | Component tests | `Deferred` until the frontend-stage ADR chooses the runner (ADR-006 point 11); then `Planned (FE5)` | FE5 |
 | E2E | `Deferred` (same reason); Playwright is named in ADR-006 point 11 as part of that decision | FE5 |
 | Accessibility | the scanning tool is chosen in the frontend-stage ADR; checks `Planned (FE5)` | FE5 |
-| Security review | no ADR or backend block owns it; see Pending decisions | none |
-| Performance measurement | server: slow-request logging at 500 ms `Planned (B3)`, no load test, metrics `Deferred` (ADR-009 points 8 and 10); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, FE5 |
+| Security review | B2 owns the auth-focused review; B7 owns the final pass with the checklist of §33 (decided 2026-10-08) | B2, B7 |
+| Performance measurement | server: slow-request logging at 500 ms `Planned (B3)`, no load test, metrics `Deferred` (ADR-009 points 8 and 10); measurement after realtime exists `Planned (B5)` (decided 2026-10-08); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, B5, FE5 |
 
 Code vs ADR:
 
 - There is no coverage threshold in version 1 (ADR-006 point 11). The quality bar is the named mandatory tests (ADR-001 point 7, ADR-002 point 6), so the exit criterion "tested" is not a percentage.
 - Backend quality is verified per block, in the verification loop each block ends with (§4.1); the frontend items wait for FE5.
 
-Pending decisions:
+Decided 2026-10-08:
 
-- Whether a security review is a task with an owner and a scope, or stays an item of the final gate (§61). No ADR defines it.
+- The security review is a task with owners: B2 owns the auth-focused review (sessions, roles, permissions, tokens) and B7 owns the final pass using the checklist of §33 (`BACKEND-ROADMAP.md` states the same). It still feeds the final gate (§61).
+- Performance measurement is owned by B5, after realtime exists, with the frontend side in FE5; ADR-009 metrics stay `Deferred`.
 
 Original text:
 
@@ -3293,7 +3302,8 @@ clean production-like deployment is reproducible
 | Item | Status | Block |
 | --- | --- | --- |
 | Project page, architecture visualization, technical decisions, implementation highlights, screenshots, lessons learned | `Planned (FE6)` | FE6 |
-| Demo link, repository link | `Planned (FE6)`; the demo link needs the publication of FE4, whose hosting is `Deferred` | FE6 |
+| Demo link, repository link | `Planned (FE6)`; the demo link is a hosted static demo (decided 2026-10-08) and needs the publication of FE4, whose hosting place is `Deferred` to the frontend-stage ADR | FE6 |
+| Recorded video or screenshots of the real local stack (decided 2026-10-08) | `Planned (FE6)`; taken from the B7 full stack | FE6 |
 | Measured outcomes | `Planned (FE6)`; only what was measured: the project has no load test and no metrics (`10-testing-strategy.md` §39, ADR-009 point 10) | FE6 |
 
 Code vs ADR:
@@ -3387,7 +3397,7 @@ Every failure should be resolved or explicitly documented.
 | Architecture, Backend | ADR-001 (application layer), ADR-002 (validated contracts), `pnpm typecheck`, the application-service tests | B0 |
 | Frontend | the frontend-stage ADR and FE0 to FE5 | FE0 to FE5 |
 | Realtime | ADR-007, reconnect tests | B5, FE3 |
-| Security | ADR-005 (authorization boundaries), the security review of §57 | B2 |
+| Security | ADR-005 (authorization boundaries), the auth-focused review of B2 and the final pass of B7 with the checklist of §33 (§57) | B2, B7 |
 | Testing | the named mandatory tests, not a percentage (ADR-006 point 11) | every block |
 | Observability | ADR-009 (logs and security events) | B3 |
 | Deployment | the local full stack from a clean checkout (ADR-006 point 1) | B7 |
@@ -3541,8 +3551,8 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 25 Unit/integration/component tests | domain, database and API tests `Implemented`; application and contract tests `Planned (B0)`; tests per block; component tests `Planned (FE5)` | B0, FE5 |
 | 26 E2E tests | `Deferred` until the frontend-stage ADR (ADR-006 point 11) | FE5 |
 | 27 Accessibility validation | `Planned (FE5)` | FE5 |
-| 28 Security review | see Pending decisions | not assigned |
-| 29 Performance measurement | see Pending decisions; no metrics exist (ADR-009 point 10) | not assigned |
+| 28 Security review | B2 auth-focused review; B7 final pass with the §33 checklist (decided 2026-10-08) | B2, B7 |
+| 29 Performance measurement | B5 after realtime exists, frontend side in FE5 (decided 2026-10-08); no metrics exist (ADR-009 point 10) | B5, FE5 |
 | 30 Production build | backend `Planned (B7)` (ADR-006 point 3); demo build `Planned (FE4)` | B7, FE4 |
 | 31 Deployment | local full stack `Planned (B7)`; demo publication `Planned (FE4)`; hosted deployment `Deferred` (ADR-006 point 2) | B7, FE4 |
 | 32 Smoke tests | `Planned (B7)` | B7 |
@@ -3555,10 +3565,10 @@ Code vs ADR:
 - The original list interleaves backend and frontend steps (for example step 12 frontend shell before step 20 realtime). Under the backend-first order the frontend steps 12 to 19 and 23 to 24 run after B7, except the simulation engine of step 24, which is built in B5.
 - The closing sentence of the original ("adjusted when real implementation dependencies reveal a better order") is the mechanism of §4.1: the order was adjusted by the ADRs, not by this list.
 
-Pending decisions:
+Decided 2026-10-08:
 
-- Step 28 (security review): §61 and §57 point to B2, while `BACKEND-ROADMAP.md` calls B7 "deployment readiness and hardening". Which block runs the review, or whether it runs in both, is not decided in any ADR.
-- Step 29 (performance measurement): no ADR or block owns it. ADR-009 point 10 defers metrics and §3 rule 1 says to measure first. Which block measures what, and with which tool, is not decided.
+- Step 28 (security review): B2 owns the auth-focused review and B7 owns the final pass with the §33 checklist; `BACKEND-ROADMAP.md` states both.
+- Step 29 (performance measurement): B5 owns it, after realtime exists, with the frontend side in FE5. ADR-009 metrics stay `Deferred` (point 10) and §3 rule 1 (measure first) holds; the frontend measurement tooling is chosen in the frontend-stage ADR.
 
 Original text:
 
@@ -3627,12 +3637,12 @@ This sequence should be adjusted when real implementation dependencies reveal a 
 Code vs ADR:
 
 - The first diagram uses the layer names of the original plan. In the code the layers are packages: `domain`, `database` (infrastructure), and `apps/api` (transport); `application` and `contracts` are added in B0.
-- The "External APIs" box has no counterpart in version 1: ADR-007 uses the simulator as the price source and rules out a paid market data provider. The "Mock API" box of the Demo Mode diagram is the in-process application layer, not a mocked HTTP server.
+- The "External APIs" box of the original diagram is replaced (decided 2026-10-08) by "Market simulator (ADR-007)": ADR-007 uses the simulator as the price source and rules out a paid market data provider. The "Mock API" box of the Demo Mode diagram is the in-process application layer, not a mocked HTTP server.
 - "Mock DB" in the Demo Mode diagram means the in-memory repositories of ADR-001 point 7, which B0 creates as test fakes and FE4 reuses.
 
-Pending decisions:
+Decided 2026-10-08:
 
-- Whether the "External APIs" box is removed from the diagram or kept as a placeholder for a future provider is a documentation choice not covered by an ADR; ADR-007 only decides that none is used in version 1.
+- The "External APIs" box is removed from the first diagram and replaced by "Market simulator (ADR-007)"; no placeholder for a future provider is kept.
 
 Original text:
 
@@ -3655,7 +3665,7 @@ At the end of implementation, verify that the conceptual architecture remains:
                          │
              ┌───────────┼───────────┐
              │           │           │
-          PostgreSQL   WebSocket   External APIs
+          PostgreSQL   WebSocket   Market simulator (ADR-007)
 ```
 
 For Demo Mode:
@@ -3726,12 +3736,12 @@ The portfolio should demonstrate:
 | --- | --- | --- | --- |
 | Product | Core workflows: endpoints `Implemented`, screens in FE1 to FE3; analytics from B1 (ADR-004); no win/loss or transaction statistics in version 1 (ADR-010 point 10); holdings only, no cash balance (ADR-003 points 1 and 2); see §41 | `Implemented` in part; `Planned (B1)`; `Planned (FE1)` | B1, FE1 to FE3 |
 | Architecture | Application layer, contracts and ports (ADR-001, ADR-002) in B0; Demo Mode substitution in FE4; boundaries documented by the ADRs; see §64 | `Planned (B0)`; `Planned (FE4)` | B0, FE4 |
-| Frontend | The frontend blocks; the libraries named in the original list are not decided by any ADR (see Pending decisions); see §40 | `Planned (FE0)` | FE0 to FE5 |
+| Frontend | The frontend blocks; the libraries named in the original list are not decided by any ADR and stay `Deferred` (confirmed 2026-10-08, see Decided); see §40 | `Planned (FE0)` | FE0 to FE5 |
 | Backend | Node.js and TypeScript API, PostgreSQL persistence, validation, error envelope and health routes `Implemented`; contracts `Planned (B0)`; authentication and RBAC `Planned (B2)` (ADR-005); OpenAPI `Planned (B6)`; see §40 | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2, B6 |
 | Realtime | Server `Planned (B5)` (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Planned (B5)`; `Planned (FE3)` | B5, FE3, FE4 |
 | Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Planned (B4)`; screens `Planned (FE3)` | `Planned (B4)` | B4, FE3 |
 | Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E `Deferred` until the frontend-stage ADR; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
-| Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Planned (B0)`; roles and sessions `Planned (B2)` (ADR-005); production configuration guard `Planned (B0)` (ADR-006 point 13); the security review of §57 | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2 |
+| Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Planned (B0)`; roles and sessions `Planned (B2)` (ADR-005); production configuration guard `Planned (B0)` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2 |
 | Observability | Request IDs and health routes `Implemented`; structured logs, redaction and security events `Planned (B3)` (ADR-009); job and realtime lifecycle events `Planned (B4)`, `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` in part; `Planned (B3)` | B3, B4, B5 |
 | Deployment | Minimal CI `Planned (B0)` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Planned (B0)`; `Planned (B7)`; `Planned (FE4)` | B0, B7, FE4 |
 | Demo | No paid infrastructure (ADR-007); reset, simulated latency and failure scenarios (ADR-010 point 6); in-process adapters (ADR-001, ADR-007 point 13); see §56 | `Planned (FE4)` | B5, FE4 |
@@ -3741,13 +3751,13 @@ Code vs ADR:
 
 - The checkboxes of the original are kept unchecked on purpose: none of them is verified end to end today. A box is checked only with evidence recorded in the owning block.
 - "Authorization is server-side" is partly true today (ownership checks in the API); the permission model that ADR-005 enforces in the application layer is `Planned (B0)`.
-- "Measured outcomes are real" depends on a measurement that no block owns yet (see §63 Pending decisions, step 29).
+- "Measured outcomes are real" depends on a measurement that B5 and FE5 own (decided 2026-10-08, §63 step 29); until it is taken, no outcome is published.
 - Version 1 has no exposure, benchmark or win/loss statistics (ADR-010 points 7 and 10), so "analytics are coherent" is judged against the analytics ADR-004 defines.
 
-Pending decisions:
+Decided 2026-10-08:
 
-- "TanStack Query", "Zustand", "TanStack Table" and the form validation approach are named in the original but are decided by no ADR. They are settled in the frontend-stage ADR (§4.3); until then this list does not bind the choice.
-- "Responsive behavior is validated", "component tests exist where valuable" and "E2E tests cover critical flows" need the tooling choice of the same frontend-stage ADR (ADR-006 point 11).
+- "TanStack Query", "Zustand", "TanStack Table" and the form validation approach stay `Deferred` (confirmed). They are decided together in the frontend-stage ADR, before FE0 (§4.3); until then this list does not bind the choice.
+- "Responsive behavior is validated", "component tests exist where valuable" and "E2E tests cover critical flows" need the tooling choice of the same frontend-stage ADR (ADR-006 point 11), also confirmed `Deferred`.
 
 Original text:
 

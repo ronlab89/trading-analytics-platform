@@ -1686,7 +1686,7 @@ How each applies:
 | Check | Full stack | Demo |
 |---|---|---|
 | 1. Frontend accessibility | No frontend step in the full-stack smoke test (ADR-006 point 11, additions of 2026-10-07); a frontend container stays open (§7; B7) | Page loads under the subpath: `Planned (FE)`; tool `Deferred` (frontend-stage ADR) |
-| 2. API health | `GET /health` and `GET /health/ready` return 200: `Planned (B7)` | Not applicable: no backend |
+| 2. API health | `GET /health` and `GET /health/ready` return 200: `Planned (B7)`. The script runs `db:seed` as an explicit step before the login check; the `full` stack is local and runs with `NODE_ENV` other than `production` (ADR-006 point 5 and its 2026-10-08 smoke-test clarification) | Not applicable: no backend |
 | 3. Authentication | `POST /api/v1/auth/login` returns a token: `Planned (B7)` | In-process login: `Planned (FE)` |
 | 4. Authenticated request | `GET /api/v1/auth/me` or `GET /api/v1/portfolios` with the token: `Planned (B7)` | `Planned (FE)` |
 | 5. Primary portfolio flow | Not chosen; a read of the seeded portfolio is the smallest candidate: `Planned (B7)`, flow chosen in B7 | `Planned (FE)` |

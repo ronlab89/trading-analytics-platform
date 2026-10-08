@@ -17,8 +17,8 @@ This repository uses a simplified GitHub Flow with a staging layer:
 ```text
 main        → always deployable, protected, clean history (merge commit from develop)
 develop     → integration branch, base for staging/demo preview
-feat/*      → new functionality, merged into develop via PR (squash merge)
-fix/*       → bug fixes, merged into develop via PR (squash merge)
+feat/*      → new functionality, merged into develop via PR (merge commit)
+fix/*       → bug fixes, merged into develop via PR (merge commit)
 docs/*      → documentation-only changes
 chore/*     → tooling, configuration, dependencies
 ```
@@ -88,8 +88,11 @@ reflects a coherent, demonstrable state of the project rather than incremental n
 
 ## 4. Merge Strategy
 
-- **`feat/*`, `fix/*`, `docs/*`, `chore/*` → `develop`**: **Squash merge**.
-  Each feature/fix becomes one atomic, well-described commit on `develop`.
+- **`feat/*`, `fix/*`, `docs/*`, `chore/*` → `develop`**: **Merge commit** (no
+  squash). The branch's work-unit commits stay on `develop`, so each one remains
+  reviewable and bisectable, and the merge commit marks where the pull request
+  landed. This is the practice the history already shows (decided 2026-10-08, see
+  section 12).
 - **`develop` → `main`**: **Merge commit** (no squash).
   This preserves the fact that this point represents an actual milestone/release,
   not just another commit.
@@ -100,8 +103,10 @@ reflects a coherent, demonstrable state of the project rather than incremental n
 
 Pull requests are used even though there is a single contributor, for two concrete reasons:
 
-1. **Clean commit history** — squash merge means `develop`/`main` never accumulate
-   "wip", "fix typo", "oops" commits.
+1. **Reviewable commit history** — each branch is built from coherent work-unit
+   commits (section 6), so merging them as they are keeps `develop`/`main` readable
+   without "wip", "fix typo", "oops" commits; fix those up on the branch before
+   the pull request is merged.
 2. **Real CI gate** — a PR cannot merge if the pipeline fails, which is enforced
    evidence of engineering discipline, not just a claim in a README.
 
@@ -133,10 +138,11 @@ docs      documentation only
 chore     tooling, config, dependencies, maintenance
 build     build system or external dependency changes
 ci        CI configuration changes
+style     formatting-only change with no effect on behavior (whitespace, ordering)
 ```
 
-The history also contains `style(...)` commits; whether `style` is an accepted type
-is an open decision (see section 12).
+`style` is an accepted type (decided 2026-10-08, see section 12); the history
+already contains `style(...)` commits.
 
 ### Rules
 
@@ -167,7 +173,7 @@ working agreement / `docs/PROGRESS.md`). The typical flow for a step is:
 4. Commit(s) following the convention above
 5. Push and open a PR into develop
 6. CI runs (planned for B0, see section 2)
-7. Merge into develop (squash, per section 4; see section 12)
+7. Merge into develop (merge commit, per section 4)
 8. Delete the feature branch
 ```
 
@@ -275,15 +281,15 @@ The full rules are in `docs/adr/README.md` and `docs/README.md`.
 
 ---
 
-## 12. Pending Decisions
+## 12. Decided Workflow Questions
 
-Open questions about this workflow. The rules above stay as written until each one
-is settled.
+Questions about this workflow that were open and are now settled. The rules above
+are the result.
 
-1. **Squash or merge commits.** Section 4 requires squash merge into `develop`, but
-   the history holds 13 pull request merge commits. Which is intended is not decided.
-2. **The `style` commit type.** 6 commits use `style(...)`; it is not in the list in
-   section 6. Either it is added or its use stops.
-3. **A commit message check.** `.husky/` holds only the `pre-commit` hook; there is
-   no `commit-msg` hook or commitlint. Whether to add one, to the hooks or to CI, is
-   not decided.
+1. **Decided 2026-10-08: merge commits, not squash.** Pull requests into `develop`
+   are merged with a merge commit (section 4). It matches the 13 pull request merge
+   commits already in the history and keeps the work-unit commits reviewable.
+2. **Decided 2026-10-08: `style` is an accepted commit type** (section 6).
+3. **Decided 2026-10-08: no commit message check now.** `.husky/` keeps only the
+   `pre-commit` hook; no `commit-msg` hook or commitlint is added. This is revisited
+   when the B0 CI exists.

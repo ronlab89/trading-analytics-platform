@@ -133,6 +133,10 @@ and `pulse` added while the overview is being touched.
   login, `me` and logout only). Treat it as optional.
 - Auth security events (`09-security-spec.md` §50) are emitted through the
   logger once B3 exists; B2 does not need to wait for it.
+- The auth-focused security review (decided 2026-10-08): B2 owns the review
+  of sessions, roles, permissions and token handling, against the checks of
+  `15-implementation-plan.md` §33 that concern them. B7 owns the final pass
+  (see B7).
 
 **Open decisions (need the user)**
 1. **Role names.** The SDD contradicts itself (section 5, item 1). The
@@ -150,7 +154,7 @@ and `pulse` added while the overview is being touched.
 **Done when:** authorization tests cover allowed role, denied role,
 cross-user access and escalation attempts (`09-security-spec.md` §55);
 logout behavior is tested for the chosen semantics; the SDD role model is
-reconciled.
+reconciled; the auth-focused security review is recorded.
 
 **Size:** small to medium, depending on decisions 3 and 4.
 
@@ -221,6 +225,9 @@ in-flight jobs on shutdown (shares work with B7).
 - Resynchronization through HTTP, subscription limits, bounded memory,
   rate protection (`08-realtime-spec.md` §25-26, §47-51;
   `09-security-spec.md` §31-35).
+- Performance measurement (decided 2026-10-08): B5 owns it, because it can
+  only be taken once realtime exists. The frontend side is measured in FE5.
+  ADR-009 metrics stay `Deferred` (ADR-009 point 10).
 
 **Open decisions (need the user)**
 1. **Where the simulation engine lives.** The demo needs the same
@@ -270,6 +277,9 @@ drift apart.
 - Graceful shutdown (`14-deployment-spec.md` §16).
 - Security checklist (§78): secrets, CORS, headers, error exposure, health
   output, resource limits.
+- The final security pass (decided 2026-10-08): B7 owns it, using the
+  checklist of `15-implementation-plan.md` §33 over the whole backend. The
+  auth-focused review stays with B2.
 - Known debts that belong here: concurrency on position recalculation and
   the unescaped `%`/`_` in search filters (`PROGRESS.md` §7).
 - Smoke test definition (§49). Backups are documented, not claimed.
@@ -278,7 +288,7 @@ drift apart.
 
 **Done when:** a production build runs from a clean checkout in a
 container, shutdown drains in-flight work, and the checklist is ticked
-with evidence.
+with evidence, including the final security pass over the §33 checklist.
 
 **Size:** medium.
 
