@@ -1,6 +1,6 @@
 # Feature: SDD as Source of Truth
 
-**Branch:** `docs/sdd-source-of-truth` (from `develop`)
+**Branches:** one `docs/sdd-*` branch per phase, each merged into `develop` by a user-owned PR. Phase 5 was `docs/sdd-operations` (PR #14, merged 2026-10-08); Phase 6 runs on `docs/sdd-verification`.
 **Started:** 2026-10-04
 **Delivery strategy:** one PR per phase into `develop` (user-owned); no separate PR for repo chores.
 
@@ -218,15 +218,17 @@ Product decisions that no ADR covers are asked to the user in batches.
 
 ### Phase 5 — Operations and living docs
 
-Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10-06). Order approved by the user: `13` → `14` → T5.2 (`15`, `CONTRIBUTING.md`, `README.md`) → T5.3 (`BACKEND-ROADMAP.md`, `PROGRESS.md`, collecting every "For T5.3" item) → `12` last (frontend-only). Route: one delegated writer per slice of 300-500 lines, one commit per slice. `13` is split into 5 slices: §1-12, §13-27, §28-42, §43-57, §58-end.
+Merged into `develop` by PR #14 (`cdacef0`, 2026-10-08). Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10-06). Order approved by the user: `13` → `14` → T5.2 (`15`, `CONTRIBUTING.md`, `README.md`) → T5.3 (`BACKEND-ROADMAP.md`, `PROGRESS.md`, collecting every "For T5.3" item) → `12` last (frontend-only). Route: one delegated writer per slice of 300-500 lines, one commit per slice. `13` is split into 5 slices: §1-12, §13-27, §28-42, §43-57, §58-end.
 
-    - Gate for B0 decided by the user 2026-10-08: `11` and `12` are frontend documents, reconciled in the frontend stage after the frontend-stage ADR, and are not part of the gate that lets B0 start (T5.1 `12` stays open until then). Header labels fixed: `01`, `03`, `08`, `09` now say all sections are reconciled (every section of `03` already had a status); `11` and `12` say they are reconciled in the frontend stage; `docs/README.md` says the same. The five unassigned `PROGRESS.md` §7 items applied as recommended: `dateFrom`/`dateTo` filter on `createdAt` in the contracts query schema (B0), `Scenario.baseSnapshotId` stays a nullable string with no behavior (parked, snapshots `Deferred`), log entry for skipped scenario `changes` (B3), `riskLevel` replay limitation and `NEUTRAL` P/L parked until FE2. Roadmap updated (B0 deferred-detail rows, B3 list, parked list). `15` §23 already annotates the "Mock infrastructure" wording, so no change.
+**Closing notes (2026-10-08)**
 
-    - Native review of `245090e` (assessed high only because `docs/09-security-spec.md` is a security hot path; the edit was its status line): consent granted by the user, 4 lenses, approved with no blocking findings and acknowledged (authority burned). Advisory suggestions, separate later work: the gate note above is one long indented bullet that may render as a code block; `docs/11-ui-ux-spec.md` header wording; `docs/PROGRESS.md` ~lines 990-994 wording of the assigned items.
+- Gate for B0 decided by the user 2026-10-08: `11` and `12` are frontend documents, reconciled in the frontend stage after the frontend-stage ADR, and are not part of the gate that lets B0 start (T5.1 `12` stays open until then). Header labels fixed: `01`, `03`, `08`, `09` now say all sections are reconciled (every section of `03` already had a status); `11` and `12` say they are reconciled in the frontend stage; `docs/README.md` says the same. The five unassigned `PROGRESS.md` §7 items applied as recommended: `dateFrom`/`dateTo` filter on `createdAt` in the contracts query schema (B0), `Scenario.baseSnapshotId` stays a nullable string with no behavior (parked, snapshots `Deferred`), log entry for skipped scenario `changes` (B3), `riskLevel` replay limitation and `NEUTRAL` P/L parked until FE2. Roadmap updated (B0 deferred-detail rows, B3 list, parked list). `15` §23 already annotates the "Mock infrastructure" wording, so no change.
 
-    - Native review of the whole branch against `develop` (29 files, 6935 lines) was refused with `lens_context_budget_exceeded` (no authority created, nothing mutated); a 2135-line slice was refused too. The user chose chained slices. Local branches, each reviewed against the previous one (no push): `docs/sdd-operations-1-observability` (`5360509`, 1425 lines, low, closed), `-2a-deployment-docs` (`3ea5dc1`, 1914, low, closed), `-2b-deployment-decisions` (`bcb31a5`, 507, high because of `docs/09-security-spec.md`, 4 lenses, approved and acknowledged), `-3-plan` (`03d177a`, 1791, low, closed), `-4a1-onboarding` (`91d882e`, 447, medium, reliability lens, approved and acknowledged), `-4a2-roadmap-progress` (`91f05e4`, 1301, low, closed), and `docs/sdd-operations` (`245090e` reviewed earlier, approved and acknowledged, plus the task-file commits). No blocking findings. Advisory findings, separate later work: (1) three lenses agree that the ADR-007 deferred-detail row says WebSocket `maxPayload` equals the inbound limit of `08` §7, but `08` §7 only gives 20 messages per second and no byte size (the `ws` default is 100 MiB), `docs/08-realtime-spec.md:188-189`, `docs/adr/0007-realtime-and-market-simulation.md:216`: decide a byte limit; (2) the shutdown exit code is 1 when the 10-second drain expires, which a supervisor may read as a crash (`docs/adr/0006-deployment-model-and-ci.md:143-146`); (3) `docs/13-observability-spec.md:1063` shutdown integer ambiguity; (4) `CONTRIBUTING.md:204-209` put the seed wipe warning next to the command; (5) stale pending note at `odd/tasks/sdd-source-of-truth.md` slice H entry (squash, `style` and commit-message check are decided later in the log).
+- Native review of `245090e` (assessed high only because `docs/09-security-spec.md` is a security hot path; the edit was its status line): consent granted by the user, 4 lenses, approved with no blocking findings and acknowledged (authority burned). Advisory suggestions, separate later work: the gate note above is one long indented bullet that may render as a code block; `docs/11-ui-ux-spec.md` header wording; `docs/PROGRESS.md` ~lines 990-994 wording of the assigned items.
 
-- [ ] T5.1 `12`, `13`, `14`
+- Native review of the whole branch against `develop` (29 files, 6935 lines) was refused with `lens_context_budget_exceeded` (no authority created, nothing mutated); a 2135-line slice was refused too. The user chose chained slices. Local branches, each reviewed against the previous one (no push): `docs/sdd-operations-1-observability` (`5360509`, 1425 lines, low, closed), `-2a-deployment-docs` (`3ea5dc1`, 1914, low, closed), `-2b-deployment-decisions` (`bcb31a5`, 507, high because of `docs/09-security-spec.md`, 4 lenses, approved and acknowledged), `-3-plan` (`03d177a`, 1791, low, closed), `-4a1-onboarding` (`91d882e`, 447, medium, reliability lens, approved and acknowledged), `-4a2-roadmap-progress` (`91f05e4`, 1301, low, closed), and `docs/sdd-operations` (`245090e` reviewed earlier, approved and acknowledged, plus the task-file commits). No blocking findings. Advisory findings, separate later work: (1) three lenses agree that the ADR-007 deferred-detail row says WebSocket `maxPayload` equals the inbound limit of `08` §7, but `08` §7 only gives 20 messages per second and no byte size (the `ws` default is 100 MiB), `docs/08-realtime-spec.md:188-189`, `docs/adr/0007-realtime-and-market-simulation.md:216`: decide a byte limit; (2) the shutdown exit code is 1 when the 10-second drain expires, which a supervisor may read as a crash (`docs/adr/0006-deployment-model-and-ci.md:143-146`); (3) `docs/13-observability-spec.md:1063` shutdown integer ambiguity; (4) `CONTRIBUTING.md:204-209` put the seed wipe warning next to the command; (5) stale pending note at `odd/tasks/sdd-source-of-truth.md` slice H entry (squash, `style` and commit-message check are decided later in the log).
+
+- [x] T5.1 `13`, `14` (done). `12` moved to the frontend stage (see the closing notes of this phase).
   - [x] `13` in 5 slices. A §1-12 `a414592` (`pnpm docs:check` and `pnpm lint` pass). Pending user decisions from A (batched at the end of `13`): `errorCategory` vs `errorName` (§7); extra B3 log fields (§7); log levels for `FORBIDDEN`, `RATE_LIMITED`, `DEPENDENCY_ERROR` (§6.2); B3 names of `request.failed` and `health.database.unavailable` (§8); scrub error messages or only named fields (§11); expose `X-Request-ID` through CORS (§9, FE).
     - B §13-27 `54ba55f`. Pending: block for graceful shutdown and 503 readiness while shutting down (§23; code has no SIGTERM handling); DB operation timing or Prisma query logging in dev (§21, §25); health route tests for NFR-051, maybe B0 with the ADR-001 point 8 route tests (§22). Found: NFR-051 is `Implemented` but no test covers `/health` or `/health/ready`.
     - C §28-42 `1e228a9`. Pending (frontend stage): development-only realtime debug mode or diagnostics panel (§28, §39, §40); explicit demo diagnostics interface (§30, `12` §75). Found: `AppErrorCode` still declares `TIMEOUT` (removal is B0 per `07`).
@@ -279,7 +281,7 @@ Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10
 
 ### Phase 6 — Verification
 
-- [ ] T6.1 `docs:check` passes
+- [x] T6.1 `docs:check` passes (34 files scanned, 2026-10-08)
 - [ ] T6.2 Independent read-only contradiction review, one correction round
 
 ## Progress
@@ -304,16 +306,18 @@ Branch `docs/sdd-operations` (from `develop` after the Phase 4 PR merge, 2026-10
   - That medium slice got an RDD review (base `develop`, reliability lens), approved and acknowledged.
   - The review left two advisory findings: the edge case of SELL fees larger than the proceeds in `16` §6, kept for the B1 open-detail decision, and a stale next step in this document, now fixed.
 
+- 2026-10-06: Phases 0 to 4 are merged into `develop` through PRs #9 to #13.
+- 2026-10-08: Phase 5 (`13`, `14`, `15`, `CONTRIBUTING.md`, `README.md`, PR template, `BACKEND-ROADMAP.md`, `PROGRESS.md`, status labels) merged into `develop` by PR #14 (`cdacef0`). The whole branch exceeded the native review context budget, so it was reviewed as chained slices against `develop`: no blocking findings. The local `docs/sdd-operations-*` slice branches can be deleted.
+
 ## Next step
 
-Phase 4 is complete on `docs/sdd-contracts` (2026-10-06): T4.1 `07`, T4.2 `08`, `09`, `10`, and every user decision recorded as an ADR amendment. `pr-body.md` is written and the user runs the push and `gh pr create` (base `develop`).
-
-Phase 4 PR merged into `develop`. Phase 5 started on `docs/sdd-operations`; `13` slice E done 2026-10-07 (`bcf3b9a`); the 18 `13` decisions were approved and applied the same day (`28a14ca`, `158456b`). `13` is closed; the user decides when to continue.
+Phase 5 is merged into `develop` (PR #14, `cdacef0`, 2026-10-08). The backend documents (`00` to `10`, `13` to `16`, ADR-001 to ADR-010, `CONTRIBUTING.md`, `README.md`, `BACKEND-ROADMAP.md`, `PROGRESS.md`) are reconciled. `11` and `12` are frontend documents and wait for the frontend stage.
 
 Resume with:
 
-1. `14` is closed (2026-10-07): slices A-E (last `533e02d`), the 19 decisions approved and applied (`5c52b49`, `a2cb8bc`, `7609566`). The user decides when to continue.
-2. Next: T6.1 `docs:check` (passes), T6.2 independent read-only contradiction review of the backend docs with one correction round, then the RDD review of the branch against `develop`, `pr-body.md`, and the user's push and PR (base `develop`); then B0 starts. `11` and `12` wait for the frontend stage. The user says when to continue after each step and decides when to stop.
-3. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
+1. Phase 6 on `docs/sdd-verification` (from `develop`): T6.1 passes; T6.2 is the independent read-only contradiction review of the backend documents, with one correction round. The user says when to continue.
+2. Open items from the Phase 5 review (advisory, no blocking findings): a `maxPayload` limit in bytes for the WebSocket (the ADR-007 row points to `08` §7, which gives no size); whether the exit code is 1 when the 10-second drain expires (ADR-006 point 12); the shutdown integer wording in `13` (~line 1063); the seed wipe warning next to the command in `CONTRIBUTING.md` (~lines 204-209).
+3. Then B0 starts, following `BACKEND-ROADMAP.md` B0. T1.5 (the minimal CI workflow) is part of it.
+4. One open detail for B5: which connection closes when the per-user cap is hit (new or oldest).
 
-PR reviews use `develop` as base. Sub-agent slices are 300-500 lines.
+PR reviews use `develop` as base. A candidate of about 2,000 lines of documentation exceeds the native review context budget, so review in slices. Sub-agent slices are 300-500 lines.
