@@ -3,7 +3,9 @@
 **Status:** Accepted
 **Date:** 2026-10-04
 **Amended:** 2026-10-07 (points 1 and 16, approved by the user from the
-`14-deployment-spec.md` reconciliation; Deferred detail rows)
+`14-deployment-spec.md` reconciliation; Deferred detail rows; point 7,
+package location, approved by the user from the `15-implementation-plan.md`
+reconciliation)
 **Implemented in:** roadmap block B5 (not yet implemented)
 
 ## Context
@@ -71,7 +73,8 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
    `@trading/market-sim` with a seeded pseudo-random generator, an injected
    clock, and the modes and scenarios of `12-demo-mode-spec.md` §37-40. It
    depends only on `@trading/domain`. The API and the demo use the same
-   engine.
+   engine. The package lives at `packages/market-sim` (added 2026-10-07,
+   approved by the user).
 8. **Persistence in real mode.** Each tick updates `MarketPrice` and appends
    a `MarketEvent`, with bounded retention defined in B5. At every UTC day
    rollover the simulator closes a daily `HistoricalPrice` candle for each

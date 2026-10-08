@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 **Date:** 2026-10-04
+**Amended:** 2026-10-07 (point 7, immutability, approved by the user from the
+`15-implementation-plan.md` reconciliation)
 **Implemented in:** points 1 to 5 already match the code; point 6 in roadmap
 block B0 (not yet implemented)
 
@@ -52,6 +54,10 @@ on whether buying increases portfolio value or converts cash into holdings.
    added):* `executedAt` may be in the past, but the oversell check used only
    the current position. A `SELL` dated before an earlier `BUY` passed and
    left historical holdings negative, which breaks ADR-004.
+7. **Immutability** (added 2026-10-07, approved by the user). A transaction
+   cannot be edited or deleted in version 1. After creation only its `status`
+   changes (`05-data-model.md` §43, `07-api-spec.md` §13), and there is no
+   edit, delete or cancel endpoint.
 
 ## Consequences
 
