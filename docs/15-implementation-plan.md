@@ -125,8 +125,8 @@ What the override changes and what it leaves alone:
 
 Code vs ADR:
 
-- `BACKEND-ROADMAP.md` describes this order as a deliberate override of "the plan's rule 11", which would prefer the demo first. §3 of this document has 10 rules and none states that preference, so that citation is stale. It is fixed with the roadmap rewrite (task T5.3).
-- `BACKEND-ROADMAP.md` does not list B0 or the minimal CI yet; ADR-001 and ADR-006 add them in front of B1 (same task).
+- `BACKEND-ROADMAP.md` describes this order as a deliberate override of "the plan's rule 11", which would prefer the demo first. §3 of this document has 10 rules and none states that preference, so that citation is stale. It was fixed in the roadmap rewrite (task T5.3, 2026-10-08), which cites §4.1 instead.
+- `BACKEND-ROADMAP.md` now lists B0 and the minimal CI in front of B1, as ADR-001 and ADR-006 require (task T5.3, 2026-10-08).
 
 ---
 
@@ -714,7 +714,7 @@ Code vs ADR:
 - "Conflict handling" has two sources in version 1: 409 `CONFLICT` on an archived portfolio (B0) and on a repeated `Idempotency-Key` with a different request (B4). Overselling stays a 400 validation error.
 - Nothing checks the order of transactions today: a `SELL` dated before an earlier `BUY` passes when the current position is large enough, and the position is rebuilt only from the current row. ADR-003 point 6 and `05-data-model.md` §8 put both fixes in B0.
 - The fee handling change is visible in the code as well: `position-recalculation.ts` ignores `fees`, so `averageEntryPrice` excludes the `BUY` fees and unrealized P/L is higher than ADR-004 point 15 will report.
-- `05-data-model.md` §8 Open detail and §45 put the concurrent read-modify-write of the position in B7. ADR-001 Deferred detail and FR-017 put it in B0, and the ADR precedes (see `BACKEND-ROADMAP.md` B7, T5.3).
+- `05-data-model.md` §8 Open detail and §45 put the concurrent read-modify-write of the position in B7. ADR-001 Deferred detail and FR-017 put it in B0, and the ADR precedes; `05` and `BACKEND-ROADMAP.md` now say B0 (T5.3, 2026-10-08).
 - The "Important Principle" below holds and is stronger under ADR-001: business rules live in domain validators and, from B0, in `@trading/application`. Today they live in `apps/api/src/services/` and `packages/domain`. React holds none, and the demo runs the same use cases in process (§16).
 
 ### Objective
