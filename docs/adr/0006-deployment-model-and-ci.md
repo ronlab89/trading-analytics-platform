@@ -6,7 +6,9 @@
 **Amended:** 2026-10-07 (point 12, graceful shutdown, approved by the user
 from the `13-observability-spec.md` reconciliation; points 4, 5, 7, 8, 11
 and 12 and new point 13, approved by the user from the
-`14-deployment-spec.md` reconciliation)
+`14-deployment-spec.md` reconciliation; points 5 and 11, smoke test data,
+approved by the user on 2026-10-08 from the `15-implementation-plan.md`
+reconciliation)
 **Implemented in:** CI and configuration safety before or in roadmap block
 B0; build and containers in B7; graceful shutdown and startup entries in B3;
 frontend build configuration and demo hosting in the frontend phase
@@ -71,7 +73,9 @@ Other facts:
    seed never runs automatically; it is an explicit development command.
    (Amended 2026-10-07: in the `full` profile, "startup applies" means the
    `migrate` service of point 4. The seed refuses to run in production, see
-   point 13.)
+   point 13.) (Clarified 2026-10-08, approved by the user: the data for the
+   smoke test of point 11 comes from an explicit `db:seed` step; see
+   "Smoke test data" under point 11. This point and point 13 stay valid.)
 6. **Rollback.** Forward-fix only. Prisma Migrate has no down migrations, so
    "controlled rollback" is removed from the specification.
 7. **Demo under a subpath.** Configurable base path, SPA fallback,
@@ -129,6 +133,15 @@ Other facts:
       - **Smoke test.** One smoke-test script runs after
         `docker compose --profile full up`, with no frontend step (§49).
         `Planned (B7)`, with the `full` profile.
+      - **Smoke test data** (added 2026-10-08, approved by the user, from the
+        `15-implementation-plan.md` reconciliation, §37; `Planned (B7)`). The
+        `full` stack is local-only, so it runs with `NODE_ENV` set to a value
+        other than `production` (`development`; "production-like" describes
+        the build and containers, not the environment variable). The smoke
+        test therefore runs `db:seed` as an explicit step of its script,
+        after `docker compose --profile full up` and before it logs in. The
+        seed never runs automatically on startup (point 5) and the production
+        guard of point 13 is unchanged and untouched by the smoke test.
 12. **Graceful shutdown** (added 2026-10-07, approved by the user, from the
     `13-observability-spec.md` reconciliation; `Planned (B3)`, with the
     lifecycle entries of ADR-009 point 11). `14-deployment-spec.md` §16
@@ -206,6 +219,7 @@ specified and tested in the listed block.
 | In the `full` Compose profile the `migrate` service may run before PostgreSQL accepts connections. | The `migrate` service has `depends_on` PostgreSQL with `condition: service_healthy`; the API then waits for `migrate` with `service_completed_successfully` (point 4). | B7 |
 | `connection_limit` of the Prisma connection pool in the `full` profile. | Stays at Prisma's default until measured. | B7 |
 | Rate limits in development. | Stay on. Restarting the API clears the counters. | B0 |
+| How the `full` stack obtains data for the smoke test while the seed never runs automatically (point 5) and refuses `NODE_ENV=production` (point 13). | Point 11, "Smoke test data" (added 2026-10-08): the stack runs with `NODE_ENV` other than `production`, and the smoke script runs `db:seed` explicitly. Tests: the smoke script seeds before it logs in, and running the seed with `NODE_ENV=production` is still refused (point 13). | B7 |
 | Point 12 covers the HTTP server and the database. The shutdown steps of `14-deployment-spec.md` §16 for background jobs and realtime connections are not decided there. | Added to the shutdown sequence when the job runner (ADR-008) and the realtime server (ADR-007) exist. | B4, B5 |
 
 ## Related

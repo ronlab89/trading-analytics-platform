@@ -5,7 +5,8 @@
 **Amended:** 2026-10-07 (points 1 and 16, approved by the user from the
 `14-deployment-spec.md` reconciliation; Deferred detail rows; point 7,
 package location, approved by the user from the `15-implementation-plan.md`
-reconciliation)
+reconciliation; new point 17, event hand-off, approved by the user on
+2026-10-08 from the `15-implementation-plan.md` reconciliation)
 **Implemented in:** roadmap block B5 (not yet implemented)
 
 ## Context
@@ -159,6 +160,17 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
       `14-deployment-spec.md` reconciliation:) When a user is at the cap,
       the new (excess) connection is closed with `4008` (point 15); the
       existing connections stay open.
+17. **Event hand-off** (added 2026-10-08, approved by the user, from the
+    `15-implementation-plan.md` reconciliation, §31; `Planned (B5)`). The
+    application layer hands an event to the realtime adapter through a
+    `RealtimePublisher` port in `packages/application`; the adapter that
+    implements it lives in `apps/api`, behind the transport port of point 1.
+    Application services publish after the change commits (point 6, for
+    example `PORTFOLIO_UPDATED` after a transaction commits). Version 1 has no
+    domain events and no event bus; the "Domain event" and "Application event"
+    steps of the original sketch in `08-realtime-spec.md` and
+    `15-implementation-plan.md` §31 collapse into this one call. The demo
+    implements the same port in process (point 13).
 
 ## Consequences
 
@@ -218,6 +230,7 @@ specified and tested in the listed block.
 | Re-authentication on the same socket with another user's token keeps the previous user's `notifications` subscription. | Reject re-authentication when `sub` changes and close the socket. | B5 |
 | WebSocket `maxPayload` has no number of its own. | Equal to the inbound message limit already in `08-realtime-spec.md` §7; no new number. | B5 |
 | The realtime hub could be tied to the transport or to a broker. | It sits behind its own interface, and v1 has no broker. | B5 |
+| The application layer has no defined way to hand an event to the realtime adapter. | Point 17 (added 2026-10-08): the `RealtimePublisher` port in `packages/application`, its adapter in `apps/api`, no domain events in v1. Tests: a transaction service test with an in-memory publisher fake asserts `PORTFOLIO_UPDATED` is published only after commit. | B5 |
 | What the `PAUSED` mode does (point 16 renamed the lifecycle state to `HALTED`): whether `PUT /api/v1/simulation/mode` with `PAUSED` stops ticking like `POST /api/v1/simulation/pause`, and which mode `start` resumes into. | Define the `PAUSED` mode's behavior relative to `HALTED`, and which mode `start` resumes. | B5 |
 
 ## Related

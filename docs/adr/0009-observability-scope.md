@@ -4,7 +4,9 @@
 **Date:** 2026-10-04
 **Amended:** 2026-10-07 (points 2-13, approved by the user from the
 `13-observability-spec.md` reconciliation; point 11 startup entries,
-approved by the user from the `14-deployment-spec.md` reconciliation)
+approved by the user from the `14-deployment-spec.md` reconciliation; point 5,
+reconnect correlation, approved by the user on 2026-10-08 from the
+`15-implementation-plan.md` reconciliation)
 **Implemented in:** roadmap block B3 (not yet implemented); `auth.logout`
 lands with its endpoint in B2 and the simulator entries in B5
 
@@ -62,7 +64,11 @@ of its scope.
    `AsyncLocalStorage` to every log line of a request. Jobs carry `jobId`;
    realtime connections carry `connectionId`. (Amended 2026-10-07: the
    `X-Request-ID` response header is exposed through CORS
-   (`exposedHeaders`). `Planned (B3)`.)
+   (`exposedHeaders`). `Planned (B3)`.) (Amended 2026-10-08, approved by the
+   user: reconnect correlation. A client that reconnects opens a new
+   connection with a new `connectionId`; the log does not link it to the
+   earlier one in v1. Every connection has its own `connectionId`, and
+   reconnects are correlated by `userId`.)
 6. **Error classification.** The error handler logs by category:
    validation and authentication failures at `warn`, not-found and conflict
    at `info`, internal errors at `error` with the stack trace. (Amended
@@ -166,6 +172,7 @@ specified and tested in the listed block.
 |---|---|---|
 | Redaction by header name misses `Set-Cookie` on responses, the access token inside the WebSocket authentication message, and the stored CSV input. | Redaction paths cover the response `set-cookie` header and the WebSocket token. Job input is never logged. Each case has a test. | B3 |
 | `LOG_LEVEL=silent` in tests contradicts the integration test that asserts `requestId` in log entries. | Those tests inject a capturing logger at `info`; `silent` remains the default elsewhere. | B3 |
+| Whether a reconnect is linked to the earlier connection in the log. | Point 5 (amended 2026-10-08): not linked in v1. Each connection logs its own `connectionId`; correlate reconnects by `userId`. Tests: two connections of one user log distinct `connectionId` values and the same `userId`. | B5 |
 | The fields `source`, `module`, `resourceType`, `resourceId` and `operationId` are not adopted (point 3). | Not logged in v1. `requestId`, `jobId` and `connectionId` are the correlation fields (point 5). | B3 |
 | Individual database operations are not timed and Prisma query logging is off (point 8). | Only requests and the analytics series reconstruction are timed in v1. | B3 |
 | A database recovery entry (and `dependency.recovered`) needs a poller, because readiness is stateless: `GET /health/ready` runs `SELECT 1` per request (point 11). | No entry in v1. Reconsidered when the API healthcheck exists. | B7 |
