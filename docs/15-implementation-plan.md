@@ -3,7 +3,7 @@
 **Project:** Trading Analytics Platform  
 **Document:** Implementation Plan  
 **Version:** 1.0  
-**Status:** Backend-first override added and §1-51 reconciled with the ADRs and the code on 2026-10-08; §52-end are reconciled in later slices  
+**Status:** Backend-first override added and §1-62 reconciled with the ADRs and the code on 2026-10-08; §63-end are reconciled in the next slice  
 **Previous document:** `14-deployment-spec.md`
 
 ---
@@ -2995,6 +2995,25 @@ Do not silently diverge from the documented architecture.
 
 ## 52. Milestone 1 — Foundation
 
+**Status:** per item (table below); the milestone is mostly `Implemented`, and its remaining gaps close in B0
+
+**Owning blocks:** Backend: B0 (minimal CI, application layer, runtime database role). Frontend: none. Decisions: ADR-001, ADR-006 points 10, 11 and 13.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Repository, TypeScript, tooling | `Implemented` (pnpm workspace, TypeScript project references, ESLint, Prettier, Husky); minimal CI `Planned (B0)` (ADR-006 point 10; `.github/` holds only the pull request template, there is no workflow) | B0 |
+| Docker and PostgreSQL | `Implemented` for the default Compose profile (PostgreSQL); the `full` profile and the API Dockerfile `Planned (B7)` (ADR-006 point 4) | B7 |
+| Migrations | `Implemented` (Prisma); runtime database role `Planned (B0)` | B0 |
+| Domain foundation | `Implemented` (`packages/domain`); the application layer and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002) | B0 |
+
+Code vs ADR:
+
+- "Clean setup works" is only partly verifiable today: there is no CI run to prove it from a clean checkout, and `README.md` has a stale status section and no API start step (§49). The CI proof is `Planned (B0)`; the README is a later documentation task.
+- "Domain tests work" is `Implemented`: `packages/domain` has a `test` script (`vitest run`).
+- This milestone closes the Phase 0 to 3 work of §4.2 plus the B0 additions; it does not add product behavior.
+
+Original text:
+
 Complete:
 
 - repository
@@ -3016,6 +3035,26 @@ domain tests work
 ---
 
 ## 53. Milestone 2 — Backend Core
+
+**Status:** per item (table below); the exit criterion is reached only after B2 and B3
+
+**Owning blocks:** Backend: B0, B2, B3. Frontend: none. Decisions: ADR-001, ADR-005 (authentication and RBAC), ADR-006 point 12 (graceful shutdown), ADR-009 (observability).
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Express, configuration, API foundation | `Implemented` (`apps/api/src/app.ts`, `config/env.ts`, `middleware/error-handler.ts`); layering and `CORS_ORIGIN` validation `Planned (B0)` | B0 |
+| Repositories | `Implemented` over Prisma; ports behind the application layer `Planned (B0)` (ADR-001) | B0 |
+| Health | `Implemented` (`routes/health.ts`, `controllers/health.controller.ts`); the 503 `unavailable` response while shutting down `Planned (B3)` (ADR-006 point 12) | B3 |
+| Logging | `Planned (B3)` (ADR-009); the API has no structured logger today | B3 |
+| Authentication | login and `me` `Implemented`; refresh and logout `Planned (B2)` (ADR-005) | B2 |
+| RBAC | `Planned (B2)` | B2 |
+
+Code vs ADR:
+
+- Exit criterion "authenticated API + database persistence + observable runtime": persistence and basic authentication exist; "observable runtime" needs B3 (logger, security events, graceful shutdown, ADR-009 and ADR-006 point 12), and "authenticated" in the sense of role enforcement needs B2. Metrics are `Deferred` (ADR-009 point 10), so they are not part of "observable" in version 1.
+- The block order puts B2 before B3 (§4.1), so the milestone does not close when B2 closes.
+
+Original text:
 
 Complete:
 
@@ -3042,6 +3081,25 @@ observable runtime
 
 ## 54. Milestone 3 — Functional Product
 
+**Status:** `Planned (FE)` for the frontend items; the backend support is partly `Implemented` and partly `Planned (B1)`
+
+**Owning blocks:** Backend: B1 (performance and risk analytics). Frontend: FE0 (shell), FE1 (authentication screens, portfolios, positions, transactions), FE2 (dashboard views and analytics). Decisions: ADR-004, ADR-005, ADR-010 points 4, 7, 9 and 10.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Frontend shell | `Planned (FE0)`; `apps/web` holds only `WIREFRAME-PLAN.md` and `wireframe.html` | FE0 |
+| Authentication UI | `Planned (FE1)`; needs B2 | FE1 |
+| Portfolios, positions, transactions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
+| Dashboard and analytics | allocation and attribution endpoints `Implemented`; performance and risk endpoints `Planned (B1)`; views `Planned (FE2)` | B1, FE2 |
+
+Code vs ADR:
+
+- This milestone cannot start before the backend is done: the frontend stage begins after B1 to B7 close (§4.1). The milestone is therefore the first one in time that sits entirely after B7.
+- The milestone text lists no statistics. Win/loss and transaction statistics are not part of version 1 (ADR-010 point 10), so the dashboard and analytics items must not be extended with them. Benchmark comparison is also out (ADR-010 point 7).
+- "Primary user workflow works end-to-end" needs a definition of that workflow in real mode; the frontend-stage ADR is the natural place, and it does not exist yet (§4.3).
+
+Original text:
+
 Complete:
 
 - frontend shell
@@ -3061,6 +3119,26 @@ primary user workflow works end-to-end
 ---
 
 ## 55. Milestone 4 — Realtime and Operations
+
+**Status:** `Planned (B4)`, `Planned (B5)` for the backend; `Planned (FE3)` for the client items
+
+**Owning blocks:** Backend: B4 (background jobs and idempotency), B5 (realtime and market simulation). Frontend: FE3 (WebSocket client, notifications, job progress). Decisions: ADR-007, ADR-008, ADR-010 point 3.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| WebSockets, realtime updates | server `Planned (B5)` (ADR-007) | B5 |
+| Reconnect | server-side behavior `Planned (B5)`; client reconnect `Planned (FE3)` | B5, FE3 |
+| Background jobs | `Planned (B4)` (ADR-008); the `Job` and `IdempotencyKey` models do not exist yet | B4 |
+| Progress UI | `Planned (FE3)` | FE3 |
+| Notifications | creation by jobs `Planned (B4)` (ADR-008); delivery over the realtime channel `Planned (B5)`; screens `Planned (FE3)`; states are `unread` and `read` only (ADR-010 point 3) | B4, B5, FE3 |
+
+Code vs ADR:
+
+- The exit criterion needs both stages: the backend halves close with B4 and B5 and can be checked by tests; the "work reliably" check from the user's side needs FE3.
+- "Failure states" are measured against the failure modes written in ADR-007 and ADR-008, not against a separate list.
+- The realtime server and the demo simulator share one engine (`@trading/market-sim`, ADR-007), so the realtime milestone and the demo milestone (§56) both depend on B5.
+
+Original text:
 
 Complete:
 
@@ -3082,6 +3160,25 @@ work reliably with failure states
 
 ## 56. Milestone 5 — Demo
 
+**Status:** `Planned (FE4)`; the shared simulation engine is `Planned (B5)`, and the demo specifics are `Deferred` to the frontend-stage ADR
+
+**Owning blocks:** Backend: B0 (application layer the demo adapters reuse), B5 (`@trading/market-sim`). Frontend: FE4. Decisions: ADR-001, ADR-006 points 1, 2 and 7, ADR-007, ADR-010 point 6.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Mock adapters (in-process, over the same application layer) | `Planned (FE4)` | FE4 |
+| Deterministic data, persistence, simulated latency, failure injection, reset | `Deferred`: ADR-010 point 6 leaves these to the frontend-stage ADR | FE4 |
+| Realtime simulation | `Planned (B5)` engine; `Planned (FE4)` wiring in the browser | B5, FE4 |
+| Public demo without production infrastructure | `Planned (FE4)`: static build under a subpath, no backend calls, no secrets (ADR-006 points 2 and 7); hosting is `Deferred` | FE4 |
+
+Code vs ADR:
+
+- The public demo is one of exactly two deployment targets (ADR-006 point 1). It has no backend, so the exit criterion "works without production infrastructure" is the ADR requirement, not an extra.
+- The demo bundle must contain no HTTP adapter (ADR-006 point 8): `APP_MODE` is a build-time value.
+- Deferred items stay `Deferred` here; this section does not set their numeric bounds or storage design.
+
+Original text:
+
 Complete:
 
 - mock adapters
@@ -3101,6 +3198,31 @@ public demo works without production infrastructure
 ---
 
 ## 57. Milestone 6 — Quality
+
+**Status:** per item (table below); quality work is spread across every block, not concentrated at the end
+
+**Owning blocks:** Backend: B0 (route tests, CI) and every block for its own tests. Frontend: FE5. Decisions: ADR-001 point 7, ADR-002 point 6, ADR-006 points 10 and 11, ADR-009.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Unit tests | `Implemented` for `packages/domain` (`vitest run`); application services with in-memory fakes `Planned (B0)` | B0 |
+| Integration tests | `Implemented` for `packages/database` and `apps/api` (they run against `.env.test.local`); route tests `Planned (B0)`; run in CI `Planned (B0)` | B0 |
+| Component tests | `Deferred` until the frontend-stage ADR chooses the runner (ADR-006 point 11); then `Planned (FE5)` | FE5 |
+| E2E | `Deferred` (same reason); Playwright is named in ADR-006 point 11 as part of that decision | FE5 |
+| Accessibility | the scanning tool is chosen in the frontend-stage ADR; checks `Planned (FE5)` | FE5 |
+| Security review | no ADR or backend block owns it; see Pending decisions | none |
+| Performance measurement | server: slow-request logging at 500 ms `Planned (B3)`, no load test, metrics `Deferred` (ADR-009 points 8 and 10); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, FE5 |
+
+Code vs ADR:
+
+- There is no coverage threshold in version 1 (ADR-006 point 11). The quality bar is the named mandatory tests (ADR-001 point 7, ADR-002 point 6), so the exit criterion "tested" is not a percentage.
+- Backend quality is verified per block, in the verification loop each block ends with (§4.1); the frontend items wait for FE5.
+
+Pending decisions:
+
+- Whether a security review is a task with an owner and a scope, or stays an item of the final gate (§61). No ADR defines it.
+
+Original text:
 
 Complete:
 
@@ -3122,6 +3244,28 @@ primary product and recovery flows are tested
 
 ## 58. Milestone 7 — Deployment
 
+**Status:** `Planned (B7)` for the local full stack; `Planned (FE4)` for the demo build; hosting is `Deferred`
+
+**Owning blocks:** Backend: B0 (CI), B3 (graceful shutdown), B7 (production build, Docker, smoke test). Frontend: FE4 (demo build). Decisions: ADR-006 points 1 to 6, 10 to 13.
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Production builds | `dist` per package exists for the current packages (`pnpm build`); the exports map and `node dist/index.js` `Planned (B7)` (ADR-006 point 3) | B7 |
+| Docker | `apps/api/Dockerfile` does not exist; multi-stage non-root image and `full` profile `Planned (B7)` | B7 |
+| Environment configuration | `.env.example` `Implemented`; `CORS_ORIGIN` validation and production guard `Planned (B0)` | B0 |
+| Deployment | local full stack `Planned (B7)`; hosting, managed database, proxy and public WSS `Deferred` (ADR-006 point 2) | B7 |
+| Health | `Implemented`; healthcheck in the container and shutdown behavior `Planned (B3)`, `Planned (B7)` | B3, B7 |
+| Smoke tests | one script after `docker compose --profile full up`, no frontend step `Planned (B7)` | B7 |
+| Deployment documentation | `Planned (B7)` | B7 |
+
+Code vs ADR:
+
+- "Production-like deployment" means the local full stack (ADR-006 point 1); there is no public backend and no continuous deployment (point 10), and backups are not applicable locally (point 9).
+- Rollback is forward-fix only (ADR-006 point 6). The exit criterion does not include a rollback test.
+- The demo build and publication belong to FE4, not to this milestone's backend items (§4.2, phase 14).
+
+Original text:
+
 Complete:
 
 - production builds
@@ -3141,6 +3285,22 @@ clean production-like deployment is reproducible
 ---
 
 ## 59. Milestone 8 — Portfolio
+
+**Status:** `Planned (FE6)`; nothing exists yet
+
+**Owning blocks:** Backend: none. Frontend: FE6 (case study), after FE5. Decisions: ADR-006 point 1 (the demo link), ADR-009 point 10 (metrics `Deferred`).
+
+| Item | Status | Block |
+| --- | --- | --- |
+| Project page, architecture visualization, technical decisions, implementation highlights, screenshots, lessons learned | `Planned (FE6)` | FE6 |
+| Demo link, repository link | `Planned (FE6)`; the demo link needs the publication of FE4, whose hosting is `Deferred` | FE6 |
+| Measured outcomes | `Planned (FE6)`; only what was measured: the project has no load test and no metrics (`10-testing-strategy.md` §39, ADR-009 point 10) | FE6 |
+
+Code vs ADR:
+
+- The exit criterion "without unsupported claims" ties to §62 and to the rule of §3 against inventing metrics. Technical decisions can cite the ADRs in `docs/adr/` as evidence.
+
+Original text:
 
 Complete:
 
@@ -3165,6 +3325,34 @@ without unsupported claims
 
 ## 60. Final Repository Validation
 
+**Status:** per item (table below); the quality commands are `Implemented`, the CI run and the Docker steps are `Planned`
+
+**Owning blocks:** Backend: B0 (CI), B7 (Docker, smoke test). Frontend: FE5 (E2E). Decisions: ADR-006 points 3, 4, 5, 10 and 11.
+
+| Step | Command or check | Status | Block |
+| --- | --- | --- | --- |
+| Install | `pnpm install` (lockfile; `packageManager` `pnpm@12.3.4`, `engines.node` `>=22.0.0`) | `Implemented` | none |
+| Lint | `pnpm lint` (`eslint .`) | `Implemented`; in CI `Planned (B0)` | B0 |
+| Format | `pnpm format:check` (`prettier --check .`; `docs/` is in `.prettierignore`) | `Implemented`; in CI `Planned (B0)` | B0 |
+| Type check | `pnpm typecheck` (`tsc --build --pretty`) | `Implemented`; in CI `Planned (B0)` | B0 |
+| Documentation check | `pnpm docs:check` (`node scripts/check-docs.mjs`) | `Implemented`; in CI `Planned (B0)` (ADR-006 point 11, additions) | B0 |
+| Unit and integration tests | `pnpm test` (`pnpm -r test`: domain, database, API; the last two need `.env.test.local` and a PostgreSQL test database) | `Implemented`; in CI with a PostgreSQL service `Planned (B0)` | B0 |
+| Build | `pnpm build` (`pnpm -r build`) | `Implemented`; in CI `Planned (B0)` | B0 |
+| E2E | none | `Deferred` until the frontend-stage ADR (ADR-006 point 11) | FE5 |
+| Docker build, Docker startup | `docker compose --profile full up` | `Planned (B7)`; no `apps/api/Dockerfile` or `full` profile exists | B7 |
+| Migrations, seed | `prisma migrate deploy` through the `migrate` service; the seed stays an explicit development command | `Planned (B7)` for the service; seed `Implemented` as a command | B7 |
+| Health checks | `GET /health/ready` | `Implemented` as a route; the container healthcheck `Planned (B7)` | B7 |
+| Smoke tests | one script after `docker compose --profile full up`, no frontend step | `Planned (B7)` | B7 |
+
+Code vs ADR:
+
+- There is no coverage step and no coverage threshold (ADR-006 point 11).
+- "Integration tests" and "E2E" are not separate CI stages; `pnpm test` runs every backend suite (`14-deployment-spec.md` §41).
+- Docker validation is a local step, not part of the minimal CI (ADR-006 points 10 and 11): the CI builds the packages with `pnpm build` but does not run Docker.
+- `.github/` has no workflow today, so every "in CI" claim is `Planned (B0)`.
+
+Original text:
+
 Run from a clean environment:
 
 ```text
@@ -3188,6 +3376,30 @@ Every failure should be resolved or explicitly documented.
 ---
 
 ## 61. Final Quality Gate
+
+**Status:** `Reference`; each question is answered with evidence when its owning block closes, and the whole gate runs at the end of the frontend stage
+
+**Owning blocks:** Backend: B0 to B7 for the backend, security, observability, realtime and deployment questions. Frontend: FE0 to FE6 for the product, UX, frontend, demo and portfolio questions. Decisions: ADR-001 to ADR-010.
+
+| Question group | Evidence comes from | Block |
+| --- | --- | --- |
+| Product, UX | FE1 to FE5, `01-product-spec.md`, ADR-010 | FE1 to FE5 |
+| Architecture, Backend | ADR-001 (application layer), ADR-002 (validated contracts), `pnpm typecheck`, the application-service tests | B0 |
+| Frontend | the frontend-stage ADR and FE0 to FE5 | FE0 to FE5 |
+| Realtime | ADR-007, reconnect tests | B5, FE3 |
+| Security | ADR-005 (authorization boundaries), the security review of §57 | B2 |
+| Testing | the named mandatory tests, not a percentage (ADR-006 point 11) | every block |
+| Observability | ADR-009 (logs and security events) | B3 |
+| Deployment | the local full stack from a clean checkout (ADR-006 point 1) | B7 |
+| Demo | ADR-006 point 7, ADR-010 point 6 | FE4 |
+| Portfolio | evidence for each claim (§59, §62) | FE6 |
+
+Code vs ADR:
+
+- The questions are kept as a checklist. None of them is currently answerable with evidence beyond the domain and persistence layers.
+- "Can infrastructure be replaced?" is answered by the ports of ADR-001, which `Planned (B0)` creates; the answer today is not demonstrated.
+
+Original text:
 
 ### Product
 
@@ -3246,6 +3458,28 @@ Every failure should be resolved or explicitly documented.
 ---
 
 ## 62. What Must Not Be Done
+
+**Status:** `Reference`; the ADRs confirm each prohibition below and add exclusions of their own
+
+**Owning blocks:** Backend and Frontend: every block. Decisions: ADR-002 (money as strings, one contract), ADR-003, ADR-006 points 2 and 7, ADR-007, ADR-009 point 10, ADR-010 points 7 and 10.
+
+| Prohibition | Tied to | Status |
+| --- | --- | --- |
+| Fabricate metrics, users or outcomes; claim production scale | no load test and no metrics exist (`10-testing-strategy.md` §39, ADR-009 point 10) | `Reference` |
+| Present mock infrastructure as real | the demo is labeled as a demo; the simulator is the price source of the real backend too, so the claim is "simulated prices" (ADR-007) | `Reference` |
+| Expose private credentials | no secrets in the demo build (ADR-006 point 7); production guard `Planned (B0)` (point 13) | `Planned (B0)` |
+| Rely on paid APIs for the core demo | no paid market data provider (ADR-007) | `Reference` |
+| Static-only demo flows | demo adapters run the same application layer (ADR-001) | `Planned (FE4)` |
+| Duplicate domain rules across frontend and backend | `@trading/domain` and `@trading/contracts` (ADR-001, ADR-002) | `Planned (B0)` |
+| Technologies only for resume keywords | ADR-006 point 2: no hosting, managed database or proxy; ADR-007: no broker | `Reference` |
+| Hide tradeoffs, postpone testing or documentation | the ADR practice, the maintenance rule of `docs/README.md` and per-block tests (§50, §51) | `Reference` |
+
+Code vs ADR:
+
+- The ADRs add exclusions the original list does not state: no public backend (ADR-006 point 2), no continuous deployment (point 10), no coverage threshold (point 11), no registration (ADR-005 point 10), no deposits and withdrawals (ADR-003), no benchmark comparison (ADR-010 point 7), and no win/loss or transaction statistics (ADR-010 point 10). They are `Deferred` unless a new ADR or a functional requirement changes them.
+- "Unless later justified" is the ADR mechanism: a justification is a new ADR (§51).
+
+Original text:
 
 The following are explicitly prohibited unless later justified:
 
