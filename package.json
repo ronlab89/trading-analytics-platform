@@ -18,6 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docs:check": "node scripts/check-docs.mjs",
+    "test:scripts": "node --test scripts/check-docs.test.mjs",
     "prepare": "husky"
   },
   "lint-staged": {
