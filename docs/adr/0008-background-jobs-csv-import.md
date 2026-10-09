@@ -3,7 +3,10 @@
 **Status:** Accepted
 **Date:** 2026-10-04
 **Amended:** 2026-10-07 (point 4, retention of the stored input, approved by
-the user from the `14-deployment-spec.md` reconciliation; Deferred detail row)
+the user from the `14-deployment-spec.md` reconciliation; Deferred detail row;
+2026-10-08, points 4 and 6, new failure reason `PORTFOLIO_ARCHIVED` and the
+matching clearing of the stored input, approved by the user from the T6.2
+decision batch; Deferred detail row)
 **Implemented in:** roadmap block B4 (not yet implemented)
 
 ## Context
@@ -51,6 +54,9 @@ retried `POST` must not create a duplicate transaction.
    `14-deployment-spec.md` reconciliation; `Planned (B4)`:) The stored input
    is kept while the job can still be retried (point 6) and is cleared for
    `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED`.
+   (Amended 2026-10-08, approved by the user: it is also cleared for jobs
+   that `FAILED` with `PORTFOLIO_ARCHIVED`. A job that can never be retried
+   keeps no input, exactly as for `VALIDATION_FAILED`.)
 5. **Restarts.** The apply stage sets the job to `COMPLETED` inside the same
    database transaction that writes the imported rows, so a job can never be
    both applied and not completed. On startup, every job left in
@@ -65,8 +71,14 @@ retried `POST` must not create a duplicate transaction.
    re-runs validation from the start against current data). A job that
    `FAILED` because rows are invalid (reason `VALIDATION_FAILED`) is not
    retryable, since the same stored input would fail the same way; the user
-   corrects the file and creates a new import. This is the complete set of
-   failure reasons. Cancellation is allowed while
+   corrects the file and creates a new import. (Amended 2026-10-08, approved
+   by the user: a job whose portfolio is archived before the apply stage
+   commits ends `FAILED` with reason `PORTFOLIO_ARCHIVED` (ADR-010 point 5).
+   It is not retryable, since a retry would fail the same way while the
+   portfolio stays archived and unarchiving is `Deferred`.) This is the
+   complete set of five failure reasons: `VALIDATION_FAILED`, `INTERRUPTED`,
+   `APPLY_ERROR`, `APPLY_REJECTED` and `PORTFOLIO_ARCHIVED`. Cancellation is
+   allowed while
    `QUEUED` or during the validation stage, never during the apply stage.
    (Amended 2026-10-05.) A retry or cancel request for a job in a state
    that does not allow it returns 409 `CONFLICT` and changes nothing. A job
@@ -154,6 +166,7 @@ specified and tested in the listed block.
 | Item | Resolution | Block |
 |---|---|---|
 | Apply-stage failure path: validation can go stale before apply (a concurrent transaction makes a `SELL` oversell), or the database fails. | Apply re-checks invariants inside the `UnitOfWork`. A business-rule rejection ends `FAILED` with reason `APPLY_REJECTED` (retry re-runs validation); a technical failure ends `FAILED` with reason `APPLY_ERROR` (retryable). | B4 |
+| A portfolio is archived while its import is `QUEUED` or `PROCESSING` (ADR-010 point 5). | The apply `UnitOfWork` checks the portfolio status. An archived portfolio ends the job `FAILED` with reason `PORTFOLIO_ARCHIVED` (amended 2026-10-08), not retryable, no rows written, and the stored input is cleared (point 4). | B4 |
 | Two in-flight requests carry the same `Idempotency-Key` before any response is stored. | Reserve the key with a unique constraint before processing; the second in-flight request gets 409. | B4 |
 | Racing transitions: startup resume and in-memory enqueue pick the same job, and cancel can overwrite a committed apply. | Every transition is a compare-and-set on status, a persisted `stage` and `attempt`, checking affected rows. The apply `UnitOfWork` sets `COMPLETED` conditionally and rolls back if no row matches. | B4 |
 | The idempotency record is written outside the mutation's transaction, so a crash between commit and record duplicates on retry; a crashed reservation blocks the key for 24 hours. | Write the key and response in the same `UnitOfWork` as the mutation. Reservations have a lease, and an expired lease counts as absent. 5xx outcomes are not stored. | B4 |

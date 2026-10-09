@@ -15,6 +15,7 @@ See CONTRIBUTING.md for branching model and commit conventions.
 - [ ] `refactor` — code change, no behavior change
 - [ ] `test` — tests only
 - [ ] `docs` — documentation only
+- [ ] `style` — formatting only, no behavior change
 - [ ] `chore` — tooling, config, dependencies
 - [ ] `build` / `ci` — build system or pipeline changes
 

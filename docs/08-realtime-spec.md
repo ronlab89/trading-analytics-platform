@@ -41,6 +41,11 @@ confirmed in B5; there is no `WEBSOCKET_PATH` variable (ADR-007 point 1,
 amended 2026-10-07). Socket.IO and Server-Sent Events are
 rejected (ADR-007, Alternatives Considered).
 
+On the server, after a change commits, the application layer calls the
+`RealtimePublisher` port; the adapter that implements it lives in `apps/api`
+and publishes to the socket behind the transport port. Version 1 has no
+domain events and no event bus (ADR-007 point 17).
+
 The UI never depends on the WebSocket implementation:
 
 ```text
@@ -177,6 +182,7 @@ Server rules (ADR-007 point 15):
 | Heartbeat | WebSocket ping every 30 s; socket closed after 2 consecutive missed pongs (about 60 s) |
 | Subscriptions per connection | 50 |
 | Inbound messages per connection | 20 per second |
+| Inbound message size (`maxPayload`) | 64 KiB (65,536 bytes) |
 | Outbound buffer per connection | 1 MB |
 | Concurrent connections per authenticated user (not per IP) | 5, `Planned (B5)` (ADR-005 point 13, ADR-007 point 16); numeric value tuned in B5 |
 
@@ -185,8 +191,13 @@ Server rules (ADR-007 point 15):
   closed with `4008` (ADR-005 point 13). The excess connection is the new
   one; existing connections stay open (ADR-007 point 16, amended
   2026-10-07).
-- The WebSocket `maxPayload` equals the inbound message limit of this
-  section and adds no new number (ADR-007 Deferred detail, `Planned (B5)`).
+- The WebSocket `maxPayload` is 64 KiB (65,536 bytes) per inbound message,
+  an initial value adjustable during B5 if a measured need appears
+  (ADR-007 Deferred detail, amended 2026-10-08, `Planned (B5)`). A larger
+  frame closes the connection, which is the behavior of the `ws` library.
+  The close code for an oversize frame is an open detail of B5: the `ws`
+  library closes with 1009 (message too big), and B5 adds a test that sends
+  a frame over 64 KiB and asserts the socket closes.
 - The server closes a socket not authenticated within 5 seconds (`4001`),
   or whose token expired without re-authentication (`4002`) (§9).
 
@@ -386,16 +397,19 @@ ADR-008 point 11). A new event requires a new decision.
   "timestamp": "2026-08-29T14:30:00Z",
   "payload": {
     "assetId": "asset_001",
-    "price": "184.22",
-    "previousPrice": "182.10",
-    "change": "2.12",
-    "changePercent": "1.16",
-    "tickChange": "0.32"
+    "price": { "amount": "184.22", "currency": "USD" },
+    "previousPrice": { "amount": "182.10", "currency": "USD" },
+    "change": { "amount": "2.12", "currency": "USD" },
+    "changePercent": 1.16,
+    "tickChange": { "amount": "0.32", "currency": "USD" }
   }
 }
 ```
 
-- All numeric payload fields are decimal strings.
+- Money fields (`price`, `previousPrice`, `change`, `tickChange`) use the
+  ADR-002 wire format `{ "amount": "184.22", "currency": "USD" }`, where
+  `amount` is a decimal string. `changePercent` is a percentage and is a
+  JSON number, for display only (ADR-002 point 3).
 - `previousPrice`, `change` and `changePercent` match `MarketPrice`: they
   are measured against the last closed daily candle, never the previous
   tick (ADR-007 point 14).
@@ -474,7 +488,7 @@ Events on `jobs:{jobId}` for CSV import jobs:
 - Progress is the `{ processed, total }` field, not a percentage
   (`07-api-spec.md` §15).
 - `reason` is one of `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`,
-  `APPLY_REJECTED`.
+  `APPLY_REJECTED`, `PORTFOLIO_ARCHIVED` (ADR-008 point 6).
 - `CANCELLED` and `TIMED_OUT` emit no realtime event (ADR-007 point 15).
   The client learns both from the job's HTTP status
   (`GET /api/v1/jobs/:jobId`), and `TIMED_OUT` also from its `ERROR`
@@ -516,8 +530,8 @@ through `07-api-spec.md` §28.
     "alertId": "alert_001",
     "assetId": "asset_001",
     "condition": "ABOVE",
-    "threshold": "200.00",
-    "price": "200.15"
+    "threshold": { "amount": "200.00", "currency": "USD" },
+    "price": { "amount": "200.15", "currency": "USD" }
   }
 }
 ```
@@ -526,7 +540,8 @@ through `07-api-spec.md` §28.
   re-arms when it becomes false again; never on every tick (FR-053).
 - Each trigger also creates a `WARNING` notification and emits
   `NOTIFICATION_CREATED`.
-- `threshold` and `price` are decimal strings.
+- `threshold` and `price` are money in the ADR-002 wire format
+  (`{ "amount": "<decimal string>", "currency": "USD" }`).
 
 Decided in ADR-007 point 15 (2026-10-06):
 
@@ -769,7 +784,8 @@ There is no external market data provider. One engine, the pure package
 
 - Prices come from the seeded generator, never from an unseeded random
   source.
-- Prices are emitted as decimal strings (ADR-002).
+- Prices are emitted as money in the ADR-002 wire format (`amount` is a
+  decimal string).
 - The simulator does not model real markets; it reproduces application
   behavior (alerts, valuations, charts).
 - The price model (trend, volatility, noise) is a B5 implementation detail.

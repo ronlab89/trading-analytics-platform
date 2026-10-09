@@ -318,8 +318,8 @@ In the clamped case, `P/L` and `TWR` both measure from the close of `d2`:
 | `1W`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL` | Daily series (§3-§7), window below. |
 | Custom `from` / `to` | Daily series, UTC dates, inclusive. |
 
-FR-025 lists `1D`, `1W`, `1M`, `3M`, `6M`, `1Y` and custom with periods
-"defined later"; ADR-004 point 5 settles them and adds `YTD` and `ALL`.
+FR-025 lists `1D`, `1W`, `1M`, `3M`, `6M`, `1Y` and custom; the periods
+are defined in ADR-004 point 5, which adds `YTD` and `ALL`.
 
 **Preset windows** (`Planned (B1)`, ADR-004 point 5, amended 2026-10-05).
 Windows are counted back from `to` (after the clamp below) in UTC calendar

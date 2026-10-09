@@ -12,11 +12,11 @@ NFR-070): avoid complexity — including process complexity — that isn't justi
 
 ## 1. Branching Model
 
-This repository uses a simplified GitHub Flow with a staging layer:
+This repository uses a simplified GitHub Flow with an integration branch:
 
 ```text
-main        → always deployable, protected, clean history (merge commit from develop)
-develop     → integration branch, base for staging/demo preview
+main        → holds milestone releases, protected, clean history (merge commit from develop)
+develop     → integration branch, base of every PR
 feat/*      → new functionality, merged into develop via PR (merge commit)
 fix/*       → bug fixes, merged into develop via PR (merge commit)
 docs/*      → documentation-only changes
@@ -39,8 +39,8 @@ or `fix/bug`.
 ### What is intentionally NOT used
 
 - `release/*` branches — no coordinated release windows or team to justify them.
-- Separate `staging`/`production` branches — `develop` already serves the staging role;
-  `main` serves the production role.
+- Separate `staging`/`production` branches — `develop` is the integration branch;
+  `main` holds milestone releases.
 
 If the project's needs change (e.g. a team joins, or coordinated releases become
 necessary), this document should be updated explicitly rather than silently

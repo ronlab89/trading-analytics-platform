@@ -62,7 +62,7 @@ depending on what's actually broken:
 
 Restores the seeded baseline dataset (1 demo user, 3 portfolios, 7 assets,
 positions/transactions with realistic gain/loss/flat variety, decisions,
-scenarios, alerts, notifications, and 30 days of historical OHLCV prices
+scenarios, alerts, notifications, and 90 days of historical OHLCV prices
 per asset). Safe to run anytime; the schema is untouched.
 
 ```bash

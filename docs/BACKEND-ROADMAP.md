@@ -227,6 +227,7 @@ validation in production; no server request timeout in version 1.
 | Rate limits stay on in development; restarting the API clears the counters | ADR-006 |
 | `dateFrom` and `dateTo` on the decisions list filter on `createdAt`; the contracts query schema states it and a test covers it (decided 2026-10-08) | `PROGRESS.md` §7 |
 | `Scenario.baseSnapshotId` stays a nullable string with no behavior in the contracts, because snapshots are `Deferred` (decided 2026-10-08) | `05-data-model.md` §14 |
+| Reword the two code comments that still describe asynchronous transaction creation as deferred (`apps/api/src/services/transaction.service.ts`, `apps/api/src/controllers/transactions.controller.ts`): creation is synchronous by design | ADR-008 point 12 (T6.2 review) |
 
 **Done when:** the CI workflow is green on a clean checkout; the new route
 tests pass before and after the layering refactor with HTTP behavior
@@ -262,13 +263,15 @@ needs it. It is mostly pure domain work and depends only on B0.
 - Fees in the cost basis and in realized P/L (ADR-004 point 15), and the
   rejection of a `SELL` whose fees exceed its gross proceeds.
 - API: `GET /portfolios/:id/analytics/performance`,
-  `GET .../analytics/risk`, and `GET .../pulse` as its own endpoint
-  (`07-api-spec.md` §20-22). Add `performance` to the overview.
+  and `GET .../analytics/risk` (`07-api-spec.md` §20-22). Add `performance`
+  to the overview. The Pulse stays a field of the overview; a standalone
+  `GET .../pulse` endpoint is `Deferred` (`07-api-spec.md` §21).
 - Pulse uses the real portfolio volatility and drawdown instead of the
   largest-position proxy, with the thresholds of ADR-004 point 11.
 - Attribution over a range with `from`/`to` (`07-api-spec.md` §22).
 - The What Changed read model (ADR-010 point 1, FR-006), built in the
-  application layer.
+  application layer and returned as a field of the overview response, not as
+  its own endpoint (decided 2026-10-08; its shape is defined in B1).
 
 **Settled by the ADRs** (these were open decisions in the first version of
 this file):
@@ -322,8 +325,8 @@ in B0)
   (`09-security-spec.md` §12-17): the existing `USER` role migrates to
   `TRADER`, `ANALYST` is dropped, code checks permissions and never role
   names (points 1 and 2).
-- `requireRole` and permission checks through the `Actor`, applied to the
-  existing routes. Express middleware only authenticates and builds the
+- Permission checks through the `Actor` in the application layer, applied to
+  the existing routes. Express middleware only authenticates and builds the
   `Actor`; the permission and ownership checks run in the application layer
   (point 3).
 - `VIEWER` self-service: a `VIEWER` may update its own preferences and mark
@@ -442,7 +445,9 @@ shutdown sequence is tested; a developer can answer the questions in
   table. Job states `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`,
   `CANCELLED`, `TIMED_OUT`; progress (`processed`, `total`) is a field, not a
   state. The job's input is stored in its row and cleared for `COMPLETED`
-  jobs and for jobs that `FAILED` with `VALIDATION_FAILED`.
+  jobs and for jobs that `FAILED` with `VALIDATION_FAILED` or
+  `PORTFOLIO_ARCHIVED` (the five failure reasons are the complete set,
+  ADR-008 point 6).
 - The in-process runner backed by the table: on startup every job left in
   `PROCESSING` becomes `FAILED` with reason `INTERRUPTED` and every `QUEUED`
   job resumes. Timeout applies while `QUEUED` or validating, never during
@@ -484,7 +489,7 @@ separate worker; jobs survive a restart (points 4 and 5). Input limits
 | The timeout is measured per attempt from when the job was queued; startup handling of jobs past their deadline is defined | ADR-008 |
 | Retry requires `transaction:create`; cancel requires `transaction:create` on an owned job | ADR-008 |
 | The CSV transport for `POST .../imports` and its route-specific body limit (the global JSON limit is 100 kB) are set with the input limits | ADR-008 |
-| A portfolio archived while its import is `QUEUED` or `PROCESSING`: the job checks the status inside the apply `UnitOfWork` and fails with a non-retryable error, writing nothing | ADR-010 |
+| A portfolio archived while its import is `QUEUED` or `PROCESSING`: the job checks the status inside the apply `UnitOfWork` and fails with the non-retryable reason `PORTFOLIO_ARCHIVED`, writing nothing and clearing the stored input | ADR-008, ADR-010 |
 | The shutdown steps for background jobs are added to the shutdown sequence when the job runner exists | ADR-006 |
 
 **Done when:** state-transition tests including failure, timeout, retry and
@@ -532,7 +537,9 @@ sequence); `07-api-spec.md` §14 reconciled.
   requiring `simulation:control` (`ADMIN`). The lifecycle state is
   `RUNNING <-> HALTED`; `PAUSED` stays only as a mode wire identifier
   (points 10, 15 and 16).
-- Notification producers (alert triggered, job events) and alert
+- The notification producer for triggered alerts, realtime delivery of the
+  job events and of `NOTIFICATION_CREATED` (the import notifications are
+  created in B4, see B4 scope), and alert
   evaluation that is edge-triggered, so an alert never repeats on every
   tick (FR-053, ADR-007 point 9, `12-demo-mode-spec.md` §45).
 - Limits (point 15): 50 subscriptions and 20 inbound messages per second
@@ -569,7 +576,7 @@ version ships the seven events above, not the eleven of the original
 | Alert `armed` and `lastTriggeredAt` are persisted in the same transaction as the notification; re-arm only past a hysteresis band or after a cooldown; the initial state of a new, already-true alert is defined | ADR-007 |
 | After a restart the engine initializes from the persisted `MarketPrice` and `MAX(sequence)` per asset; `(assetId, sequence)` is unique | ADR-007 |
 | Re-authentication on the same socket with another user's token is rejected and the socket closes | ADR-007 |
-| WebSocket `maxPayload` equals the inbound message limit of `08-realtime-spec.md` §7 | ADR-007 |
+| WebSocket `maxPayload` starts at 64 KiB (65,536 bytes) per inbound message, adjustable during B5 if a measured need appears | ADR-007 |
 | The realtime hub sits behind its own interface; version 1 has no broker | ADR-007 |
 | What the `PAUSED` mode does relative to `HALTED`, and which mode `start` resumes into | ADR-007 |
 | Bounded retention of `MarketEvent` rows | ADR-007 |
@@ -679,7 +686,6 @@ the §33 checklist.
 | `ScenarioRepository.updateChanges` has no production caller | decide when the demo adapters are written |
 | Wildcard escaping in the assets search | B7 |
 | Position recalculation race | B0 (ADR-001) |
-| `07-api-spec.md` §14 (async transactions) versus the synchronous implementation | B4 (ADR-008 point 12 removes the asynchronous flow) |
 
 ---
 

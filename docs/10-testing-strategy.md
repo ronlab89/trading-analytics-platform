@@ -382,7 +382,7 @@ UI Feedback
 
 # 13. Error State Testing
 
-**Status:** server-side error responses `Implemented` (401, 403, 404, 409, 429 paths in route tests); UI states `Planned (FE)`
+**Status:** server-side error responses `Implemented` (401, 404, 409, 429 paths in route tests; 403 `Planned (B2)`, no check raises it yet); UI states `Planned (FE)`
 
 Every major asynchronous operation should have tests for:
 
@@ -629,7 +629,7 @@ No realtime code exists yet: there is no `ws` dependency, no WebSocket server an
 | Authentication | Token in the first `AUTHENTICATE` message, never in the URL; no authentication within 5 s closes `4001`; expired token without re-authentication closes `4002`; re-authentication with another `sub` closes the socket (ADR-007 point 2 and Deferred detail) | B5 |
 | Subscription | `SUBSCRIBE` and `UNSUBSCRIBE` answered with `ACK` or `ERROR` (with a `code`) on `market:{assetId}`, `portfolio:{portfolioId}`, `jobs:{jobId}` and `notifications` (ADR-007 points 3 and 15, ADR-008 point 11) | B5 |
 | Unauthorized subscription | Refused like an unknown channel, so existence is not revealed, and logged as `authz.denied` (ADR-005 point 12, ADR-009 point 9) | B5 |
-| Event validation | Every event matches its `@trading/contracts` schema; money is a decimal string (ADR-002, ADR-007 point 4) | B5 server; FE client drops invalid events |
+| Event validation | Every event matches its `@trading/contracts` schema; money is an `{ amount, currency }` object whose amount is a decimal string (ADR-002, ADR-007 point 4) | B5 server; FE client drops invalid events |
 | Ordering, gaps | `sequence` is monotonic per channel; a gap or an epoch change triggers HTTP resynchronization; there is no replay buffer (ADR-007 point 5) | B5 server; FE client |
 | Deduplication, stale events | Events with an already-seen `sequence` are discarded (NFR-018) | FE |
 | Disconnection, reconnection | §23 | FE, server close codes B5 |
@@ -722,6 +722,7 @@ Failure paths:
 
 ```text
 PROCESSING (validation) → FAILED, reason VALIDATION_FAILED   (nothing written; not retryable)
+PROCESSING (validation) → FAILED, reason PORTFOLIO_ARCHIVED  (nothing written; not retryable; ADR-008 point 6)
 PROCESSING (apply)      → FAILED, reason APPLY_REJECTED or APPLY_ERROR
 server restart          → PROCESSING becomes FAILED, reason INTERRUPTED; QUEUED jobs resume
 ```
@@ -1604,7 +1605,7 @@ A pull request should not be considered complete when:
 
 Tests should be treated as part of implementation rather than a final manual step.
 
-Today nothing blocks a merge automatically. The pre-commit hook only formats and lints staged files (§5), and the checklist in `.github/PULL_REQUEST_TEMPLATE.md` asks for `pnpm typecheck` and `pnpm lint` only, not formatting, build or tests. From B0 the CI workflow of §53 is the gate: type checking, lint, formatting, build and the backend test suites must pass. "Critical E2E flows fail" applies once E2E tests exist (`Planned (FE)`); no coverage percentage is part of the gate (§55).
+Today nothing blocks a merge automatically. The pre-commit hook only formats and lints staged files (§5), and the checklist in `.github/PULL_REQUEST_TEMPLATE.md` asks for `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build`, `pnpm test` and `pnpm docs:check`, as self-reported checkboxes that nothing enforces. From B0 the CI workflow of §53 is the gate: type checking, lint, formatting, build and the backend test suites must pass. "Critical E2E flows fail" applies once E2E tests exist (`Planned (FE)`); no coverage percentage is part of the gate (§55).
 
 ---
 
