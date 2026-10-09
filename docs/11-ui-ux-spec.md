@@ -682,7 +682,7 @@ The user can keep using unrelated parts of the application while a job runs.
 
 Behavior is defined by FR-051 and FR-052. A notification is `unread` or `read`; there is no dismissed state (ADR-010 point 3). The user marks one or all as read.
 
-In version 1 a notification is created when an alert triggers (FR-053) or when a CSV import job reaches `COMPLETED` or `FAILED` (FR-081); it arrives in realtime with `NOTIFICATION_CREATED` (ADR-007). Connection changes create no notification; they appear only in the status bar (FR-046, §14). Transient feedback uses toasts (§33), not notifications (ADR-010 point 9).
+In version 1 a notification is created when an alert triggers (FR-053) or when a CSV import job reaches `COMPLETED`, `FAILED` or `TIMED_OUT` (FR-081); it arrives in realtime with `NOTIFICATION_CREATED` (ADR-007). Connection changes create no notification; they appear only in the status bar (FR-046, §14). Transient feedback uses toasts (§33), not notifications (ADR-010 point 9).
 
 Avoid notification spam: an alert fires only on a false-to-true transition (FR-053).
 

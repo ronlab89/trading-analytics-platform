@@ -172,9 +172,9 @@ per issue. `field` is the dot-joined path:
 ```
 
 Invalid query parameters use the message
-`The request contains invalid query parameters.`. A per-detail `code` exists
-in the type but is not emitted. `Planned (B0)` (ADR-002 point 10): each entry
-is `{ field, code, message }`, where `code` is the Zod issue code (for
+`The request contains invalid query parameters.`. Zod issues carry no
+`code` yet; service-level details such as `UNKNOWN_ASSET` do (§25).
+`Planned (B0)` (ADR-002 point 10): each Zod entry is `{ field, code, message }`, where `code` is the Zod issue code (for
 example `too_small`) so the client can localize it (ADR-010 point 8).
 
 ---

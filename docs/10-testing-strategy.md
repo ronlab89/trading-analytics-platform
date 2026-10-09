@@ -382,7 +382,7 @@ UI Feedback
 
 # 13. Error State Testing
 
-**Status:** server-side error responses `Implemented` (401, 403, 404, 409, 429 paths in route tests); UI states `Planned (FE)`
+**Status:** server-side error responses `Implemented` (401, 404, 409, 429 paths in route tests; 403 `Planned (B2)`, no check raises it yet); UI states `Planned (FE)`
 
 Every major asynchronous operation should have tests for:
 
@@ -1604,7 +1604,7 @@ A pull request should not be considered complete when:
 
 Tests should be treated as part of implementation rather than a final manual step.
 
-Today nothing blocks a merge automatically. The pre-commit hook only formats and lints staged files (§5), and the checklist in `.github/PULL_REQUEST_TEMPLATE.md` asks for `pnpm typecheck` and `pnpm lint` only, not formatting, build or tests. From B0 the CI workflow of §53 is the gate: type checking, lint, formatting, build and the backend test suites must pass. "Critical E2E flows fail" applies once E2E tests exist (`Planned (FE)`); no coverage percentage is part of the gate (§55).
+Today nothing blocks a merge automatically. The pre-commit hook only formats and lints staged files (§5), and the checklist in `.github/PULL_REQUEST_TEMPLATE.md` asks for `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build`, `pnpm test` and `pnpm docs:check`, as self-reported checkboxes that nothing enforces. From B0 the CI workflow of §53 is the gate: type checking, lint, formatting, build and the backend test suites must pass. "Critical E2E flows fail" applies once E2E tests exist (`Planned (FE)`); no coverage percentage is part of the gate (§55).
 
 ---
 

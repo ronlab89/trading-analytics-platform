@@ -590,7 +590,8 @@ of ADR-007 point 5.
 - Separate development and test databases (`.env`, `.env.test.local`).
 - Migrations: `db:migrate` in development, `db:test:migrate`
   (`migrate deploy`) for tests.
-- ADR-006 points 5-6: the API applies `prisma migrate deploy` on startup; the
+- ADR-006 points 5-6: the one-shot `migrate` service applies `prisma migrate deploy` before
+  the API starts (the API entrypoint is plain `node dist/index.js`); the
   seed never runs automatically; rollback is forward-fix only.
 
 Data model: `05-data-model.md`.

@@ -367,9 +367,9 @@ Roles:
 
 | Role | Meaning |
 | --- | --- |
-| `VIEWER` | Reads own resources; performs no mutation |
+| `VIEWER` | Reads own resources; mutates no domain data; may update own preferences and mark own notifications read (ADR-005 point 13) |
 | `TRADER` | `VIEWER` plus every supported mutation on own resources |
-| `ADMIN` | `TRADER` plus administrative and simulation-control permissions |
+| `ADMIN` | `TRADER` plus `simulation:control` only (version 1, ADR-005 point 13) |
 
 `ANALYST` is dropped: it had no capability distinct from any authenticated
 user (ADR-005 Context). Roles are sets of permissions; code checks
@@ -1403,6 +1403,7 @@ audit store; operational logs are not permanent audit storage
 | `auth.login.failed` | Any credential failure, with the same fields whatever the cause (§51) | B3 |
 | `auth.refresh.reuse_detected` | An already-rotated refresh token is presented and its family is revoked (§7) | B2 / B3 |
 | `authz.denied` | A permission check fails, including a refused realtime subscription (§17) | B2 / B5 |
+| `auth.logout` | A logout request revokes the refresh token family; level `info`, carries `userId` only (ADR-009 point 9, amended 2026-10-07) | B2 (`Planned (B2)` with the logout endpoint) |
 
 Each event carries `timestamp`, `event`, `requestId` and `userId` when
 known, and none of the fields of §49.
@@ -1410,8 +1411,9 @@ known, and none of the fields of §49.
 Not covered in version 1: role changes have no endpoint (roles come from
 the seed, ADR-005 point 10), so there is no role-change event.
 
-> Open detail (B3): whether logout emits an event. ADR-009 point 9 does
-> not list one; `13-observability-spec.md` names `auth.logout`.
+Decided (ADR-009 point 9, amended 2026-10-07): logout emits `auth.logout`
+at level `info` with `userId` only; the event exists once the logout
+endpoint does (`Planned (B2)`).
 
 > Open detail (B3): whether a cross-user request answered with 404 (§15)
 > emits `authz.denied`. ADR-009 point 9 names the event without listing

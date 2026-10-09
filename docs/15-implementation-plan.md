@@ -151,7 +151,7 @@ Code vs ADR:
 | 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
 | 13 Observability | logger and security events `Planned (B3)`; metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
 | 14 Deployment | local full stack `Planned (B7)`; CI `Planned (B0)` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
-| 15 UX, accessibility and performance refinement | none | `Planned (FE5)` |
+| 15 UX, accessibility and performance refinement | B5 (server-side performance measurement after realtime exists, §32) | `Planned (FE5)` |
 | 16 Portfolio case study | none | `Planned (FE6)` |
 
 Code vs ADR: phases 5 to 11 and 14 to 16 were written before the ADRs, and their text still mixes backend and frontend work. They are reconciled slice by slice in §5 to §21.
@@ -259,7 +259,7 @@ Create the repository structure and development conventions.
 | Domain entities and enums (`packages/domain/src/entities`: 16 entities, each with tests, and `enums.ts`) | `Implemented` | none |
 | Value objects (`Money`, `packages/domain/src/value-objects/money.ts`) | `Implemented` | none |
 | Domain invariants (per-entity validators and `Invalid*Error` / `Insufficient*Error` types) | `Implemented` | none |
-| Ownership rules (every portfolio carries a `userId`; foreign resources return 404, never 403) | `Implemented` in `apps/api/src/services`; permission checks through an `Actor` (ADR-005 point 3) `Planned (B2)` | B2 |
+| Ownership rules (every portfolio carries a `userId`; foreign resources return 404, never 403) | `Implemented` in `apps/api/src/services`; the `Actor` and permission mechanism (ADR-005 point 3) `Planned (B0)`, roles `Planned (B2)` | B0, B2 |
 | Transaction states (`TransactionStatus`: `DRAFT`, `VALIDATING`, `PROCESSING`, `COMPLETED`, `FAILED`) | `Implemented` | none |
 | Deterministic tiebreak for transactions with the same `executedAt` (ADR-003 Deferred detail) | `Planned (B0)` | B0 |
 | Portfolio calculations and derived data: allocation, current-state attribution, portfolio and position metrics, daily change, Pulse, asset-level volatility and drawdown, decision replay, scenario impact and comparison (`packages/domain/src/calculations`) | `Implemented` | none |
@@ -403,7 +403,7 @@ start database
 | API response conventions: `/api/v1` paths and paginated lists with `meta` | `Implemented` | none |
 | `@trading/contracts`: response schemas, presenters and DTO types (ADR-002) | `Planned (B0)` | B0 |
 | Authentication middleware (`middleware/authenticate.ts`) | `Implemented` | none |
-| Authorization middleware (`requireRole`, permission checks through the `Actor`) | `Planned (B2)`; see §9 | B2 |
+| Permission checks through the `Actor` in the application layer, applied to the existing routes (no authorization middleware, ADR-005 point 3) | `Actor` and permission mechanism `Planned (B0)`; roles `Planned (B2)`; see §9 | B0, B2 |
 | Application services | `Implemented` inside `apps/api/src/services`; `@trading/application` and the composition root (`apps/api/src/composition.ts`) `Planned (B0)` (ADR-001) | B0 |
 | Repository integration | `Implemented`: the services create the Prisma repositories directly | B0 (composition root) |
 | One shared `Clock` port (ADR-001 point 8) | `Planned (B0)` | B0 |
@@ -488,7 +488,7 @@ The API:
 | Refresh token in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie with rotation and family revocation, `POST /api/v1/auth/refresh`, `Session` table, custom request header (ADR-005 points 5 to 7) | `Planned (B2)` | B2 |
 | `POST /api/v1/auth/logout` (ADR-005 point 6) and the `auth.logout` security event (ADR-009) | `Planned (B2)` | B2 |
 | Role model: `USER` and `ADMIN` today | `Implemented`; `VIEWER`, `TRADER` and `ADMIN`, with `USER` migrated to `TRADER` (ADR-005 point 1), `Planned (B2)` | B2 |
-| Permission matrix, `Actor { userId, role }` and enforcement in the application layer (ADR-005 points 2 and 3); `requireRole` and the 403 `FORBIDDEN` code | `Planned (B2)` | B2 |
+| Permission matrix, `Actor { userId, role }` and enforcement in the application layer (ADR-005 points 2 and 3); the 403 `FORBIDDEN` code | `Actor` and permission mechanism `Planned (B0)`; roles and 403 `Planned (B2)` | B0, B2 |
 | `VIEWER` self-service (own preferences and own notifications read) and `ADMIN` limited to `TRADER` plus `simulation:control` (ADR-005 point 13) | `Planned (B2)` | B2 |
 | Protected routes: every `/api/v1` route except login runs `authenticate` | `Implemented` | none |
 | Ownership checks: another user's resource returns 404, never 403 (ADR-005 point 12) | `Implemented` | none |
@@ -1235,7 +1235,7 @@ without requiring a paid external monitoring service.
 | Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | `Planned (B0)` | B0 |
 | Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Planned (B7)` | B7 |
 | Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Planned (B7)` | B7 |
-| Environment configuration for `development`, `test` and local `production`: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT` and `JWT_EXPIRES_IN_SECONDS`; it does not read `APP_MODE`, `LOG_LEVEL` or `SLOW_REQUEST_THRESHOLD_MS` and does not validate `DATABASE_URL`; the rest is `Planned (B3)` (logging variables) and `Planned (B7)` (`DATABASE_URL`, `APP_MODE`) | B3, B7 |
+| Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT` and `JWT_EXPIRES_IN_SECONDS`; it does not read `APP_MODE`, `LOG_LEVEL` or `SLOW_REQUEST_THRESHOLD_MS` and does not validate `DATABASE_URL`; the rest is `Planned (B3)` (logging variables), `Planned (B7)` (`DATABASE_URL`) and `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
 | Web build-time values `VITE_APP_MODE` and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) | `Planned (FE0)` | FE0 |
 | Local full stack: a Docker Compose `full` profile with PostgreSQL and the API; the default profile keeps only PostgreSQL; `TZ=UTC` on both containers; the real-mode web app runs on the Vite dev server against the local API (ADR-006 points 4 and 8) | `Planned (B7)` | B7 |
 | Migration deployment: a one-shot `migrate` service in the `full` profile runs `prisma migrate deploy` after PostgreSQL is healthy, and the API starts after it completes (ADR-006 points 4 and 5 and Deferred detail) | `Planned (B7)` | B7 |
@@ -1255,7 +1255,7 @@ Code vs ADR:
 - `.github/` holds only `PULL_REQUEST_TEMPLATE.md`, `docker/` holds only `.gitkeep`, there is no `apps/api/Dockerfile`, no `.nvmrc`, and `docker-compose.yml` defines no `full` profile. The seed wipes the database with no production guard.
 - The original "production frontend build" is split in two. The demo build is the only public frontend artifact (`Planned (FE4)`). The real-mode web app is not built for production in version 1 and runs on the Vite dev server (ADR-006 point 8).
 - The original "deployment documentation" assumed a hosted target. It now documents only the local full stack, and states that backups are not applicable to a local environment (ADR-006 point 9).
-- Graceful shutdown is B3, not B7, so `BACKEND-ROADMAP.md` (which lists it in B7) needs aligning (task T5.3). Shutdown steps for background jobs and realtime connections join the sequence in B4 and B5 (ADR-006 Deferred detail).
+- Graceful shutdown is B3, not B7; `BACKEND-ROADMAP.md` now says B3 (T5.3, 2026-10-08). Shutdown steps for background jobs and realtime connections join the sequence in B4 and B5 (ADR-006 Deferred detail).
 - The acceptance criterion "a production-like deployment can be started and verified through documented steps" is met by the local full stack plus the smoke script, not by a hosted environment.
 
 ### Objective
@@ -1287,7 +1287,7 @@ A production-like deployment can be started and verified through documented step
 
 **Status:** `Planned (FE5)`; nothing in this phase exists yet because `apps/web` holds only a wireframe (`apps/web/wireframe.html`)
 
-**Owning blocks:** Backend: none; Frontend: FE5 (§4.3), after FE1 to FE4. Decisions: ADR-010 point 9 (breakpoints and interface scope), ADR-006 point 11 (accessibility tool deferred); targets in `03-non-functional-requirements.md`.
+**Owning blocks:** Backend: B5 (server-side performance measurement after realtime exists, §32); Frontend: FE5 (§4.3), after FE1 to FE4. Decisions: ADR-010 point 9 (breakpoints and interface scope), ADR-006 point 11 (accessibility tool deferred); targets in `03-non-functional-requirements.md`.
 
 | Deliverable | Status | Block |
 | --- | --- | --- |
@@ -1979,7 +1979,7 @@ Each category should have appropriate:
 | Authentication in the first message, a 5-second deadline, socket bound to the token expiry and re-authentication after a refresh (ADR-007 point 2) | `Planned (B5)`; needs the refresh endpoint of B2 | B5 |
 | Channels `market:{assetId}`, `portfolio:{portfolioId}`, `notifications` and `jobs:{jobId}`, each subscription authorized in the application layer | `Planned (B5)`; the job channel with B4 events | B4, B5 |
 | Envelope `{ id, type, channel, sequence, timestamp, payload }` as Zod schemas in `@trading/contracts` | `Planned (B5)` | B5 |
-| Event catalog: `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED`, and the three job events | `Planned (B5)`; job events `Planned (B4)` | B4, B5 |
+| Event catalog: `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED`, and the three job events | `Planned (B5)`; the job events are produced by the B4 runner and delivered on the socket in B5 | B4, B5 |
 | Shared simulation engine `@trading/market-sim` in `packages/market-sim` (seeded generator, injected clock) | `Planned (B5)`; the package does not exist yet | B5 |
 | Limits, heartbeat and degradation (ADR-007 points 11, 12 and 15) | Server `Planned (B5)`; client polling and stale-data indicator `Planned (FE3)` | B5, FE3 |
 | Realtime lifecycle log entries and simulator entries (ADR-009 point 11) | `Planned (B5)` | B5 |

@@ -2574,11 +2574,11 @@ The repository should document:
 
 | Item | Version 1 | Status |
 | --- | --- | --- |
-| How to start the application | `pnpm --filter @trading/api dev` runs `tsx watch` (`apps/api/package.json`). `README.md` documents setup and the local database, not the API start | Command `Implemented`; not documented |
+| How to start the application | `pnpm --filter @trading/api dev` runs `tsx watch` (`apps/api/package.json`). `README.md` documents setup, the local database and "Run the API" | Command `Implemented`; not documented |
 | Where logs appear | The stdout of the API process (ADR-009 point 3); container output under the Compose `full` profile (ADR-006 point 4, B7) | `Planned (B3)` |
 | How to change the log level | `LOG_LEVEL` (ADR-009 point 7, §38) | `Planned (B3)` |
 | How to enable debug mode | `LOG_LEVEL=debug`, already the development default; `ENABLE_DEBUG_LOGGING` is not adopted (ADR-009 point 2). A development realtime debug mode is deferred to the frontend-stage ADR (ADR-009 point 12, §28) | `Planned (B3)`; realtime debug mode `Deferred` |
-| How to inspect health | `GET /health` and `GET /health/ready`, specified in `07-api-spec.md` §30 | `Implemented`; not in `README.md` |
+| How to inspect health | `GET /health` and `GET /health/ready`, specified in `07-api-spec.md` §30 | `Implemented`; also in `README.md` ("Run the API") |
 | How to inspect metrics | There are none in version 1 | `Deferred` (ADR-009 point 10) |
 | How to simulate failures | Demo failures are `Deferred` (ADR-010 point 6); client test faults are `Planned (FE)` (`08-realtime-spec.md` §43). On the API, stopping PostgreSQL makes readiness return 503 (§57) | Mixed, as listed |
 | How to inspect realtime events | Server connection entries `Planned (B5)`; client diagnostics `Planned (FE)` (§28) | `Planned (B5)` / `Planned (FE)` |
@@ -2586,7 +2586,7 @@ The repository should document:
 
 Code vs ADR:
 
-- Today a developer finds three kinds of `console` lines (§1), the `X-Request-ID` header, the `requestId` in error bodies and the two health routes. `README.md` and `CONTRIBUTING.md` mention none of them.
+- Today a developer finds three kinds of `console` lines (§1), the `X-Request-ID` header, the `requestId` in error bodies and the two health routes. `README.md` mentions only the two health routes, and `CONTRIBUTING.md` none of them.
 - Which document carries the written workflow (`README.md` or a page under `docs/`) is an open detail (B3).
 
 ---
@@ -2616,7 +2616,7 @@ The documentation should favor practical examples over theoretical descriptions.
 
 Code vs ADR:
 
-- No observability section exists in `README.md` or `CONTRIBUTING.md`; this specification is the only reference today.
+- No logging or observability section exists in `README.md` (which has only the health routes) or `CONTRIBUTING.md`, and none documents `LOG_LEVEL` before B3; this specification is the only reference today.
 - In version 1 the "Metrics" entry has nothing to document (`Deferred`, ADR-009 point 10), "Realtime diagnostics" follows B5 and the frontend stage, and "Demo diagnostics" waits for the demo ADR (ADR-010 point 6).
 - ADR-009 does not list the documentation among its decisions; its "Documents to align" names `13`, `04` and `09` only. The assignment to B3 comes from §74.
 

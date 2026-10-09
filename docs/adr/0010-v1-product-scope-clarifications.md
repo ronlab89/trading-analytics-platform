@@ -4,7 +4,8 @@
 **Date:** 2026-10-05
 **Amended:** 2026-10-07 (point 6, demo hosting deferrals, approved by the user
 from the `14-deployment-spec.md` reconciliation; point 10, statistics, approved
-by the user from the `15-implementation-plan.md` reconciliation)
+by the user from the `15-implementation-plan.md` reconciliation; point 5,
+transactions are immutable, ADR-003 point 7, 2026-10-08)
 **Implemented in:** roadmap block B0 (archived portfolios, language validation), B1 (What Changed); frontend stage (sorting, demo, translations)
 
 ## Context
@@ -52,7 +53,9 @@ requirements that no ADR or spec defines precisely enough to build or test:
    mutation scoped to it is rejected with 409 `CONFLICT` and nothing is
    written: creating, changing or deleting transactions, decisions,
    scenarios, alerts and CSV import jobs. Reads and the archive call itself
-   are unchanged.
+   are unchanged. (Amended 2026-10-08: transactions are immutable, ADR-003
+   point 7; there is no change or delete operation for them, so only creation
+   applies.)
    Unarchiving is `Deferred`.
 6. **Demo specifics.** Demo data layers, reset, simulated latency and
    scripted failures are decided in a frontend-stage ADR before the demo is

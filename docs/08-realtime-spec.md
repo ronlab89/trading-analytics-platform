@@ -41,6 +41,11 @@ confirmed in B5; there is no `WEBSOCKET_PATH` variable (ADR-007 point 1,
 amended 2026-10-07). Socket.IO and Server-Sent Events are
 rejected (ADR-007, Alternatives Considered).
 
+On the server, after a change commits, the application layer calls the
+`RealtimePublisher` port; the adapter that implements it lives in `apps/api`
+and publishes to the socket behind the transport port. Version 1 has no
+domain events and no event bus (ADR-007 point 17).
+
 The UI never depends on the WebSocket implementation:
 
 ```text

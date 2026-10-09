@@ -356,8 +356,9 @@ Deleting a portfolio archives it: history is preserved.
 - Given an already archived portfolio, when archived again, then the call
   succeeds with `alreadyArchived = true`.
 - Given another user's portfolio, then 404.
-- (B0) Given an archived portfolio, any mutation scoped to it (creating or
-  changing transactions, decisions, scenarios, alerts or CSV import jobs)
+- (B0) Given an archived portfolio, any mutation scoped to it (creating
+  transactions, or creating or changing decisions, scenarios, alerts or CSV
+  import jobs)
   returns 409 `CONFLICT` and writes nothing. Reads still succeed.
 - (FE) A confirmation is required; cancel sends no request; if the archived
   portfolio was selected, the selection moves to another portfolio or to the
@@ -1080,7 +1081,7 @@ dataset, and demo sessions should be resettable (FR-072).
 - (B5) A triggered alert creates a notification and emits
   `NOTIFICATION_CREATED` on the user's `notifications` channel.
 - Notifications come only from triggered alerts and from CSV import jobs
-  reaching `COMPLETED` or `FAILED`; connection changes appear only in the
+  reaching `COMPLETED`, `FAILED` or `TIMED_OUT`; connection changes appear only in the
   status bar (ADR-010 point 9).
 
 ---
@@ -1644,15 +1645,16 @@ into a portfolio as a background job.
 
 **Priority:** P0  
 **Status:** ownership checks (404) `Implemented`; permission checks in the application layer `Planned (B0)`; roles `VIEWER`, `TRADER`, `ADMIN` `Planned (B2)`  
-**Decisions:** ADR-005 points 1, 2, 3, 10, 11, 12
+**Decisions:** ADR-005 points 1, 2, 3, 10, 11, 12, 13
 
 ### Acceptance criteria
 
 - Roles are `VIEWER`, `TRADER` and `ADMIN`; existing `USER` accounts become
   `TRADER`.
-- A `VIEWER` reads own resources and is denied every mutation; a `TRADER`
-  performs every supported mutation on own resources; an `ADMIN` also holds
-  administrative and `simulation:control` permissions.
+- A `VIEWER` reads own resources, mutates no domain data, and may update its
+  own preferences and mark its own notifications read (ADR-005 point 13); a
+  `TRADER` performs every supported mutation on own resources; an `ADMIN`
+  holds the `TRADER` permissions plus `simulation:control` only in version 1.
 - Code checks permissions, never role names; every use case receives an
   `Actor { userId, role }` and checks permission and ownership.
 - Another user's resource is 404, never 403.

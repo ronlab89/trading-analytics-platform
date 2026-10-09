@@ -393,7 +393,7 @@ The repository must document which variables are required for:
 | Local development (`.env`) | `DATABASE_URL`, `JWT_SECRET`; the rest have defaults. The Compose variables are optional | `Implemented` |
 | Tests (`.env.test.local`) | `DATABASE_URL` pointing at the separate test database, `NODE_ENV=test`, `JWT_SECRET` | `Implemented` |
 | Demo | No server variables. Build-time `VITE_APP_MODE=demo` and a base path; no secrets (ADR-006 point 7) | `Planned (FE)` |
-| Production-like (local `production`) | `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` if they differ from the defaults | `Planned (B7)` |
+| Production-like (local `full` profile) | `NODE_ENV=development`, `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` if they differ from the defaults | `Planned (B7)` |
 
 Code vs ADR:
 
@@ -1566,7 +1566,7 @@ What the two targets of ADR-006 point 1 have for each step:
 Code vs ADR:
 
 - There is no deployment pipeline: ADR-006 point 10 decides no continuous deployment. The flow above is a sequence a person runs on the local stack, not an automated chain from a push.
-- The original order puts the migration after the deploy. ADR-006 point 5 applies it at startup, in the same run as the API (§19), so the migration comes first.
+- The original order puts the migration after the deploy. ADR-006 points 4 and 5 apply it in the one-shot `migrate` service of the same `docker compose up` run (§19), before the API starts, so the migration comes first.
 - `Deferred` (frontend-stage ADR, ADR-010 point 6): how the demo build reaches the portfolio site (a manual copy or a workflow of that site's repository) is part of the demo hosting decision. Recommendation for that ADR: leave it manual in version 1, which is consistent with no continuous deployment.
 
 ---
@@ -1923,7 +1923,7 @@ A production-like local mode should validate:
 | Validates | How | Status |
 |---|---|---|
 | Production builds | `node dist/index.js` from the compiled packages (ADR-006 point 3) | `Planned (B7)` |
-| Environment variables | `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` when they differ from the defaults (§11) | `Planned (B7)` |
+| Environment variables | `NODE_ENV=development`, `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` when they differ from the defaults (§11) | `Planned (B7)` |
 | Containers | The `full` profile: PostgreSQL and the API, multi-stage and non-root (ADR-006 point 4) | `Planned (B7)` |
 | Migrations | `prisma migrate deploy` at startup (ADR-006 point 5) | `Planned (B7)` |
 | Health checks | The routes exist (§50); the container healthcheck is `Planned (B7)` (§51) | Routes `Implemented` |
@@ -1935,7 +1935,7 @@ Conceptually, following ADR-006 point 4:
 
 ```text
 Docker Compose, profile "full"
- ├── api          (production build, NODE_ENV=production)
+ ├── api          (production build, NODE_ENV=development)
  └── postgres     (the default profile's service)
 ```
 
@@ -2644,9 +2644,9 @@ Run smoke tests
 | Step | Local full stack or demo | Status |
 |---|---|---|
 | Provision infrastructure | Docker on the author's machine; no hosting, managed database or reverse proxy (§29, §30, §32) | Local `Implemented`; hosted `Deferred` |
-| Configure secrets | The git-ignored `.env`, with `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET` and the optional `PORT` and `CORS_ORIGIN` (§11, §13) | `Planned (B7)` |
+| Configure secrets | The git-ignored `.env`, with `NODE_ENV=development`, `DATABASE_URL`, `JWT_SECRET` and the optional `PORT` and `CORS_ORIGIN` (§11, §13) | `Planned (B7)` |
 | Build artifacts | `pnpm build` and the API image; the compiled output must run with `node dist/index.js` (ADR-006 points 3 and 4) | `Planned (B7)` |
-| Run migrations | `prisma migrate deploy` at API startup (ADR-006 point 5) | `Planned (B7)` |
+| Run migrations | `prisma migrate deploy` in the one-shot `migrate` service, before the API starts (ADR-006 points 4 and 5) | `Planned (B7)` |
 | Start backend | `docker compose --profile full up` (§57) | `Planned (B7)` |
 | Deploy frontend | Publish the static demo build under the portfolio subpath; how it reaches the host is decided in the frontend-stage ADR (ADR-010 point 6; §22) | `Planned (FE)`; mechanism `Deferred` |
 | Verify health | `GET /health` and `GET /health/ready` (§48, §50) | Routes `Implemented`; the procedure `Planned (B7)` |
@@ -2678,7 +2678,7 @@ ADR-006 point 2 hosts no backend, so "public deployment" means two things: publi
 - [x] Stack traces hidden. (`Implemented`: the error handler returns a generic 500 body and logs the error name only, `apps/api/src/middleware/error-handler.ts`)
 - [x] Health output sanitized. (`Implemented`: fixed fields and `ok` or `unavailable`, `apps/api/src/controllers/health.controller.ts`, §50)
 - [x] Metrics restricted if exposed. (Satisfied by absence: no metrics and no `/metrics` endpoint, `Deferred`, ADR-009 point 10)
-- [ ] Admin operations protected. (`requireRole` and the roles of ADR-005 `Planned (B2)`; simulation control `Planned (B5)`; the code carries the role in the token but no route checks it yet)
+- [ ] Admin operations protected. (the `Actor` permission mechanism `Planned (B0)` and the roles of ADR-005 `Planned (B2)`; simulation control `Planned (B5)`; the code carries the role in the token but no route checks it yet)
 - [x] Rate limits considered. (`Implemented`, §63)
 - [ ] Resource limits configured. (Partly: body size and pagination `Implemented`; CSV, realtime and job limits `Planned (B4)` and `Planned (B5)`; the 512 MB container limit `Planned (B7)`, §65, NFR-054)
 - [ ] Demo data isolated. (`Planned (FE)`: the demo has no backend and no database, §24, §56)
@@ -3387,7 +3387,7 @@ Where this document and an ADR differ, the ADR wins (`README.md`, precedence).
 
 Code vs ADR:
 
-- The original text said `15-implementation-plan.md` "will translate" the SDD set. It exists, and its Phase 14 still lists HTTPS/WSS configuration and rollback documentation, which ADR-006 points 2 and 6 remove; aligning it is T5.2.
+- The original text said `15-implementation-plan.md` "will translate" the SDD set. It exists, and its Phase 14 now marks HTTPS/WSS configuration and rollback documentation as removed, as ADR-006 points 2 and 6 decide; the alignment is done (T5.2).
 - `05-data-model.md`, `15-implementation-plan.md`, `16-analytics-spec.md`, `BACKEND-ROADMAP.md` and the ADRs were missing from the original list.
 
 ---

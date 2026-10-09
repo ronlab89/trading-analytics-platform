@@ -227,6 +227,7 @@ validation in production; no server request timeout in version 1.
 | Rate limits stay on in development; restarting the API clears the counters | ADR-006 |
 | `dateFrom` and `dateTo` on the decisions list filter on `createdAt`; the contracts query schema states it and a test covers it (decided 2026-10-08) | `PROGRESS.md` §7 |
 | `Scenario.baseSnapshotId` stays a nullable string with no behavior in the contracts, because snapshots are `Deferred` (decided 2026-10-08) | `05-data-model.md` §14 |
+| Reword the two code comments that still describe asynchronous transaction creation as deferred (`apps/api/src/services/transaction.service.ts`, `apps/api/src/controllers/transactions.controller.ts`): creation is synchronous by design | ADR-008 point 12 (T6.2 review) |
 
 **Done when:** the CI workflow is green on a clean checkout; the new route
 tests pass before and after the layering refactor with HTTP behavior
@@ -322,8 +323,8 @@ in B0)
   (`09-security-spec.md` §12-17): the existing `USER` role migrates to
   `TRADER`, `ANALYST` is dropped, code checks permissions and never role
   names (points 1 and 2).
-- `requireRole` and permission checks through the `Actor`, applied to the
-  existing routes. Express middleware only authenticates and builds the
+- Permission checks through the `Actor` in the application layer, applied to
+  the existing routes. Express middleware only authenticates and builds the
   `Actor`; the permission and ownership checks run in the application layer
   (point 3).
 - `VIEWER` self-service: a `VIEWER` may update its own preferences and mark
@@ -532,7 +533,9 @@ sequence); `07-api-spec.md` §14 reconciled.
   requiring `simulation:control` (`ADMIN`). The lifecycle state is
   `RUNNING <-> HALTED`; `PAUSED` stays only as a mode wire identifier
   (points 10, 15 and 16).
-- Notification producers (alert triggered, job events) and alert
+- The notification producer for triggered alerts, realtime delivery of the
+  job events and of `NOTIFICATION_CREATED` (the import notifications are
+  created in B4, see B4 scope), and alert
   evaluation that is edge-triggered, so an alert never repeats on every
   tick (FR-053, ADR-007 point 9, `12-demo-mode-spec.md` §45).
 - Limits (point 15): 50 subscriptions and 20 inbound messages per second
@@ -679,7 +682,6 @@ the §33 checklist.
 | `ScenarioRepository.updateChanges` has no production caller | decide when the demo adapters are written |
 | Wildcard escaping in the assets search | B7 |
 | Position recalculation race | B0 (ADR-001) |
-| `07-api-spec.md` §14 (async transactions) versus the synchronous implementation | B4 (ADR-008 point 12 removes the asynchronous flow) |
 
 ---
 

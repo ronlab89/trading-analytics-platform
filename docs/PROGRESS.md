@@ -60,8 +60,9 @@ are reconciled, and this file is reconciled slice by slice.
   extension and a Market Data extension beyond the original plan scope
   (see §3 below)
 - **Phase 4 — Authentication/RBAC:** ⏸ Partially done. JWT login +
-  `authenticate` middleware exist and are tested. **RBAC (`requireRole`
-  middleware) and a registration endpoint are not built**; token and logout
+  `authenticate` middleware exist and are tested. **RBAC (permission checks
+  through the `Actor` in the application layer, ADR-005 point 3) is not built;
+  registration is out of scope (ADR-005 point 10)**; token and logout
   semantics are decided in ADR-005 and the work belongs to **B2**.
 
 The API was extended beyond the original phase list with the capabilities it
@@ -83,7 +84,7 @@ small CRUD resources, Decisions and Scenarios:
 **Every resource in the data model now has an API**, except the
 explicitly deferred pieces (decision writes, scenario duplicate, and
 `MarketEvent`, which has none). The remaining backend work is the blocks
-above: B0 first, then `performance` by period (B1), RBAC, registration,
+above: B0 first, then `performance` by period (B1), RBAC,
 refresh and logout (B2), observability (B3), jobs (B4) and realtime (B5).
 None of the jobs, realtime, refresh or logout work is built.
 
@@ -184,7 +185,7 @@ docs/                   SDD documents (00-16), adr/ (ADRs 001-010) + this file
     drift between the two seed steps). `timestamp` is the seed run
     time, not a historical date.
 - **Two separate databases, by design:**
-  - `trading_analytics_dev` — development data, used by `pnpm dev`,
+  - `trading_analytics_dev` — development data, used by `pnpm --filter @trading/api dev`,
     manual Postman testing, and the seed script. Config: `.env`.
   - `trading_analytics_test` — used exclusively by automated tests
     (both `packages/database` repository tests and `apps/api`
@@ -247,7 +248,7 @@ malformed payload) — never reveals which one applies.
 | Auth | `POST /api/v1/auth/login`, `GET /api/v1/auth/me` | Login has its own stricter rate limiter (5/15min, also test-skipped). `/me` re-fetches from DB, doesn't trust JWT payload alone. |
 | Portfolios | `GET/POST /api/v1/portfolios`, `GET/PATCH /api/v1/portfolios/:id`, `POST /api/v1/portfolios/:id/archive` | `baseCurrency` immutable after creation. Archive is idempotent (200 + `meta.alreadyArchived`, never 409). Cross-user access → 404, never 403. |
 | Positions | `GET /api/v1/portfolios/:id/positions`, `GET .../positions/:positionId` | Read-only — positions are a derived projection of transactions, no write endpoints by design. |
-| Transactions | `GET/POST /api/v1/portfolios/:id/transactions` (paginated, filterable), `GET .../transactions/:transactionId` | Creation is **synchronous** (not the async job/jobId flow in `07-api-spec.md` §14 — deferred to Phase 10, Background Operations). Wrapped in `PrismaUnitOfWork`: transaction record + position recalculation + status update commit or roll back together. |
+| Transactions | `GET/POST /api/v1/portfolios/:id/transactions` (paginated, filterable), `GET .../transactions/:transactionId` | Creation is **synchronous** (not the async job/jobId flow: synchronous by design, ADR-008 point 12). Wrapped in `PrismaUnitOfWork`: transaction record + position recalculation + status update commit or roll back together. |
 | Assets | `GET /api/v1/assets` (paginated, filters: search/assetType/exchange/currency/status), `GET /api/v1/assets/:assetId` | Global reference data, no ownership. `getByIds()` added for batch enrichment (avoids N+1 when building overview/analytics). |
 | Market Data (new, Step C) | `GET /api/v1/assets/:assetId/price`, `GET /api/v1/market/prices?assetIds=...` (batch, up to 50, never 404s — unknown ids just absent), `GET /api/v1/assets/:assetId/history?from=&to=&interval=` | `/price` distinguishes "asset doesn't exist" from "asset exists, no price yet" (both 404, different message — no anti-enumeration concern, assets are public reference data). `interval` currently only accepts `"1d"` (400 for anything else) — only daily candles exist; **user has confirmed weekly/monthly aggregation is a planned future addition**, not needed now. |
 | Analytics | `GET /api/v1/portfolios/:id/analytics/allocation?groupBy=asset\|assetType\|currency`, `GET .../analytics/attribution` | `sector` grouping and attribution `from/to/groupBy` from the spec are deferred — no data exists yet to support them meaningfully. |
@@ -917,7 +918,8 @@ Each item cites the block that owns it in `docs/BACKEND-ROADMAP.md`. Items the
 roadmap parks (its section 7) stay parked; items with no block are still
 unassigned.
 
-- **RBAC + user registration** (Phase 4 proper) — B2 (ADR-005). No route
+- **RBAC** (Phase 4 proper) — B2 (ADR-005); registration is out of scope
+  (ADR-005 point 10). No route
   currently needs role restriction, so it stays out until that block.
 - **CI (GitHub Actions)** — adopted, not deferred: ADR-006 points 10 and 11
   define a minimal CI that is built in B0. It earlier read as decided
