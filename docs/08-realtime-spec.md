@@ -182,6 +182,7 @@ Server rules (ADR-007 point 15):
 | Heartbeat | WebSocket ping every 30 s; socket closed after 2 consecutive missed pongs (about 60 s) |
 | Subscriptions per connection | 50 |
 | Inbound messages per connection | 20 per second |
+| Inbound message size (`maxPayload`) | 64 KiB (65,536 bytes) |
 | Outbound buffer per connection | 1 MB |
 | Concurrent connections per authenticated user (not per IP) | 5, `Planned (B5)` (ADR-005 point 13, ADR-007 point 16); numeric value tuned in B5 |
 
@@ -190,8 +191,11 @@ Server rules (ADR-007 point 15):
   closed with `4008` (ADR-005 point 13). The excess connection is the new
   one; existing connections stay open (ADR-007 point 16, amended
   2026-10-07).
-- The WebSocket `maxPayload` equals the inbound message limit of this
-  section and adds no new number (ADR-007 Deferred detail, `Planned (B5)`).
+- The WebSocket `maxPayload` is 64 KiB (65,536 bytes) per inbound message,
+  an initial value adjustable during B5 if a measured need appears
+  (ADR-007 Deferred detail, amended 2026-10-08, `Planned (B5)`). A larger
+  frame closes the connection, which is the behavior of the `ws` library.
+  The close code for an oversize frame is an open detail of B5.
 - The server closes a socket not authenticated within 5 seconds (`4001`),
   or whose token expired without re-authentication (`4002`) (§9).
 

@@ -576,7 +576,7 @@ version ships the seven events above, not the eleven of the original
 | Alert `armed` and `lastTriggeredAt` are persisted in the same transaction as the notification; re-arm only past a hysteresis band or after a cooldown; the initial state of a new, already-true alert is defined | ADR-007 |
 | After a restart the engine initializes from the persisted `MarketPrice` and `MAX(sequence)` per asset; `(assetId, sequence)` is unique | ADR-007 |
 | Re-authentication on the same socket with another user's token is rejected and the socket closes | ADR-007 |
-| WebSocket `maxPayload` equals the inbound message limit of `08-realtime-spec.md` §7 | ADR-007 |
+| WebSocket `maxPayload` starts at 64 KiB (65,536 bytes) per inbound message, adjustable during B5 if a measured need appears | ADR-007 |
 | The realtime hub sits behind its own interface; version 1 has no broker | ADR-007 |
 | What the `PAUSED` mode does relative to `HALTED`, and which mode `start` resumes into | ADR-007 |
 | Bounded retention of `MarketEvent` rows | ADR-007 |

@@ -815,8 +815,10 @@ Coverage of the abuse-prone endpoints:
 | CSV import | File size and row count, values fixed in B4 | Job rejected | `Planned (B4)` |
 | Realtime | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer (§35) | `4008` close | `Planned (B5)` |
 
-> Open detail (B5): the maximum inbound WebSocket message size. ADR-007
-> point 11 requires bounded memory per connection, but the `ws` library
+> Decided (ADR-007, Deferred detail, amended 2026-10-08; `Planned (B5)`):
+> the maximum inbound WebSocket message size is 64 KiB (65,536 bytes), set
+> through `maxPayload`, as an initial value adjustable during B5. ADR-007
+> point 11 requires bounded memory per connection, and the `ws` library
 > accepts messages up to 100 MiB unless `maxPayload` is set.
 
 ---

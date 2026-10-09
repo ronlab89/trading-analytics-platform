@@ -6,7 +6,8 @@
 `14-deployment-spec.md` reconciliation; Deferred detail rows; point 7,
 package location, approved by the user from the `15-implementation-plan.md`
 reconciliation; new point 17, event hand-off, approved by the user on
-2026-10-08 from the `15-implementation-plan.md` reconciliation)
+2026-10-08 from the `15-implementation-plan.md` reconciliation; Deferred
+detail `maxPayload` value, 64 KiB, approved by the user on 2026-10-08)
 **Implemented in:** roadmap block B5 (not yet implemented)
 
 ## Context
@@ -228,7 +229,7 @@ specified and tested in the listed block.
 | Alert armed/triggered state is not persisted (re-fires after restart), oscillation around the threshold fires repeatedly, and the initial state of a new, already-true alert is undefined. | Persist `armed` and `lastTriggeredAt` in the same transaction as the notification. Re-arm only past a hysteresis band or after a cooldown. Define the initial state. | B5 |
 | After a restart the simulator restarts from the seed state and `MarketEvent.sequence` restarts. | Initialize the engine from persisted `MarketPrice` and `MAX(sequence)` per asset. Make `(assetId, sequence)` unique. | B5 |
 | Re-authentication on the same socket with another user's token keeps the previous user's `notifications` subscription. | Reject re-authentication when `sub` changes and close the socket. | B5 |
-| WebSocket `maxPayload` has no number of its own. | Equal to the inbound message limit already in `08-realtime-spec.md` §7; no new number. | B5 |
+| The byte size of the WebSocket `maxPayload` was not set, and the `ws` library defaults to 100 MiB when it is unset. | (Amended 2026-10-08, approved by the user) `maxPayload` starts at 64 KiB (65,536 bytes) per inbound message. It is an initial value, adjustable during B5 if a measured need appears. The inbound messages (`AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`, ping and pong) are tiny, and the default would leave inbound frames practically unbounded. | B5 |
 | The realtime hub could be tied to the transport or to a broker. | It sits behind its own interface, and v1 has no broker. | B5 |
 | The application layer has no defined way to hand an event to the realtime adapter. | Point 17 (added 2026-10-08): the `RealtimePublisher` port in `packages/application`, its adapter in `apps/api`, no domain events in v1. Tests: a transaction service test with an in-memory publisher fake asserts `PORTFOLIO_UPDATED` is published only after commit. | B5 |
 | What the `PAUSED` mode does (point 16 renamed the lifecycle state to `HALTED`): whether `PUT /api/v1/simulation/mode` with `PAUSED` stops ticking like `POST /api/v1/simulation/pause`, and which mode `start` resumes into. | Define the `PAUSED` mode's behavior relative to `HALTED`, and which mode `start` resumes. | B5 |
