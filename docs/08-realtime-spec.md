@@ -195,7 +195,9 @@ Server rules (ADR-007 point 15):
   an initial value adjustable during B5 if a measured need appears
   (ADR-007 Deferred detail, amended 2026-10-08, `Planned (B5)`). A larger
   frame closes the connection, which is the behavior of the `ws` library.
-  The close code for an oversize frame is an open detail of B5.
+  The close code for an oversize frame is an open detail of B5: the `ws`
+  library closes with 1009 (message too big), and B5 adds a test that sends
+  a frame over 64 KiB and asserts the socket closes.
 - The server closes a socket not authenticated within 5 seconds (`4001`),
   or whose token expired without re-authentication (`4002`) (§9).
 

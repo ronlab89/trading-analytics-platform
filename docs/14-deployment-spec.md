@@ -2419,7 +2419,7 @@ The exact endpoint is finalized during implementation.
 | Library and boundary | `ws` behind a transport port (ADR-007 point 1) | `Planned (B5)` |
 | Authentication | The access token travels in the first message, never in the URL; a socket not authenticated within 5 seconds closes with `4001` (ADR-007 point 2) | `Planned (B5)` |
 | Close codes | `4001` unauthenticated or invalid token, `4002` token expired, `4008` limit exceeded, `1001` server going away (ADR-007 point 15) | `Planned (B5)` |
-| Limits per connection | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer (ADR-007 point 15) | `Planned (B5)` |
+| Limits per connection | 50 subscriptions, 20 inbound messages per second, 64 KiB per inbound message, 1 MB outbound buffer (ADR-007 point 15 and its `maxPayload` amendment) | `Planned (B5)` |
 | Concurrent connections | 5 per authenticated user, not per IP; at the cap, the new (excess) connection closes with `4008` and the existing connections stay open (ADR-005 point 13, ADR-007 point 16) | `Planned (B5)` |
 | Maximum inbound message size | `maxPayload` starts at 64 KiB (65,536 bytes), adjustable during B5 (ADR-007, Deferred detail, amended 2026-10-08; §65) | `Planned (B5)` |
 | Heartbeat | Ping every 30 seconds; close after 2 consecutive missed pongs, about 60 seconds (ADR-007 point 15) | `Planned (B5)` |
