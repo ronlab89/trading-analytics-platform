@@ -2045,7 +2045,7 @@ Persistent file storage should be introduced through an infrastructure adapter i
 |---|---|---|
 | Files the system generates or delivers | None. No functional requirement asks for an export or a download, and no code writes a file | `Reference`: there is nothing to generate, deliver or clean up |
 | Files the API serves | None. `apps/api/src/app.ts` registers no static, download or `sendFile` route | `Implemented` |
-| CSV import input | The CSV content is stored in the `jobs` row when the job is created, not on disk; resume and retry read the row, never the original request. The stored input is kept while the job can still be retried and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` (ADR-008 point 4, amended 2026-10-07) | `Planned (B4)` |
+| CSV import input | The CSV content is stored in the `jobs` row when the job is created, not on disk; resume and retry read the row, never the original request. The stored input is kept while the job can still be retried and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED` (ADR-008 point 4, amended 2026-10-07 and 2026-10-08) | `Planned (B4)` |
 | Size and row limits of an import | Bounded; the values are fixed in B4 (ADR-008 point 10, `09-security-spec.md` §27) | `Planned (B4)`, values set in B4 |
 | Import content in logs | The stored input is never logged (ADR-009, Deferred detail) | `Planned (B3)` |
 | Persistent file storage adapter | Not needed in version 1 | `Deferred` |
@@ -2055,7 +2055,7 @@ Code vs ADR:
 - The generate, deliver and cleanup flow is the original text. In version 1 it has nothing to apply to: an import is parsed, validated and stored in the database, and no file survives the request.
 - The API container of the `full` profile writes no file of its own: ADR-009 point 3 sends logs to stdout, with no log files (`Planned (B7)`). The PostgreSQL data lives in the named volume `trading-analytics-postgres-data`, which is the durable store (`docker-compose.yml`).
 - `Planned (B4)`, set in B4 (ADR-008, Deferred detail): how the CSV reaches `POST /api/v1/portfolios/:portfolioId/imports`. `07-api-spec.md` §14 fixes neither multipart nor a JSON body, and the global JSON limit is 100 kB (`JSON_BODY_LIMIT` in `app.ts`), so a larger file would be rejected with 413. The transport and a route-specific body limit are set in B4 with the input limits of ADR-008 point 10; the global limit is not raised.
-- Decided (ADR-008 point 4, amended 2026-10-07; `Planned (B4)`): the stored input is kept while the job can still be retried (`TIMED_OUT`, `CANCELLED`, and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`), and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED`, which is not retryable (ADR-008 point 6).
+- Decided (ADR-008 point 4, amended 2026-10-07; `Planned (B4)`): the stored input is kept while the job can still be retried (`TIMED_OUT`, `CANCELLED`, and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`), and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED`, which are not retryable (ADR-008 point 6, amended 2026-10-08).
 
 ---
 

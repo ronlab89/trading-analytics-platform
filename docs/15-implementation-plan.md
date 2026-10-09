@@ -762,7 +762,7 @@ Domain/application services remain responsible for business behavior.
 | Allocation: `GET /api/v1/portfolios/:portfolioId/analytics/allocation`, `groupBy` = `asset`, `assetType` or `currency` (`analytics.routes.ts`); sector is `Deferred` (ADR-004 point 13) | `Implemented` | none |
 | Attribution, current state: each position's contribution to unrealized P/L, no query parameters (`GET .../analytics/attribution`) | `Implemented` | none |
 | Attribution over a range: `period` or `from` / `to`, `groupBy` = `asset` or `assetType`, contributions in `Money` summing exactly to the period P/L (ADR-004 point 10) | `Planned (B1)` | B1 |
-| Performance: `GET .../analytics/performance`, periods `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL` or a custom `from` / `to` (default `1M`); TWR in `twrPercent`, `pnl` in `Money`, `series`, `asOf`, `effectiveFrom` and `status` (`OK`, `INSUFFICIENT_DATA`, `UNKNOWN`); unavailable values are `null`, never `0` (ADR-004 points 1 to 7, ADR-002 point 10) | `Planned (B1)`; `1D` `Implemented` as `dailyChange` in the overview | B1 |
+| Performance: `GET .../analytics/performance`, periods `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL` or a custom `from` / `to` (default `1M`; `1D` is not a period of this endpoint); TWR in `twrPercent`, `pnl` in `Money`, `series`, `asOf`, `effectiveFrom` and `status` (`OK`, `INSUFFICIENT_DATA`, `UNKNOWN`); unavailable values are `null`, never `0` (ADR-004 points 1 to 7, ADR-002 point 10) | `Planned (B1)`; `1D` `Implemented` as `dailyChange` in the overview | B1 |
 | Risk: `GET .../analytics/risk`, volatility annualized with √365 (at least 20 daily returns) and drawdown on the cumulative return index (at least 2 index points), with peak and trough dates (ADR-004 points 8 and 9) | `Planned (B1)` | B1 |
 | Pulse: stays inside the overview; volatility and drawdown come from the portfolio series over a trailing `1Y` window, volatility `HIGH` above 60 and `MODERATE` above 20 (ADR-004 point 11) | `Implemented` with the largest-position proxy; portfolio-series inputs `Planned (B1)`; a standalone endpoint, exposure and an `overall` classification `Deferred` | B1 |
 | Realized P/L reported per `SELL`, after fees (ADR-003 point 4, ADR-004 point 15) | `Planned (B1)` | B1 |
@@ -921,17 +921,17 @@ Do not build complex market simulation before the transport itself is stable.
 | --- | --- | --- |
 | Scope: the only background operation of version 1 is the CSV transaction import (ADR-008 point 1); transactions stay synchronous (point 12) | `Planned (B4)` | B4 |
 | `Job` and `IdempotencyKey` models and migrations (`05-data-model.md` §52 and §53) | `Planned (B4)` | B4 |
-| In-process runner backed by a `jobs` table in PostgreSQL, with no separate worker and no external queue; the CSV content is stored in the job row when the job is created; the stored input is kept while the job can be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` (ADR-008 point 4) | `Planned (B4)` | B4 |
+| In-process runner backed by a `jobs` table in PostgreSQL, with no separate worker and no external queue; the CSV content is stored in the job row when the job is created; the stored input is kept while the job can be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED` (ADR-008 point 4) | `Planned (B4)` | B4 |
 | States `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`; progress is the field `{ processed, total }`, not a state (ADR-008 point 3) | `Planned (B4)` | B4 |
-| Two stages: validate every row (a failure ends `FAILED` with `VALIDATION_FAILED`, a per-row report and nothing written), then apply all rows in one `UnitOfWork` that re-checks the invariants (`APPLY_REJECTED`, `APPLY_ERROR`); no partial import (ADR-008 point 2 and Deferred detail) | `Planned (B4)` | B4 |
+| Two stages: validate every row (a failure ends `FAILED` with `VALIDATION_FAILED`, a per-row report and nothing written), then apply all rows in one `UnitOfWork` that re-checks the invariants and the portfolio status (`APPLY_REJECTED`, `APPLY_ERROR`, `PORTFOLIO_ARCHIVED`); no partial import (ADR-008 point 2 and Deferred detail) | `Planned (B4)` | B4 |
 | Endpoints `POST /api/v1/portfolios/:portfolioId/imports`, `GET /api/v1/jobs/:jobId`, `POST /api/v1/jobs/:jobId/retry` and `POST /api/v1/jobs/:jobId/cancel`, checked for permission and ownership (ADR-008 point 9) | `Planned (B4)`; the permission `Planned (B2)` | B4 |
-| Retry returns a job to `QUEUED` and increments `attempt`; allowed for `TIMED_OUT`, `CANCELLED` and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`; not for `VALIDATION_FAILED`. Cancel is allowed while `QUEUED` or validating, never during apply. A retry or cancel that the state does not allow returns 409 `CONFLICT` and changes nothing (ADR-008 point 6) | `Planned (B4)` | B4 |
+| Retry returns a job to `QUEUED` and increments `attempt`; allowed for `TIMED_OUT`, `CANCELLED` and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`; not for `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED`. Cancel is allowed while `QUEUED` or validating, never during apply. A retry or cancel that the state does not allow returns 409 `CONFLICT` and changes nothing (ADR-008 point 6) | `Planned (B4)` | B4 |
 | Timeout per job type, measured per attempt from when the job was queued, applying while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7 and Deferred detail); the timeout values are fixed in B4 | `Planned (B4)` | B4 |
 | Restart handling: a job left in `PROCESSING` becomes `FAILED` with `INTERRUPTED`, and every `QUEUED` job resumes; every status transition is a compare-and-set (ADR-008 points 5 and Deferred detail) | `Planned (B4)` | B4 |
 | Notifications: `COMPLETED` creates a `SUCCESS` notification, `FAILED` and `TIMED_OUT` an `ERROR` notification, `CANCELLED` none (ADR-008 point 6, ADR-010 point 9) | `Planned (B4)` | B4 |
 | `Idempotency-Key` on `POST .../transactions` and on import creation: stored per user with a request hash for 24 hours, same request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Planned (B4)` | B4 |
 | Input limits: file size and row count (values fixed in B4), a route-specific body limit because the global JSON limit is 100 kB, the way the CSV reaches the route, and the CSV parsing dependency (ADR-008 point 10 and Deferred detail) | `Planned (B4)`; values are open details | B4 |
-| Archived portfolio: creating an import is rejected with 409; a job whose portfolio is archived while `QUEUED` or `PROCESSING` fails with a non-retryable error and writes nothing (ADR-010 point 5 and Deferred detail) | `Planned (B0)` for the guard, `Planned (B4)` for the job check | B0, B4 |
+| Archived portfolio: creating an import is rejected with 409; a job whose portfolio is archived while `QUEUED` or `PROCESSING` fails with the non-retryable reason `PORTFOLIO_ARCHIVED` and writes nothing (ADR-010 point 5 and Deferred detail, ADR-008 point 6) | `Planned (B0)` for the guard, `Planned (B4)` for the job check | B0, B4 |
 | Job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` on `jobs:{jobId}`; `CANCELLED` and `TIMED_OUT` emit no event and clients read them from the job's HTTP status (ADR-008 point 11, ADR-007 point 15) | `Planned (B5)`, with the transport | B5 |
 | Screens: CSV upload, progress, current state, per-row errors, cancel and retry where the state allows them, completion feedback, and the imported transactions | `Planned (FE3)` | FE3 |
 | Demo: the same use case runs in process with simulated progress and injectable import failures (ADR-008 point 13, FR-069, FR-071) | `Planned (FE4)`; other scripted failures `Deferred` (ADR-010 point 6) | FE4 |
@@ -1931,7 +1931,7 @@ Backend/domain validation protects correctness.
 | Internal Error | 500 `INTERNAL_ERROR`, stack logged and not returned | `Implemented` | none |
 | Network Failure | None on the server: a client concern; the API has no request timeout (ADR-002 point 10) and `TIMEOUT` is removed from `AppErrorCode` in B0 | Handling `Planned (FE0)`; the client timeout and retry policy `Deferred` to the frontend-stage ADR (ADR-006 point 11) | FE0 |
 | Realtime Failure | Socket `ERROR` message with a `code` and close codes `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | Server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
-| Background Job Failure | Job state `FAILED` with a reason (`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED`) or `TIMED_OUT` (ADR-008 points 3 and 6), and an `ERROR` notification | `Planned (B4)`; screens `Planned (FE3)` | B4, FE3 |
+| Background Job Failure | Job state `FAILED` with a reason (`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED`, `PORTFOLIO_ARCHIVED`) or `TIMED_OUT` (ADR-008 points 3 and 6), and an `ERROR` notification | `Planned (B4)`; screens `Planned (FE3)` | B4, FE3 |
 
 Code vs ADR:
 
@@ -3215,8 +3215,8 @@ public demo works without production infrastructure
 | --- | --- | --- |
 | Unit tests | `Implemented` for `packages/domain` (`vitest run`); application services with in-memory fakes `Planned (B0)` | B0 |
 | Integration tests | `Implemented` for `packages/database` and `apps/api` (they run against `.env.test.local`); route tests `Planned (B0)`; run in CI `Planned (B0)` | B0 |
-| Component tests | `Deferred` until the frontend-stage ADR chooses the runner (ADR-006 point 11); then `Planned (FE5)` | FE5 |
-| E2E | `Deferred` (same reason); Playwright is named in ADR-006 point 11 as part of that decision | FE5 |
+| Component tests | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
+| E2E | tooling `Deferred` to the frontend-stage ADR (same decision; Playwright is named in ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | Accessibility | the scanning tool is chosen in the frontend-stage ADR; checks `Planned (FE5)` | FE5 |
 | Security review | B2 owns the auth-focused review; B7 owns the final pass with the checklist of §33 (decided 2026-10-08) | B2, B7 |
 | Performance measurement | server: slow-request logging at 500 ms `Planned (B3)`, no load test, metrics `Deferred` (ADR-009 points 8 and 10); measurement after realtime exists `Planned (B5)` (decided 2026-10-08); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, B5, FE5 |
@@ -3348,7 +3348,7 @@ without unsupported claims
 | Documentation check | `pnpm docs:check` (`node scripts/check-docs.mjs`) | `Implemented`; in CI `Planned (B0)` (ADR-006 point 11, additions) | B0 |
 | Unit and integration tests | `pnpm test` (`pnpm -r test`: domain, database, API; the last two need `.env.test.local` and a PostgreSQL test database) | `Implemented`; in CI with a PostgreSQL service `Planned (B0)` | B0 |
 | Build | `pnpm build` (`pnpm -r build`) | `Implemented`; in CI `Planned (B0)` | B0 |
-| E2E | none | `Deferred` until the frontend-stage ADR (ADR-006 point 11) | FE5 |
+| E2E | none | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | Docker build, Docker startup | `docker compose --profile full up` | `Planned (B7)`; no `apps/api/Dockerfile` or `full` profile exists | B7 |
 | Migrations, seed | `prisma migrate deploy` through the `migrate` service; the seed stays an explicit development command | `Planned (B7)` for the service; seed `Implemented` as a command | B7 |
 | Health checks | `GET /health/ready` | `Implemented` as a route; the container healthcheck `Planned (B7)` | B7 |
@@ -3549,7 +3549,7 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 23 Demo adapters | `Planned (FE4)`; needs the application layer and in-memory repositories from B0 | FE4 |
 | 24 Demo simulations | `@trading/market-sim` `Planned (B5)`; demo wiring `Planned (FE4)` | B5, FE4 |
 | 25 Unit/integration/component tests | domain, database and API tests `Implemented`; application and contract tests `Planned (B0)`; tests per block; component tests `Planned (FE5)` | B0, FE5 |
-| 26 E2E tests | `Deferred` until the frontend-stage ADR (ADR-006 point 11) | FE5 |
+| 26 E2E tests | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | 27 Accessibility validation | `Planned (FE5)` | FE5 |
 | 28 Security review | B2 auth-focused review; B7 final pass with the §33 checklist (decided 2026-10-08) | B2, B7 |
 | 29 Performance measurement | B5 after realtime exists, frontend side in FE5 (decided 2026-10-08); no metrics exist (ADR-009 point 10) | B5, FE5 |
@@ -3740,7 +3740,7 @@ The portfolio should demonstrate:
 | Backend | Node.js and TypeScript API, PostgreSQL persistence, validation, error envelope and health routes `Implemented`; contracts `Planned (B0)`; authentication and RBAC `Planned (B2)` (ADR-005); OpenAPI `Planned (B6)`; see §40 | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2, B6 |
 | Realtime | Server `Planned (B5)` (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Planned (B5)`; `Planned (FE3)` | B5, FE3, FE4 |
 | Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Planned (B4)`; screens `Planned (FE3)` | `Planned (B4)` | B4, FE3 |
-| Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E `Deferred` until the frontend-stage ADR; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
+| Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E tooling `Deferred` to the frontend-stage ADR and E2E checks `Planned (FE5)`; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
 | Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Planned (B0)`; roles and sessions `Planned (B2)` (ADR-005); production configuration guard `Planned (B0)` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2 |
 | Observability | Request IDs and health routes `Implemented`; structured logs, redaction and security events `Planned (B3)` (ADR-009); job and realtime lifecycle events `Planned (B4)`, `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` in part; `Planned (B3)` | B3, B4, B5 |
 | Deployment | Minimal CI `Planned (B0)` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Planned (B0)`; `Planned (B7)`; `Planned (FE4)` | B0, B7, FE4 |

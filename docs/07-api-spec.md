@@ -174,8 +174,14 @@ per issue. `field` is the dot-joined path:
 Invalid query parameters use the message
 `The request contains invalid query parameters.`. Zod issues carry no
 `code` yet; service-level details such as `UNKNOWN_ASSET` do (§25).
-`Planned (B0)` (ADR-002 point 10): each Zod entry is `{ field, code, message }`, where `code` is the Zod issue code (for
-example `too_small`) so the client can localize it (ADR-010 point 8).
+`Planned (B0)` (ADR-002 point 10, amended 2026-10-08): each entry is
+`{ field, code, message }`, where `code` is either the Zod issue code (for
+example `too_small`) or a documented domain code, so the client can localize
+it (ADR-010 point 8). Domain codes:
+
+| Code | Raised when |
+| --- | --- |
+| `UNKNOWN_ASSET` | A scenario change names an asset that does not exist (§25); one detail per unknown asset |
 
 ---
 
@@ -423,7 +429,7 @@ mutation scoped to it (update, transactions, CSV imports) returns 409
 
 # 11. Portfolio Overview
 
-**Status:** `Implemented` (FR-004); period `performance` field `Planned (B1)` (ADR-004, `16-analytics-spec.md` §11-§15)
+**Status:** `Implemented` (FR-004); period `performance` field and the What Changed field `Planned (B1)` (ADR-004, ADR-010 point 1, `16-analytics-spec.md` §11-§15)
 
 ```text
 GET /api/v1/portfolios/:portfolioId/overview
@@ -445,6 +451,10 @@ pulse
 
 An empty portfolio returns zeroed totals in `baseCurrency`, empty lists and a
 non-null `dailyChange`. Errors: 404 `NOT_FOUND`.
+
+**What Changed** (FR-006), `Planned (B1)`: carried as a field of this
+overview response, not as its own endpoint (decided 2026-10-08). Its content
+is decided by ADR-010 point 1; its shape is defined in B1.
 
 ---
 
@@ -666,7 +676,8 @@ TIMED_OUT
 ```
 
 Progress is a field, not a state. `FAILED` carries a reason:
-`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`.
+`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or
+`PORTFOLIO_ARCHIVED` (the complete set, ADR-008 point 6).
 Ownership is checked; another user's job returns 404.
 
 ---
@@ -682,8 +693,9 @@ POST /api/v1/jobs/:jobId/cancel
 
 Retry returns the job to `QUEUED` and increments `attempt`. It is allowed for
 `TIMED_OUT`, `CANCELLED`, and `FAILED` with reason `INTERRUPTED`,
-`APPLY_ERROR` or `APPLY_REJECTED`; `VALIDATION_FAILED` is not retryable (the
-user fixes the file and creates a new import). Cancel is allowed while
+`APPLY_ERROR` or `APPLY_REJECTED`; `VALIDATION_FAILED` and
+`PORTFOLIO_ARCHIVED` are not retryable (the user fixes the file, or the
+portfolio stays archived, and a new import is created). Cancel is allowed while
 `QUEUED` or validating, never during the apply stage. Retry or cancel in a
 state that does not allow it returns 409 `CONFLICT` and changes nothing
 (ADR-008 point 6).
@@ -837,8 +849,10 @@ returns and percentages are unrounded numbers in percentage points
 GET /api/v1/portfolios/:portfolioId/analytics/performance
 ```
 
-Query: `period` (`1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`) or a
-custom `from` / `to` (UTC dates, inclusive). They are mutually exclusive:
+Query: `period` (`1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`) or a
+custom `from` / `to` (UTC dates, inclusive). `1D` is not accepted here: the
+1D change comes from `MarketPrice` through the overview `dailyChange` (§11,
+ADR-004 point 5). They are mutually exclusive:
 sending both is 400 `VALIDATION_ERROR`; the default is `1M` (ADR-002 point
 10). Response fields (ADR-002 point 10; semantics in `16`):
 
@@ -1148,7 +1162,7 @@ Converting `percentChange` to `Decimal` before money arithmetic is
 Returns 201 `{ "data": scenario }` with `status = DRAFT`.
 
 Errors: 400 `VALIDATION_ERROR` (blank `name`, invalid or repeated changes;
-unknown assets are listed together, one `UNKNOWN_ASSET` detail each); 404
+unknown assets are listed together, one `UNKNOWN_ASSET` detail each, a domain code listed in §7); 404
 `NOT_FOUND`.
 
 ---
@@ -1646,8 +1660,10 @@ Payloads are specified in `08-realtime-spec.md`.
 
 **Status:** `Planned (B5)` (ADR-007 point 6)
 
-`MARKET_PRICE_UPDATED` on `market:{assetId}`. Prices are decimal strings
-(ADR-002), not numbers. Payload: `08-realtime-spec.md`.
+`MARKET_PRICE_UPDATED` on `market:{assetId}`. Prices and price changes are
+money in the ADR-002 wire format (`{ "amount": "<decimal string>",
+"currency": "USD" }`), never numbers; `changePercent` is a JSON number.
+Payload: `08-realtime-spec.md`.
 
 ---
 

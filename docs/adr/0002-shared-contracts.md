@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 **Date:** 2026-10-04
+**Amended:** 2026-10-08 (point 10, validation detail `code`, approved by the
+user from the T6.2 decision batch)
 **Implemented in:** roadmap block B0 (package and presenters), B6 (OpenAPI)
 
 ## Context
@@ -76,7 +78,10 @@ format shared by the API, the web app and the demo.
       B2. `TIMEOUT` is removed from `AppErrorCode` in B0.
     - **Validation details.** Each entry is `{ field, code, message }`.
       `code` is the Zod issue code (for example `too_small`) so the client
-      can localize it (ADR-010 point 8). Implemented in B0.
+      can localize it (ADR-010 point 8). Implemented in B0. (Amended
+      2026-10-08, approved by the user: `code` is either the Zod issue code
+      or a documented domain code such as `UNKNOWN_ASSET`. Domain codes are
+      listed in `07-api-spec.md` §7.)
     - **Server request timeout.** None in version 1. The API runs locally
       for one user, and the 15 s client timeout (NFR-017) covers the user
       experience.

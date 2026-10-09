@@ -391,16 +391,19 @@ ADR-008 point 11). A new event requires a new decision.
   "timestamp": "2026-08-29T14:30:00Z",
   "payload": {
     "assetId": "asset_001",
-    "price": "184.22",
-    "previousPrice": "182.10",
-    "change": "2.12",
-    "changePercent": "1.16",
-    "tickChange": "0.32"
+    "price": { "amount": "184.22", "currency": "USD" },
+    "previousPrice": { "amount": "182.10", "currency": "USD" },
+    "change": { "amount": "2.12", "currency": "USD" },
+    "changePercent": 1.16,
+    "tickChange": { "amount": "0.32", "currency": "USD" }
   }
 }
 ```
 
-- All numeric payload fields are decimal strings.
+- Money fields (`price`, `previousPrice`, `change`, `tickChange`) use the
+  ADR-002 wire format `{ "amount": "184.22", "currency": "USD" }`, where
+  `amount` is a decimal string. `changePercent` is a percentage and is a
+  JSON number, for display only (ADR-002 point 3).
 - `previousPrice`, `change` and `changePercent` match `MarketPrice`: they
   are measured against the last closed daily candle, never the previous
   tick (ADR-007 point 14).
@@ -479,7 +482,7 @@ Events on `jobs:{jobId}` for CSV import jobs:
 - Progress is the `{ processed, total }` field, not a percentage
   (`07-api-spec.md` §15).
 - `reason` is one of `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`,
-  `APPLY_REJECTED`.
+  `APPLY_REJECTED`, `PORTFOLIO_ARCHIVED` (ADR-008 point 6).
 - `CANCELLED` and `TIMED_OUT` emit no realtime event (ADR-007 point 15).
   The client learns both from the job's HTTP status
   (`GET /api/v1/jobs/:jobId`), and `TIMED_OUT` also from its `ERROR`
@@ -521,8 +524,8 @@ through `07-api-spec.md` §28.
     "alertId": "alert_001",
     "assetId": "asset_001",
     "condition": "ABOVE",
-    "threshold": "200.00",
-    "price": "200.15"
+    "threshold": { "amount": "200.00", "currency": "USD" },
+    "price": { "amount": "200.15", "currency": "USD" }
   }
 }
 ```
@@ -531,7 +534,8 @@ through `07-api-spec.md` §28.
   re-arms when it becomes false again; never on every tick (FR-053).
 - Each trigger also creates a `WARNING` notification and emits
   `NOTIFICATION_CREATED`.
-- `threshold` and `price` are decimal strings.
+- `threshold` and `price` are money in the ADR-002 wire format
+  (`{ "amount": "<decimal string>", "currency": "USD" }`).
 
 Decided in ADR-007 point 15 (2026-10-06):
 
@@ -774,7 +778,8 @@ There is no external market data provider. One engine, the pure package
 
 - Prices come from the seeded generator, never from an unseeded random
   source.
-- Prices are emitted as decimal strings (ADR-002).
+- Prices are emitted as money in the ADR-002 wire format (`amount` is a
+  decimal string).
 - The simulator does not model real markets; it reproduces application
   behavior (alerts, valuations, charts).
 - The price model (trend, volatility, noise) is a B5 implementation detail.

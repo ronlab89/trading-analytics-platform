@@ -951,7 +951,7 @@ The demo mode defined in `12-demo-mode-spec.md` should use the same conceptual l
 Code vs ADR:
 
 - The job states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3). "Started" is the move to `PROCESSING`. Progress is a field (`processed`, `total`), not a state, so "progressed" is not a lifecycle step.
-- A failed job carries a reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED` (ADR-008 points 5-6), and a retried job increments `attempt`. Job transition log entries carry the `jobId` (ADR-009 point 5); which of these fields they include is an open detail (B4).
+- A failed job carries a reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or `PORTFOLIO_ARCHIVED` (ADR-008 points 5-6), and a retried job increments `attempt`. Job transition log entries carry the `jobId` (ADR-009 point 5); which of these fields they include is an open detail (B4).
 - The demo runs the same use case in process, with simulated progress and injectable failures (ADR-008 point 13); its specifics wait for the frontend-stage demo ADR (ADR-010 point 6).
 
 ---
@@ -1822,7 +1822,7 @@ These events correlate through `jobId` (ADR-009 point 5), not a generic `operati
 Code vs ADR:
 
 - The six states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3). There is no `started` or `progress` state; the log names above describe transitions, and realtime event types (`JOB_*`) are a separate namespace (§8).
-- A `FAILED` entry carries its reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED` (ADR-008 points 5-6). Which other fields (`attempt`, `stage`, `userId`) each entry includes is an open detail (B4, §20).
+- A `FAILED` entry carries its reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or `PORTFOLIO_ARCHIVED` (ADR-008 points 5-6). Which other fields (`attempt`, `stage`, `userId`) each entry includes is an open detail (B4, §20).
 - The job input (the stored CSV content) is never logged (ADR-009 Deferred detail).
 - Under ADR-009 point 6, a job failure is not an HTTP error, so its level is not fixed there. Open detail (B4).
 

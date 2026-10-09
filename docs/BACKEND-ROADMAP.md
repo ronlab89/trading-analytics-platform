@@ -263,13 +263,15 @@ needs it. It is mostly pure domain work and depends only on B0.
 - Fees in the cost basis and in realized P/L (ADR-004 point 15), and the
   rejection of a `SELL` whose fees exceed its gross proceeds.
 - API: `GET /portfolios/:id/analytics/performance`,
-  `GET .../analytics/risk`, and `GET .../pulse` as its own endpoint
-  (`07-api-spec.md` §20-22). Add `performance` to the overview.
+  and `GET .../analytics/risk` (`07-api-spec.md` §20-22). Add `performance`
+  to the overview. The Pulse stays a field of the overview; a standalone
+  `GET .../pulse` endpoint is `Deferred` (`07-api-spec.md` §21).
 - Pulse uses the real portfolio volatility and drawdown instead of the
   largest-position proxy, with the thresholds of ADR-004 point 11.
 - Attribution over a range with `from`/`to` (`07-api-spec.md` §22).
 - The What Changed read model (ADR-010 point 1, FR-006), built in the
-  application layer.
+  application layer and returned as a field of the overview response, not as
+  its own endpoint (decided 2026-10-08; its shape is defined in B1).
 
 **Settled by the ADRs** (these were open decisions in the first version of
 this file):
@@ -443,7 +445,9 @@ shutdown sequence is tested; a developer can answer the questions in
   table. Job states `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`,
   `CANCELLED`, `TIMED_OUT`; progress (`processed`, `total`) is a field, not a
   state. The job's input is stored in its row and cleared for `COMPLETED`
-  jobs and for jobs that `FAILED` with `VALIDATION_FAILED`.
+  jobs and for jobs that `FAILED` with `VALIDATION_FAILED` or
+  `PORTFOLIO_ARCHIVED` (the five failure reasons are the complete set,
+  ADR-008 point 6).
 - The in-process runner backed by the table: on startup every job left in
   `PROCESSING` becomes `FAILED` with reason `INTERRUPTED` and every `QUEUED`
   job resumes. Timeout applies while `QUEUED` or validating, never during
@@ -485,7 +489,7 @@ separate worker; jobs survive a restart (points 4 and 5). Input limits
 | The timeout is measured per attempt from when the job was queued; startup handling of jobs past their deadline is defined | ADR-008 |
 | Retry requires `transaction:create`; cancel requires `transaction:create` on an owned job | ADR-008 |
 | The CSV transport for `POST .../imports` and its route-specific body limit (the global JSON limit is 100 kB) are set with the input limits | ADR-008 |
-| A portfolio archived while its import is `QUEUED` or `PROCESSING`: the job checks the status inside the apply `UnitOfWork` and fails with a non-retryable error, writing nothing | ADR-010 |
+| A portfolio archived while its import is `QUEUED` or `PROCESSING`: the job checks the status inside the apply `UnitOfWork` and fails with the non-retryable reason `PORTFOLIO_ARCHIVED`, writing nothing and clearing the stored input | ADR-008, ADR-010 |
 | The shutdown steps for background jobs are added to the shutdown sequence when the job runner exists | ADR-006 |
 
 **Done when:** state-transition tests including failure, timeout, retry and

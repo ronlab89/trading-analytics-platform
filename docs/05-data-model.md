@@ -1093,11 +1093,11 @@ ADR:
 | Type | CSV transaction import (point 1) |
 | Owner | the user and the target portfolio, checked for ownership (point 9) |
 | Status | `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT` (point 3) |
-| Failure reason | `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` — the complete set (point 6) |
+| Failure reason | `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED`, `PORTFOLIO_ARCHIVED` — the complete set (point 6, amended 2026-10-08) |
 | Stage | persisted (validate or apply), used by compare-and-set transitions (Deferred detail) |
 | Attempt | incremented on retry (point 6) |
 | Progress | `processed`, `total`; a field, not a state (point 3) |
-| Input | the CSV content, stored in the row at creation and bounded (points 4 and 10); kept while the job can still be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` (point 4, amended 2026-10-07) |
+| Input | the CSV content, stored in the row at creation and bounded (points 4 and 10); kept while the job can still be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED` (point 4, amended 2026-10-07 and 2026-10-08) |
 | Result | per-row validation report on `VALIDATION_FAILED` (point 2) |
 | Timing | queued time per attempt, for the timeout (Deferred detail) |
 

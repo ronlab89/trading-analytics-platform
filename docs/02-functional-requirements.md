@@ -233,7 +233,7 @@ The user switches between their portfolios.
 ## FR-006 — What Changed
 
 **Priority:** P1  
-**Status:** `Planned (B1)` (API); UI `Planned (FE)`. Significant value change, unusual volatility and allocation changes are `Deferred`.  
+**Status:** `Planned (B1)` (API, as a field of the overview response, decided 2026-10-08); UI `Planned (FE)`. Significant value change, unusual volatility and allocation changes are `Deferred`.  
 **Decisions:** ADR-010 point 1; ADR-004 point 10
 
 The dashboard reports what changed in the selected portfolio over the
@@ -241,6 +241,8 @@ selected period, derived only from real data.
 
 ### Acceptance criteria
 
+- What Changed is a field of the portfolio overview response, not its own
+  endpoint (`07-api-spec.md` §11); its shape is defined in B1.
 - The events cover the same period and boundaries as performance
   (`16-analytics-spec.md` §7-§8).
 - The largest contributor and the largest detractor come from range
@@ -259,7 +261,7 @@ selected period, derived only from real data.
 ## FR-007 — Portfolio Pulse
 
 **Priority:** P1  
-**Status:** `Implemented` (`portfolio-pulse.ts`, in the overview); portfolio volatility and drawdown inputs, boundary tests and `GET .../pulse` `Planned (B1)`; exposure and liquidity `Deferred` (`05-data-model.md` §29)  
+**Status:** `Implemented` (`portfolio-pulse.ts`, in the overview); portfolio volatility and drawdown inputs, and boundary tests `Planned (B1)`; a standalone `GET .../pulse` endpoint, exposure and liquidity `Deferred` (`05-data-model.md` §29)  
 **Decisions:** ADR-004 point 11; `16-analytics-spec.md` §15
 
 A deterministic, explainable classification of the portfolio state. No
@@ -635,8 +637,9 @@ the demo (ADR-001).
 **Decisions:** ADR-004 points 1-6, 14; `16-analytics-spec.md` §2-§8, §11
 
 The system reports, for a period, the time-weighted return (`twrPercent`)
-and the absolute P/L. Periods are `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`,
-`ALL` and a custom `from`/`to` range (ADR-004 point 5).
+and the absolute P/L. Periods are `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`
+and a custom `from`/`to` range (ADR-004 point 5); the `1D` change is the
+overview `dailyChange`, not a period of the performance endpoint.
 
 ### Acceptance criteria
 
@@ -1456,8 +1459,9 @@ without manual browser-storage manipulation.
 - (FE) A retried transaction creation reuses the original
   `Idempotency-Key`, so the retry never creates a second transaction
   (FR-082).
-- (B4) Job retry follows FR-081; a `VALIDATION_FAILED` import is not
-  retryable and the user creates a new import.
+- (B4) Job retry follows FR-081; a `VALIDATION_FAILED` or
+  `PORTFOLIO_ARCHIVED` import is not retryable and the user creates a new
+  import.
 
 ---
 
@@ -1553,6 +1557,9 @@ into a portfolio as a background job.
   transaction now makes a row oversell) ends `FAILED` with `APPLY_REJECTED`;
   a technical failure ends `FAILED` with `APPLY_ERROR`; in both cases no row
   is written.
+- Given a portfolio archived before the apply stage commits (ADR-010
+  point 5), then the job ends `FAILED` with `PORTFOLIO_ARCHIVED`, which is not
+  retryable, nothing is written and the stored input is cleared.
 - No partial import can exist.
 
 ---
@@ -1572,8 +1579,8 @@ into a portfolio as a background job.
 - `POST .../retry` is allowed for `TIMED_OUT`, `CANCELLED` and `FAILED` with
   `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`: the job returns to
   `QUEUED`, `attempt` increments, and validation reruns from the start. For
-  `VALIDATION_FAILED` or any other state, retry is rejected and the job is
-  unchanged.
+  `VALIDATION_FAILED`, `PORTFOLIO_ARCHIVED` or any other state, retry is
+  rejected and the job is unchanged.
 - `POST .../cancel` is allowed while `QUEUED` or validating; during apply it
   is rejected.
 - Retry and cancel require `transaction:create` on an owned job.

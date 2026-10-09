@@ -5,7 +5,9 @@
 **Amended:** 2026-10-07 (point 6, demo hosting deferrals, approved by the user
 from the `14-deployment-spec.md` reconciliation; point 10, statistics, approved
 by the user from the `15-implementation-plan.md` reconciliation; point 5,
-transactions are immutable, ADR-003 point 7, 2026-10-08)
+transactions are immutable, ADR-003 point 7, 2026-10-08; point 5, import
+into an archived portfolio fails with `PORTFOLIO_ARCHIVED`, ADR-008 point 6,
+approved by the user on 2026-10-08)
 **Implemented in:** roadmap block B0 (archived portfolios, language validation), B1 (What Changed); frontend stage (sorting, demo, translations)
 
 ## Context
@@ -55,7 +57,9 @@ requirements that no ADR or spec defines precisely enough to build or test:
    scenarios, alerts and CSV import jobs. Reads and the archive call itself
    are unchanged. (Amended 2026-10-08: transactions are immutable, ADR-003
    point 7; there is no change or delete operation for them, so only creation
-   applies.)
+   applies.) (Amended 2026-10-08, approved by the user: a CSV import job
+   whose portfolio is archived fails with the non-retryable reason
+   `PORTFOLIO_ARCHIVED`, ADR-008 point 6.)
    Unarchiving is `Deferred`.
 6. **Demo specifics.** Demo data layers, reset, simulated latency and
    scripted failures are decided in a frontend-stage ADR before the demo is
@@ -144,7 +148,7 @@ specified and tested in the listed block.
 
 | Item | Resolution | Block |
 |---|---|---|
-| A portfolio is archived while a CSV import job for it is `QUEUED` or `PROCESSING`. | The job checks the portfolio status inside the unit of work that applies rows (ADR-008). An archived portfolio fails the job with a non-retryable error, and no rows are written. | B4 |
+| A portfolio is archived while a CSV import job for it is `QUEUED` or `PROCESSING`. | The job checks the portfolio status inside the unit of work that applies rows (ADR-008). An archived portfolio fails the job with the non-retryable reason `PORTFOLIO_ARCHIVED` (ADR-008 point 6, amended 2026-10-08), and no rows are written. | B4 |
 | Two assets tie as the largest contributor or detractor. | The tie goes to the alphabetically first asset symbol, so the result is deterministic. | B1 |
 | A position opens and closes within the same period. | Both events are reported, in date order. | B1 |
 
