@@ -1923,9 +1923,9 @@ A production-like local mode should validate:
 | Validates | How | Status |
 |---|---|---|
 | Production builds | `node dist/index.js` from the compiled packages (ADR-006 point 3) | `Planned (B7)` |
-| Environment variables | `NODE_ENV=development`, `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` when they differ from the defaults (§11) | `Planned (B7)` |
+| Environment variables | `NODE_ENV=development` (not `production`, so the explicit `db:seed` step of the smoke test is not refused by the production guard; ADR-006 point 11), `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` when they differ from the defaults (§11) | `Planned (B7)` |
 | Containers | The `full` profile: PostgreSQL and the API, multi-stage and non-root (ADR-006 point 4) | `Planned (B7)` |
-| Migrations | `prisma migrate deploy` at startup (ADR-006 point 5) | `Planned (B7)` |
+| Migrations | `prisma migrate deploy`, run by the one-shot `migrate` service before the API starts (ADR-006 points 4 and 5) | `Planned (B7)` |
 | Health checks | The routes exist (§50); the container healthcheck is `Planned (B7)` (§51) | Routes `Implemented` |
 | Realtime | The local WebSocket server | `Planned (B5)` |
 | Startup and shutdown | Graceful shutdown is `Planned (B3)` (§16); the startup order is `Planned (B7)` (§15) | `Planned (B3)` and `Planned (B7)` |
@@ -2489,7 +2489,7 @@ For the local stack the first step is a rebuild, because no backup exists (§73)
 |---|---|---|
 | Restore database | Recreate it from the repository: start PostgreSQL and run `pnpm --filter @trading/database db:reset`, which reapplies every migration and reseeds | `Implemented` for development |
 | Run compatible application | The commit that matches the migrations; there are no down migrations, so recovery goes forward (ADR-006 point 6, §47) | `Reference` |
-| Validate migrations | `prisma migrate deploy` at startup in the full stack | `Planned (B7)` (ADR-006 point 5) |
+| Validate migrations | `prisma migrate deploy`, run by the one-shot `migrate` service before the API starts in the full stack | `Planned (B7)` (ADR-006 points 4 and 5) |
 | Start services | `docker compose --profile full up` | `Planned (B7)` |
 | Health checks | `GET /health` and `GET /health/ready` (§50) | `Implemented` |
 | Smoke tests | The B7 smoke test (§49) | `Planned (B7)` |
@@ -3213,7 +3213,7 @@ This communicates engineering maturity without unnecessary cloud complexity.
 |---|---|---|
 | 1. Start local services | `docker compose up -d` for PostgreSQL; the `full` profile adds the API | Default profile `Implemented`; `full` `Planned (B7)` |
 | 2. Show frontend, backend and PostgreSQL | Backend and PostgreSQL run today; the frontend is the web app | Backend and database `Implemented`; frontend `Planned (FE)` |
-| 3. Run or inspect migrations | `db:migrate`, `db:test:migrate` or `prisma migrate deploy`; at startup in the `full` profile (§18) | `Implemented`; at startup `Planned (B7)` |
+| 3. Run or inspect migrations | `db:migrate`, `db:test:migrate` or `prisma migrate deploy`; run by the `migrate` service in the `full` profile (§18) | `Implemented`; the `migrate` service `Planned (B7)` |
 | 4. Open health endpoint | `GET /health` and `GET /health/ready` (§50) | `Implemented` |
 | 5. Demonstrate realtime | Server events and the client states and reconnect | `Planned (B5)` and `Planned (FE)` |
 | 6. Trigger an observable operation | `X-Request-ID` on a response is `Implemented`; the log line with `requestId`, duration and result is B3 (`13-observability-spec.md` §65) | Mixed: `Implemented` and `Planned (B3)` |
@@ -3338,7 +3338,7 @@ The deployment strategy demonstrates:
 | Reproducibility | A clean checkout installs from the lockfile and builds; the full stack starts with one command | CI `Planned (B0)`; stack `Planned (B7)` |
 | Containerization | PostgreSQL in Compose today; a multi-stage, non-root API image in the `full` profile (ADR-006 point 4) | PostgreSQL `Implemented`; image `Planned (B7)` |
 | Environment separation | `development`, `test` and local `production`, plus the demo build (ADR-006 point 8) | `Implemented` for the first two; `production` `Planned (B7)`; demo `Planned (FE)` |
-| Database migrations | Prisma Migrate; `migrate deploy` at startup; forward-fix only (ADR-006 points 5 and 6) | Migrations `Implemented`; startup `Planned (B7)` |
+| Database migrations | Prisma Migrate; `migrate deploy` in the one-shot `migrate` service; forward-fix only (ADR-006 points 5 and 6) | Migrations `Implemented`; the `migrate` service `Planned (B7)` |
 | Secure configuration | Validated environment, secrets outside source control, no secret in the demo build (§12, §13, ADR-006 point 7) | `Implemented` for the API; demo `Planned (FE)` |
 | CI | One workflow on pushes and pull requests to `develop` and `main`, also running `pnpm docs:check`, no continuous deployment (ADR-006 points 10 and 11) | `Planned (B0)` |
 | Health checks | `GET /health`, `GET /health/ready`, the container healthcheck (§50, §51) | Routes `Implemented`; container `Planned (B7)` |
