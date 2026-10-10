@@ -139,8 +139,7 @@ Codes are stable within `v1`; adding a code is an additive change.
 | `NOT_FOUND` | 404 | Unknown route; missing resource or another user's resource (never 403, ADR-005 point 12) |
 | `CONFLICT` | 409 | Conflicting state changes |
 | `RATE_LIMITED` | 429 | Rate limiters (§9) |
-| `TIMEOUT` | — | Declared, not raised; removed from `AppErrorCode` `Planned (B0)` (ADR-002 point 10) |
-| `DEPENDENCY_ERROR` | 503 `Planned (B0)` | Declared, not raised; database unreachable (ADR-002 point 10) |
+| `DEPENDENCY_ERROR` | 503 | Database unreachable (Prisma `PrismaClientInitializationError`, P1001, P1002, P1008, P1017); fixed message, no connection details in the body (ADR-002 point 10) |
 | `INTERNAL_ERROR` | 500 | Unexpected errors |
 
 `FORBIDDEN` for a missing permission on an own resource is `Planned (B2)`
@@ -164,6 +163,7 @@ per issue. `field` is the dot-joined path:
     "details": [
       {
         "field": "quantity",
+        "code": "too_small",
         "message": "Quantity must be greater than zero."
       }
     ]
@@ -172,12 +172,11 @@ per issue. `field` is the dot-joined path:
 ```
 
 Invalid query parameters use the message
-`The request contains invalid query parameters.`. Zod issues carry no
-`code` yet; service-level details such as `UNKNOWN_ASSET` do (§25).
-`Planned (B0)` (ADR-002 point 10, amended 2026-10-08): each entry is
-`{ field, code, message }`, where `code` is either the Zod issue code (for
-example `too_small`) or a documented domain code, so the client can localize
-it (ADR-010 point 8). Domain codes:
+`The request contains invalid query parameters.`. Each entry is
+`{ field, code, message }`, where `code` is the Zod issue code (for example
+`too_small`; `custom` for a `refine` check) or a documented domain code, so
+the client can localize it (ADR-010 point 8). Implemented in B0.4
+(ADR-002 point 10, amended 2026-10-08). Domain codes:
 
 | Code | Raised when |
 | --- | --- |

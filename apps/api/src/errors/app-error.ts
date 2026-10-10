@@ -1,19 +1,8 @@
-export type AppErrorCode =
-  | "VALIDATION_ERROR"
-  | "UNAUTHORIZED"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "CONFLICT"
-  | "RATE_LIMITED"
-  | "TIMEOUT"
-  | "DEPENDENCY_ERROR"
-  | "INTERNAL_ERROR";
+import type { ErrorCode, ErrorDetail } from "@trading/contracts";
 
-export interface AppErrorDetail {
-  field?: string;
-  code?: string;
-  message: string;
-}
+export type AppErrorCode = ErrorCode;
+
+export type AppErrorDetail = ErrorDetail;
 
 /**
  * Base application error. Thrown by controllers/services and translated

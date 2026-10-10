@@ -52,6 +52,7 @@ export function validate(schema: ZodType, source: ValidationSource) {
           400,
           parsed.error.issues.map((issue) => ({
             field: issue.path.join("."),
+            code: issue.code,
             message: issue.message,
           })),
         ),

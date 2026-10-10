@@ -2,6 +2,7 @@ export * from "./alert.schema.js";
 export * from "./analytics.schema.js";
 export * from "./asset.schema.js";
 export * from "./auth.schema.js";
+export * from "./error.schema.js";
 export * from "./decision.schema.js";
 export * from "./market.schema.js";
 export * from "./notification.schema.js";
