@@ -53,14 +53,24 @@ export interface TestAssetHandle {
 }
 
 /** Creates a disposable asset with a unique symbol, for transaction tests. */
-export async function createTestAsset(symbolPrefix = "TST"): Promise<TestAssetHandle> {
+export async function createTestAsset(
+  symbolPrefix = "TST",
+  overrides: {
+    name?: string;
+    assetType?: "STOCK" | "ETF" | "CRYPTO" | "FOREX";
+    currency?: string;
+    exchange?: string;
+    status?: "ACTIVE" | "INACTIVE";
+  } = {},
+): Promise<TestAssetHandle> {
   const asset = await prisma.asset.create({
     data: {
       symbol: `${symbolPrefix}-${crypto.randomUUID().slice(0, 8)}`,
-      name: "Integration Test Asset",
-      assetType: "STOCK",
-      currency: "USD",
-      exchange: "MOCK",
+      name: overrides.name ?? "Integration Test Asset",
+      assetType: overrides.assetType ?? "STOCK",
+      currency: overrides.currency ?? "USD",
+      exchange: overrides.exchange ?? "MOCK",
+      ...(overrides.status !== undefined ? { status: overrides.status } : {}),
     },
   });
   return { id: asset.id };
@@ -165,6 +175,50 @@ export async function createTestPosition(
     },
   });
   return { id: row.id };
+}
+
+/**
+ * Creates the latest-quote (MarketPrice) row for an asset (USD). Both
+ * MarketPrice and HistoricalPrice cascade-delete with their asset, so
+ * `cleanupTestData` needs no extra step for these rows.
+ */
+export async function createTestMarketPrice(
+  assetId: string,
+  overrides: { price?: number; previousPrice?: number; timestamp?: Date } = {},
+): Promise<void> {
+  const price = overrides.price ?? 100;
+  const previousPrice = overrides.previousPrice ?? 100;
+  await prisma.marketPrice.create({
+    data: {
+      assetId,
+      price,
+      currency: "USD",
+      previousPrice,
+      change: price - previousPrice,
+      changePercent: previousPrice === 0 ? 0 : ((price - previousPrice) / previousPrice) * 100,
+      timestamp: overrides.timestamp ?? new Date("2026-06-01T00:00:00Z"),
+    },
+  });
+}
+
+/** Creates one daily candle (HistoricalPrice, USD) for an asset. */
+export async function createTestHistoricalPrice(
+  assetId: string,
+  timestamp: Date,
+  overrides: { open?: number; high?: number; low?: number; close?: number; volume?: number } = {},
+): Promise<void> {
+  await prisma.historicalPrice.create({
+    data: {
+      assetId,
+      timestamp,
+      currency: "USD",
+      open: overrides.open ?? 100,
+      high: overrides.high ?? 105,
+      low: overrides.low ?? 95,
+      close: overrides.close ?? 102,
+      volume: overrides.volume ?? 1000,
+    },
+  });
 }
 
 /**
