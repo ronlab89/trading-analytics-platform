@@ -38,7 +38,11 @@ jobs:
     # keeps the variables already in the environment, so no file is generated.
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trading_test?schema=public
+      # Runtime role (DML only) for the API and the test suites; the migration
+      # role (postgres) owns the schema and is used by `migrate deploy` only.
+      DATABASE_URL: postgresql://trading_runtime:ci_runtime_password@localhost:5432/trading_test?schema=public
+      MIGRATION_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trading_test?schema=public
+      RUNTIME_DB_PASSWORD: ci_runtime_password
       JWT_SECRET: test_only_secret_at_least_32_characters_long
       JWT_EXPIRES_IN_SECONDS: "900"
       CORS_ORIGIN: http://localhost:5173
@@ -61,5 +65,6 @@ jobs:
       - run: pnpm docs:check
       - run: pnpm test:scripts
       - run: pnpm --filter @trading/database db:test:migrate
+      - run: pnpm --filter @trading/database db:test:runtime-password
       - run: pnpm test
       - run: pnpm build
