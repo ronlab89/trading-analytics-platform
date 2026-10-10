@@ -19,10 +19,10 @@ docs/15-implementation-plan.md
 
 ## Tasks
 
-- [ ] T1 `.nvmrc` with a confirmed LTS major; align `engines.node`, `@types/node` and `typescript` across packages.
-- [ ] T2 `ci.yml` on push/PR to `develop` and `main`: frozen-lockfile install, typecheck, lint, format:check, docs:check, test (PostgreSQL service container, test vars in job `env`, runtime and migration roles of ADR-005 point 13), build. No deploy, no coverage threshold.
+- [x] T1 `.nvmrc` with a confirmed LTS major; align `engines.node`, `@types/node` and `typescript` across packages.
+- [x] T2 `ci.yml` on push/PR to `develop` and `main`: frozen-lockfile install, typecheck, lint, format:check, docs:check, test (PostgreSQL service container, test vars in job `env`), build. No deploy, no coverage threshold. The ADR-005 point 13 runtime and migration roles for the CI database move to B0.2.
 - [x] T3 Harden `scripts/check-docs.mjs` (T1.5): one shared fence-state helper plus fixture-based tests.
-- [ ] T4 Update the status lines in the roadmap, PROGRESS and plan (`Planned (B0)` to `Implemented` for these items only).
+- [x] T4 Update the status lines in the roadmap, PROGRESS and plan (`Planned (B0)` to `Implemented` for these items only). Applied across the SDD set after the first green CI run; the CI database roles (ADR-005 point 13) stay `Planned (B0)` for B0.2.
 
 ## Done when
 

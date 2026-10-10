@@ -5,7 +5,8 @@
 > reconciled with them and with the code, slice by slice. The build order is
 > backend-first: blocks B0 to B7 close the backend, then the frontend stage
 > follows (`docs/BACKEND-ROADMAP.md`, `docs/15-implementation-plan.md` §4.1).
-> The next block is **B0**.
+> B0 is in progress: B0.1 (CI, `.nvmrc`, version alignment, `check-docs`
+> hardening) is done and B0.2 is next.
 
 **Last updated:** 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
@@ -37,13 +38,15 @@ block. The blocks are defined in `docs/BACKEND-ROADMAP.md`:
 - B7: deployment readiness and hardening
 
 **Where the project stands:** the backend API surface exists (§2), but the
-backend is not done. **The next block is B0**: the application layer
+backend is not done. **The current block is B0**: the application layer
 (`packages/application`), shared contracts (`packages/contracts`), minimal
 CI, the `Clock` port, route tests, chronological transaction validation and
-the position-recalculation race. **No code for B0 has started**;
-`packages/application` does not exist, `packages/contracts` and
-`packages/config` hold only a `.gitkeep`, and `.github/` holds only the pull
-request template.
+the position-recalculation race. **B0.1 is done** (`Implemented`): the minimal
+CI (`.github/workflows/ci.yml`, first run green), `.nvmrc` (Node 24),
+`engines.node` `>=24.0.0`, aligned `@types/node` and `typescript` versions, and
+the hardened `scripts/check-docs.mjs` (task T1.5). **B0.2 is next.** The rest
+of B0 has not started; `packages/application` does not exist, and
+`packages/contracts` and `packages/config` hold only a `.gitkeep`.
 
 **SDD reconciliation:** the spec set is `docs/00` to `docs/16` plus ADRs
 001-010 (`docs/adr/`). Phases 0-4 of `odd/tasks/sdd-source-of-truth.md` are
@@ -437,7 +440,7 @@ create users directly because registration is out of scope (ADR-005 point
 10: users come from the seed). `tokenFor` signs the access-token claims of
 today; B2 changes the token shape (ADR-005) and the helper with it. In CI
 the test variables come from the job `env`, not from `.env.test.local`
-(B0, ADR-006).
+(`Implemented`, B0.1, ADR-006).
 
 ### 3.5 Step C — Market Data (final block of that stage)
 
@@ -893,8 +896,8 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B0, once the phase 5 pull request (`docs/sdd-operations`) is merged
-into `develop`. Phase 5 itself still has the reconciliation of
+**Next:** B0.2 (the CI test database roles, seed/reset production guard,
+`CORS_ORIGIN` validation and login timing); B0.1 is done. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in
@@ -902,7 +905,7 @@ this order: CI and configuration safety, then the route tests, then the
 `Clock` port and the layering refactor, then the contracts, then the
 transaction rules. Each block starts by re-verifying the roadmap evidence
 against the code and taking any real open question to the user (roadmap
-section 8). No code for B0 has started (§1).
+section 8). Only B0.1 is built (§1).
 
 After B0, the blocks run in the roadmap order (B1 is the only P0 product
 requirement still missing, FR-025; B2 first needs the role model migrated to
@@ -922,10 +925,10 @@ unassigned.
   (ADR-005 point 10). No route
   currently needs role restriction, so it stays out until that block.
 - **CI (GitHub Actions)** — adopted, not deferred: ADR-006 points 10 and 11
-  define a minimal CI that is built in B0. It earlier read as decided
-  against, because the backend runs locally only; the ADR changed that. No
-  continuous deployment and no coverage threshold. `.github/` holds only the
-  pull request template today.
+  define a minimal CI, `Implemented` in B0.1 (`.github/workflows/ci.yml`). It
+  earlier read as decided against, because the backend runs locally only; the
+  ADR changed that. No continuous deployment and no coverage threshold. The CI
+  test roles of ADR-005 point 13 stay `Planned (B0)`.
 - **`apps/api` production build path is untested/likely broken** — B7
   (ADR-006 point 3). `apps/api/package.json` has `"start": "dotenv -e
   ../../.env -- node dist/index.js"`, but `@trading/domain`,

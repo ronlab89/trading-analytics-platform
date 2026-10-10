@@ -14,8 +14,8 @@ specification: the SDD (`00`-`16`) stays the source of truth for behavior,
 left, in what order, and when each block counts as closed.
 
 **Last updated:** 2026-10-08 (reconciled with ADR-001 to ADR-010)
-**Status:** no block is started. The minimal CI and B0 come first, then B1
-to B7.
+**Status:** B0 is in progress (B0.1 done: minimal CI, `.nvmrc`, version
+alignment, `check-docs` hardening). B0 comes first, then B1 to B7.
 **Decision behind it:** the user chose to finish the backend completely
 before starting the frontend. This is a deliberate override of the phase
 order in `15-implementation-plan.md` §4, which alternated backend and
@@ -45,14 +45,15 @@ market, overview, and the health routes (`GET /health`,
 `GET /health/ready`). B0 adds all of them except the overview (ADR-001
 point 8); the overview test is folded into B1.
 
-Checked on 2026-10-03 and re-verified on 2026-10-08, **absent**:
+Checked on 2026-10-03 and re-verified on 2026-10-08, **absent** (except the two
+rows marked `Implemented` by B0.1):
 
 | Area | Evidence |
 |---|---|
-| Minimal CI | `.github/` holds only `PULL_REQUEST_TEMPLATE.md`; no workflow (ADR-006 points 10-11, B0) |
+| Minimal CI | `Implemented` (B0.1): `.github/workflows/ci.yml` runs the verify job on pushes and pull requests; the CI test roles of ADR-005 point 13 stay `Planned (B0)` (ADR-006 points 10-11) |
 | Application layer and contracts | no `packages/application`; `packages/contracts` and `packages/config` hold only `.gitkeep` (ADR-001, ADR-002, B0); services in `apps/api/src/services` import `@trading/database` directly |
 | `Clock` port | `validateNewTransaction` calls `new Date()` (`packages/domain/src/entities/transaction.ts`) |
-| Runtime version pin | no `.nvmrc`; `engines.node` is `>=22.0.0` (ADR-006 point 13, B0) |
+| Runtime version pin | `Implemented` (B0.1): `.nvmrc` pins Node 24 (LTS) and `engines.node` is `>=24.0.0` (ADR-006 point 13) |
 | Configuration safety | `CORS_ORIGIN` is split on commas with no origin check (`config/env.ts`); the seed has no `NODE_ENV=production` guard (ADR-006 point 13, B0) |
 | Login timing equalization | `auth.service.ts` returns before `bcrypt.compare` when the user or credential is missing (ADR-005 point 13, B0) |
 | Route-parameter validation | `validate` accepts only `body` and `query` (ADR-002 point 10, B0) |
@@ -681,7 +682,7 @@ the §33 checklist.
 |---|---|
 | Overview integration test for `dailyChange` and `pulse` | B1 |
 | `tokenFor` migration in older tests | B2 *(unverified)* |
-| Alignment of the `typescript` and `@types/node` versions across packages | B0 |
+| Alignment of the `typescript` and `@types/node` versions across packages | B0 (`Implemented` in B0.1) |
 | Event ordering tiebreaker beyond `timestamp` | B5 (events created in bursts) |
 | `ScenarioRepository.updateChanges` has no production caller | decide when the demo adapters are written |
 | Wildcard escaping in the assets search | B7 |
@@ -775,7 +776,7 @@ must exist before starting them:
 
 | Block | Status |
 |---|---|
-| B0 Application layer, shared contracts and minimal CI | Not started |
+| B0 Application layer, shared contracts and minimal CI | In progress (B0.1 done) |
 | B1 Performance and risk analytics | Not started |
 | B2 Auth and RBAC | Not started |
 | B3 Observability foundation | Not started |

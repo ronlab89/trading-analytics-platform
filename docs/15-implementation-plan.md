@@ -103,7 +103,7 @@ Code vs ADR: parallel work between the backend and the frontend does not apply i
 
 The phase list in §4 was written as one sequence that alternates backend and frontend work. Development does not follow it. The order is:
 
-1. **Minimal CI** (ADR-006 point 11), `Planned (B0)`.
+1. **Minimal CI** (ADR-006 point 11), `Implemented`.
 2. **Backend blocks B0 to B7**, in this order and defined in `BACKEND-ROADMAP.md`:
    - B0: application layer and shared contracts (ADR-001, ADR-002).
    - B1: portfolio performance and risk analytics (ADR-004).
@@ -136,7 +136,7 @@ Code vs ADR:
 
 | Phase | Backend | Frontend |
 | --- | --- | --- |
-| 0 Repository foundation | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Planned (B0)` | none |
+| 0 Repository foundation | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Implemented` | none |
 | 1 Product and domain foundation | `Implemented` (`packages/domain`); analytics additions `Planned (B1)`; application layer and `@trading/contracts` `Planned (B0)` | none |
 | 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Planned (B4)`; runtime database role `Planned (B0)` | none |
 | 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Planned (B6)` | none |
@@ -150,7 +150,7 @@ Code vs ADR:
 | 11 Demo Mode | `@trading/market-sim` `Planned (B5)` | `Planned (FE4)` |
 | 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
 | 13 Observability | logger and security events `Planned (B3)`; metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
-| 14 Deployment | local full stack `Planned (B7)`; CI `Planned (B0)` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
+| 14 Deployment | local full stack `Planned (B7)`; CI `Implemented` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
 | 15 UX, accessibility and performance refinement | B5 (server-side performance measurement after realtime exists, §32) | `Planned (FE5)` |
 | 16 Portfolio case study | none | `Planned (FE6)` |
 
@@ -192,7 +192,7 @@ Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides t
 | Repository structure: pnpm workspace over `apps/*` and `packages/*` (`pnpm-workspace.yaml`) | `Implemented`; `packages/contracts`, `packages/config` and `docker/` hold only `.gitkeep`, and `apps/web` holds only the wireframe | none |
 | Package manager and committed lockfile (`packageManager` `pnpm@12.3.4`, `pnpm-lock.yaml`) | `Implemented` | none |
 | TypeScript (`tsconfig.base.json`, root `tsconfig.json` with references to `packages/domain`, `packages/database` and `apps/api`, `pnpm typecheck`) | `Implemented` | none |
-| Alignment of the `typescript` and `@types/node` versions across packages | Open (the versions differ, see Code vs ADR) | B0 |
+| Alignment of the `typescript` and `@types/node` versions across packages | `Implemented` (B0.1; `typescript` is `^6.0.3` everywhere and `@types/node` is `^24`) | none |
 | ESLint (`eslint.config.js`, `pnpm lint`) | `Implemented` | none |
 | ESLint import-boundary rule for the application layer (ADR-001 point 1) | `Planned (B0)`; the config holds only a commented placeholder | B0 |
 | Prettier (`.prettierrc.json`, `pnpm format`, `pnpm format:check`) | `Implemented` | none |
@@ -201,21 +201,21 @@ Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides t
 | Basic commands documented | `Implemented` in `README.md` (setup, run the API, local database; quality commands by reference) and `CONTRIBUTING.md` §9 (setup and quality commands) | none |
 | Commit workflow: Conventional Commits (`CONTRIBUTING.md` §6) and a Husky pre-commit hook running `lint-staged` | `Implemented` (`.husky/pre-commit`, `lint-staged` in the root `package.json`) | none |
 | Pull request template (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist asks for `pnpm typecheck`, `lint`, `format:check`, `build`, `test` and `docs:check` | none |
-| Minimal CI workflow: install with the lockfile, typecheck, lint, `format:check`, `docs:check`, `build`, and the domain, database and API suites against a PostgreSQL service container (ADR-006 points 10 and 11) | `Planned (B0)` | B0 |
-| Test variables supplied through the job `env`, not a generated `.env.test.local` (ADR-006 point 11) | `Planned (B0)` | B0 |
-| `.nvmrc` as the single Node.js version source, reused by CI and the Dockerfile (ADR-006 point 13) | `Planned (B0)`; `engines.node` is `>=22.0.0` today | B0 |
+| Minimal CI workflow: install with the lockfile, typecheck, lint, `format:check`, `docs:check`, `build`, and the domain, database and API suites against a PostgreSQL service container (ADR-006 points 10 and 11) | `Implemented` (`.github/workflows/ci.yml`); the CI test database with the runtime and migration roles of ADR-005 point 13 `Planned (B0)`, since CI connects with the container superuser | B0 |
+| Test variables supplied through the job `env`, not a generated `.env.test.local` (ADR-006 point 11) | `Implemented` | none |
+| `.nvmrc` as the single Node.js version source, reused by CI and the Dockerfile (ADR-006 point 13) | `Implemented` (`.nvmrc` pins Node 24 and `engines.node` is `>=24.0.0`); reuse by the Dockerfile `Planned (B7)` | B7 |
 | Docker Compose with PostgreSQL in the default profile (`docker-compose.yml`, `postgres:18`) | `Implemented`; detail in §7 | none |
 | API Dockerfile and the Compose `full` profile (ADR-006 point 4) | `Planned (B7)`; detail in §7 | B7 |
 
 Code vs ADR:
 
-- No workflow exists. `.github/` holds only `PULL_REQUEST_TEMPLATE.md`. The acceptance criteria below (clean install, typecheck, lint, formatting) are checked by hand today. The minimal CI automates them and comes first in the build order (§4.1).
-- ADR-006 point 10 names install, typecheck, lint and the three suites. Point 11 adds `pnpm format:check` and `pnpm build`, and its additions of 2026-10-07 add `pnpm docs:check`, because `docs/` is in `.prettierignore` and `format:check` never covers the SDD. Hardening `scripts/check-docs.mjs` (task T1.5: one shared fence-state helper and fixture-based tests) is not decided in an ADR and stays open for B0.
-- There is no `.nvmrc`. The exact Node.js major is chosen in B0 after confirming it is an LTS release (ADR-006 point 13), and `engines.node` and `@types/node` are aligned to it.
-- The `test` scripts of `apps/api` and `packages/database` load `../../.env.test.local` through `dotenv-cli`. That file is git-ignored, so a clean checkout does not have it; CI supplies the variables through the job `env` instead (`14-deployment-spec.md` §43).
+- The minimal CI workflow exists (`.github/workflows/ci.yml`, `Implemented` in B0.1) next to `PULL_REQUEST_TEMPLATE.md`. It automates the acceptance criteria below (clean install, typecheck, lint, formatting), and its first green run proves the clean-checkout path. It comes first in the build order (§4.1).
+- ADR-006 point 10 names install, typecheck, lint and the three suites. Point 11 adds `pnpm format:check` and `pnpm build`, and its additions of 2026-10-07 add `pnpm docs:check`, because `docs/` is in `.prettierignore` and `format:check` never covers the SDD. Hardening `scripts/check-docs.mjs` (task T1.5: one shared fence-state helper and fixture-based tests) is not decided in an ADR and is `Implemented` (B0.1): `pnpm test:scripts` runs its 31 fixture-based tests as a CI step.
+- `.nvmrc` exists and pins Node 24, the current LTS release (ADR-006 point 13), and `engines.node` and `@types/node` are aligned to it (`Implemented`, B0.1).
+- The `test` scripts of `apps/api` and `packages/database` load `../../.env.test.local` through `dotenv-cli`. That file is git-ignored, so a clean checkout does not have it; CI supplies the variables through the job `env` instead, and `dotenv-cli` skips the missing file and keeps the variables already in the environment (`14-deployment-spec.md` §43).
 - "No secrets exist in Git" holds: the only tracked environment files are `.env.example` and `.env.test.example`. The Compose fallback password (`trading_dev_password`) differs from the `.env.example` placeholder; both are local-only values (`14-deployment-spec.md` §6).
 - `.env.example` opens with a stale Spanish note and lacks `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3) and `APP_MODE` (FE). Each variable is added by the block that introduces it (`14-deployment-spec.md` §11).
-- `typescript` is `^6.0.3` in the root and in `apps/api` but `^5.7.3` in `packages/domain` and `packages/database`; `@types/node` is `^22` in `apps/api` and `^26` in the root and in `packages/database`.
+- `typescript` is `^6.0.3` in every package, and `@types/node` is `^24` in the root, `apps/api` and `packages/database` (`packages/domain` has none) (`Implemented`, B0.1).
 - The Husky hook runs `lint-staged` only (ESLint and Prettier on staged files). It runs no typecheck or tests; CI is the gate for those.
 
 ### Objective
@@ -1071,7 +1071,7 @@ The same product/application behavior should remain conceptually shared with the
 | Token tests: expired token and wrong signature return 401, with refresh, logout and role enforcement tests (`10` §29); no test covers an expired or wrongly signed token today | `Planned (B2)` | B2 |
 | Redaction and event-name unit tests; an integration test that a request's `requestId` appears in its log entries (ADR-009 point 13) | `Planned (B3)` | B3 |
 | Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | `Planned (B1)` to `Planned (B6)`, per block | B1 to B6 |
-| Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Planned (B0)` | B0 |
+| Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Implemented`; the CI test database with the ADR-005 point 13 roles `Planned (B0)` | B0 |
 | Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the runner and React Testing Library `Deferred` to the frontend-stage ADR | FE5 |
 | Realtime client tests (connect, disconnect, reconnect, event processing) | Server `Planned (B5)`; client `Planned (FE3)` with the feature; component and E2E checks `Planned (FE5)` | B5, FE3, FE5 |
 | Demo tests: simulation determinism of the shared engine, and the demo flows with the CSV import failure | Engine `Planned (B5)`; demo flows `Planned (FE4)` | B5, FE4 |
@@ -1088,7 +1088,7 @@ Code vs ADR:
 - Original layer "Component" and "E2E" have no tooling decision. ADR-006 point 11 leaves the runner, React Testing Library and Playwright to the frontend-stage ADR, and says component, E2E and accessibility checks join the CI workflow once frontend code exists. They do not block B0 to B7.
 - ADR-006 point 11 sets no coverage threshold in version 1. The quality bar is the named mandatory tests (application services with in-memory fakes, contract tests against the schemas), not a percentage.
 - "Demo: persistence" and "reset" are `Deferred` (ADR-010 point 6, `10` §34); only the CSV import failure and the real validation rules are decided demo failures.
-- `.github/` holds only `PULL_REQUEST_TEMPLATE.md`; no workflow exists today, and the Husky pre-commit hook runs `lint-staged` only.
+- `.github/` holds `PULL_REQUEST_TEMPLATE.md` and the CI workflow `workflows/ci.yml`; the Husky pre-commit hook still runs `lint-staged` only.
 
 ### Objective
 
@@ -1231,8 +1231,8 @@ without requiring a paid external monitoring service.
 | Deliverable | Status | Block |
 | --- | --- | --- |
 | Targets: a local full stack for demonstrations and a public static demo of `apps/web`; no public backend (ADR-006 points 1 and 2) | `Reference` | none |
-| Minimal CI workflow (see §17), with no continuous deployment (ADR-006 points 10 and 11) | `Planned (B0)` | B0 |
-| Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | `Planned (B0)` | B0 |
+| Minimal CI workflow (see §17), with no continuous deployment (ADR-006 points 10 and 11) | `Implemented` | none |
+| Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | seed guard and `CORS_ORIGIN` validation `Planned (B0)`; `.nvmrc` reused by CI `Implemented`, by the Dockerfile `Planned (B7)` | B0, B7 |
 | Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Planned (B7)` | B7 |
 | Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Planned (B7)` | B7 |
 | Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT` and `JWT_EXPIRES_IN_SECONDS`; it does not read `APP_MODE`, `LOG_LEVEL` or `SLOW_REQUEST_THRESHOLD_MS` and does not validate `DATABASE_URL`; the rest is `Planned (B3)` (logging variables), `Planned (B7)` (`DATABASE_URL`) and `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
@@ -1252,7 +1252,7 @@ without requiring a paid external monitoring service.
 Code vs ADR:
 
 - The production build does not run today: `@trading/domain` and `@trading/database` set `main` to `./src/index.ts`, and the domain uses extensionless relative imports that `node dist/index.js` cannot resolve (ADR-006 Context). Fixing it is the B7 build item. `pnpm build` runs `pnpm -r build`; CI runs it from B0 to prove the packages compile, and running the built API stays in B7.
-- `.github/` holds only `PULL_REQUEST_TEMPLATE.md`, `docker/` holds only `.gitkeep`, there is no `apps/api/Dockerfile`, no `.nvmrc`, and `docker-compose.yml` defines no `full` profile. The seed wipes the database with no production guard.
+- `.github/` holds `PULL_REQUEST_TEMPLATE.md` and `workflows/ci.yml`, `.nvmrc` pins Node 24, `docker/` holds only `.gitkeep`, there is no `apps/api/Dockerfile`, and `docker-compose.yml` defines no `full` profile. The seed wipes the database with no production guard.
 - The original "production frontend build" is split in two. The demo build is the only public frontend artifact (`Planned (FE4)`). The real-mode web app is not built for production in version 1 and runs on the Vite dev server (ADR-006 point 8).
 - The original "deployment documentation" assumed a hosted target. It now documents only the local full stack, and states that backups are not applicable to a local environment (ADR-006 point 9).
 - Graceful shutdown is B3, not B7; `BACKEND-ROADMAP.md` now says B3 (T5.3, 2026-10-08). Shutdown steps for background jobs and realtime connections join the sequence in B4 and B5 (ADR-006 Deferred detail).
@@ -1497,7 +1497,7 @@ How the original nodes map to the blocks:
 
 | Original node | Where it lands | Status |
 | --- | --- | --- |
-| Repository | Phase 0 `Implemented`; the minimal CI is the new first step | `Implemented`; CI `Planned (B0)` |
+| Repository | Phase 0 `Implemented`; the minimal CI is the new first step | `Implemented`; CI `Implemented` |
 | Domain | Phase 1 `Implemented` in `packages/domain`; analytics additions in B1; application layer and contracts in B0 | `Implemented`; `Planned (B0)`, `Planned (B1)` |
 | Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented`; `Planned (B0)`, `Planned (B4)` |
 | Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Planned (B6)` |
@@ -2083,7 +2083,7 @@ unless measured and documented.
 | Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Planned (B4)`; WebSocket limits `Planned (B5)` | B4, B5 |
 | Error exposure | `Implemented`; redaction in logs `Planned (B3)` | B3 |
 | File handling | CSV import `Planned (B4)`; no file is accepted today | B4 |
-| Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Planned (B0)`; audit `Planned (B7)` | B0, B7 |
+| Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; audit `Planned (B7)` | B7 |
 | Security headers | `helmet` `Implemented`; header test `Planned (B7)` | B7 |
 | Runtime database role | `Planned (B0)` | B0 |
 
@@ -2267,8 +2267,8 @@ job ID
 
 | Step | Status | Block |
 | --- | --- | --- |
-| Checkout and install with the lockfile, in CI on a clean runner | `Planned (B0)` | B0 |
-| Build: `pnpm build` compiles every package; running the built API is a separate step | Compile in CI `Planned (B0)`; `node dist/index.js` `Planned (B7)` | B0, B7 |
+| Checkout and install with the lockfile, in CI on a clean runner | `Implemented` | none |
+| Build: `pnpm build` compiles every package; running the built API is a separate step | Compile in CI `Implemented`; `node dist/index.js` `Planned (B7)` | B7 |
 | Database: PostgreSQL through Docker Compose | `Implemented` (default profile); `full` profile `Planned (B7)` | B7 |
 | Migrate: `prisma migrate deploy` through the one-shot `migrate` service | `Planned (B7)` | B7 |
 | Seed: an explicit development command, never automatic, refusing to run when `NODE_ENV=production` | Command `Implemented`; production guard `Planned (B0)` | B0 |
@@ -2276,13 +2276,13 @@ job ID
 | Health: container healthcheck on `GET /health/ready` | Endpoint `Implemented`; healthcheck `Planned (B7)` | B7 |
 | Smoke: one script after `docker compose --profile full up`, with no frontend step | `Planned (B7)` | B7 |
 | Demo build from a clean checkout (static, no secrets) | `Planned (FE4)` | FE4 |
-| No hidden developer-machine state: one `.nvmrc`, environment values supplied through the CI job `env` and not generated | `Planned (B0)` | B0 |
+| No hidden developer-machine state: one `.nvmrc`, environment values supplied through the CI job `env` and not generated | `Implemented` | none |
 
 Code vs ADR:
 
 - The original sequence is kept, with two changes. CI covers checkout to build (and the test suites) from B0; the full sequence through smoke runs on the local stack from B7. The deployment is local only, so there is no "deploy" step.
 - The seed and the smoke test pull in opposite directions: ADR-006 point 5 says the seed never runs automatically, and point 13 says it refuses to run when `NODE_ENV=production`, while the `full` profile is a production-like run that the smoke test logs in to. Decided 2026-10-08 (ADR-006 point 11, "Smoke test data"): the `full` stack is local-only and runs with `NODE_ENV` other than `production`, and the smoke test runs `db:seed` as an explicit step of its script, never automatically; points 5 and 13 stay valid.
-- Today the clean-checkout path is not proven: there is no CI, no `.nvmrc`, no `Dockerfile` and no `full` profile (§19).
+- The clean-checkout path for install, check and build is proven by the first green CI run; the `Dockerfile` and the `full` profile do not exist yet (`Planned (B7)`, §19).
 
 Original text:
 
@@ -2326,9 +2326,9 @@ The system should not depend on hidden developer-machine state.
 | Commit message check (for example a `commit-msg` hook or `commitlint`) | Not present: `.husky/` holds only the `pre-commit` hook. Decided 2026-10-08: none is added now; the check is revisited when the B0 CI exists | none |
 | Husky `pre-commit` running `lint-staged` (ESLint and Prettier on staged files) | `Implemented` | none |
 | Pull request template with summary, type, related specification, verification and checklist (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist lists `pnpm typecheck`, `lint`, `format:check`, `build`, `test` and `docs:check` (ADR-006 point 11) | none |
-| Minimal CI: one GitHub Actions workflow on pushes and pull requests to `develop` and `main`, with lockfile install, typecheck, lint, format check, build, `pnpm docs:check` and the domain, database and API test suites (ADR-006 points 10 and 11) | `Planned (B0)`; `.github/` holds no workflow today | B0 |
+| Minimal CI: one GitHub Actions workflow on pushes and pull requests to `develop` and `main`, with lockfile install, typecheck, lint, format check, build, `pnpm docs:check` and the domain, database and API test suites (ADR-006 points 10 and 11) | `Implemented` (`.github/workflows/ci.yml`); the CI test database with the ADR-005 point 13 roles `Planned (B0)` | B0 |
 | Branch protection requiring CI green before a merge into `develop` or `main` (`CONTRIBUTING.md` §2) | `Planned (B0)` for the CI half; the protection rules are GitHub settings and cannot be verified from the repository | B0 |
-| `CONTRIBUTING.md` wording: CI gate wording ("planned, not yet in place", ADR-006 points 10 and 11), local setup, quality commands and troubleshooting | `Implemented` (§2, §9 and §10 of the file); the CI it describes stays `Planned (B0)` | none |
+| `CONTRIBUTING.md` wording: CI gate wording (ADR-006 points 10 and 11), local setup, quality commands and troubleshooting | `Implemented` (§2, §9 and §10 of the file); the CI it describes is `Implemented` | none |
 
 Code vs ADR:
 
@@ -2442,7 +2442,7 @@ Omissions must be intentional.
 | Demo Mode works | `Planned (FE4)`; needs B0 (in-memory repositories) and B5 (simulation engine) | FE4 |
 | Tests cover primary flows | Domain, database and API route tests `Implemented`; mandatory application and contract tests `Planned (B0)`; component, E2E and accessibility checks `Planned (FE5)`; no coverage percentage is set (ADR-006 point 11) | B0, FE5 |
 | Observability is available | `Planned (B3)`; metrics `Deferred` (ADR-009 point 10) | B3 |
-| Deployment is reproducible | CI from a clean checkout `Planned (B0)`; production build, `full` profile and smoke test `Planned (B7)`; hosted deployment `Deferred` (ADR-006 point 2) | B0, B7 |
+| Deployment is reproducible | CI from a clean checkout `Implemented`; production build, `full` profile and smoke test `Planned (B7)`; hosted deployment `Deferred` (ADR-006 point 2) | B7 |
 | Documentation is sufficient | `Planned (FE6)` for the case study; the SDD set is kept aligned by `pnpm docs:check` and the maintenance rule of `docs/README.md` | FE6 |
 
 Code vs ADR:
@@ -2532,11 +2532,11 @@ with coherent loading, empty, success, and failure states.
 | 2 Enter the functional demo | `Planned (FE4)`; a hosted static demo (decided 2026-10-08); where it is hosted is `Deferred` to the frontend-stage ADR | FE4 |
 | 3 Understand the product | `Planned (FE6)` | FE6 |
 | 4 Inspect the architecture | The ADRs and SDD set exist; the case study `Planned (FE6)` | FE6 |
-| 5 Inspect the repository | Public layout with `README.md` and `CONTRIBUTING.md`; their gaps from §49 and §50 are closed (`Implemented`); the CI run that proves a clean checkout is `Planned (B0)` | FE6 |
+| 5 Inspect the repository | Public layout with `README.md` and `CONTRIBUTING.md`; their gaps from §49 and §50 are closed (`Implemented`); the CI run that proves a clean checkout is `Implemented` | FE6 |
 | 6 Understand key engineering decisions | `Implemented`: ten ADRs in `docs/adr/`; the review of §44 `Planned (FE6)` | FE6 |
 | 7 Verify meaningful implementation | `Implemented` in part; completes with B7 and FE5 | FE5 |
 | 8 Understand tradeoffs | ADR "Alternatives Considered" sections `Implemented`; case study `Planned (FE6)` | FE6 |
-| 9 See testing and quality practices | Tests `Implemented` in part; CI `Planned (B0)`; frontend checks `Planned (FE5)` | B0, FE5 |
+| 9 See testing and quality practices | Tests `Implemented` in part; CI `Implemented`; frontend checks `Planned (FE5)` | FE5 |
 | 10 Understand how the system could evolve | `Planned (FE6)`; the boundaries are listed in §46 | FE6 |
 
 Code vs ADR:
@@ -2856,14 +2856,14 @@ Do not present security features as complete until they have actually been imple
 
 | Step or document | Status | Block |
 | --- | --- | --- |
-| Clone and install: `pnpm install` (`packageManager` is `pnpm@12.3.4`; `engines.node` is `>=22.0.0`) | `Implemented`; a single `.nvmrc` as the version source `Planned (B0)` (ADR-006 point 13) | B0 |
+| Clone and install: `pnpm install` (`packageManager` is `pnpm@12.3.4`; `engines.node` is `>=24.0.0`) | `Implemented`; a single `.nvmrc` as the version source `Implemented` (ADR-006 point 13) | none |
 | Configure: `.env.example` and `.env.test.example` copied to local, gitignored files | `Implemented`; `CORS_ORIGIN` validation `Planned (B0)` | B0 |
 | Docker Compose for PostgreSQL (default profile) | `Implemented`; `full` profile with API and `migrate` `Planned (B7)` | B7 |
 | Migrate and seed: `pnpm --filter @trading/database db:seed` and `db:reset` | `Implemented`; refusal when `NODE_ENV=production` `Planned (B0)` | B0 |
 | Run the API | `Implemented` as a development command; the production start `node dist/index.js` `Planned (B7)` | B7 |
-| Quality commands: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build`, `pnpm docs:check` | `Implemented`; all of them in CI `Planned (B0)` | B0 |
+| Quality commands: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build`, `pnpm docs:check` | `Implemented`; all of them in CI `Implemented` | none |
 | `README.md`: prerequisites, commands, environment variables, database reset, tests | Database reset and setup `Implemented`; the status section states the real state (slice H) and the file has the steps to start the API and check `GET /health/ready`; tests and `pnpm docs:check` are listed in `CONTRIBUTING.md` §9, which the README links; `LOG_LEVEL` arrives with the logger in B3 | none |
-| `CONTRIBUTING.md`: setup, CI wording, troubleshooting | `Implemented` (slice I): branching, commits and pull requests, setup and quality commands (§9), CI wording (§2) and troubleshooting (§10); the CI itself stays `Planned (B0)` | none |
+| `CONTRIBUTING.md`: setup, CI wording, troubleshooting | `Implemented` (slice I): branching, commits and pull requests, setup and quality commands (§9), CI wording (§2) and troubleshooting (§10); the CI itself is `Implemented` | none |
 | Build and deployment documentation | `Planned (B7)` | B7 |
 | Troubleshooting | `Planned (B7)` | B7 |
 
@@ -2916,7 +2916,7 @@ Documentation should cover:
 | README | `README.md` | `Implemented` (slice H): real status and the API run flow | none |
 | Architecture | `docs/06-architecture.md` and `docs/adr/` | `Implemented` | none |
 | API | `docs/07-api-spec.md`; OpenAPI document | Spec `Implemented`; generated document `Planned (B6)` | B6 |
-| Development | `CONTRIBUTING.md` | `Implemented` (slice I): the gaps listed in §38 and §49 are closed; the CI wording describes a CI that stays `Planned (B0)` | none |
+| Development | `CONTRIBUTING.md` | `Implemented` (slice I): the gaps listed in §38 and §49 are closed; the CI wording describes a CI that is `Implemented` | none |
 | Testing | `docs/10-testing-strategy.md` | `Implemented` | none |
 | Demo | `docs/12-demo-mode-spec.md` | `Implemented`; the demo specifics are `Deferred` to the frontend-stage ADR | FE4 |
 | Deployment | `docs/14-deployment-spec.md` | Spec `Implemented`; run instructions `Planned (B7)` | B7 |
@@ -2927,7 +2927,7 @@ Rules in force:
 
 - Precedence when two sources disagree: ADR, then SDD (`00` to `16`), then `BACKEND-ROADMAP.md`, then `PROGRESS.md` (`docs/README.md`). Code is evidence of what exists, not authority.
 - A change that diverges from a document updates that document in the same pull request.
-- `pnpm docs:check` verifies that `NN-*.md` and `adr/NNNN-*.md` references resolve, that code fences carry only a language, that each `NN-*.md` starts with `# SDD NN — Title`, and that each ADR has its required sections. It joins CI in B0 (ADR-006 point 11).
+- `pnpm docs:check` verifies that `NN-*.md` and `adr/NNNN-*.md` references resolve, that code fences carry only a language, that each `NN-*.md` starts with `# SDD NN — Title`, and that each ADR has its required sections. It runs in CI (ADR-006 point 11, `Implemented`).
 - Every spec section carries one status from the legend in `docs/README.md`; the original text is kept under an "Original text" label when a section is reconciled.
 
 Code vs ADR:
@@ -3009,14 +3009,14 @@ Do not silently diverge from the documented architecture.
 
 | Item | Status | Block |
 | --- | --- | --- |
-| Repository, TypeScript, tooling | `Implemented` (pnpm workspace, TypeScript project references, ESLint, Prettier, Husky); minimal CI `Planned (B0)` (ADR-006 point 10; `.github/` holds only the pull request template, there is no workflow) | B0 |
+| Repository, TypeScript, tooling | `Implemented` (pnpm workspace, TypeScript project references, ESLint, Prettier, Husky); minimal CI `Implemented` (ADR-006 point 10; `.github/workflows/ci.yml`); application layer and runtime database role `Planned (B0)` | B0 |
 | Docker and PostgreSQL | `Implemented` for the default Compose profile (PostgreSQL); the `full` profile and the API Dockerfile `Planned (B7)` (ADR-006 point 4) | B7 |
 | Migrations | `Implemented` (Prisma); runtime database role `Planned (B0)` | B0 |
 | Domain foundation | `Implemented` (`packages/domain`); the application layer and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002) | B0 |
 
 Code vs ADR:
 
-- "Clean setup works" is only partly verifiable today: there is no CI run to prove it from a clean checkout, while the `README.md` status section and API start step are `Implemented` (§49). The CI proof is `Planned (B0)`.
+- "Clean setup works" is proven from a clean checkout by the first green CI run, and the `README.md` status section and API start step are `Implemented` (§49). The `Dockerfile` and `full` profile steps stay `Planned (B7)`.
 - "Domain tests work" is `Implemented`: `packages/domain` has a `test` script (`vitest run`).
 - This milestone closes the Phase 0 to 3 work of §4.2 plus the B0 additions; it does not add product behavior.
 
@@ -3214,7 +3214,7 @@ public demo works without production infrastructure
 | Item | Status | Block |
 | --- | --- | --- |
 | Unit tests | `Implemented` for `packages/domain` (`vitest run`); application services with in-memory fakes `Planned (B0)` | B0 |
-| Integration tests | `Implemented` for `packages/database` and `apps/api` (they run against `.env.test.local`); route tests `Planned (B0)`; run in CI `Planned (B0)` | B0 |
+| Integration tests | `Implemented` for `packages/database` and `apps/api` (they run against `.env.test.local`); route tests `Planned (B0)`; run in CI `Implemented` | B0 |
 | Component tests | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | E2E | tooling `Deferred` to the frontend-stage ADR (same decision; Playwright is named in ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | Accessibility | the scanning tool is chosen in the frontend-stage ADR; checks `Planned (FE5)` | FE5 |
@@ -3335,19 +3335,19 @@ without unsupported claims
 
 ## 60. Final Repository Validation
 
-**Status:** per item (table below); the quality commands are `Implemented`, the CI run and the Docker steps are `Planned`
+**Status:** per item (table below); the quality commands and the CI run are `Implemented`, the Docker steps are `Planned`
 
 **Owning blocks:** Backend: B0 (CI), B7 (Docker, smoke test). Frontend: FE5 (E2E). Decisions: ADR-006 points 3, 4, 5, 10 and 11.
 
 | Step | Command or check | Status | Block |
 | --- | --- | --- | --- |
-| Install | `pnpm install` (lockfile; `packageManager` `pnpm@12.3.4`, `engines.node` `>=22.0.0`) | `Implemented` | none |
-| Lint | `pnpm lint` (`eslint .`) | `Implemented`; in CI `Planned (B0)` | B0 |
-| Format | `pnpm format:check` (`prettier --check .`; `docs/` is in `.prettierignore`) | `Implemented`; in CI `Planned (B0)` | B0 |
-| Type check | `pnpm typecheck` (`tsc --build --pretty`) | `Implemented`; in CI `Planned (B0)` | B0 |
-| Documentation check | `pnpm docs:check` (`node scripts/check-docs.mjs`) | `Implemented`; in CI `Planned (B0)` (ADR-006 point 11, additions) | B0 |
-| Unit and integration tests | `pnpm test` (`pnpm -r test`: domain, database, API; the last two need `.env.test.local` and a PostgreSQL test database) | `Implemented`; in CI with a PostgreSQL service `Planned (B0)` | B0 |
-| Build | `pnpm build` (`pnpm -r build`) | `Implemented`; in CI `Planned (B0)` | B0 |
+| Install | `pnpm install` (lockfile; `packageManager` `pnpm@12.3.4`, `engines.node` `>=24.0.0`) | `Implemented` | none |
+| Lint | `pnpm lint` (`eslint .`) | `Implemented`; in CI `Implemented` | none |
+| Format | `pnpm format:check` (`prettier --check .`; `docs/` is in `.prettierignore`) | `Implemented`; in CI `Implemented` | none |
+| Type check | `pnpm typecheck` (`tsc --build --pretty`) | `Implemented`; in CI `Implemented` | none |
+| Documentation check | `pnpm docs:check` (`node scripts/check-docs.mjs`) | `Implemented`; in CI `Implemented` (ADR-006 point 11, additions) | none |
+| Unit and integration tests | `pnpm test` (`pnpm -r test`: domain, database, API; the last two need `.env.test.local` and a PostgreSQL test database) | `Implemented`; in CI with a PostgreSQL service `Implemented`, connecting as the container superuser (the ADR-005 point 13 roles `Planned (B0)`) | B0 |
+| Build | `pnpm build` (`pnpm -r build`) | `Implemented`; in CI `Implemented` | none |
 | E2E | none | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | Docker build, Docker startup | `docker compose --profile full up` | `Planned (B7)`; no `apps/api/Dockerfile` or `full` profile exists | B7 |
 | Migrations, seed | `prisma migrate deploy` through the `migrate` service; the seed stays an explicit development command | `Planned (B7)` for the service; seed `Implemented` as a command | B7 |
@@ -3359,7 +3359,7 @@ Code vs ADR:
 - There is no coverage step and no coverage threshold (ADR-006 point 11).
 - "Integration tests" and "E2E" are not separate CI stages; `pnpm test` runs every backend suite (`14-deployment-spec.md` §41).
 - Docker validation is a local step, not part of the minimal CI (ADR-006 points 10 and 11): the CI builds the packages with `pnpm build` but does not run Docker.
-- `.github/` has no workflow today, so every "in CI" claim is `Planned (B0)`.
+- `.github/workflows/ci.yml` runs these steps, so every "in CI" claim above is `Implemented`; the CI test database with the ADR-005 point 13 roles stays `Planned (B0)`.
 
 Original text:
 
@@ -3525,7 +3525,7 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | Step | Status | Block |
 | --- | --- | --- |
 | 01 Repository | `Implemented` | none |
-| 02 Tooling | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Planned (B0)` (ADR-006 point 10) | B0 |
+| 02 Tooling | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Implemented` (ADR-006 point 10) | none |
 | 03 Docker | `Implemented` for the default Compose profile (PostgreSQL); `full` profile and API Dockerfile `Planned (B7)` | B7 |
 | 04 PostgreSQL | `Implemented` | none |
 | 05 Migrations | `Implemented` (Prisma); runtime database role `Planned (B0)` | B0 |
@@ -3743,7 +3743,7 @@ The portfolio should demonstrate:
 | Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E tooling `Deferred` to the frontend-stage ADR and E2E checks `Planned (FE5)`; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
 | Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Planned (B0)`; roles and sessions `Planned (B2)` (ADR-005); production configuration guard `Planned (B0)` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2 |
 | Observability | Request IDs and health routes `Implemented`; structured logs, redaction and security events `Planned (B3)` (ADR-009); job and realtime lifecycle events `Planned (B4)`, `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` in part; `Planned (B3)` | B3, B4, B5 |
-| Deployment | Minimal CI `Planned (B0)` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Planned (B0)`; `Planned (B7)`; `Planned (FE4)` | B0, B7, FE4 |
+| Deployment | Minimal CI `Implemented` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Implemented`; `Planned (B7)`; `Planned (FE4)` | B7, FE4 |
 | Demo | No paid infrastructure (ADR-007); reset, simulated latency and failure scenarios (ADR-010 point 6); in-process adapters (ADR-001, ADR-007 point 13); see §56 | `Planned (FE4)` | B5, FE4 |
 | Portfolio | Case study, architecture visuals, tradeoffs and walkthrough; measured outcomes only when measured; see §42 and §59 | `Planned (FE6)` | FE6 |
 

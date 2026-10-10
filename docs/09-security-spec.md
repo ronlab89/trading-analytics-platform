@@ -1262,7 +1262,7 @@ of at startup as NFR-023 requires for required secrets.
 
 # 44. Dependency Security
 
-**Status:** lockfile and build-script allowlist `Implemented` (`pnpm-lock.yaml`, `pnpm-workspace.yaml`); frozen-lockfile install in CI `Planned (B0)` (ADR-006 point 10); audit `Planned (B7)` (NFR-024)
+**Status:** lockfile and build-script allowlist `Implemented` (`pnpm-lock.yaml`, `pnpm-workspace.yaml`); frozen-lockfile install in CI `Implemented` (ADR-006 point 10); audit `Planned (B7)` (NFR-024)
 
 | Control | Mechanism | Status |
 | --- | --- | --- |

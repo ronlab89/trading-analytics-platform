@@ -57,24 +57,25 @@ maintained (see `docs/00-overview.md`, §14).
 | `develop`                              | Yes (minimum) | `feat/*`, `fix/*`, `docs/*`, `chore/*` (PR) | Yes               |
 | `feat/*`, `fix/*`, `docs/*`, `chore/*` | No            | —                                           | —                 |
 
-CI is **planned, not yet in place**: no workflow exists under `.github/` today, and
-the "Requires CI green" column describes the target rule. ADR-006 (points 10 and 11)
-defines it as one GitHub Actions workflow, `Planned (B0)`, run on pushes and pull
-requests to `develop` and `main`, with:
+CI is `Implemented` (ADR-006 points 10 and 11): one GitHub Actions workflow,
+`.github/workflows/ci.yml`, runs on pushes and pull requests to `develop` and
+`main`, with:
 
 - install with the lockfile
 - `pnpm typecheck`
 - `pnpm lint`
 - `pnpm format:check`
 - `pnpm docs:check`
+- `pnpm test:scripts` (the fixture tests of `scripts/check-docs.mjs`)
 - `pnpm test` (the domain, database and API suites; the latter two run against a
   PostgreSQL service container)
 - `pnpm build`
 
-There is no coverage threshold and no continuous deployment. The branch
-protection rules themselves are GitHub settings and cannot be verified from the
-repository. Until the workflow exists, run the same commands locally before
-opening a PR (see section 9).
+There is no coverage threshold and no continuous deployment. The CI test database
+still connects with the container superuser; the runtime and migration roles of
+ADR-005 point 13 are `Planned (B0)`. The branch protection rules themselves are
+GitHub settings and cannot be verified from the repository. Run the same
+commands locally before opening a PR (see section 9).
 
 ---
 
@@ -172,7 +173,7 @@ working agreement / `docs/PROGRESS.md`). The typical flow for a step is:
 3. Verify against the step's acceptance criteria (section 9 lists the commands)
 4. Commit(s) following the convention above
 5. Push and open a PR into develop
-6. CI runs (planned for B0, see section 2)
+6. CI runs (see section 2)
 7. Merge into develop (merge commit, per section 4)
 8. Delete the feature branch
 ```
@@ -198,10 +199,10 @@ At milestone boundaries, a PR from `develop` into `main` is opened and merged
 
 ## 9. Local Setup and Quality Commands
 
-Prerequisites (as declared in `package.json`): Node.js `>=22.0.0` and pnpm `>=9.0.0`;
+Prerequisites (as declared in `package.json`): Node.js `>=24.0.0` and pnpm `>=9.0.0`;
 the repository pins `packageManager` to `pnpm@12.3.4` (use corepack). Docker is
-needed for the local PostgreSQL. There is no `.nvmrc` yet; a single one is planned
-for B0 (ADR-006 point 13).
+needed for the local PostgreSQL. `.nvmrc` pins Node 24 (the current LTS) and is the
+single version source for CI (ADR-006 point 13).
 
 ```bash
 pnpm install                  # also installs the Husky hooks (the prepare script)
@@ -229,7 +230,7 @@ Notes:
   PostgreSQL instance, copy `.env.test.example` to `.env.test.local` (git-ignored),
   then run `pnpm --filter @trading/database db:test:migrate`.
 
-Quality commands, run from the repository root (CI will run the same set, see
+Quality commands, run from the repository root (CI runs the same set, see
 section 2):
 
 ```bash

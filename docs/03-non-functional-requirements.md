@@ -868,7 +868,7 @@ redeclared (ADR-002, `Planned (B0)`).
 ## NFR-039 — Linting
 
 **Priority:** P1  
-**Status:** `Implemented` (local); CI `Planned (B0)` (ADR-006 point 10)
+**Status:** `Implemented` (local); CI `Implemented` (ADR-006 point 10)
 
 ### Target
 
@@ -1182,7 +1182,7 @@ B7 smoke test passes under the configured container limit.
 
 **Priority:** P1  
 **Status:** `Planned (B7)` (build and containers); minimal CI
-`Planned (B0)` (ADR-006)
+`Implemented` (ADR-006)
 
 ### Target
 
