@@ -14,6 +14,9 @@ packages/database/src/seed/seed-guard.ts
 packages/database/src/seed/seed-guard.test.ts
 packages/database/prisma/seed.ts
 packages/database/prisma/reset.ts
+packages/database/prisma/schema.prisma
+packages/database/prisma/set-runtime-password.ts
+packages/database/src/runtime-role.test.ts
 packages/database/package.json
 packages/database/prisma/migrations/\*\*
 docker-compose.yml
@@ -41,7 +44,7 @@ docs/15-implementation-plan.md
 - [x] T1 RED then GREEN: `CORS_ORIGIN` accepts only `http(s)://host[:port]`, rejects `*`. Route: inline (2 small files). Evidence: `env.test.ts` 8/8 green, `tsc --noEmit` clean.
 - [x] T2 Seed and hard reset refuse to run when `NODE_ENV=production`. Decision: shared `assertNotProduction` in `seed-guard.ts`; `db:reset` now runs `prisma/reset.ts` (Node entry, portable on Windows). Route: inline. Evidence: `seed-guard.test.ts` 5/5 green, `tsc --noEmit` clean, `NODE_ENV=production tsx prisma/reset.ts` exits 1.
 - [x] T3 Login timing: run `bcryptjs` against a fixed dummy hash when the user does not exist; generic message unchanged. Route: inline. Evidence: `auth.service.test.ts` 2/2 green (mocked repos, no DB), `tsc --noEmit` clean. Not run: `auth.routes.test.ts` (needs the test DB).
-- [ ] T4 Runtime database role without DDL; only the migration role keeps DDL; wire the roles in Compose and CI.
+- [ ] T4 Runtime database role without DDL; only the migration role keeps DDL; wire the roles in Compose and CI. Decision: migration `20261010120000_add_runtime_role` (idempotent `CREATE ROLE trading_runtime`, DML-only grants, default privileges); password set by `prisma/set-runtime-password.ts` from `RUNTIME_DB_PASSWORD`; `directUrl = MIGRATION_DATABASE_URL` in `schema.prisma`; CI wired. Written, NOT yet verified: Docker daemon was down, so the migration, `runtime-role.test.ts` and the CI path never ran against Postgres. Pending: user adds `MIGRATION_DATABASE_URL`/`RUNTIME_DB_PASSWORD` to `.env`, `.env.example`, `.env.test.example` (agent cannot read them); Compose needs no change (its `POSTGRES_USER` is the migration role).
 - [ ] T5 Status lines: the CI database roles and the runtime role become `Implemented` in the SDD (after the CI run is green).
 
 ## Done when

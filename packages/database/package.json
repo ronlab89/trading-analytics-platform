@@ -10,6 +10,8 @@
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "db:test:migrate": "dotenv -e ../../.env.test.local -- prisma migrate deploy",
+    "db:runtime-password": "dotenv -e ../../.env -- tsx prisma/set-runtime-password.ts",
+    "db:test:runtime-password": "dotenv -e ../../.env.test.local -- tsx prisma/set-runtime-password.ts",
     "db:reset": "dotenv -e ../../.env -- tsx prisma/reset.ts",
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:studio": "dotenv -e ../../.env -- prisma studio",
