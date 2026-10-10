@@ -6,7 +6,8 @@
 > backend-first: blocks B0 to B7 close the backend, then the frontend stage
 > follows (`docs/BACKEND-ROADMAP.md`, `docs/15-implementation-plan.md` §4.1).
 > B0 is in progress: B0.1 (CI, `.nvmrc`, version alignment, `check-docs`
-> hardening) is done and B0.2 is next.
+> hardening) and B0.2 (runtime role, seed and reset guard, `CORS_ORIGIN`
+> validation, login timing) are done and B0.3 is next.
 
 **Last updated:** 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
@@ -44,7 +45,9 @@ CI, the `Clock` port, route tests, chronological transaction validation and
 the position-recalculation race. **B0.1 is done** (`Implemented`): the minimal
 CI (`.github/workflows/ci.yml`, first run green), `.nvmrc` (Node 24),
 `engines.node` `>=24.0.0`, aligned `@types/node` and `typescript` versions, and
-the hardened `scripts/check-docs.mjs` (task T1.5). **B0.2 is next.** The rest
+the hardened `scripts/check-docs.mjs` (task T1.5). **B0.2 is done** (`Implemented`): the DML-only runtime
+role, the seed and reset production guard, `CORS_ORIGIN` validation and login
+timing equalization. **B0.3 is next.** The rest
 of B0 has not started; `packages/application` does not exist, and
 `packages/contracts` and `packages/config` hold only a `.gitkeep`.
 
@@ -787,7 +790,7 @@ pnpm --filter @trading/database db:test:migrate   # test database
 ```
 
 **Note:** `db:seed` wipes the database first (`CONTRIBUTING.md` §9), and its
-`NODE_ENV=production` guard is `Planned (B0)`. If your dev database predates
+`NODE_ENV=production` guard is `Implemented` (B0.2). If your dev database predates
 the 90-day price series (it was widened from 30 days and gained `MarketPrice`
 rows) or the scenario seed change (§7), re-run `db:seed` once.
 
@@ -896,8 +899,7 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B0.2 (the CI test database roles, seed/reset production guard,
-`CORS_ORIGIN` validation and login timing); B0.1 is done. Phase 5 itself still has the reconciliation of
+**Next:** B0.3 (the characterization route tests); B0.1 and B0.2 are done. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in
@@ -905,7 +907,7 @@ this order: CI and configuration safety, then the route tests, then the
 `Clock` port and the layering refactor, then the contracts, then the
 transaction rules. Each block starts by re-verifying the roadmap evidence
 against the code and taking any real open question to the user (roadmap
-section 8). Only B0.1 is built (§1).
+section 8). Only B0.1 and B0.2 are built (§1).
 
 After B0, the blocks run in the roadmap order (B1 is the only P0 product
 requirement still missing, FR-025; B2 first needs the role model migrated to
@@ -928,7 +930,7 @@ unassigned.
   define a minimal CI, `Implemented` in B0.1 (`.github/workflows/ci.yml`). It
   earlier read as decided against, because the backend runs locally only; the
   ADR changed that. No continuous deployment and no coverage threshold. The CI
-  test roles of ADR-005 point 13 stay `Planned (B0)`.
+  test roles of ADR-005 point 13 are `Implemented` in B0.2.
 - **`apps/api` production build path is untested/likely broken** — B7
   (ADR-006 point 3). `apps/api/package.json` has `"start": "dotenv -e
   ../../.env -- node dist/index.js"`, but `@trading/domain`,

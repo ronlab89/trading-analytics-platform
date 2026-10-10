@@ -856,7 +856,7 @@ The values a chart plots are computed in `@trading/domain` and the API and are a
 
 # 29. Authentication Testing
 
-**Status:** login and token checks `Implemented`; expired token, refresh and logout `Planned (B2)`; login timing `Planned (B0)`; client lifecycle `Planned (FE)` (ADR-005)
+**Status:** login and token checks `Implemented`; expired token, refresh and logout `Planned (B2)`; login timing `Implemented`; client lifecycle `Planned (FE)` (ADR-005)
 
 Authentication tests must include:
 
@@ -887,7 +887,7 @@ Authentication tests must include:
 | Missing and malformed token on `/auth/me` return 401 | `Implemented` (`auth.routes.test.ts`) |
 | Login rate limit (5 per 15 minutes) returns 429 with the error envelope | `Implemented` (`rate-limit.test.ts`, on an isolated limiter: the real limiters are disabled under `NODE_ENV=test`) |
 | Expired token, wrong algorithm, unknown role return 401 | `Planned (B2)` |
-| Missing account takes comparable time to a wrong password (dummy hash) | `Planned (B0)` (ADR-005 point 13) |
+| Missing account takes comparable time to a wrong password (dummy hash) | `Implemented` (ADR-005 point 13) |
 | Login response `{ user, session: { accessToken, expiresAt } }` | `Planned (B2)` (ADR-005 point 8) |
 | Refresh rotation, reuse detection, parallel refresh, lost response | `Planned (B2)` (ADR-005 points 5-6 and Deferred detail) |
 | Logout revokes the session and clears the cookie; custom header required | `Planned (B2)` (ADR-005 points 6-7) |

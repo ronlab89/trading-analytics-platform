@@ -24,6 +24,8 @@ docker-compose.yml
 docs/BACKEND-ROADMAP.md
 docs/PROGRESS.md
 docs/14-deployment-spec.md
+docs/09-security-spec.md
+docs/10-testing-strategy.md
 docs/15-implementation-plan.md
 
 ## Pre-flight state (checked 2026-10-09)
@@ -45,7 +47,7 @@ docs/15-implementation-plan.md
 - [x] T2 Seed and hard reset refuse to run when `NODE_ENV=production`. Decision: shared `assertNotProduction` in `seed-guard.ts`; `db:reset` now runs `prisma/reset.ts` (Node entry, portable on Windows). Route: inline. Evidence: `seed-guard.test.ts` 5/5 green, `tsc --noEmit` clean, `NODE_ENV=production tsx prisma/reset.ts` exits 1.
 - [x] T3 Login timing: run `bcryptjs` against a fixed dummy hash when the user does not exist; generic message unchanged. Route: inline. Evidence: `auth.service.test.ts` 2/2 green (mocked repos, no DB), `tsc --noEmit` clean. Not run: `auth.routes.test.ts` (needs the test DB).
 - [x] T4 Runtime database role without DDL; only the migration role keeps DDL; wire the roles in Compose and CI. Decision: migration `20261010120000_add_runtime_role` (idempotent `CREATE ROLE trading_runtime`, DML-only grants, default privileges); password set by `prisma/set-runtime-password.ts` from `RUNTIME_DB_PASSWORD`; `directUrl = MIGRATION_DATABASE_URL` in `schema.prisma`; CI wired. Verified locally against Postgres 18 as `trading_runtime`: database 108/108 (incl. `runtime-role.test.ts` 6/6), api 186/186, `pnpm typecheck` clean. The CI run is still pending. The user applied the env changes (`MIGRATION_DATABASE_URL`, `RUNTIME_DB_PASSWORD`) by hand; the agent cannot read the env files. Compose needs no change (its `POSTGRES_USER` is the migration role).
-- [ ] T5 Status lines: the CI database roles and the runtime role become `Implemented` in the SDD (after the CI run is green).
+- [x] T5 Status lines: the CI database roles and the runtime role become `Implemented` in the SDD (after the CI run is green). Done after the CI run on the PR was green. Also flipped the CORS validation, the seed/reset production guard and the login timing lines, since T1-T3 shipped in the same PR. Route: delegated, two sequential docs writers (docs 14/09/10, then 15/roadmap/progress). Evidence: `pnpm docs:check` passes (34 files). Left as `Planned (B0)`: the CI form of the migrate step (docs/15 line 346) and all other B0 items.
 
 ## Done when
 

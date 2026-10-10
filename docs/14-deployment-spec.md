@@ -225,7 +225,7 @@ Code vs ADR:
 - `docker-compose.yml` has no `profiles` key yet. It fixes `container_name: trading-analytics-postgres` and `restart: unless-stopped`.
 - The Compose fallback password (`trading_dev_password`) differs from the `.env.example` placeholder (`change_me_in_local_env`). With no `.env`, Compose still starts, with the fallback. Both are local-only values.
 - `DATABASE_URL` repeats the user, password, port and database of the four Compose variables and is edited by hand; nothing keeps them in step.
-- The container's user is a PostgreSQL superuser, and the API connects as that user at runtime. A separate runtime role is `Planned (B0)` (ADR-005 point 13).
+- The container's user is a PostgreSQL superuser and acts as the migration role. The API connects at runtime as the data-only role `trading_runtime` (ADR-005 point 13, `Implemented`).
 - The port is published on every host interface (`${DATABASE_PORT:-5432}:5432`). Whether it binds to `127.0.0.1` is an open detail (B7), tracked in `09-security-spec.md` §36.
 
 ---
@@ -343,7 +343,7 @@ Variables, with the names of `apps/api/src/config/env.ts` and ADR-006 point 8:
 | `NODE_ENV` | `development`, `test` or `production`; default `development` | `Implemented` |
 | `PORT` | API port; default `7001` | `Implemented` |
 | `DATABASE_URL` | PostgreSQL connection string, read by Prisma (`schema.prisma`) | `Implemented` as a Prisma input; not validated by `env.ts` (§12) |
-| `CORS_ORIGIN` | Comma-separated allowed browser origins; default `http://localhost:5173` | `Implemented`; validation (only `http(s)://host[:port]`, `*` rejected) `Planned (B0)` (ADR-006 point 13; §33) |
+| `CORS_ORIGIN` | Comma-separated allowed browser origins; default `http://localhost:5173` | `Implemented`; validation (only `http(s)://host[:port]`, `*` rejected) `Implemented` (ADR-006 point 13; §33) |
 | `JWT_SECRET` | Token signing secret; at least 32 characters, no default | `Implemented` |
 | `JWT_EXPIRES_IN_SECONDS` | Access token lifetime in seconds; default `900` | `Implemented`; replaces `JWT_EXPIRES_IN` (ADR-006 point 8) |
 | `LOG_LEVEL` | `debug` in development, `info` in production, `silent` in tests | `Planned (B3)` (ADR-009 point 7) |
@@ -405,7 +405,7 @@ Code vs ADR:
 
 # 12. Configuration Validation
 
-**Status:** `Implemented` for the five variables `env.ts` validates; `DATABASE_URL` `Planned (B7)` (`09-security-spec.md` §43); the per-entry check of `CORS_ORIGIN` `Planned (B0)` (ADR-006 point 13); `LOG_LEVEL`, `SLOW_REQUEST_THRESHOLD_MS` and `APP_MODE` join with their blocks
+**Status:** `Implemented` for the five variables `env.ts` validates; `DATABASE_URL` `Planned (B7)` (`09-security-spec.md` §43); the per-entry check of `CORS_ORIGIN` `Implemented` (ADR-006 point 13); `LOG_LEVEL`, `SLOW_REQUEST_THRESHOLD_MS` and `APP_MODE` join with their blocks
 
 Backend configuration must be validated at startup.
 
@@ -434,7 +434,7 @@ Code vs ADR:
 - The message never carries the value, only the key and the rule (for example "JWT_SECRET must be at least 32 characters long."). The output goes through `console.error`, not the `Logger` of ADR-009 (B3).
 - Not validated today: `DATABASE_URL`. A missing or malformed value surfaces at the first query, so the API starts and `GET /health/ready` answers 503. Adding it to the schema is `Planned (B7)` (`09-security-spec.md` §43).
 - `NODE_ENV=production` imposes no extra rule in the schema (for example a stricter `JWT_SECRET`). No ADR decides one.
-- Decided (ADR-006 point 13, amended 2026-10-07; `Planned (B0)`): each `CORS_ORIGIN` entry must be a `http(s)://host[:port]` origin and `*` is rejected (§33). `NODE_ENV=production` also makes the seed and the hard database reset refuse to run (§20, §21); that guard is in the database scripts, not in the schema.
+- Decided (ADR-006 point 13, amended 2026-10-07; `Implemented`): each `CORS_ORIGIN` entry must be a `http(s)://host[:port]` origin and `*` is rejected (§33). `NODE_ENV=production` also makes the seed and the hard database reset refuse to run (§20, §21); that guard is in the database scripts, not in the schema.
 
 ---
 
@@ -635,14 +635,14 @@ Deployment must define:
 | Database creation | Development database `Implemented` through `POSTGRES_DB` in Compose; the test database is created by hand (`CREATE DATABASE trading_analytics_test`, `.env.test.example`); a CI service container `Implemented` (ADR-006 point 10) |
 | Migrations | `Implemented` (§18); applied in the full stack by the one-shot `migrate` service `Planned (B7)` (ADR-006 points 4 and 5) |
 | Seeds | `Implemented` (§20); never automatic (ADR-006 point 5) |
-| Connection configuration | `Implemented`: `DATABASE_URL`, with `?schema=public`; startup validation `Planned (B7)` (§12); a runtime role separate from the migration role `Planned (B0)` (ADR-005 point 13) |
+| Connection configuration | `Implemented`: `DATABASE_URL`, with `?schema=public`; startup validation `Planned (B7)` (§12); a runtime role separate from the migration role `Implemented` (ADR-005 point 13) |
 | Pool configuration | Prisma's defaults apply; in the `full` profile `connection_limit` stays at Prisma's default until measured, `Planned (B7)` (ADR-006, Deferred detail) |
 | Reset process | `Implemented` (§21) |
 | Production backup expectations | `Reference`: not applicable to a local environment; documented as such, not claimed (ADR-006 point 9) |
 
 Code vs ADR:
 
-- The API connects with the container's superuser (`POSTGRES_USER`) today. The migration role keeping DDL rights and a data-only runtime role are decided in ADR-005 point 13 (`Planned (B0)`).
+- The API connects as the data-only role `trading_runtime` (`DATABASE_URL`). The container's superuser (`POSTGRES_USER`) is the migration role: it keeps DDL rights and is used by the Prisma CLI through `MIGRATION_DATABASE_URL`. The runtime password is set from `RUNTIME_DB_PASSWORD` by `db:runtime-password` (ADR-005 point 13, `Implemented`).
 - There is no backup because there is no hosted database (ADR-006 points 2 and 9). The local database can be rebuilt from migrations and the seed.
 
 ---
@@ -717,7 +717,7 @@ Code vs ADR:
 
 # 20. Seed Data
 
-**Status:** `Implemented` for the development seed; the production guard `Planned (B0)`; the Demo Mode data layers `Deferred`
+**Status:** `Implemented` for the development seed; the production guard `Implemented`; the Demo Mode data layers `Deferred`
 
 Development/test environments should support controlled seed data.
 
@@ -745,7 +745,7 @@ It must remain separate from the browser-only/mock Demo Mode infrastructure.
 
 Code vs ADR:
 
-- The seed always runs `wipeDatabase()` first, so it deletes existing rows before it inserts (`packages/database/src/seed/index.ts`, `wipe.ts`). That is acceptable for a local development database. No guard checks `NODE_ENV` or the database name, so running it against another `DATABASE_URL` deletes that data. Decided (ADR-006 point 13; `Planned (B0)`): the seed refuses to run when `NODE_ENV=production`. A check on the database name is not decided.
+- The seed always runs `wipeDatabase()` first, so it deletes existing rows before it inserts (`packages/database/src/seed/index.ts`, `wipe.ts`). That is acceptable for a local development database. No guard checks the database name, so running it against another non-production `DATABASE_URL` deletes that data. Decided (ADR-006 point 13; `Implemented`): the seed refuses to run when `NODE_ENV=production`. A check on the database name is not decided.
 - The seed is Prisma and PostgreSQL data for the real API. It is not the demo's in-browser mock data (ADR-001, ADR-002, ADR-010 point 6), which stays a separate layer.
 
 ---
@@ -773,13 +773,13 @@ This must be clearly separated from production operations.
 | Light reset (data only) | `pnpm --filter @trading/database db:seed`: deletes the seeded tables and reinserts the baseline; the schema is untouched (§20) | `Implemented` |
 | Hard reset (schema and data) | `pnpm --filter @trading/database db:reset` runs `prisma migrate reset`: drops and recreates the database, reapplies every migration, then runs the seed through the `prisma.seed` setting. Prisma asks for confirmation first (`README.md`, "Local Database") | `Implemented` |
 | Test database | No reset script. `db:test:migrate` only applies migrations (`prisma migrate deploy` with `.env.test.local`) | `Implemented` as migrate only |
-| Production guard | None today. The seed and the hard reset refuse to run when `NODE_ENV=production` (ADR-006 point 13) | `Planned (B0)` |
+| Production guard | The seed and the hard reset refuse to run when `NODE_ENV=production` (ADR-006 point 13) | `Implemented` |
 | Demo reset | Resetting the demo's browser-side state | `Deferred` (ADR-010 point 6; `05-data-model.md` §34-37) |
 
 Code vs ADR:
 
 - The diagram describes the hard reset. The light reset skips "Recreate schema" and "Run migrations".
-- Both commands act on the database named by `DATABASE_URL` in `.env` (`packages/database/package.json`). Nothing checks `NODE_ENV` or the database name. The only guard is Prisma's confirmation on the hard reset; the seed has none. The `NODE_ENV=production` refusal for both is `Planned (B0)` (ADR-006 point 13; §20). A check on the database name is not decided.
+- Both commands act on the database named by `DATABASE_URL` in `.env` (`packages/database/package.json`). Nothing checks the database name. Both refuse to run when `NODE_ENV=production`; Prisma's confirmation on the hard reset is the other guard, and the seed has none. The `NODE_ENV=production` refusal for both is `Implemented` (ADR-006 point 13; §20). A check on the database name is not decided.
 - "Clearly separated from production operations" holds by construction: there is no production database (ADR-006 point 2), and the reset commands read `.env` while the tests read `.env.test.local`, so a reset never touches the test database unless both files point at the same one. A backup to restore from does not exist either (ADR-006 point 9).
 - The full stack never seeds on startup (ADR-006 point 5), so a demonstration that needs data runs the seed as an explicit command (`Planned (B7)` for the stack itself).
 
@@ -970,7 +970,7 @@ Code vs ADR:
 - `docker-compose.yml` defines one service, `postgres` (`postgres:18`), with no profiles. `docker/` holds a `.gitkeep` only, and no Dockerfile exists.
 - Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the Dockerfile is `apps/api/Dockerfile`, built with the workspace root as the build context, since the image needs the workspace packages.
 - Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the API container starts with `node dist/index.js` directly, with no shell or package-manager wrapper, so `SIGTERM` reaches the process and the shutdown of ADR-006 point 12 runs. Migrations are not part of the entrypoint: the one-shot `migrate` service applies them (§15).
-- The Postgres port binding and the superuser database role are in `09-security-spec.md` §36 and §38 and ADR-005 point 13 (§30).
+- The Postgres port binding and the database roles are in `09-security-spec.md` §36 and §38 and ADR-005 point 13 (§30).
 
 ---
 
@@ -1090,7 +1090,7 @@ A free development tier may be preferred, but the architecture remains provider-
 Code vs ADR:
 
 - The "Public/production-like" diagram does not apply: the production-like target is the same local PostgreSQL (ADR-006 points 1 and 4), so no application connects to a managed database.
-- Compose publishes PostgreSQL on `${DATABASE_PORT:-5432}` without a bind address, and the API, migrations and tests connect as the image's superuser. A `127.0.0.1` binding is open (B7), and the separate runtime role is `Planned (B0)` (`09-security-spec.md` §36 and §38; ADR-005 point 13).
+- Compose publishes PostgreSQL on `${DATABASE_PORT:-5432}` without a bind address, and the migrations run as the image's superuser, while the API and the tests connect as `trading_runtime`. A `127.0.0.1` binding is open (B7); the separate runtime role is `Implemented` (`09-security-spec.md` §36 and §38; ADR-005 point 13).
 - The default Compose profile keeps only PostgreSQL (ADR-006 point 4).
 - Pool configuration: in the `full` profile `connection_limit` stays at Prisma's default until measured, `Planned (B7)` (ADR-006, Deferred detail; §17). The PostgreSQL container runs with `TZ=UTC` (ADR-006 point 4; §60).
 
@@ -1155,7 +1155,7 @@ Code vs ADR:
 
 # 33. CORS
 
-**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); origin validation `Planned (B0)`; credentials `Planned (B2)`; `X-Request-ID` exposure `Planned (B3)`
+**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); origin validation `Implemented`; credentials `Planned (B2)`; `X-Request-ID` exposure `Planned (B3)`
 
 CORS must be explicit.
 
@@ -1171,7 +1171,7 @@ Avoid wildcard CORS for authenticated APIs unless there is a specific, justified
 | Development origin | `Implemented`: default `http://localhost:5173` |
 | Production origins | `Implemented` through the same variable (local `production`) |
 | No wildcard | `Implemented`: the code never sets `*` (`09-security-spec.md` §24) |
-| Origin validation: only `http(s)://host[:port]` entries, `*` rejected | `Planned (B0)` (ADR-006 point 13) |
+| Origin validation: only `http(s)://host[:port]` entries, `*` rejected | `Implemented` (ADR-006 point 13) |
 | Credentials for the refresh cookie | `Planned (B2)` (ADR-005 Consequences) |
 | `X-Request-ID` readable by the browser | `Planned (B3)`: `exposedHeaders` (ADR-009 point 5) |
 | Public demo | No entry needed: it calls no backend (ADR-006 point 7) |
@@ -1179,8 +1179,8 @@ Avoid wildcard CORS for authenticated APIs unless there is a specific, justified
 Code vs ADR:
 
 - `request-id.ts` sets `X-Request-ID` on every response, but the CORS configuration has no `exposedHeaders` and no `credentials`, so a browser on another origin cannot read the header today and sends no cookies.
-- The default origin also applies when `NODE_ENV=production` and `CORS_ORIGIN` is unset. `env.ts` does not check that each entry is a well-formed origin and does not reject `*`.
-- Decided (ADR-006 point 13, amended 2026-10-07; `Planned (B0)`): `env.ts` validates each `CORS_ORIGIN` entry. Only `http(s)://host[:port]` origins are accepted, and `*` is rejected.
+- The default origin also applies when `NODE_ENV=production` and `CORS_ORIGIN` is unset. `env.ts` checks that each entry is a well-formed `http(s)://host[:port]` origin and rejects `*`.
+- Decided (ADR-006 point 13, amended 2026-10-07; `Implemented`): `env.ts` validates each `CORS_ORIGIN` entry. Only `http(s)://host[:port]` origins are accepted, and `*` is rejected.
 - Open (B5): whether the WebSocket upgrade also checks `Origin` against `CORS_ORIGIN` (`09-security-spec.md` §31).
 
 ---
@@ -1454,7 +1454,7 @@ Code vs ADR:
 
 # 42. CI Database
 
-**Status:** `Implemented`; the CI test roles `Planned (B0)` (ADR-006 point 10)
+**Status:** `Implemented`; the CI test roles `Implemented` (ADR-006 point 10)
 
 Integration tests must use an isolated disposable PostgreSQL instance.
 
@@ -1466,7 +1466,7 @@ Decided: a PostgreSQL service container of the workflow (ADR-006 point 10). The 
 | Migrated before the suites: `prisma migrate deploy` through `db:test:migrate` of `@trading/database` (`10-testing-strategy.md` §53) | `Implemented` |
 | Test data: each suite creates and deletes its own rows (`apps/api/src/test-utils/fixtures.ts`); no seed runs | `Implemented` |
 | Local equivalent: a separate `trading_analytics_test` database on the development instance, created by hand (`.env.test.example`) | `Implemented` |
-| Runtime and migration roles: the test database uses the two roles of ADR-005 point 13 (ADR-006 point 11, additions of 2026-10-07) | `Planned (B0)` |
+| Runtime and migration roles: the test database uses the two roles of ADR-005 point 13 (ADR-006 point 11, additions of 2026-10-07) | `Implemented` |
 | PostgreSQL image version in CI | `Implemented`: the service container uses `postgres:18`, the same major as `docker-compose.yml` |
 
 CI must never use a production database.
@@ -1475,7 +1475,7 @@ Code vs ADR:
 
 - No production database exists (ADR-006 point 2). The rule is met by construction: the only database the workflow can reach is its own service container, with throwaway credentials, and no workflow secret holds another connection string.
 - The development Compose file pins `postgres:18`, and the CI service container uses the same major version, so tests run against the engine the stack uses (`Implemented`).
-- The API connects as the container's superuser today, and so does CI. ADR-005 point 13 (`Planned (B0)`) separates a data-only runtime role from the migration role. Decided (ADR-006 point 11, additions of 2026-10-07; `Planned (B0)`): the CI test database uses those two roles, so the suites connect with the runtime role and `migrate deploy` runs with the migration role, as in the local stack, and CI exercises the role split. How the workflow creates the two roles is an implementation detail of B0.
+- The API connects as `trading_runtime`, and CI uses both roles (ADR-005 point 13, `Implemented`). Decided (ADR-006 point 11, additions of 2026-10-07; `Implemented`): the CI test database uses those two roles, so the suites connect with the runtime role and `migrate deploy` runs with the migration role (`postgres` in CI), as in the local stack, and CI exercises the role split.
 
 ---
 
@@ -2671,7 +2671,7 @@ ADR-006 point 2 hosts no backend, so "public deployment" means two things: publi
 
 - [x] No secrets committed. (`Implemented` by convention: `.env`, `.env.local` and `.env.*.local` are git-ignored and only the `*.example` files are tracked; no secret scanner exists, and CI itself is `Implemented`, §13)
 - [x] Production JWT secret configured. (`Implemented` as a rule: `JWT_SECRET` has no default and needs at least 32 characters, `apps/api/src/config/env.ts`; supplying a real value in the `full` profile is `Planned (B7)`)
-- [ ] Database credentials protected. (Partly: `.env` is ignored, but the Compose fallback password is a known local value, the API connects as a superuser and the port is published on every host interface. Runtime role `Planned (B0)`, binding open in B7, §6)
+- [ ] Database credentials protected. (Partly: `.env` is ignored, but the Compose fallback password is a known local value, the port is published on every host interface. The API connects as the data-only role `trading_runtime` (`Implemented`); binding open in B7, §6)
 - [x] CORS restricted. (`Implemented`: `CORS_ORIGIN`, default `http://localhost:5173`, `apps/api/src/app.ts`)
 - [ ] HTTPS enabled. (`Deferred`: the local stack uses plain HTTP and `ws://`; the demo's HTTPS comes from the portfolio host, `Planned (FE)`, §28, §34)
 - [ ] Debug mode disabled. (No debug switch exists. `LOG_LEVEL` defaults to `info` in production, `Planned (B3)`; `ENABLE_DEBUG_LOGGING` is not adopted, §10)
@@ -2687,7 +2687,7 @@ ADR-006 point 2 hosts no backend, so "public deployment" means two things: publi
 Code vs ADR:
 
 - The original heading read "Before public deployment" and assumed a public backend. The two readings above replace it; a hosted backend would need a new ADR and a review of every item (ADR-006 point 2).
-- ADR-005 point 13 adds two items the original list lacks: a separate runtime database role and equalized login timing, both `Planned (B0)`. The checklist does not list them; ADR-005 point 13 and `09-security-spec.md` track them.
+- ADR-005 point 13 adds two items the original list lacks: a separate runtime database role and equalized login timing, both `Implemented`. The checklist does not list them; ADR-005 point 13 and `09-security-spec.md` track them.
 - "Admin operations protected" cannot be checked until B2: the code roles are `USER` and `ADMIN`, ADR-005 decides `VIEWER`, `TRADER` and `ADMIN`, and no role check exists in `apps/api` today.
 
 ---
