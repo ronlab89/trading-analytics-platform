@@ -53,14 +53,24 @@ export interface TestAssetHandle {
 }
 
 /** Creates a disposable asset with a unique symbol, for transaction tests. */
-export async function createTestAsset(symbolPrefix = "TST"): Promise<TestAssetHandle> {
+export async function createTestAsset(
+  symbolPrefix = "TST",
+  overrides: {
+    name?: string;
+    assetType?: "STOCK" | "ETF" | "CRYPTO" | "FOREX";
+    currency?: string;
+    exchange?: string;
+    status?: "ACTIVE" | "INACTIVE";
+  } = {},
+): Promise<TestAssetHandle> {
   const asset = await prisma.asset.create({
     data: {
       symbol: `${symbolPrefix}-${crypto.randomUUID().slice(0, 8)}`,
-      name: "Integration Test Asset",
-      assetType: "STOCK",
-      currency: "USD",
-      exchange: "MOCK",
+      name: overrides.name ?? "Integration Test Asset",
+      assetType: overrides.assetType ?? "STOCK",
+      currency: overrides.currency ?? "USD",
+      exchange: overrides.exchange ?? "MOCK",
+      ...(overrides.status !== undefined ? { status: overrides.status } : {}),
     },
   });
   return { id: asset.id };
