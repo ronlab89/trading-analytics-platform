@@ -40,7 +40,7 @@ docs/15-implementation-plan.md
 
 - [x] T1 RED then GREEN: `CORS_ORIGIN` accepts only `http(s)://host[:port]`, rejects `*`. Route: inline (2 small files). Evidence: `env.test.ts` 8/8 green, `tsc --noEmit` clean.
 - [x] T2 Seed and hard reset refuse to run when `NODE_ENV=production`. Decision: shared `assertNotProduction` in `seed-guard.ts`; `db:reset` now runs `prisma/reset.ts` (Node entry, portable on Windows). Route: inline. Evidence: `seed-guard.test.ts` 5/5 green, `tsc --noEmit` clean, `NODE_ENV=production tsx prisma/reset.ts` exits 1.
-- [ ] T3 Login timing: run `bcryptjs` against a fixed dummy hash when the user does not exist; generic message unchanged.
+- [x] T3 Login timing: run `bcryptjs` against a fixed dummy hash when the user does not exist; generic message unchanged. Route: inline. Evidence: `auth.service.test.ts` 2/2 green (mocked repos, no DB), `tsc --noEmit` clean. Not run: `auth.routes.test.ts` (needs the test DB).
 - [ ] T4 Runtime database role without DDL; only the migration role keeps DDL; wire the roles in Compose and CI.
 - [ ] T5 Status lines: the CI database roles and the runtime role become `Implemented` in the SDD (after the CI run is green).
 
