@@ -37,7 +37,7 @@ docs/15-implementation-plan.md
 
 ## Tasks
 
-- [ ] T1 RED then GREEN: `CORS_ORIGIN` accepts only `http(s)://host[:port]`, rejects `*`.
+- [x] T1 RED then GREEN: `CORS_ORIGIN` accepts only `http(s)://host[:port]`, rejects `*`. Route: inline (2 small files). Evidence: `env.test.ts` 8/8 green, `tsc --noEmit` clean.
 - [ ] T2 Seed and hard reset refuse to run when `NODE_ENV=production`.
 - [ ] T3 Login timing: run `bcryptjs` against a fixed dummy hash when the user does not exist; generic message unchanged.
 - [ ] T4 Runtime database role without DDL; only the migration role keeps DDL; wire the roles in Compose and CI.
