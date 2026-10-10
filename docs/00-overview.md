@@ -395,7 +395,7 @@ measured results and recorded decisions; no placeholder claims.
 | 5 | Full stack runs locally. | API and database `Implemented`; containerized run `Planned (B7)` |
 | 6 | Architecture documented. | `Implemented` |
 | 7 | Security implemented and documented. | foundation `Implemented`; sessions `Planned (B2)`; hardening `Planned (B7)` |
-| 8 | Relevant automated tests, run in CI. | tests `Implemented`; CI `Planned (B0)` |
+| 8 | Relevant automated tests, run in CI. | tests `Implemented`; CI `Implemented` |
 | 9 | Performance measured, not estimated. | slow-request and analytics timing `Planned (B3)` (ADR-009 point 8); UI `Planned (FE)` |
 | 10 | Defensible in a technical interview. | `Implemented` through the ADRs |
 | 11 | Demo online without recurring paid services. | `Planned (FE)` |

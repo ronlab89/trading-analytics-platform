@@ -40,3 +40,6 @@ pr-body.md
 # Local AI runtime state
 .atl/
 .gga
+
+# Local design wireframe (superseded by the Figma design system)
+apps/web/wireframe.html

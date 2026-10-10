@@ -902,7 +902,7 @@ static build with no running cost (ADR-006).
 
 # 60. Testing Architecture
 
-**Status:** `Implemented`; application unit tests `Planned (B0)`; CI `Planned (B0)`.
+**Status:** `Implemented`; application unit tests `Planned (B0)`; CI `Implemented`.
 
 | Package | Tests |
 | --- | --- |
@@ -962,7 +962,7 @@ ADR-005, ADR-006, ADR-007, ADR-008 and ADR-009; ADR-003 and ADR-004 shape
 
 # 64. Architecture Quality Gates
 
-**Status:** `Implemented` locally; CI `Planned (B0)`.
+**Status:** `Implemented` locally; CI `Implemented`.
 
 `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm docs:check`, and a Husky
 pre-commit hook running `lint-staged` (ESLint and Prettier). Lint import

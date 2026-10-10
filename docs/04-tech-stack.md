@@ -39,13 +39,10 @@ Section numbers are stable because code and other documents cite them
 - A version that cannot be the latest because of compatibility is recorded
   here with its reason.
 
-Open detail (B0): the workspace resolves two TypeScript lines (`6.0.3` in
-the root and `apps/api`, `5.9.3` in `packages/domain` and
-`packages/database`) and two `@types/node` lines (`22.20.2` in `apps/api`,
-`26.4.1` elsewhere) against `engines.node >=22.0.0`. Aligning them, or
-recording why they differ, belongs to the B0 package work. For Node, a single
-`.nvmrc` becomes the source of truth, with `engines.node` and `@types/node`
-aligned to it (ADR-006 point 13).
+Versions are aligned (ADR-006 point 13, `Implemented`): `typescript` is
+`^6.0.3` in every package, `.nvmrc` (`24`, the current LTS) is the source of
+truth for Node, and `engines.node` (`>=24.0.0`) and `@types/node` (`^24` in the
+root, `apps/api` and `packages/database`) follow it.
 
 ---
 
@@ -179,14 +176,14 @@ free to use and need no paid API (§49).
 
 **Status:** `Implemented`
 
-Node.js, `engines.node >=22.0.0`. The API runs in development with `tsx`
+Node.js, `engines.node >=24.0.0`. The API runs in development with `tsx`
 `4.23.13` (`tsx watch`) and is started with `node dist/index.js`. Background
 jobs run in the API process (`Planned (B4)`, ADR-008 point 4); the realtime
 server runs in it too (`Planned (B5)`, ADR-007).
 
 Open detail (B7): the production build path is fixed in B7 (ADR-006 point 3).
-Open detail (B0): the pinned Node major lives in `.nvmrc`, reused by CI and
-the Dockerfile, and is chosen in B0 after confirming it is LTS (ADR-006
+The pinned Node major (`24`, LTS) lives in `.nvmrc` and is reused by CI
+(`Implemented`); the Dockerfile reuses it too (`Planned (B7)`, ADR-006
 point 13).
 
 ---
@@ -516,7 +513,7 @@ frontend is not containerized.
 
 # 41. CI/CD
 
-**Status:** `Planned (B0)` — ADR-006 point 10. No continuous deployment.
+**Status:** `Implemented` — ADR-006 point 10. No continuous deployment.
 
 ## GitHub Actions
 
@@ -526,13 +523,15 @@ One workflow on pushes and pull requests to `develop` and `main`:
 Install (frozen lockfile) → Typecheck → Lint → Domain, database and API tests
 ```
 
-The database and API suites run against a PostgreSQL service container.
-Today `.github/` holds only `PULL_REQUEST_TEMPLATE.md`.
+The database and API suites run against a PostgreSQL service container
+(`.github/workflows/ci.yml`, one `verify` job). The CI test database uses the
+container superuser; the ADR-005 point 13 runtime and migration roles are
+`Planned (B0)`.
 
-The workflow also runs `pnpm format:check`, `pnpm build` and `pnpm docs:check`
-(`docs/` is in `.prettierignore`, so `format:check` does not cover it); test
-variables come from the job `env`, not a generated `.env.test.local`
-(ADR-006 point 11).
+The workflow also runs `pnpm format:check`, `pnpm build`, `pnpm docs:check` and
+`pnpm test:scripts` (`docs/` is in `.prettierignore`, so `format:check` does not
+cover it); test variables come from the job `env`, not a generated
+`.env.test.local` (ADR-006 point 11).
 
 ---
 
@@ -685,8 +684,8 @@ ADR already names is added in that ADR's block.
 
 | Area | Technology | Version | Status | Source |
 | --- | --- | --- | --- | --- |
-| Language | TypeScript | 6.0.3 / 5.9.3 | `Implemented` | §2, §6 |
-| Runtime | Node.js | `>=22.0.0` | `Implemented` | §17 |
+| Language | TypeScript | 6.0.3 | `Implemented` | §2, §6 |
+| Runtime | Node.js | `>=24.0.0` | `Implemented` | §17 |
 | Dev runner | tsx | 4.23.13 | `Implemented` | §17 |
 | HTTP | Express | 5.2.1 | `Implemented` | §19 |
 | HTTP | helmet, cors, express-rate-limit | 8.3.0, 2.8.6, 7.5.1 | `Implemented` | §19 |
@@ -705,7 +704,7 @@ ADR already names is added in that ADR's block.
 | Tooling | dotenv-cli | 11.0.0 | `Implemented` | §42 |
 | Infrastructure | Docker Compose (PostgreSQL) | — | `Implemented` | §40 |
 | Contracts | `@trading/contracts` (Zod) | — | `Planned (B0)` | ADR-002 |
-| CI | GitHub Actions | — | `Planned (B0)` | ADR-006 point 10 |
+| CI | GitHub Actions | — | `Implemented` | ADR-006 point 10 |
 | Logging | pino, pino-http, pino-pretty | — | `Planned (B3)` | ADR-009 point 2 |
 | Realtime | ws | — | `Planned (B5)` | ADR-007 point 1 |
 | Simulation | `@trading/market-sim` | — | `Planned (B5)` | ADR-007 point 7 |
@@ -741,7 +740,7 @@ technology under a port can change without changing product behavior.
 - Money uses `decimal.js`. `Implemented`
 - Vitest covers domain, database and API. `Implemented`
 - Shared contracts and lint-enforced boundaries. `Planned (B0)`
-- CI runs without paid services. `Planned (B0)`
+- CI runs without paid services (free for public repositories). `Implemented`
 - Sessions with refresh tokens and permission-based roles. `Planned (B0)`, `Planned (B2)`
 - Structured logging. `Planned (B3)`
 - WebSocket realtime with the shared simulator. `Planned (B5)`
@@ -761,7 +760,7 @@ configuration are listed.
 
 | Category | Finding | Resolution |
 | --- | --- | --- |
-| Boundary math and data edges | Two TypeScript and two `@types/node` lines resolve in one workspace. | Open detail (B0), §2. |
+| Boundary math and data edges | Two TypeScript and two `@types/node` lines resolved in one workspace. | Aligned to one line each (§2). `Implemented` |
 | Boundary math and data edges | Domain quantities are `number` while analytics need `Decimal`. | Open detail (B1), §28.1. |
 | Partial failure | Invalid or missing configuration. | API exits at startup with the invalid keys (§42). `Implemented` |
 | Crash and restart | API starting before PostgreSQL accepts connections in the `full` profile. | `depends_on` with `service_healthy` (ADR-006 Deferred detail, B7). |

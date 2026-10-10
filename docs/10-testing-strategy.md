@@ -127,7 +127,7 @@ Additional specialized testing covers:
 
 # 5. Static Verification
 
-**Status:** local checks `Implemented`; CI gate `Planned (B0)` (ADR-006 points 10-11)
+**Status:** local checks `Implemented`; CI gate `Implemented` (ADR-006 points 10-11)
 
 Every change should pass:
 
@@ -164,8 +164,8 @@ The pre-commit hook (`.husky/pre-commit`, `lint-staged`) formats and lints stage
 
 Code vs ADR:
 
-- No CI workflow exists (`.github/` holds only the pull request template). ADR-006 point 10 decides one GitHub Actions workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, typecheck, lint, and the domain, database and API test suites, the latter two against a PostgreSQL service container. It is `Planned (B0)`.
-- ADR-006 point 11 adds `pnpm format:check` and `pnpm build` to that workflow, so CI runs all four checks above (`Planned (B0)`). The build step proves the packages compile from a clean checkout; the compiled API does not yet run (`node dist/index.js` fails on extensionless imports; fixed in B7, ADR-006 point 3).
+- One GitHub Actions workflow (`.github/workflows/ci.yml`, ADR-006 point 10) runs on pushes and pull requests to `develop` and `main`: install with the lockfile, typecheck, lint, and the domain, database and API test suites, the latter two against a PostgreSQL service container. It is `Implemented`.
+- ADR-006 point 11 adds `pnpm format:check` and `pnpm build` to that workflow, so CI runs all four checks above (`Implemented`). The build step proves the packages compile from a clean checkout; the compiled API does not yet run (`node dist/index.js` fails on extensionless imports; fixed in B7, ADR-006 point 3).
 - The domain-boundary lint rule is commented out in `eslint.config.js` (`06-architecture.md` §43); it is `Planned (B0)` with the lint-enforced boundaries of ADR-002.
 
 ---
@@ -490,7 +490,7 @@ Code vs ADR:
 - ADR-002 point 6 turns the same tests into contract tests that validate responses against the `@trading/contracts` Zod schemas. Until B0 they assert shape by hand.
 - Route-parameter validation, `VALIDATION_ERROR` for a malformed ID and `404` for an unknown or foreign ID are `Planned (B0)` (ADR-002 point 10); tests are added with them.
 - Authorization tests today check ownership and the roles `USER` and `ADMIN`; permission-based roles are `Planned (B0)` and `Planned (B2)` (ADR-005), with their tests.
-- Tests that need a database cannot run without PostgreSQL and `.env.test.local`; the CI service container is `Planned (B0)` (ADR-006 point 10).
+- Tests that need a database cannot run without PostgreSQL and `.env.test.local`; the CI service container is `Implemented` (ADR-006 point 10).
 
 ---
 
@@ -511,7 +511,7 @@ Repository tests must not depend on production data.
 
 Today 17 files in `packages/database/src` (one per Prisma repository plus `prisma-unit-of-work.test.ts`) run against the PostgreSQL instance named by `.env.test.local`. Each test creates and removes its own rows. `pnpm test` in `packages/database` loads that file through `dotenv-cli`.
 
-Code vs ADR: ADR-001 requires the `UnitOfWork` contract to guarantee isolation for position updates, with a concurrent-`SELL` test (two `SELL` of 6 on a holding of 10 must not both succeed). That test does not exist; it is `Planned (B0)`. Applying migrations before the suite is a manual step today (`pnpm --filter @trading/database db:test:migrate`); the CI service container applies them automatically (`Planned (B0)`).
+Code vs ADR: ADR-001 requires the `UnitOfWork` contract to guarantee isolation for position updates, with a concurrent-`SELL` test (two `SELL` of 6 on a holding of 10 must not both succeed). That test does not exist; it is `Planned (B0)`. Applying migrations before the suite is a manual step today (`pnpm --filter @trading/database db:test:migrate`); the CI service container applies them automatically (`db:test:migrate` step, `Implemented`).
 
 ---
 
@@ -1548,7 +1548,7 @@ Code vs ADR: the previous text verified contracts against an OpenAPI document. A
 
 # 53. CI Test Pipeline
 
-**Status:** backend stages `Planned (B0)` (ADR-006 points 10-11); component, E2E and accessibility stages `Deferred` to the frontend-stage ADR; no CI workflow exists today
+**Status:** backend stages `Implemented` (ADR-006 points 10-11); component, E2E and accessibility stages `Deferred` to the frontend-stage ADR
 
 The CI pipeline should follow:
 
@@ -1578,12 +1578,12 @@ The decided workflow is one GitHub Actions workflow on pushes and pull requests 
 
 | Stage | Command | Status |
 | --- | --- | --- |
-| Install | `pnpm install --frozen-lockfile` | `Planned (B0)` |
-| Typecheck | `pnpm typecheck` | `Planned (B0)` |
-| Lint | `pnpm lint` | `Planned (B0)` |
-| Formatting | `pnpm format:check` | `Planned (B0)` (point 11) |
-| Build | `pnpm build` | `Planned (B0)` (point 11) |
-| Unit and integration tests | `pnpm test` (domain, database and API suites; the latter two against a PostgreSQL service container, migrated before the run) | `Planned (B0)` |
+| Install | `pnpm install --frozen-lockfile` | `Implemented` |
+| Typecheck | `pnpm typecheck` | `Implemented` |
+| Lint | `pnpm lint` | `Implemented` |
+| Formatting | `pnpm format:check` | `Implemented` (point 11) |
+| Build | `pnpm build` | `Implemented` (point 11) |
+| Unit and integration tests | `pnpm test` (domain, database and API suites; the latter two against a PostgreSQL service container, migrated before the run) | `Implemented` |
 | Component, E2E, accessibility | tools chosen in the frontend-stage ADR; join when frontend code exists | `Deferred` |
 | Performance | browser traces of §39-§41 | `Deferred` |
 
@@ -1677,7 +1677,7 @@ ADR-006 point 8 names three environments, `development`, `test` and local `produ
 | Environment | What it is | Status |
 | --- | --- | --- |
 | Development | Local API against the default Docker Compose profile (PostgreSQL only) | `Implemented` |
-| Test | Local PostgreSQL test database from `.env.test.local` (`.env.test.example`); in CI, a PostgreSQL service container | `Implemented` locally; CI `Planned (B0)` |
+| Test | Local PostgreSQL test database from `.env.test.local` (`.env.test.example`); in CI, a PostgreSQL service container | `Implemented` locally; CI `Implemented` |
 | Demo | Static build of `apps/web` with `APP_MODE=demo` (`VITE_APP_MODE`), no backend calls, served under a subpath (ADR-006 point 7) | `Planned (FE)` |
 | Production-like | Compose `full` profile (PostgreSQL and the built API, `node dist/index.js`) on the author's machine | `Planned (B7)` |
 
@@ -1850,7 +1850,7 @@ A feature is considered complete when:
 - demo mode supports the feature;
 - documentation is updated when architectural behavior changes.
 
-TypeScript, lint, formatting, build and the backend test suites become CI checks in B0 (§53); until then they are run by hand. The mandatory tests that a feature in its block names (ADR-001 point 7, ADR-002 point 6) replace any coverage percentage (ADR-006 point 11). Items about components, UI states, responsiveness and demo support apply to features with a UI, built in the frontend stage; the demo items stay subject to the frontend-stage ADR (ADR-010 point 6). Every user-facing string exists in English and Spanish (ADR-010 point 8).
+TypeScript, lint, formatting, build and the backend test suites are CI checks (§53, `Implemented`) and can also be run by hand. The mandatory tests that a feature in its block names (ADR-001 point 7, ADR-002 point 6) replace any coverage percentage (ADR-006 point 11). Items about components, UI states, responsiveness and demo support apply to features with a UI, built in the frontend stage; the demo items stay subject to the frontend-stage ADR (ADR-010 point 6). Every user-facing string exists in English and Spanish (ADR-010 point 8).
 
 ---
 
@@ -2019,7 +2019,7 @@ Testing is considered complete when:
 | Failure and recovery states are covered | Server error responses `Implemented` (§13); UI and demo `Planned (FE)` |
 | Accessibility has automated and manual verification | `Planned (FE)` (§36) |
 | Representative performance scenarios are validated | `Planned (FE)` (§39-§41) |
-| CI executes the required quality gates | `Planned (B0)` (ADR-006 points 10-11); no coverage gate |
+| CI executes the required quality gates | `Implemented` (ADR-006 points 10-11); no coverage gate |
 | Tests are reproducible and isolated | `Implemented` across files (§45-§46); shared `Clock` port `Planned (B0)` (§49) |
 
 ---

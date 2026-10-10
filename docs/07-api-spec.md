@@ -1994,7 +1994,7 @@ allowed; a breaking change requires a new version.
 
 # 59. API Quality Gates
 
-**Status:** CI `Planned (B0)` (ADR-006 point 10)
+**Status:** CI `Implemented` (ADR-006 point 10)
 
 One GitHub Actions workflow on pushes and pull requests to `develop` and
 `main`: install with the lockfile, typecheck, lint, and the domain, database

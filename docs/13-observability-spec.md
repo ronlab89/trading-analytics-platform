@@ -2410,7 +2410,7 @@ Code vs ADR:
 
 # 63. Observability in CI
 
-**Status:** per check (table below); no CI workflow exists today
+**Status:** per check (table below); the CI workflow exists (`.github/workflows/ci.yml`) and runs none of the observability checks yet
 
 CI should validate that:
 
