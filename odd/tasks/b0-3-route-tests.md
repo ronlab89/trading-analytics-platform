@@ -5,7 +5,25 @@ Source: roadmap B0 lines 186-189; ADR-001 point 8; plan lines 410 and 632-644. D
 ## Allowed edit surfaces
 
 apps/api/src/routes/**/\*.test.ts
-apps/api/src/test/**
+apps/api/src/test-utils/**
+
+## Pre-flight (2026-10-10)
+
+- The helpers live in `apps/api/src/test-utils/` (`auth.ts`, `fixtures.ts`, `api-client.ts`); the original surface `apps/api/src/test/**` does not exist and was replaced.
+- Pattern to copy: `routes/watchlist.routes.test.ts`. `createApp()` plus supertest against the real test database, `tokenFor`, `createTest*` fixtures and `cleanupTestData` in `afterAll`. No `vi.mock` in any route test.
+- Missing fixture: `MarketPrice` and `HistoricalPrice` rows. Add a helper in `fixtures.ts`; both cascade-delete with their asset.
+- Only the 503 branch of `GET /health/ready` needs a mock (`vi.mock` of `services/health.service.js`, `checkDatabaseConnection`).
+- `GET /assets` shares global data: filter by a unique `search` before asserting `meta.total`.
+- No route here checks roles; `authenticate` accepts any valid token.
+
+## Behaviors to pin and bugs to record (do not fix)
+
+- `position.service.ts` imports `./portfolio.service` and `../errors/app-error` without `.js`.
+- `GET .../analytics/attribution` has no query validation; unknown params are ignored.
+- A position with a zero average entry price makes the metrics throw and returns 500.
+- Cross-currency portfolios make allocation and attribution throw `CurrencyMismatchError`; the mapping is unverified, likely 500.
+- `GET /market/prices` does not deduplicate ids and never 404s on unknown ids; `assetIds=,` returns 400.
+- The 503 body of `GET /health/ready` carries no `requestId`.
 
 ## Tasks
 
