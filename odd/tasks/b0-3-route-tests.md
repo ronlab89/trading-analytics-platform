@@ -28,7 +28,7 @@ apps/api/src/test-utils/**
 ## Tasks
 
 - [x] T1 Route tests for analytics. Route: delegated writer (2 non-trivial files). Evidence: `analytics.routes.test.ts` 19/19 green against the test database; `tsc --noEmit` clean. Added `createTestMarketPrice` and `createTestHistoricalPrice` to `fixtures.ts` for T3/T4. Pinned: a mixed-currency portfolio returns 500 `INTERNAL_ERROR` on both routes (`CurrencyMismatchError` is unmapped). Note: `createTestPosition` is USD-only, so non-USD cases use `prisma` directly. Run one file with `pnpm exec dotenv -e ../../.env.test.local -- vitest run <file>` from `apps/api`; `pnpm test -- <file>` runs the whole suite.
-- [ ] T2 Route tests for positions.
+- [x] T2 Route tests for positions. Route: delegated writer (1 new file). Evidence: `positions.routes.test.ts` 19/19 green (writer run and parent spot check); `tsc --noEmit` clean. Pinned: the list route returns raw positions without metrics, so a zero-cost position still returns 200 there and only the detail route fails with 500 `PositionMetricsCalculationError` (cause asserted through the logged `errorName`). The list has no `orderBy`, so tests find items by id. Money serializes as `{amount: "100", currency: "USD"}`.
 - [ ] T3 Route tests for assets.
 - [ ] T4 Route tests for market.
 - [ ] T5 Route tests for `GET /health` and `GET /health/ready`.
