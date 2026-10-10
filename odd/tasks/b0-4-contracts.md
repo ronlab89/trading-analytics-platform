@@ -30,7 +30,7 @@ pnpm-lock.yaml
 - [ ] T3 Route-parameter validation (400 malformed, 404 unknown or foreign).
 - [ ] T4 Response schemas and presenters per resource (one resource per commit); controllers stop serializing domain objects.
 - [ ] T5 `theme` (`light|dark|system`) and `language` (`en|es`) validation; decisions `dateFrom/dateTo` filter on `createdAt`.
-- [ ] T6 Contract tests of API responses against the schemas; align `07-api-spec.md`.
+- [ ] T6 Contract tests of API responses against the schemas; align `07-api-spec.md`. Also remove `--passWithNoTests` from the `test` script in `packages/contracts/package.json` once the package has tests (T1 review suggestion R3-001).
 
 ## Done when
 

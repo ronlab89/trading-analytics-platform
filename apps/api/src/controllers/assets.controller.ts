@@ -1,8 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { listAssetsQuerySchema } from "@trading/contracts";
-import type { assetHistoryQuerySchema } from "@trading/contracts";
-import { buildPaginationMeta } from "@trading/contracts";
+import {
+  buildPaginationMeta,
+  type assetHistoryQuerySchema,
+  type listAssetsQuerySchema,
+} from "@trading/contracts";
 import { getAssetById, listAssets } from "../services/asset.service.js";
 import { getAssetHistory, getAssetPrice } from "../services/market.service.js";
 

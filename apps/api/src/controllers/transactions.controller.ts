@@ -1,15 +1,15 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type {
-  createTransactionRequestSchema,
-  listTransactionsQuerySchema,
+import {
+  buildPaginationMeta,
+  type createTransactionRequestSchema,
+  type listTransactionsQuerySchema,
 } from "@trading/contracts";
 import {
   createTransaction,
   getTransactionById,
   listTransactions,
 } from "../services/transaction.service.js";
-import { buildPaginationMeta } from "@trading/contracts";
 import { Money } from "@trading/domain";
 
 type ListTransactionsQuery = z.infer<typeof listTransactionsQuerySchema>;
