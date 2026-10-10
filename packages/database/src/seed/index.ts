@@ -1,3 +1,4 @@
+import { assertNotProduction } from "./seed-guard.js";
 import { wipeDatabase } from "./wipe.js";
 import { createEmptySeedContext } from "./context.js";
 import { seedUsersAndPortfolios } from "./steps/seed-users-and-portfolios.js";
@@ -21,6 +22,8 @@ import { seedMarketPrices } from "./steps/seed-market-prices.js";
  * script never produces duplicate or drifted data.
  */
 export async function seedDatabase(): Promise<void> {
+  assertNotProduction("seed");
+
   console.log("[seed] wiping existing data...");
   await wipeDatabase();
 

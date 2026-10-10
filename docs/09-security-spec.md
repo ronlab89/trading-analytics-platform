@@ -1112,23 +1112,24 @@ any value in `.env` overrides. They protect a local-only database
 
 # 38. Least Privilege
 
-**Status:** environment separation `Implemented` (`packages/database/package.json`, `PROGRESS.md` §2.3); non-root API container `Planned (B7)` (ADR-006 point 4); separate runtime database role `Planned (B0)` (ADR-005 point 13)
+**Status:** environment separation `Implemented` (`packages/database/package.json`, `PROGRESS.md` §2.3); non-root API container `Planned (B7)` (ADR-006 point 4); separate runtime database role `Implemented` (ADR-005 point 13)
 
 | Concern | Today | Target |
 | --- | --- | --- |
 | Development vs test data | Separate databases: `.env` for development, `.env.test.local` for tests (`db:test:migrate`, `test` scripts) | `Implemented` |
 | Development vs local production | One local stack (ADR-006 points 1 and 8) | `production` values set in the `full` profile, `Planned (B7)` |
 | API process | Runs as the developer's user | Non-root user in the multi-stage Dockerfile (ADR-006 point 4), `Planned (B7)` |
-| Database role | The Compose `POSTGRES_USER`, which the PostgreSQL image creates as a superuser; the test database is owned by the same role | A separate non-superuser runtime role with data access only; DDL stays with the migration role, `Planned (B0)` |
+| Database role | The API, the seed and the test suites connect as `trading_runtime`, a role with data access only; the migration role (the Compose `POSTGRES_USER`, a superuser) keeps DDL and runs the Prisma CLI | `Implemented` |
 
-Code today: the API, the migrations and the tests connect with the same
-role. `prisma migrate dev` needs to create a shadow database, and startup
+Code today: the API, the seed and the tests connect as `trading_runtime`
+(`DATABASE_URL`); the migrations run with the migration role
+(`MIGRATION_DATABASE_URL`). `prisma migrate dev` needs to create a shadow database, and startup
 applies `prisma migrate deploy` (ADR-006 point 5), so the role that runs
 migrations needs DDL rights.
 
 Decided (ADR-005 point 13, approved 2026-10-06): the API connects at
 runtime with a separate non-superuser role limited to data access, and
-only the migration role keeps DDL rights. `Planned (B0)`. ADR-006 keeps
+only the migration role keeps DDL rights. `Implemented`. ADR-006 keeps
 the database local only.
 
 ---
@@ -1444,14 +1445,14 @@ Failed logins never reveal whether an account exists:
   `VALIDATION_ERROR` before any lookup, so it reveals nothing about
   accounts.
 
-Code today: an unknown email returns without running a `bcrypt`
-comparison, so it responds measurably faster than a wrong password for an
-existing account. The message is identical; the timing is not.
+Code today: login always runs one `bcryptjs` comparison, against a fixed
+dummy hash when the user or credential is missing, so a missing account
+and a wrong password take comparable time.
 
 Decided (ADR-005 point 13, approved 2026-10-06): login equalizes timing.
 When the user does not exist, it runs a `bcryptjs` verification against a
 fixed dummy hash, so a missing account and a wrong password take
-comparable time. `Planned (B0)`.
+comparable time. `Implemented`.
 
 ---
 

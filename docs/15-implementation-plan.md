@@ -138,7 +138,7 @@ Code vs ADR:
 | --- | --- | --- |
 | 0 Repository foundation | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Implemented` | none |
 | 1 Product and domain foundation | `Implemented` (`packages/domain`); analytics additions `Planned (B1)`; application layer and `@trading/contracts` `Planned (B0)` | none |
-| 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Planned (B4)`; runtime database role `Planned (B0)` | none |
+| 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Planned (B4)`; runtime database role `Implemented` | none |
 | 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Planned (B6)` | none |
 | 4 Authentication and RBAC | login and `me` `Implemented`; refresh, logout and role enforcement `Planned (B2)` | session screens `Planned (FE1)` |
 | 5 Frontend foundation | none | `Planned (FE0)` |
@@ -201,7 +201,7 @@ Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides t
 | Basic commands documented | `Implemented` in `README.md` (setup, run the API, local database; quality commands by reference) and `CONTRIBUTING.md` §9 (setup and quality commands) | none |
 | Commit workflow: Conventional Commits (`CONTRIBUTING.md` §6) and a Husky pre-commit hook running `lint-staged` | `Implemented` (`.husky/pre-commit`, `lint-staged` in the root `package.json`) | none |
 | Pull request template (`.github/PULL_REQUEST_TEMPLATE.md`) | `Implemented`; its checklist asks for `pnpm typecheck`, `lint`, `format:check`, `build`, `test` and `docs:check` | none |
-| Minimal CI workflow: install with the lockfile, typecheck, lint, `format:check`, `docs:check`, `build`, and the domain, database and API suites against a PostgreSQL service container (ADR-006 points 10 and 11) | `Implemented` (`.github/workflows/ci.yml`); the CI test database with the runtime and migration roles of ADR-005 point 13 `Planned (B0)`, since CI connects with the container superuser | B0 |
+| Minimal CI workflow: install with the lockfile, typecheck, lint, `format:check`, `docs:check`, `build`, and the domain, database and API suites against a PostgreSQL service container (ADR-006 points 10 and 11) | `Implemented` (`.github/workflows/ci.yml`); the CI test database uses the runtime and migration roles of ADR-005 point 13 | none |
 | Test variables supplied through the job `env`, not a generated `.env.test.local` (ADR-006 point 11) | `Implemented` | none |
 | `.nvmrc` as the single Node.js version source, reused by CI and the Dockerfile (ADR-006 point 13) | `Implemented` (`.nvmrc` pins Node 24 and `engines.node` is `>=24.0.0`); reuse by the Dockerfile `Planned (B7)` | B7 |
 | Docker Compose with PostgreSQL in the default profile (`docker-compose.yml`, `postgres:18`) | `Implemented`; detail in §7 | none |
@@ -331,10 +331,10 @@ Core business rules can be tested without React, Express, or PostgreSQL.
 | Initial schema and migrations (`schema.prisma`: 12 enums and 16 models; 10 migrations) | `Implemented` | none |
 | `Session` (refresh tokens, `05-data-model.md` §5.3) | In `05`, not in `schema.prisma`; `Planned (B2)` | B2 |
 | `Job` and `IdempotencyKey` (`05-data-model.md` §52 and §53) | In `05`, not in `schema.prisma`; `Planned (B4)` | B4 |
-| Seed workflow (`packages/database/prisma/seed.ts`, `src/seed`, `pnpm --filter @trading/database db:seed`) | `Implemented`; the production guard (ADR-006 point 13) `Planned (B0)` | B0 |
-| Local reset workflow: light reset by rerunning the seed, hard reset by `db:reset` (`prisma migrate reset`) | `Implemented`; the production guard `Planned (B0)` | B0 |
+| Seed workflow (`packages/database/prisma/seed.ts`, `src/seed`, `pnpm --filter @trading/database db:seed`) | `Implemented`, including the production guard (ADR-006 point 13) | none |
+| Local reset workflow: light reset by rerunning the seed, hard reset by `db:reset` (`prisma migrate reset`) | `Implemented`, including the production guard (`prisma/reset.ts`) | none |
 | Database connection (`packages/database/src/client.ts`, shared `prisma` client) | `Implemented`; `DATABASE_URL` validation at startup `Planned (B7)` | B7 |
-| Separate runtime database role without DDL rights; only the migration role keeps them (ADR-005 point 13) | `Planned (B0)` | B0 |
+| Separate runtime database role without DDL rights; only the migration role keeps them (ADR-005 point 13) | `Implemented` (migration `20261010120000_add_runtime_role`, role `trading_runtime`) | none |
 | Repository interfaces (`packages/domain/src/repositories`) | `Implemented` | none |
 | PostgreSQL repositories, mappers and `PrismaUnitOfWork` (`packages/database/src`) | `Implemented` | none |
 | In-memory repositories and `UnitOfWork` (ADR-001 point 7, `06-architecture.md` §12 and §13) | `Planned (B0)` | B0 |
@@ -345,8 +345,8 @@ Code vs ADR:
 
 - The acceptance sequence works locally by hand: `docker compose up -d`, then `pnpm --filter @trading/database db:migrate`, then `db:seed`, then `pnpm --filter @trading/api dev`. No root script chains it. The CI form (migrate with `db:test:migrate`, no seed) is `Planned (B0)` (ADR-006 point 11).
 - `db:migrate` runs `prisma migrate dev`. The production path is `migrate deploy` (ADR-006 point 5), which exists only as `db:test:migrate` today.
-- The seed always wipes the database first and has no guard. ADR-006 point 13 makes the seed and the hard reset refuse to run when `NODE_ENV=production` (`Planned (B0)`).
-- The API connects as the PostgreSQL superuser of the container. The data-only runtime role of ADR-005 point 13 is `Planned (B0)`.
+- The seed always wipes the database first. The seed and the hard reset (`db:reset`, `prisma/reset.ts`) refuse to run when `NODE_ENV=production` (ADR-006 point 13, `Implemented`).
+- The API, the seed and the test suites connect as the DML-only runtime role `trading_runtime` through `DATABASE_URL`; the Prisma CLI uses the migration role through `MIGRATION_DATABASE_URL` (ADR-005 point 13, `Implemented`).
 - The PostgreSQL port is published on every host interface, and binding it to `127.0.0.1` is still open (B7). Compose has no profiles yet, so the default profile and the future `full` profile share one file.
 - Migrations declare `TIMESTAMP(3)` columns without a time zone. The containers run with `TZ=UTC` (ADR-006 point 4, `Planned (B7)`).
 - The domain defines the repository interfaces and `@trading/database` implements them, as the objective requires. Domain logic does not import Prisma. The services in `apps/api` still import the Prisma repositories directly until the composition root of ADR-001 point 4 exists (B0).
@@ -393,7 +393,7 @@ start database
 | Express application (`apps/api/src/app.ts` `createApp()`, `index.ts` listening on `PORT`, default `7001`) | `Implemented` | none |
 | Middleware: helmet, CORS from `CORS_ORIGIN`, request ID, JSON body limit of 100 kb | `Implemented` | none |
 | Rate limiting: a general limiter (300 requests per 15 minutes) and a login limiter (5 per 15 minutes), disabled under `NODE_ENV=test` | `Implemented` | none |
-| `CORS_ORIGIN` accepts only `http(s)://host[:port]` and rejects `*` (ADR-006 point 13) | `Planned (B0)` | B0 |
+| `CORS_ORIGIN` accepts only `http(s)://host[:port]` and rejects `*` (ADR-006 point 13) | `Implemented` | none |
 | Configuration validation at startup (`config/env.ts`: `NODE_ENV`, `PORT`, `JWT_SECRET` of at least 32 characters, `JWT_EXPIRES_IN_SECONDS`, `CORS_ORIGIN`; exits on failure) | `Implemented`; `DATABASE_URL` is not validated, `Planned (B7)` | B7 |
 | Request validation of body and query with Zod (`middleware/validate.ts`) | `Implemented` | none |
 | Request validation of route parameters (ADR-002 point 10) | `Planned (B0)` | B0 |
@@ -482,7 +482,7 @@ The API:
 | Password handling (`bcryptjs`, ADR-005 point 12) | `Implemented` | none |
 | Login (`POST /api/v1/auth/login`, limited to 5 attempts per 15 minutes) and `GET /api/v1/auth/me` | `Implemented` | none |
 | Login response `{ user, session: { accessToken, expiresAt } }` (ADR-005 point 8); today the response carries `token` | `Planned (B2)` | B2 |
-| Login timing equalization: a `bcryptjs` check against a fixed dummy hash when the user does not exist (ADR-005 point 13) | `Planned (B0)` | B0 |
+| Login timing equalization: a `bcryptjs` check against a fixed dummy hash when the user does not exist (ADR-005 point 13) | `Implemented` | none |
 | Access token generation and validation (`jsonwebtoken`, payload `sub` and `role`, `JWT_EXPIRES_IN_SECONDS` default 900, which is the 15 minutes of ADR-005 point 4) | `Implemented` | none |
 | Authentication middleware (`authenticate`: one generic 401 for every failure) | `Implemented` | none |
 | Refresh token in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie with rotation and family revocation, `POST /api/v1/auth/refresh`, `Session` table, custom request header (ADR-005 points 5 to 7) | `Planned (B2)` | B2 |
@@ -1071,7 +1071,7 @@ The same product/application behavior should remain conceptually shared with the
 | Token tests: expired token and wrong signature return 401, with refresh, logout and role enforcement tests (`10` §29); no test covers an expired or wrongly signed token today | `Planned (B2)` | B2 |
 | Redaction and event-name unit tests; an integration test that a request's `requestId` appears in its log entries (ADR-009 point 13) | `Planned (B3)` | B3 |
 | Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | `Planned (B1)` to `Planned (B6)`, per block | B1 to B6 |
-| Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Implemented`; the CI test database with the ADR-005 point 13 roles `Planned (B0)` | B0 |
+| Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Implemented`; the CI test database uses the ADR-005 point 13 roles | none |
 | Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the runner and React Testing Library `Deferred` to the frontend-stage ADR | FE5 |
 | Realtime client tests (connect, disconnect, reconnect, event processing) | Server `Planned (B5)`; client `Planned (FE3)` with the feature; component and E2E checks `Planned (FE5)` | B5, FE3, FE5 |
 | Demo tests: simulation determinism of the shared engine, and the demo flows with the CSV import failure | Engine `Planned (B5)`; demo flows `Planned (FE4)` | B5, FE4 |
@@ -1232,7 +1232,7 @@ without requiring a paid external monitoring service.
 | --- | --- | --- |
 | Targets: a local full stack for demonstrations and a public static demo of `apps/web`; no public backend (ADR-006 points 1 and 2) | `Reference` | none |
 | Minimal CI workflow (see §17), with no continuous deployment (ADR-006 points 10 and 11) | `Implemented` | none |
-| Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | seed guard and `CORS_ORIGIN` validation `Planned (B0)`; `.nvmrc` reused by CI `Implemented`, by the Dockerfile `Planned (B7)` | B0, B7 |
+| Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | seed guard and `CORS_ORIGIN` validation `Implemented`; `.nvmrc` reused by CI `Implemented`, by the Dockerfile `Planned (B7)` | B7 |
 | Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Planned (B7)` | B7 |
 | Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Planned (B7)` | B7 |
 | Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT` and `JWT_EXPIRES_IN_SECONDS`; it does not read `APP_MODE`, `LOG_LEVEL` or `SLOW_REQUEST_THRESHOLD_MS` and does not validate `DATABASE_URL`; the rest is `Planned (B3)` (logging variables), `Planned (B7)` (`DATABASE_URL`) and `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
@@ -1499,7 +1499,7 @@ How the original nodes map to the blocks:
 | --- | --- | --- |
 | Repository | Phase 0 `Implemented`; the minimal CI is the new first step | `Implemented`; CI `Implemented` |
 | Domain | Phase 1 `Implemented` in `packages/domain`; analytics additions in B1; application layer and contracts in B0 | `Implemented`; `Planned (B0)`, `Planned (B1)` |
-| Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented`; `Planned (B0)`, `Planned (B4)` |
+| Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented`; `Planned (B4)` |
 | Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Planned (B6)` |
 | Auth | Phase 4 login and `me` `Implemented`; refresh, logout and roles in B2; session screens in FE1 | `Planned (B2)`, `Planned (FE1)` |
 | Frontend | Phase 5, FE0 | `Planned (FE0)` |
@@ -1717,12 +1717,12 @@ Realtime capabilities should be implemented alongside the corresponding domain c
 | Product data: `Decision`, `DecisionEvent`, `Scenario`, `WatchlistItem`, `Alert`, `Notification`, `UserPreference` | `Implemented` | none |
 | Analytics support data | `Reference`: the schema has no analytics table, and ADR-001 point 6 and ADR-010 point 1 place analytics in application read models | none |
 | Jobs: `Job` and `IdempotencyKey` | `Planned (B4)` | B4 |
-| Runtime database role: a non-superuser role for the API; only the migration role keeps DDL rights | `Planned (B0)` | B0 |
+| Runtime database role: a non-superuser role for the API; only the migration role keeps DDL rights | `Implemented` | none |
 
 Code vs ADR:
 
 - The schema already holds 16 models and ten migrations (`packages/database/prisma/`). The original order lists them as future work; only the groups marked above remain. "Jobs / Notifications" splits: `Notification` exists, `Job` is B4.
-- Migrations are forward-fix only (ADR-006 point 6), so the sessions table, the role enum migration and the B4 tables each ship as a forward migration with their block. The seed never runs automatically and refuses to run when `NODE_ENV=production` (ADR-006 points 5 and 13, `Planned (B0)`).
+- Migrations are forward-fix only (ADR-006 point 6), so the sessions table, the role enum migration and the B4 tables each ship as a forward migration with their block. The seed never runs automatically and refuses to run when `NODE_ENV=production` (ADR-006 points 5 and 13, `Implemented`).
 - ADR-003 point 7 needs no schema change: transactions are not edited or deleted in version 1, and the API has no route for it. ADR-003 point 6 (chronological validation) is application-layer logic in B0 and adds no column.
 - JSON columns (`DecisionEvent.payload`, and the `Job` and `IdempotencyKey` payloads) hold money, prices and quantities as decimal strings (ADR-002 point 9), `Planned (B0)` for the existing decision payloads.
 - The rule that foreign keys and constraints reflect domain ownership applies to the new tables when they are added.
@@ -2077,15 +2077,15 @@ unless measured and documented.
 | Authentication | Login and `me` `Implemented`; refresh, logout and sessions `Planned (B2)` | B2 |
 | Authorization | Ownership checks `Implemented`; `Actor` and permission checks `Planned (B0)`; roles and 403 `Planned (B2)` | B0, B2 |
 | Input validation | Body, query and headers `Implemented`; route parameters `Planned (B0)`; CSV `Planned (B4)`; WebSocket messages `Planned (B5)` | B0, B4, B5 |
-| CORS | Origin allow-list `Implemented`; origin format validation `Planned (B0)`; credentials for the refresh cookie `Planned (B2)` | B0, B2 |
-| Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Planned (B7)`; the seed and reset production guard `Planned (B0)` | B0, B7 |
+| CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Implemented`; credentials for the refresh cookie `Planned (B2)` | B2 |
+| Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Planned (B7)`; the seed and reset production guard `Implemented` | B7 |
 | Rate limiting | HTTP `Implemented`; realtime limits `Planned (B5)` | B5 |
 | Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Planned (B4)`; WebSocket limits `Planned (B5)` | B4, B5 |
 | Error exposure | `Implemented`; redaction in logs `Planned (B3)` | B3 |
 | File handling | CSV import `Planned (B4)`; no file is accepted today | B4 |
 | Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; audit `Planned (B7)` | B7 |
 | Security headers | `helmet` `Implemented`; header test `Planned (B7)` | B7 |
-| Runtime database role | `Planned (B0)` | B0 |
+| Runtime database role | `Implemented` | none |
 
 Code vs ADR:
 
@@ -2271,7 +2271,7 @@ job ID
 | Build: `pnpm build` compiles every package; running the built API is a separate step | Compile in CI `Implemented`; `node dist/index.js` `Planned (B7)` | B7 |
 | Database: PostgreSQL through Docker Compose | `Implemented` (default profile); `full` profile `Planned (B7)` | B7 |
 | Migrate: `prisma migrate deploy` through the one-shot `migrate` service | `Planned (B7)` | B7 |
-| Seed: an explicit development command, never automatic, refusing to run when `NODE_ENV=production` | Command `Implemented`; production guard `Planned (B0)` | B0 |
+| Seed: an explicit development command, never automatic, refusing to run when `NODE_ENV=production` | Command and production guard `Implemented` | none |
 | Start: API container with `node dist/index.js` | `Planned (B7)` | B7 |
 | Health: container healthcheck on `GET /health/ready` | Endpoint `Implemented`; healthcheck `Planned (B7)` | B7 |
 | Smoke: one script after `docker compose --profile full up`, with no frontend step | `Planned (B7)` | B7 |
@@ -2819,10 +2819,10 @@ Optimize observed bottlenecks, not hypothetical ones.
 | JWT | Login issues the token `Implemented`; refresh and logout `Planned (B2)` | B2 |
 | RBAC | `Planned (B2)`; permission mechanism `Planned (B0)` | B0, B2 |
 | Validation | Body, query and headers `Implemented`; route parameters `Planned (B0)` | B0 |
-| CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Planned (B0)` | B0 |
+| CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Implemented` | none |
 | Rate limits | HTTP `Implemented`; realtime `Planned (B5)` | B5 |
 | Resource limits | Body limit `Implemented`; CSV and WebSocket limits `Planned (B4)` and `Planned (B5)` | B4, B5 |
-| Secret management | Environment separation `Implemented`; seed and reset production guard `Planned (B0)` | B0 |
+| Secret management | Environment separation `Implemented`; seed and reset production guard `Implemented` | none |
 | Safe errors | `Implemented`; redaction in logs `Planned (B3)` | B3 |
 
 Code vs ADR:
@@ -2857,9 +2857,9 @@ Do not present security features as complete until they have actually been imple
 | Step or document | Status | Block |
 | --- | --- | --- |
 | Clone and install: `pnpm install` (`packageManager` is `pnpm@12.3.4`; `engines.node` is `>=24.0.0`) | `Implemented`; a single `.nvmrc` as the version source `Implemented` (ADR-006 point 13) | none |
-| Configure: `.env.example` and `.env.test.example` copied to local, gitignored files | `Implemented`; `CORS_ORIGIN` validation `Planned (B0)` | B0 |
+| Configure: `.env.example` and `.env.test.example` copied to local, gitignored files | `Implemented`, including `CORS_ORIGIN` validation | none |
 | Docker Compose for PostgreSQL (default profile) | `Implemented`; `full` profile with API and `migrate` `Planned (B7)` | B7 |
-| Migrate and seed: `pnpm --filter @trading/database db:seed` and `db:reset` | `Implemented`; refusal when `NODE_ENV=production` `Planned (B0)` | B0 |
+| Migrate and seed: `pnpm --filter @trading/database db:seed` and `db:reset` | `Implemented`, including the refusal when `NODE_ENV=production` | none |
 | Run the API | `Implemented` as a development command; the production start `node dist/index.js` `Planned (B7)` | B7 |
 | Quality commands: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build`, `pnpm docs:check` | `Implemented`; all of them in CI `Implemented` | none |
 | `README.md`: prerequisites, commands, environment variables, database reset, tests | Database reset and setup `Implemented`; the status section states the real state (slice H) and the file has the steps to start the API and check `GET /health/ready`; tests and `pnpm docs:check` are listed in `CONTRIBUTING.md` §9, which the README links; `LOG_LEVEL` arrives with the logger in B3 | none |
@@ -3009,9 +3009,9 @@ Do not silently diverge from the documented architecture.
 
 | Item | Status | Block |
 | --- | --- | --- |
-| Repository, TypeScript, tooling | `Implemented` (pnpm workspace, TypeScript project references, ESLint, Prettier, Husky); minimal CI `Implemented` (ADR-006 point 10; `.github/workflows/ci.yml`); application layer and runtime database role `Planned (B0)` | B0 |
+| Repository, TypeScript, tooling | `Implemented` (pnpm workspace, TypeScript project references, ESLint, Prettier, Husky); minimal CI `Implemented` (ADR-006 point 10; `.github/workflows/ci.yml`); runtime database role `Implemented`; application layer `Planned (B0)` | B0 |
 | Docker and PostgreSQL | `Implemented` for the default Compose profile (PostgreSQL); the `full` profile and the API Dockerfile `Planned (B7)` (ADR-006 point 4) | B7 |
-| Migrations | `Implemented` (Prisma); runtime database role `Planned (B0)` | B0 |
+| Migrations | `Implemented` (Prisma); runtime database role `Implemented` | none |
 | Domain foundation | `Implemented` (`packages/domain`); the application layer and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002) | B0 |
 
 Code vs ADR:
@@ -3050,7 +3050,7 @@ domain tests work
 
 | Item | Status | Block |
 | --- | --- | --- |
-| Express, configuration, API foundation | `Implemented` (`apps/api/src/app.ts`, `config/env.ts`, `middleware/error-handler.ts`); layering and `CORS_ORIGIN` validation `Planned (B0)` | B0 |
+| Express, configuration, API foundation | `Implemented` (`apps/api/src/app.ts`, `config/env.ts`, `middleware/error-handler.ts`); `CORS_ORIGIN` validation `Implemented`; layering `Planned (B0)` | B0 |
 | Repositories | `Implemented` over Prisma; ports behind the application layer `Planned (B0)` (ADR-001) | B0 |
 | Health | `Implemented` (`routes/health.ts`, `controllers/health.controller.ts`); the 503 `unavailable` response while shutting down `Planned (B3)` (ADR-006 point 12) | B3 |
 | Logging | `Planned (B3)` (ADR-009); the API has no structured logger today | B3 |
@@ -3261,7 +3261,7 @@ primary product and recovery flows are tested
 | --- | --- | --- |
 | Production builds | `dist` per package exists for the current packages (`pnpm build`); the exports map and `node dist/index.js` `Planned (B7)` (ADR-006 point 3) | B7 |
 | Docker | `apps/api/Dockerfile` does not exist; multi-stage non-root image and `full` profile `Planned (B7)` | B7 |
-| Environment configuration | `.env.example` `Implemented`; `CORS_ORIGIN` validation and production guard `Planned (B0)` | B0 |
+| Environment configuration | `.env.example` `Implemented`; `CORS_ORIGIN` validation and production guard `Implemented` | none |
 | Deployment | local full stack `Planned (B7)`; hosting, managed database, proxy and public WSS `Deferred` (ADR-006 point 2) | B7 |
 | Health | `Implemented`; healthcheck in the container and shutdown behavior `Planned (B3)`, `Planned (B7)` | B3, B7 |
 | Smoke tests | one script after `docker compose --profile full up`, no frontend step `Planned (B7)` | B7 |
@@ -3346,7 +3346,7 @@ without unsupported claims
 | Format | `pnpm format:check` (`prettier --check .`; `docs/` is in `.prettierignore`) | `Implemented`; in CI `Implemented` | none |
 | Type check | `pnpm typecheck` (`tsc --build --pretty`) | `Implemented`; in CI `Implemented` | none |
 | Documentation check | `pnpm docs:check` (`node scripts/check-docs.mjs`) | `Implemented`; in CI `Implemented` (ADR-006 point 11, additions) | none |
-| Unit and integration tests | `pnpm test` (`pnpm -r test`: domain, database, API; the last two need `.env.test.local` and a PostgreSQL test database) | `Implemented`; in CI with a PostgreSQL service `Implemented`, connecting as the container superuser (the ADR-005 point 13 roles `Planned (B0)`) | B0 |
+| Unit and integration tests | `pnpm test` (`pnpm -r test`: domain, database, API; the last two need `.env.test.local` and a PostgreSQL test database) | `Implemented`; in CI with a PostgreSQL service `Implemented`, using the runtime and migration roles of ADR-005 point 13 | none |
 | Build | `pnpm build` (`pnpm -r build`) | `Implemented`; in CI `Implemented` | none |
 | E2E | none | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | Docker build, Docker startup | `docker compose --profile full up` | `Planned (B7)`; no `apps/api/Dockerfile` or `full` profile exists | B7 |
@@ -3359,7 +3359,7 @@ Code vs ADR:
 - There is no coverage step and no coverage threshold (ADR-006 point 11).
 - "Integration tests" and "E2E" are not separate CI stages; `pnpm test` runs every backend suite (`14-deployment-spec.md` §41).
 - Docker validation is a local step, not part of the minimal CI (ADR-006 points 10 and 11): the CI builds the packages with `pnpm build` but does not run Docker.
-- `.github/workflows/ci.yml` runs these steps, so every "in CI" claim above is `Implemented`; the CI test database with the ADR-005 point 13 roles stays `Planned (B0)`.
+- `.github/workflows/ci.yml` runs these steps, so every "in CI" claim above is `Implemented`; the CI test database uses the ADR-005 point 13 roles.
 
 Original text:
 
@@ -3477,7 +3477,7 @@ Original text:
 | --- | --- | --- |
 | Fabricate metrics, users or outcomes; claim production scale | no load test and no metrics exist (`10-testing-strategy.md` §39, ADR-009 point 10) | `Reference` |
 | Present mock infrastructure as real | the demo is labeled as a demo; the simulator is the price source of the real backend too, so the claim is "simulated prices" (ADR-007) | `Reference` |
-| Expose private credentials | no secrets in the demo build (ADR-006 point 7); production guard `Planned (B0)` (point 13) | `Planned (B0)` |
+| Expose private credentials | no secrets in the demo build (ADR-006 point 7); production guard `Implemented` (point 13) | `Implemented` |
 | Rely on paid APIs for the core demo | no paid market data provider (ADR-007) | `Reference` |
 | Static-only demo flows | demo adapters run the same application layer (ADR-001) | `Planned (FE4)` |
 | Duplicate domain rules across frontend and backend | `@trading/domain` and `@trading/contracts` (ADR-001, ADR-002) | `Planned (B0)` |
@@ -3528,7 +3528,7 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 02 Tooling | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Implemented` (ADR-006 point 10) | none |
 | 03 Docker | `Implemented` for the default Compose profile (PostgreSQL); `full` profile and API Dockerfile `Planned (B7)` | B7 |
 | 04 PostgreSQL | `Implemented` | none |
-| 05 Migrations | `Implemented` (Prisma); runtime database role `Planned (B0)` | B0 |
+| 05 Migrations | `Implemented` (Prisma); runtime database role `Implemented` | none |
 | 06 Domain model | `Implemented` (`packages/domain`); analytics additions `Planned (B1)` | B1 |
 | 07 Repository layer | `Implemented` (`packages/database`, repository contracts in `packages/domain`); the application layer over it `Planned (B0)` (ADR-001) | B0 |
 | 08 Express/API foundation | `Implemented`; layering over `@trading/application` and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002); OpenAPI `Planned (B6)` | B0, B6 |
@@ -3741,7 +3741,7 @@ The portfolio should demonstrate:
 | Realtime | Server `Planned (B5)` (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Planned (B5)`; `Planned (FE3)` | B5, FE3, FE4 |
 | Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Planned (B4)`; screens `Planned (FE3)` | `Planned (B4)` | B4, FE3 |
 | Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E tooling `Deferred` to the frontend-stage ADR and E2E checks `Planned (FE5)`; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
-| Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Planned (B0)`; roles and sessions `Planned (B2)` (ADR-005); production configuration guard `Planned (B0)` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2 |
+| Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Planned (B0)`; roles and sessions `Planned (B2)` (ADR-005); production configuration guard `Implemented` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2 |
 | Observability | Request IDs and health routes `Implemented`; structured logs, redaction and security events `Planned (B3)` (ADR-009); job and realtime lifecycle events `Planned (B4)`, `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` in part; `Planned (B3)` | B3, B4, B5 |
 | Deployment | Minimal CI `Implemented` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Implemented`; `Planned (B7)`; `Planned (FE4)` | B7, FE4 |
 | Demo | No paid infrastructure (ADR-007); reset, simulated latency and failure scenarios (ADR-010 point 6); in-process adapters (ADR-001, ADR-007 point 13); see §56 | `Planned (FE4)` | B5, FE4 |

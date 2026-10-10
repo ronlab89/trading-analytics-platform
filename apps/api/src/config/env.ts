@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-const envSchema = z.object({
+const ORIGIN_PATTERN = /^https?:\/\/[A-Za-z0-9.-]+(:\d{1,5})?$/;
+
+export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(7001),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters long."),
@@ -8,7 +10,11 @@ const envSchema = z.object({
   CORS_ORIGIN: z
     .string()
     .default("http://localhost:5173")
-    .transform((value) => value.split(",").map((origin) => origin.trim())),
+    .transform((value) => value.split(",").map((origin) => origin.trim()))
+    .refine((origins) => origins.every((origin) => ORIGIN_PATTERN.test(origin)), {
+      message:
+        "CORS_ORIGIN must be a comma-separated list of http(s)://host[:port] origins; wildcards are not allowed.",
+    }),
 });
 
 export type Env = z.infer<typeof envSchema>;

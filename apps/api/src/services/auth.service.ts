@@ -7,6 +7,9 @@ import { env } from "../config/env.js";
 const userRepository = new PrismaUserRepository();
 const credentialRepository = new PrismaCredentialRepository();
 
+// Valid cost-10 bcrypt hash of a throwaway string; matches the cost used for real credentials.
+const DUMMY_PASSWORD_HASH = "$2b$10$Le7YhguWSoEFRnQTg4pPseKriO.5s8SiKua23Q6yYD4Rx47z8bqZS";
+
 export interface AuthenticatedUser {
   id: string;
   email: string;
@@ -31,20 +34,16 @@ export interface LoginResult {
  */
 export async function login(email: string, password: string): Promise<LoginResult> {
   const user = await userRepository.getByEmail(email);
+  const credential = user ? await credentialRepository.getByUserId(user.id) : null;
 
-  if (!user) {
-    throw new AppError("UNAUTHORIZED", "Invalid credentials.", 401);
-  }
+  // Always run one bcrypt comparison, against a dummy hash when the account or
+  // credential is missing, so response time doesn't reveal which emails exist.
+  const passwordMatches = await bcrypt.compare(
+    password,
+    credential?.passwordHash ?? DUMMY_PASSWORD_HASH,
+  );
 
-  const credential = await credentialRepository.getByUserId(user.id);
-
-  if (!credential) {
-    throw new AppError("UNAUTHORIZED", "Invalid credentials.", 401);
-  }
-
-  const passwordMatches = await bcrypt.compare(password, credential.passwordHash);
-
-  if (!passwordMatches) {
+  if (!user || !credential || !passwordMatches) {
     throw new AppError("UNAUTHORIZED", "Invalid credentials.", 401);
   }
 
