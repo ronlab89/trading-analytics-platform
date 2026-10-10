@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type {
   createPortfolioRequestSchema,
   updatePortfolioRequestSchema,
-} from "../schemas/portfolio.schema.js";
+} from "@trading/contracts";
 import {
   archivePortfolio,
   createPortfolio,

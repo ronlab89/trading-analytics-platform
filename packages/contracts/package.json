@@ -1,0 +1,22 @@
+{
+  "name": "@trading/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^3.0.5"
+  },
+  "dependencies": {
+    "@trading/domain": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

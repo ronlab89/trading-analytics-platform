@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { loginRequestSchema } from "../schemas/auth.schema.js";
+import type { loginRequestSchema } from "@trading/contracts";
 import { login, getCurrentUser } from "../services/auth.service.js";
 
 type LoginRequestBody = z.infer<typeof loginRequestSchema>;

@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { addWatchlistItemRequestSchema } from "../schemas/watchlist.schema.js";
+import { addWatchlistItemRequestSchema } from "@trading/contracts";
 import {
   addWatchlistItemHandler,
   listWatchlistHandler,

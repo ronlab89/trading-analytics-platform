@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { listNotificationsQuerySchema } from "../schemas/notification.schema.js";
+import { listNotificationsQuerySchema } from "@trading/contracts";
 import {
   listNotificationsHandler,
   markAllNotificationsAsReadHandler,

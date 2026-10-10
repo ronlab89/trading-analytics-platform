@@ -139,6 +139,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@trading/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@trading/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -194,6 +197,22 @@ importers:
       tsx:
         specifier: ^4.23.13
         version: 4.23.13
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@24.19.1)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0)
+
+  packages/contracts:
+    dependencies:
+      '@trading/domain':
+        specifier: workspace:*
+        version: link:../domain
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

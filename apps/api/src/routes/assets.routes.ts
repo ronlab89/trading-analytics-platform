@@ -2,8 +2,8 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { listAssetsQuerySchema } from "../schemas/asset.schema.js";
-import { assetHistoryQuerySchema } from "../schemas/market.schema.js";
+import { listAssetsQuerySchema } from "@trading/contracts";
+import { assetHistoryQuerySchema } from "@trading/contracts";
 import {
   getAssetByIdHandler,
   getAssetHistoryHandler,

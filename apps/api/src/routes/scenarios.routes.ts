@@ -7,7 +7,7 @@ import {
   createScenarioRequestSchema,
   listScenariosQuerySchema,
   updateScenarioRequestSchema,
-} from "../schemas/scenario.schema.js";
+} from "@trading/contracts";
 import {
   archiveScenarioHandler,
   calculateScenarioHandler,

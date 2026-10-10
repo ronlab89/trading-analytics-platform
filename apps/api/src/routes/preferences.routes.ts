@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { updateUserPreferenceRequestSchema } from "../schemas/user-preference.schema.js";
+import { updateUserPreferenceRequestSchema } from "@trading/contracts";
 import {
   getUserPreferencesHandler,
   updateUserPreferencesHandler,

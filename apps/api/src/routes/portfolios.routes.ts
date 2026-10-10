@@ -2,10 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import {
-  createPortfolioRequestSchema,
-  updatePortfolioRequestSchema,
-} from "../schemas/portfolio.schema.js";
+import { createPortfolioRequestSchema, updatePortfolioRequestSchema } from "@trading/contracts";
 import {
   archivePortfolioHandler,
   createPortfolioHandler,

@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { listDecisionsQuerySchema } from "../schemas/decision.schema.js";
+import { listDecisionsQuerySchema } from "@trading/contracts";
 import {
   getDecisionByIdHandler,
   getDecisionReplayHandler,

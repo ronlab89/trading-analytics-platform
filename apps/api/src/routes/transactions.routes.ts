@@ -2,10 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import {
-  createTransactionRequestSchema,
-  listTransactionsQuerySchema,
-} from "../schemas/transaction.schema.js";
+import { createTransactionRequestSchema, listTransactionsQuerySchema } from "@trading/contracts";
 import {
   createTransactionHandler,
   getTransactionByIdHandler,

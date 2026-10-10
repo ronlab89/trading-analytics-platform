@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { allocationQuerySchema } from "../schemas/analytics.schema.js";
+import type { allocationQuerySchema } from "@trading/contracts";
 import { getPortfolioAllocation, getPortfolioAttribution } from "../services/analytics.service.js";
 
 type AllocationQuery = z.infer<typeof allocationQuerySchema>;

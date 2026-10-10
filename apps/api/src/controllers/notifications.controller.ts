@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type { ListNotificationsQuery } from "../schemas/notification.schema.js";
+import type { ListNotificationsQuery } from "@trading/contracts";
 import {
   listNotifications,
   markAllNotificationsAsRead,

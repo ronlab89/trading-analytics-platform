@@ -3,13 +3,13 @@ import type { z } from "zod";
 import type {
   createTransactionRequestSchema,
   listTransactionsQuerySchema,
-} from "../schemas/transaction.schema.js";
+} from "@trading/contracts";
 import {
   createTransaction,
   getTransactionById,
   listTransactions,
 } from "../services/transaction.service.js";
-import { buildPaginationMeta } from "../schemas/pagination.schema.js";
+import { buildPaginationMeta } from "@trading/contracts";
 import { Money } from "@trading/domain";
 
 type ListTransactionsQuery = z.infer<typeof listTransactionsQuerySchema>;

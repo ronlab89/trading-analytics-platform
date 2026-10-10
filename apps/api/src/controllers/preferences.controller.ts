@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type { UpdateUserPreferenceRequestBody } from "../schemas/user-preference.schema.js";
+import type { UpdateUserPreferenceRequestBody } from "@trading/contracts";
 import { getUserPreferences, updateUserPreferences } from "../services/user-preference.service.js";
 
 /**

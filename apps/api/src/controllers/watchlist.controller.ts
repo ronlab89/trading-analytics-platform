@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type { AddWatchlistItemRequestBody } from "../schemas/watchlist.schema.js";
+import type { AddWatchlistItemRequestBody } from "@trading/contracts";
 import {
   addToWatchlist,
   listWatchlist,

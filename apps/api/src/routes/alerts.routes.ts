@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { createAlertRequestSchema, updateAlertRequestSchema } from "../schemas/alert.schema.js";
+import { createAlertRequestSchema, updateAlertRequestSchema } from "@trading/contracts";
 import {
   createAlertHandler,
   deleteAlertHandler,

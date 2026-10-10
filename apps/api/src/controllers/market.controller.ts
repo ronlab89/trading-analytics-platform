@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { batchPricesQuerySchema } from "../schemas/market.schema.js";
+import type { batchPricesQuerySchema } from "@trading/contracts";
 import { getBatchPrices } from "../services/market.service.js";
 
 type BatchPricesQuery = z.infer<typeof batchPricesQuerySchema>;

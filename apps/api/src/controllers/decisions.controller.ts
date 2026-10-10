@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { listDecisionsQuerySchema } from "../schemas/decision.schema.js";
+import type { listDecisionsQuerySchema } from "@trading/contracts";
 import { getDecisionById, getDecisionReplay, listDecisions } from "../services/decision.service.js";
 
 type ListDecisionsQuery = z.infer<typeof listDecisionsQuerySchema>;
