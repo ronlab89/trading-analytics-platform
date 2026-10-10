@@ -168,6 +168,50 @@ export async function createTestPosition(
 }
 
 /**
+ * Creates the latest-quote (MarketPrice) row for an asset (USD). Both
+ * MarketPrice and HistoricalPrice cascade-delete with their asset, so
+ * `cleanupTestData` needs no extra step for these rows.
+ */
+export async function createTestMarketPrice(
+  assetId: string,
+  overrides: { price?: number; previousPrice?: number; timestamp?: Date } = {},
+): Promise<void> {
+  const price = overrides.price ?? 100;
+  const previousPrice = overrides.previousPrice ?? 100;
+  await prisma.marketPrice.create({
+    data: {
+      assetId,
+      price,
+      currency: "USD",
+      previousPrice,
+      change: price - previousPrice,
+      changePercent: previousPrice === 0 ? 0 : ((price - previousPrice) / previousPrice) * 100,
+      timestamp: overrides.timestamp ?? new Date("2026-06-01T00:00:00Z"),
+    },
+  });
+}
+
+/** Creates one daily candle (HistoricalPrice, USD) for an asset. */
+export async function createTestHistoricalPrice(
+  assetId: string,
+  timestamp: Date,
+  overrides: { open?: number; high?: number; low?: number; close?: number; volume?: number } = {},
+): Promise<void> {
+  await prisma.historicalPrice.create({
+    data: {
+      assetId,
+      timestamp,
+      currency: "USD",
+      open: overrides.open ?? 100,
+      high: overrides.high ?? 105,
+      low: overrides.low ?? 95,
+      close: overrides.close ?? 102,
+      volume: overrides.volume ?? 1000,
+    },
+  });
+}
+
+/**
  * Creates a scenario directly through Prisma. `createdAt` can be set to
  * control list ordering. Cascade deletes (Portfolio -> Scenario) mean
  * `cleanupTestData` needs no extra step for these rows.
