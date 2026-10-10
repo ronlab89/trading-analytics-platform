@@ -13,6 +13,7 @@ packages/database/src/seed/wipe.ts
 packages/database/src/seed/seed-guard.ts
 packages/database/src/seed/seed-guard.test.ts
 packages/database/prisma/seed.ts
+packages/database/prisma/reset.ts
 packages/database/package.json
 packages/database/prisma/migrations/\*\*
 docker-compose.yml
@@ -38,7 +39,7 @@ docs/15-implementation-plan.md
 ## Tasks
 
 - [x] T1 RED then GREEN: `CORS_ORIGIN` accepts only `http(s)://host[:port]`, rejects `*`. Route: inline (2 small files). Evidence: `env.test.ts` 8/8 green, `tsc --noEmit` clean.
-- [ ] T2 Seed and hard reset refuse to run when `NODE_ENV=production`.
+- [x] T2 Seed and hard reset refuse to run when `NODE_ENV=production`. Decision: shared `assertNotProduction` in `seed-guard.ts`; `db:reset` now runs `prisma/reset.ts` (Node entry, portable on Windows). Route: inline. Evidence: `seed-guard.test.ts` 5/5 green, `tsc --noEmit` clean, `NODE_ENV=production tsx prisma/reset.ts` exits 1.
 - [ ] T3 Login timing: run `bcryptjs` against a fixed dummy hash when the user does not exist; generic message unchanged.
 - [ ] T4 Runtime database role without DDL; only the migration role keeps DDL; wire the roles in Compose and CI.
 - [ ] T5 Status lines: the CI database roles and the runtime role become `Implemented` in the SDD (after the CI run is green).
