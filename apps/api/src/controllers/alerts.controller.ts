@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
+import { presentAlert } from "@trading/contracts";
 import type { createAlertRequestSchema, updateAlertRequestSchema } from "@trading/contracts";
 import {
   createAlert,
@@ -23,7 +24,7 @@ export async function listAlertsHandler(
 ): Promise<void> {
   try {
     const alerts = await listAlerts(req.auth.userId);
-    res.json({ data: alerts });
+    res.json({ data: alerts.map(presentAlert) });
   } catch (error) {
     next(error);
   }
@@ -40,7 +41,7 @@ export async function getAlertByIdHandler(
 ): Promise<void> {
   try {
     const alert = await getAlertById(req.auth.userId, req.params.alertId as string);
-    res.json({ data: alert });
+    res.json({ data: presentAlert(alert) });
   } catch (error) {
     next(error);
   }
@@ -69,7 +70,7 @@ export async function createAlertHandler(
       ...(portfolioId !== undefined ? { portfolioId } : {}),
       ...(enabled !== undefined ? { enabled } : {}),
     });
-    res.status(201).json({ data: alert });
+    res.status(201).json({ data: presentAlert(alert) });
   } catch (error) {
     next(error);
   }
@@ -94,7 +95,7 @@ export async function updateAlertHandler(
       ...(threshold !== undefined ? { threshold } : {}),
       ...(enabled !== undefined ? { enabled } : {}),
     });
-    res.json({ data: alert });
+    res.json({ data: presentAlert(alert) });
   } catch (error) {
     next(error);
   }
