@@ -2,7 +2,11 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { createPortfolioRequestSchema, updatePortfolioRequestSchema } from "@trading/contracts";
+import {
+  createPortfolioRequestSchema,
+  portfolioIdParamsSchema,
+  updatePortfolioRequestSchema,
+} from "@trading/contracts";
 import {
   archivePortfolioHandler,
   createPortfolioHandler,
@@ -22,11 +26,17 @@ portfoliosRouter.post(
   createPortfolioHandler,
 );
 
-portfoliosRouter.get("/api/v1/portfolios/:portfolioId", authenticate, getPortfolioByIdHandler);
+portfoliosRouter.get(
+  "/api/v1/portfolios/:portfolioId",
+  authenticate,
+  validate(portfolioIdParamsSchema, "params"),
+  getPortfolioByIdHandler,
+);
 
 portfoliosRouter.patch(
   "/api/v1/portfolios/:portfolioId",
   authenticate,
+  validate(portfolioIdParamsSchema, "params"),
   validate(updatePortfolioRequestSchema, "body"),
   updatePortfolioHandler,
 );
@@ -34,5 +44,6 @@ portfoliosRouter.patch(
 portfoliosRouter.post(
   "/api/v1/portfolios/:portfolioId/archive",
   authenticate,
+  validate(portfolioIdParamsSchema, "params"),
   archivePortfolioHandler,
 );

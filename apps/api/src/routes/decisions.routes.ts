@@ -2,7 +2,12 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { listDecisionsQuerySchema } from "@trading/contracts";
+import {
+  decisionIdParamsSchema,
+  listDecisionsQuerySchema,
+  portfolioDecisionParamsSchema,
+  portfolioIdParamsSchema,
+} from "@trading/contracts";
 import {
   getDecisionByIdHandler,
   getDecisionReplayHandler,
@@ -14,6 +19,7 @@ export const decisionsRouter: ExpressRouter = Router();
 decisionsRouter.get(
   "/api/v1/portfolios/:portfolioId/decisions",
   authenticate,
+  validate(portfolioIdParamsSchema, "params"),
   validate(listDecisionsQuerySchema, "query"),
   listDecisionsHandler,
 );
@@ -21,9 +27,15 @@ decisionsRouter.get(
 decisionsRouter.get(
   "/api/v1/portfolios/:portfolioId/decisions/:decisionId",
   authenticate,
+  validate(portfolioDecisionParamsSchema, "params"),
   getDecisionByIdHandler,
 );
 
 // Not nested under /portfolios/:portfolioId, per 07-api-spec.md §24.
 // Ownership is resolved in the service (decision -> portfolio -> user).
-decisionsRouter.get("/api/v1/decisions/:decisionId/replay", authenticate, getDecisionReplayHandler);
+decisionsRouter.get(
+  "/api/v1/decisions/:decisionId/replay",
+  authenticate,
+  validate(decisionIdParamsSchema, "params"),
+  getDecisionReplayHandler,
+);

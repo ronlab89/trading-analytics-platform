@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { listNotificationsQuerySchema } from "@trading/contracts";
+import { listNotificationsQuerySchema, notificationIdParamsSchema } from "@trading/contracts";
 import {
   listNotificationsHandler,
   markAllNotificationsAsReadHandler,
@@ -27,5 +27,6 @@ notificationsRouter.post(
 notificationsRouter.post(
   "/api/v1/notifications/:notificationId/read",
   authenticate,
+  validate(notificationIdParamsSchema, "params"),
   markNotificationAsReadHandler,
 );

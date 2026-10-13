@@ -2,7 +2,11 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { createAlertRequestSchema, updateAlertRequestSchema } from "@trading/contracts";
+import {
+  alertIdParamsSchema,
+  createAlertRequestSchema,
+  updateAlertRequestSchema,
+} from "@trading/contracts";
 import {
   createAlertHandler,
   deleteAlertHandler,
@@ -15,7 +19,12 @@ export const alertsRouter: ExpressRouter = Router();
 
 alertsRouter.get("/api/v1/alerts", authenticate, listAlertsHandler);
 
-alertsRouter.get("/api/v1/alerts/:alertId", authenticate, getAlertByIdHandler);
+alertsRouter.get(
+  "/api/v1/alerts/:alertId",
+  authenticate,
+  validate(alertIdParamsSchema, "params"),
+  getAlertByIdHandler,
+);
 
 alertsRouter.post(
   "/api/v1/alerts",
@@ -27,8 +36,14 @@ alertsRouter.post(
 alertsRouter.patch(
   "/api/v1/alerts/:alertId",
   authenticate,
+  validate(alertIdParamsSchema, "params"),
   validate(updateAlertRequestSchema, "body"),
   updateAlertHandler,
 );
 
-alertsRouter.delete("/api/v1/alerts/:alertId", authenticate, deleteAlertHandler);
+alertsRouter.delete(
+  "/api/v1/alerts/:alertId",
+  authenticate,
+  validate(alertIdParamsSchema, "params"),
+  deleteAlertHandler,
+);

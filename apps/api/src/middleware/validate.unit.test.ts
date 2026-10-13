@@ -22,4 +22,25 @@ describe("validate details", () => {
       { field: "a", code: "custom", message: "bad a" },
     ]);
   });
+
+  it("validates route params with a params-specific message and stores them", () => {
+    const schema = z.object({ portfolioId: z.string().max(3) });
+    const next = vi.fn();
+    validate(schema, "params")(
+      { params: { portfolioId: "toolong" } } as unknown as Request,
+      {} as Response,
+      next,
+    );
+    const err = next.mock.calls[0]?.[0] as AppError;
+    expect(err.statusCode).toBe(400);
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.message).toBe("The request contains invalid route parameters.");
+    expect(err.details?.[0]).toMatchObject({ field: "portfolioId", code: "too_big" });
+
+    const req = { params: { portfolioId: "ok" } } as unknown as Request;
+    const next2 = vi.fn();
+    validate(schema, "params")(req, {} as Response, next2);
+    expect(next2).toHaveBeenCalledWith();
+    expect(req.validated?.params).toEqual({ portfolioId: "ok" });
+  });
 });
