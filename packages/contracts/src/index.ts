@@ -5,6 +5,7 @@ export * from "./auth.schema.js";
 export * from "./error.schema.js";
 export * from "./decision.schema.js";
 export * from "./market.schema.js";
+export * from "./notification.response.js";
 export * from "./notification.schema.js";
 export * from "./params.schema.js";
 export * from "./pagination.schema.js";
