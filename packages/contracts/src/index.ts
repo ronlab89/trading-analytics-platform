@@ -14,4 +14,5 @@ export * from "./scenario.schema.js";
 export * from "./transaction.schema.js";
 export * from "./user-preference.response.js";
 export * from "./user-preference.schema.js";
+export * from "./watchlist.response.js";
 export * from "./watchlist.schema.js";
