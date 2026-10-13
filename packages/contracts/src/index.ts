@@ -16,6 +16,7 @@ export * from "./portfolio.schema.js";
 export * from "./position.response.js";
 export * from "./response-common.schema.js";
 export * from "./scenario.schema.js";
+export * from "./transaction.response.js";
 export * from "./transaction.schema.js";
 export * from "./user-preference.response.js";
 export * from "./user-preference.schema.js";
