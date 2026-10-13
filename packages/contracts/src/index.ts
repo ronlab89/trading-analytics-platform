@@ -13,6 +13,7 @@ export * from "./market.schema.js";
 export * from "./notification.response.js";
 export * from "./notification.schema.js";
 export * from "./params.schema.js";
+export * from "./overview.response.js";
 export * from "./pagination.schema.js";
 export * from "./portfolio.response.js";
 export * from "./portfolio.schema.js";

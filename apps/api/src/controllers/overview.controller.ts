@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { presentOverview } from "@trading/contracts";
 import { getPortfolioOverview } from "../services/overview.service.js";
 
 /**
@@ -12,7 +13,7 @@ export async function getPortfolioOverviewHandler(
 ): Promise<void> {
   try {
     const overview = await getPortfolioOverview(req.auth.userId, req.params.portfolioId as string);
-    res.json({ data: overview });
+    res.json({ data: presentOverview(overview) });
   } catch (error) {
     next(error);
   }
