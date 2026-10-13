@@ -1,6 +1,7 @@
 export * from "./alert.response.js";
 export * from "./alert.schema.js";
 export * from "./analytics.schema.js";
+export * from "./asset.response.js";
 export * from "./asset.schema.js";
 export * from "./auth.schema.js";
 export * from "./error.schema.js";
