@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import { presentDecision } from "@trading/contracts";
+import { presentDecision, presentDecisionReplay } from "@trading/contracts";
 import type { listDecisionsQuerySchema } from "@trading/contracts";
 import { getDecisionById, getDecisionReplay, listDecisions } from "../services/decision.service.js";
 
@@ -65,7 +65,7 @@ export async function getDecisionReplayHandler(
 ): Promise<void> {
   try {
     const replay = await getDecisionReplay(req.auth.userId, req.params.decisionId as string);
-    res.json({ data: replay });
+    res.json({ data: presentDecisionReplay(replay) });
   } catch (error) {
     next(error);
   }

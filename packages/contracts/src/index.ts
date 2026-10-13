@@ -5,6 +5,7 @@ export * from "./asset.response.js";
 export * from "./asset.schema.js";
 export * from "./auth.schema.js";
 export * from "./error.schema.js";
+export * from "./decision-replay.response.js";
 export * from "./decision.response.js";
 export * from "./decision.schema.js";
 export * from "./market.schema.js";
