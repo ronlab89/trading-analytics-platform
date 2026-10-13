@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
+import { presentPortfolio } from "@trading/contracts";
 import type {
   createPortfolioRequestSchema,
   updatePortfolioRequestSchema,
@@ -29,7 +30,7 @@ export async function listPortfoliosHandler(
 ): Promise<void> {
   try {
     const portfolios = await listPortfolios(req.auth.userId);
-    res.json({ data: portfolios });
+    res.json({ data: portfolios.map(presentPortfolio) });
   } catch (error) {
     next(error);
   }
@@ -59,7 +60,7 @@ export async function createPortfolioHandler(
       baseCurrency,
       ...(description !== undefined ? { description } : {}),
     });
-    res.status(201).json({ data: portfolio });
+    res.status(201).json({ data: presentPortfolio(portfolio) });
   } catch (error) {
     next(error);
   }
@@ -80,7 +81,7 @@ export async function getPortfolioByIdHandler(
 ): Promise<void> {
   try {
     const portfolio = await getPortfolioById(req.auth.userId, req.params.portfolioId as string);
-    res.json({ data: portfolio });
+    res.json({ data: presentPortfolio(portfolio) });
   } catch (error) {
     next(error);
   }
@@ -108,7 +109,7 @@ export async function updatePortfolioHandler(
       ...(name !== undefined ? { name } : {}),
       ...(description !== undefined ? { description } : {}),
     });
-    res.json({ data: portfolio });
+    res.json({ data: presentPortfolio(portfolio) });
   } catch (error) {
     next(error);
   }
@@ -133,7 +134,7 @@ export async function archivePortfolioHandler(
       req.auth.userId,
       req.params.portfolioId as string,
     );
-    res.json({ data: portfolio, meta: { alreadyArchived } });
+    res.json({ data: presentPortfolio(portfolio), meta: { alreadyArchived } });
   } catch (error) {
     next(error);
   }
