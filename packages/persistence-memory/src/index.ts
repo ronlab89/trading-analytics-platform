@@ -8,6 +8,7 @@
  */
 export * from "./in-memory-alert-repository.js";
 export * from "./in-memory-asset-repository.js";
+export * from "./in-memory-credential-repository.js";
 export * from "./in-memory-decision-event-repository.js";
 export * from "./in-memory-decision-repository.js";
 export * from "./in-memory-historical-price-repository.js";
@@ -19,5 +20,6 @@ export * from "./in-memory-position-repository.js";
 export * from "./in-memory-scenario-repository.js";
 export * from "./in-memory-transaction-repository.js";
 export * from "./in-memory-user-preference-repository.js";
+export * from "./in-memory-user-repository.js";
 export * from "./in-memory-watchlist-item-repository.js";
 export * from "./options.js";
