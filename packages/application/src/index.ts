@@ -1,4 +1,5 @@
 export * from "./actor.js";
+export * from "./alert-service.js";
 export * from "./analytics-service.js";
 export * from "./asset-service.js";
 export * from "./clock.js";
@@ -12,4 +13,5 @@ export * from "./portfolio-service.js";
 export * from "./position-service.js";
 export * from "./scenario-service.js";
 export * from "./transaction-service.js";
+export * from "./user-preference-service.js";
 export * from "./watchlist-service.js";
