@@ -37,11 +37,28 @@ export default [
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/consistent-type-imports": "error",
+    },
+  },
 
-      // Placeholder for future architectural import boundaries
-      // (06-architecture.md §43 — domain must not import React/Prisma/etc.)
-      // Activated once apps/packages contain real code:
-      // "no-restricted-imports": ["error", { patterns: [...] }],
+  // Architectural import boundaries (06-architecture.md §43, ADR-001 point 1).
+  // Tests may import their runner and helpers, so the boundaries cover source files only.
+  {
+    // @trading/application imports nothing except @trading/domain (and its own files).
+    files: ["packages/application/src/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^(?!@trading/domain$|\\.{1,2}/).+",
+              message:
+                "@trading/application may only import @trading/domain: no Prisma, Express, Zod, @trading/contracts or other packages (ADR-001 point 1).",
+            },
+          ],
+        },
+      ],
     },
   },
 

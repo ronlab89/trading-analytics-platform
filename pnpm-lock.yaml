@@ -139,6 +139,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@trading/application':
+        specifier: workspace:*
+        version: link:../../packages/application
       '@trading/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

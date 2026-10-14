@@ -694,12 +694,13 @@ controllers except `app.ts`.
 
 # 43. Import Boundaries
 
-**Status:** `Implemented` through workspace dependencies and TypeScript references; lint rules `Planned (B0)`.
+**Status:** `Implemented` through workspace dependencies and TypeScript references; the `@trading/application` lint rule `Implemented` (B0.5), the others `Planned (B0)`.
 
 Enforced today: a package can only import workspace packages listed in its
 `package.json`, and `tsconfig.json` references build `domain` before
-`database` before `api`. `eslint.config.js` has only a commented placeholder
-for `no-restricted-imports`.
+`database` before `api`. `eslint.config.js` enforces the `@trading/application`
+row below with `no-restricted-imports` (source files only; tests may import
+their runner). The other rows are not enforced yet.
 
 Rules to enforce with lint in B0 (ADR-001 point 1, ADR-002 point 1):
 
