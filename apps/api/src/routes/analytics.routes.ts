@@ -3,10 +3,12 @@ import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
 import { allocationQuerySchema, portfolioIdParamsSchema } from "@trading/contracts";
-import {
-  getPortfolioAllocationHandler,
-  getPortfolioAttributionHandler,
-} from "../controllers/analytics.controller.js";
+import { makeAnalyticsController } from "../controllers/analytics.controller.js";
+import { composition } from "../composition.js";
+
+const { getPortfolioAllocationHandler, getPortfolioAttributionHandler } = makeAnalyticsController(
+  composition.analyticsService,
+);
 
 export const analyticsRouter: ExpressRouter = Router();
 

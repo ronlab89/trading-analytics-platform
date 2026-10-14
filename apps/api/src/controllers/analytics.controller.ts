@@ -2,48 +2,57 @@ import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
 import { presentAllocation, presentAttribution } from "@trading/contracts";
 import type { allocationQuerySchema } from "@trading/contracts";
-import { getPortfolioAllocation, getPortfolioAttribution } from "../services/analytics.service.js";
+import type { AnalyticsService } from "@trading/application";
+import { actorOf } from "../middleware/authenticate.js";
 
 type AllocationQuery = z.infer<typeof allocationQuerySchema>;
 
-/**
- * GET /api/v1/portfolios/:portfolioId/analytics/allocation
- * Source: 07-api-spec.md §20 (Allocation), FR-027.
- *
- * Query validated upstream by `validate(allocationQuerySchema, "query")`.
- */
-export async function getPortfolioAllocationHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const { groupBy } = req.validated?.query as AllocationQuery;
+/** Analytics HTTP handlers, bound to the analytics use cases they call. */
+export function makeAnalyticsController(analyticsService: AnalyticsService) {
+  /**
+   * GET /api/v1/portfolios/:portfolioId/analytics/allocation
+   * Source: 07-api-spec.md §20 (Allocation), FR-027.
+   *
+   * Query validated upstream by `validate(allocationQuerySchema, "query")`.
+   */
+  async function getPortfolioAllocationHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    const { groupBy } = req.validated?.query as AllocationQuery;
 
-  try {
-    const result = await getPortfolioAllocation(
-      req.auth.userId,
-      req.params.portfolioId as string,
-      groupBy,
-    );
-    res.json({ data: presentAllocation(result) });
-  } catch (error) {
-    next(error);
+    try {
+      const result = await analyticsService.getPortfolioAllocation(
+        actorOf(req),
+        req.params.portfolioId as string,
+        groupBy,
+      );
+      res.json({ data: presentAllocation(result) });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-/**
- * GET /api/v1/portfolios/:portfolioId/analytics/attribution
- * Source: 07-api-spec.md §22 (Attribution), FR-030/FR-031.
- */
-export async function getPortfolioAttributionHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  try {
-    const result = await getPortfolioAttribution(req.auth.userId, req.params.portfolioId as string);
-    res.json({ data: presentAttribution(result) });
-  } catch (error) {
-    next(error);
+  /**
+   * GET /api/v1/portfolios/:portfolioId/analytics/attribution
+   * Source: 07-api-spec.md §22 (Attribution), FR-030/FR-031.
+   */
+  async function getPortfolioAttributionHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const result = await analyticsService.getPortfolioAttribution(
+        actorOf(req),
+        req.params.portfolioId as string,
+      );
+      res.json({ data: presentAttribution(result) });
+    } catch (error) {
+      next(error);
+    }
   }
+
+  return { getPortfolioAllocationHandler, getPortfolioAttributionHandler };
 }

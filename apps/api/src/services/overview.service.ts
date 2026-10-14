@@ -30,7 +30,7 @@ import {
   buildAttribution,
   type AllocationResult,
   type AttributionResult,
-} from "./analytics.service.js";
+} from "@trading/application";
 import { getAssetsByIds } from "./asset.service.js";
 import { getPortfolioById } from "./portfolio.service.js";
 

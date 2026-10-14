@@ -8,6 +8,7 @@ import {
   PrismaUnitOfWork,
 } from "@trading/database";
 import {
+  createAnalyticsService,
   createAssetService,
   createMarketService,
   createPortfolioService,
@@ -40,9 +41,13 @@ export function buildComposition(clock: Clock) {
     historicalPriceRepository: new PrismaHistoricalPriceRepository(),
   });
 
-  const positionService = createPositionService({
-    positionRepository: new PrismaPositionRepository(),
+  const positionRepository = new PrismaPositionRepository();
+
+  const positionService = createPositionService({ positionRepository, portfolioService });
+  const analyticsService = createAnalyticsService({
+    positionRepository,
     portfolioService,
+    assetService,
   });
   const transactionService = createTransactionService({
     transactionRepository: new PrismaTransactionRepository(),
@@ -58,6 +63,7 @@ export function buildComposition(clock: Clock) {
     marketService,
     positionService,
     transactionService,
+    analyticsService,
   };
 }
 

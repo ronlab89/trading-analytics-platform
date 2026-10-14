@@ -1,4 +1,5 @@
 export * from "./actor.js";
+export * from "./analytics-service.js";
 export * from "./asset-service.js";
 export * from "./clock.js";
 export * from "./errors.js";
