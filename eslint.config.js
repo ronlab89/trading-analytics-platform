@@ -64,8 +64,9 @@ export default [
 
   {
     // @trading/persistence-memory imports nothing except @trading/domain (and its own files).
+    // The contract suites under src/contract are test code and import vitest.
     files: ["packages/persistence-memory/src/**/*.ts"],
-    ignores: ["**/*.test.ts"],
+    ignores: ["**/*.test.ts", "packages/persistence-memory/src/contract/**"],
     rules: {
       "no-restricted-imports": [
         "error",
