@@ -6,4 +6,5 @@
  * Shared by the repository contract suite, the application tests and the demo
  * mode. Depends only on `@trading/domain`.
  */
-export {};
+export * from "./in-memory-asset-repository.js";
+export * from "./in-memory-portfolio-repository.js";
