@@ -15,6 +15,18 @@ tsconfig*.json
 apps/api/package.json
 docs/06-architecture.md
 
+## Pre-flight decisions (2026-10-13)
+
+- Package `@trading/application` depends only on `@trading/domain`. One factory per resource that receives its dependencies and returns the functions the service exposes today (ADR-001 point 2). No use-case classes.
+- In scope: the 13 resource services. `auth.service` (B2) and `health.service` (infrastructure) stay where they are. In-memory repositories and `UnitOfWork` are B0.6. The archived-portfolio guard and transaction chronology are B0.7.
+- `Actor { userId, role }`. `role` reuses the current domain `UserRole` as a placeholder; B2 migrates it (ADR-005 point 1). Permissions are `assertPermission(actor, permission)` over a typed `Permission` union. B0.5 ships a matrix in which every current role holds every permission, so behavior is unchanged; B2 fills it in. Ownership checks stay in the use cases (404 for foreign resources).
+- `Clock { now(): Date }`, injected through the composition root. `validateNewTransaction(input, now)` takes the time as a required argument; its callers (contracts, database mapper, seed, tests) are updated. No defaulted `new Date()`.
+- Application errors are transport-free classes: `NotFoundError`, `ConflictError`, `ForbiddenError`. Their names avoid the `Invalid*` and `Insufficient*` prefixes so `error-handler.ts` does not catch them by its name regex. The handler maps them to exactly today's `AppError` codes and status codes, because the B0.3 and B0.4 tests pin them.
+- Composition root: `apps/api/src/composition.ts` exports the composed services. Controllers become `makeXController(services)` factories wired by the routers. The tests keep building the app through `createApp()`.
+- ESLint: replace the commented placeholder at `eslint.config.js:~41-43` so `@trading/application` may import only `@trading/domain`. Proof: a throwaway fixture importing Prisma or Express fails lint, then is deleted.
+- tsconfig: add `packages/application` (and the missing `packages/contracts`) to the root references and to `apps/api/tsconfig.json`.
+- Risks: HTTP status codes and error bodies (pinned by route tests); import cycles between services (portfolio and asset are the shared dependencies, so they move first); `vi.mock` of services in `health.unavailable.routes.test.ts`; the `validateNewTransaction` signature (4 callers).
+
 ## Tasks
 
 - [ ] T1 Package scaffold (depends only on `@trading/domain`), application errors, `Actor`, permission mechanism, `Clock` port.
