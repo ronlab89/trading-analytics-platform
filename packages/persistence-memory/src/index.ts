@@ -7,4 +7,9 @@
  * mode. Depends only on `@trading/domain`.
  */
 export * from "./in-memory-asset-repository.js";
+export * from "./in-memory-historical-price-repository.js";
+export * from "./in-memory-market-price-repository.js";
 export * from "./in-memory-portfolio-repository.js";
+export * from "./in-memory-position-repository.js";
+export * from "./in-memory-transaction-repository.js";
+export * from "./options.js";

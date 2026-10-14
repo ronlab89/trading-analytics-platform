@@ -1,10 +1,6 @@
 import { PortfolioStatus } from "@trading/domain";
 import type { CreatePortfolioInput, Portfolio, PortfolioRepository } from "@trading/domain";
-
-export interface InMemoryRepositoryOptions {
-  /** Source of timestamps; defaults to the system clock. Tests inject a deterministic one. */
-  now?: () => Date;
-}
+import type { InMemoryRepositoryOptions } from "./options.js";
 
 /**
  * In-memory implementation of `PortfolioRepository`.
