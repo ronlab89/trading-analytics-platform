@@ -396,9 +396,9 @@ start database
 | `CORS_ORIGIN` accepts only `http(s)://host[:port]` and rejects `*` (ADR-006 point 13) | `Implemented` | none |
 | Configuration validation at startup (`config/env.ts`: `NODE_ENV`, `PORT`, `JWT_SECRET` of at least 32 characters, `JWT_EXPIRES_IN_SECONDS`, `CORS_ORIGIN`; exits on failure) | `Implemented`; `DATABASE_URL` is not validated, `Planned (B7)` | B7 |
 | Request validation of body and query with Zod (`middleware/validate.ts`) | `Implemented` | none |
-| Request validation of route parameters (ADR-002 point 10) | `Planned (B0)` | B0 |
+| Request validation of route parameters (ADR-002 point 10) | `Implemented` (B0.4) | none |
 | Consistent error handling (`errors/app-error.ts`, `middleware/error-handler.ts`, envelope `{ error: { code, message, requestId, details? } }`) | `Implemented` | none |
-| Error contract changes: `{ field, code, message }` validation details, `TIMEOUT` removed from `AppErrorCode`, 503 `DEPENDENCY_ERROR` on a database outage (ADR-002 point 10) | `Planned (B0)` | B0 |
+| Error contract changes: `{ field, code, message }` validation details, `TIMEOUT` removed from `AppErrorCode`, 503 `DEPENDENCY_ERROR` on a database outage (ADR-002 point 10) | `Implemented` (B0.4) | none |
 | Request IDs (`middleware/request-id.ts`, `X-Request-ID`, bounded safe pattern) | `Implemented`; exposing the header through CORS `Planned (B3)` | B3 |
 | API response conventions: `/api/v1` paths and paginated lists with `meta` | `Implemented` | none |
 | `@trading/contracts`: response schemas, presenters and DTO types (ADR-002) | `Planned (B0)` | B0 |
@@ -420,8 +420,7 @@ Code vs ADR:
 - Today the boundary is not enforced. Routes call controllers, controllers call services in `apps/api/src/services`, and those services import `@trading/database` directly. The import-boundary lint rule and the move to `@trading/application` are `Planned (B0)`. The route tests come first so the refactor can be shown to keep HTTP behavior unchanged.
 - Logging today is `console.log` at startup (`index.ts`) and two `console.error(JSON.stringify(...))` lines (`request.failed` in the error handler, `health.database.unavailable` in the readiness controller). There is no logger module, no request logging and no `no-console` rule. ADR-009 decides `pino`, `pino-http` and `pino-pretty`.
 - `index.ts` is `createApp()` plus `listen()`. There is no signal handling and no drain of in-flight requests (ADR-006 point 12 requires a 10 second drain).
-- A database outage on a normal request returns 500 `INTERNAL_ERROR`, not the 503 `DEPENDENCY_ERROR` of ADR-002 point 10. `GET /health/ready` returns 503 on an unreachable database but 200 on an unmigrated one. `AppErrorCode` still declares `TIMEOUT`.
-- Route parameters are not schema-validated: `validate` accepts only `body` and `query`. A malformed ID is therefore not a 400 `VALIDATION_ERROR` today.
+- `GET /health/ready` returns 503 on an unreachable database but 200 on an unmigrated one.
 - No test covers `GET /health` or `GET /health/ready`, although NFR-051 is `Implemented`. Analytics, positions, assets and market also have no route test file.
 - Acceptance criteria against the code: the API starts cleanly, validates its configuration, connects to PostgreSQL through the shared client, exposes health and readiness, returns the consistent error envelope and supports request correlation through `X-Request-ID` (all `Implemented`). Structured diagnostics are partial until B3.
 
@@ -1927,9 +1926,9 @@ Backend/domain validation protects correctness.
 | Not Found | 404 `NOT_FOUND` | `Implemented` | none |
 | Conflict | 409 `CONFLICT` (archived portfolio, job retry or cancel in the wrong state, idempotency key reuse) | Code `Implemented`; those causes `Planned (B0)` and `Planned (B4)` | B0, B4 |
 | Rate Limit | 429 `RATE_LIMITED` | `Implemented` (`apps/api/src/middleware/rate-limit.ts`) | none |
-| Dependency Failure | 503 `DEPENDENCY_ERROR` when the database is unreachable (ADR-002 point 10) | The code is declared in `AppErrorCode` and not raised: a database outage surfaces as `INTERNAL_ERROR` today, and the readiness endpoint answers 503 on its own; the mapping to `DEPENDENCY_ERROR` `Planned (B0)` (`07-api-spec.md` §6) | B0 |
+| Dependency Failure | 503 `DEPENDENCY_ERROR` when the database is unreachable (ADR-002 point 10) | `Implemented` (B0.4): the error handler maps Prisma connection errors to 503 `DEPENDENCY_ERROR` (`07-api-spec.md` §6); the readiness endpoint answers 503 on its own | none |
 | Internal Error | 500 `INTERNAL_ERROR`, stack logged and not returned | `Implemented` | none |
-| Network Failure | None on the server: a client concern; the API has no request timeout (ADR-002 point 10) and `TIMEOUT` is removed from `AppErrorCode` in B0 | Handling `Planned (FE0)`; the client timeout and retry policy `Deferred` to the frontend-stage ADR (ADR-006 point 11) | FE0 |
+| Network Failure | None on the server: a client concern; the API has no request timeout (ADR-002 point 10) and `TIMEOUT` was removed from `AppErrorCode` in B0.4 | Handling `Planned (FE0)`; the client timeout and retry policy `Deferred` to the frontend-stage ADR (ADR-006 point 11) | FE0 |
 | Realtime Failure | Socket `ERROR` message with a `code` and close codes `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | Server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
 | Background Job Failure | Job state `FAILED` with a reason (`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED`, `PORTFOLIO_ARCHIVED`) or `TIMED_OUT` (ADR-008 points 3 and 6), and an `ERROR` notification | `Planned (B4)`; screens `Planned (FE3)` | B4, FE3 |
 

@@ -655,7 +655,7 @@ Code vs ADR: the codes a client receives are the `AppErrorCode` values of `07-ap
 | `REALTIME_ERROR` | Not an HTTP code: realtime failures use the `ERROR` message `code` and the close codes of ADR-007 point 15 (`08-realtime-spec.md`) |
 | `BACKGROUND_JOB_ERROR` | Not an HTTP code: a failed job ends in the `FAILED` state (ADR-008 point 3) and a `JOB_FAILED` event (ADR-008 point 11) |
 
-`TIMEOUT` is declared in `AppErrorCode` but never raised; it is removed in B0 (ADR-002 point 10). The log field `errorCategory` carries these wire codes (ADR-009 point 3, amended 2026-10-07; §7), not the suggested names above. `Planned (B3)`.
+`TIMEOUT` was declared in `AppErrorCode` but never raised; it was removed in B0.4 (ADR-002 point 10). The log field `errorCategory` carries these wire codes (ADR-009 point 3, amended 2026-10-07; §7), not the suggested names above. `Planned (B3)`.
 
 ---
 

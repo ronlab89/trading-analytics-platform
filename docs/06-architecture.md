@@ -513,7 +513,7 @@ Current behavior (`apps/api/src/middleware/error-handler.ts`):
 | Anything else (including `CurrencyMismatchError`) | 500 `INTERNAL_ERROR`, no stack trace |
 
 `AppErrorCode`: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`,
-`CONFLICT`, `RATE_LIMITED`, `TIMEOUT`, `DEPENDENCY_ERROR`, `INTERNAL_ERROR`.
+`CONFLICT`, `RATE_LIMITED`, `DEPENDENCY_ERROR`, `INTERNAL_ERROR`.
 Envelope: `{ error: { code, message, requestId, details? } }`.
 
 Target: the application throws `NotFoundError`, `ConflictError` and similar
