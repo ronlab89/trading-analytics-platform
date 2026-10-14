@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
+import { presentScenario } from "@trading/contracts";
 import type {
   compareScenariosRequestSchema,
   createScenarioRequestSchema,
@@ -39,7 +40,7 @@ export async function listScenariosHandler(
     const scenarios = await listScenarios(req.auth.userId, req.params.portfolioId as string, {
       ...(status !== undefined ? { status } : {}),
     });
-    res.json({ data: scenarios });
+    res.json({ data: scenarios.map(presentScenario) });
   } catch (error) {
     next(error);
   }
@@ -59,7 +60,7 @@ export async function getScenarioByIdHandler(
       req.params.portfolioId as string,
       req.params.scenarioId as string,
     );
-    res.json({ data: scenario });
+    res.json({ data: presentScenario(scenario) });
   } catch (error) {
     next(error);
   }
@@ -108,7 +109,7 @@ export async function createScenarioHandler(
       ...(description !== undefined ? { description } : {}),
       ...(changes !== undefined ? { changes } : {}),
     });
-    res.status(201).json({ data: scenario });
+    res.status(201).json({ data: presentScenario(scenario) });
   } catch (error) {
     next(error);
   }
@@ -139,7 +140,7 @@ export async function updateScenarioHandler(
         ...(changes !== undefined ? { changes } : {}),
       },
     );
-    res.json({ data: scenario });
+    res.json({ data: presentScenario(scenario) });
   } catch (error) {
     next(error);
   }
@@ -163,7 +164,7 @@ export async function archiveScenarioHandler(
       req.params.portfolioId as string,
       req.params.scenarioId as string,
     );
-    res.json({ data: scenario, meta: { alreadyArchived } });
+    res.json({ data: presentScenario(scenario), meta: { alreadyArchived } });
   } catch (error) {
     next(error);
   }

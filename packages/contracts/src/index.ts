@@ -19,6 +19,7 @@ export * from "./portfolio.response.js";
 export * from "./portfolio.schema.js";
 export * from "./position.response.js";
 export * from "./response-common.schema.js";
+export * from "./scenario.response.js";
 export * from "./scenario.schema.js";
 export * from "./transaction.response.js";
 export * from "./transaction.schema.js";
