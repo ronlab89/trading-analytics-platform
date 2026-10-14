@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { Money, TransactionStatus, TransactionType } from "@trading/domain";
+import {
+  InvalidTransactionError,
+  Money,
+  TransactionStatus,
+  TransactionType,
+} from "@trading/domain";
 import type {
   Asset,
   Position,
@@ -8,6 +13,7 @@ import type {
   UnitOfWork,
 } from "@trading/domain";
 import type { Actor } from "./actor.js";
+import { fixedClock } from "./clock.js";
 import { ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createTransactionService } from "./transaction-service.js";
@@ -85,6 +91,7 @@ function build(
     },
     unitOfWork,
     portfolioService: portfolioService as never,
+    clock: fixedClock(new Date("2026-06-15T12:00:00Z")),
   });
   return { service, calls };
 }
@@ -158,6 +165,18 @@ describe("transaction service", () => {
     expect((error as Error).message).toBe("The referenced asset could not be found.");
   });
 
+  it("rejects an execution date after the injected clock and writes nothing", async () => {
+    const { service, calls } = build();
+    await expect(
+      service.createTransaction(actor, "p1", {
+        ...buy,
+        executedAt: new Date("2026-07-01T00:00:00Z"),
+      }),
+    ).rejects.toBeInstanceOf(InvalidTransactionError);
+    expect(calls.upserts).toHaveLength(0);
+    expect(calls.statusUpdates).toHaveLength(0);
+  });
+
   it("propagates a failure inside the unit of work", async () => {
     const { service } = build({ failOnStatus: true });
     await expect(service.createTransaction(actor, "p1", buy)).rejects.toThrow("db down");
@@ -175,6 +194,7 @@ describe("transaction service", () => {
       assetRepository: {} as never,
       unitOfWork: {} as never,
       portfolioService: {} as never,
+      clock: fixedClock(new Date("2026-06-15T12:00:00Z")),
       permissions: restricted,
     });
     await expect(service.createTransaction(actor, "p1", buy)).rejects.toBeInstanceOf(

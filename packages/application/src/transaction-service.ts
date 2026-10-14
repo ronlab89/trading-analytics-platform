@@ -16,6 +16,7 @@ import type {
   UnitOfWork,
 } from "@trading/domain";
 import type { Actor } from "./actor.js";
+import type { Clock } from "./clock.js";
 import { NotFoundError } from "./errors.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
@@ -27,6 +28,8 @@ export interface TransactionServiceDependencies {
   /** Runs the create-transaction writes atomically (FR-074, NFR-015). */
   unitOfWork: UnitOfWork;
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
+  /** Source of "now" for the future-execution-date invariant (ADR-001 point 8). */
+  clock: Clock;
   /** Role matrix; defaults to the application matrix. Tests inject a restricted one. */
   permissions?: RolePermissions;
 }
@@ -58,6 +61,7 @@ export function createTransactionService(dependencies: TransactionServiceDepende
     assetRepository,
     unitOfWork,
     portfolioService,
+    clock,
     permissions = ROLE_PERMISSIONS,
   } = dependencies;
 
@@ -127,7 +131,7 @@ export function createTransactionService(dependencies: TransactionServiceDepende
       ...(input.executedAt !== undefined ? { executedAt: input.executedAt } : {}),
     };
 
-    validateNewTransaction(createInput);
+    validateNewTransaction(createInput, clock.now());
 
     return unitOfWork.run(async ({ transactions, positions }) => {
       const transaction = await transactions.create(createInput);

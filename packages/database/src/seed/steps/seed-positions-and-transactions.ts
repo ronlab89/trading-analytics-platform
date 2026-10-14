@@ -40,7 +40,7 @@ export async function seedPositionsAndTransactions(context: SeedContext): Promis
         executedAt: tx.executedAt,
       };
 
-      validateNewTransaction(transactionInput);
+      validateNewTransaction(transactionInput, new Date());
       const transaction = await transactionRepository.create(transactionInput);
       await transactionRepository.updateStatus(transaction.id, "COMPLETED");
     }
