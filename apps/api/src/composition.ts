@@ -1,3 +1,5 @@
+import { PrismaPortfolioRepository } from "@trading/database";
+import { createPortfolioService } from "@trading/application";
 import type { Clock } from "@trading/application";
 
 /**
@@ -12,7 +14,11 @@ import type { Clock } from "@trading/application";
 export const systemClock: Clock = { now: () => new Date() };
 
 export function buildComposition(clock: Clock) {
-  return { clock };
+  const portfolioService = createPortfolioService({
+    portfolioRepository: new PrismaPortfolioRepository(),
+  });
+
+  return { clock, portfolioService };
 }
 
 export const composition = buildComposition(systemClock);
