@@ -1,6 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import { presentScenario } from "@trading/contracts";
+import {
+  presentScenario,
+  presentScenarioCalculation,
+  presentScenarioComparison,
+} from "@trading/contracts";
 import type {
   compareScenariosRequestSchema,
   createScenarioRequestSchema,
@@ -84,7 +88,7 @@ export async function calculateScenarioHandler(
       req.params.portfolioId as string,
       req.params.scenarioId as string,
     );
-    res.json({ data: result });
+    res.json({ data: presentScenarioCalculation(result) });
   } catch (error) {
     next(error);
   }
@@ -211,7 +215,7 @@ export async function compareScenariosHandler(
       req.params.portfolioId as string,
       scenarioIds,
     );
-    res.json({ data: comparison });
+    res.json({ data: presentScenarioComparison(comparison) });
   } catch (error) {
     next(error);
   }

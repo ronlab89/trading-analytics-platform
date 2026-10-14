@@ -15,7 +15,12 @@ import {
   presentAllocation,
   presentAttribution,
 } from "./analytics.response.js";
-import { portfolioResponseSchema, presentPortfolio } from "./portfolio.response.js";
+import {
+  portfolioMetricsResponseSchema,
+  portfolioResponseSchema,
+  presentPortfolio,
+  presentPortfolioMetrics,
+} from "./portfolio.response.js";
 import {
   positionMetricsResponseSchema,
   positionResponseSchema,
@@ -47,12 +52,7 @@ function pulseDimensionSchema<T extends string>(classifications: readonly [T, ..
 
 export const overviewResponseSchema = z.object({
   portfolio: portfolioResponseSchema,
-  summary: z.object({
-    totalValue: moneySchema,
-    investedValue: moneySchema,
-    unrealizedPnL: moneySchema,
-    unrealizedPnLPercent: z.number(),
-  }),
+  summary: portfolioMetricsResponseSchema,
   positions: z.array(
     z.object({
       position: positionResponseSchema,
@@ -132,12 +132,7 @@ function presentPulseDimension<T extends string>(dimension: {
 export function presentOverview(overview: OverviewSource): OverviewResponse {
   return {
     portfolio: presentPortfolio(overview.portfolio),
-    summary: {
-      totalValue: presentMoney(overview.summary.totalValue),
-      investedValue: presentMoney(overview.summary.investedValue),
-      unrealizedPnL: presentMoney(overview.summary.unrealizedPnL),
-      unrealizedPnLPercent: overview.summary.unrealizedPnLPercent,
-    },
+    summary: presentPortfolioMetrics(overview.summary),
     positions: overview.positions.map((entry) => ({
       position: presentPosition(entry.position),
       asset: presentAssetSummary(entry.asset),

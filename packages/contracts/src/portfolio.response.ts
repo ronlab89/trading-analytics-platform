@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { PortfolioStatus } from "@trading/domain";
-import type { Portfolio } from "@trading/domain";
+import type { Portfolio, PortfolioMetrics } from "@trading/domain";
 import {
   archiveMetaSchema,
   isoTimestampSchema,
+  moneySchema,
+  presentMoney,
   presentTimestamp,
 } from "./response-common.schema.js";
 
@@ -44,5 +46,23 @@ export function presentPortfolio(portfolio: Portfolio): PortfolioResponse {
     status: portfolio.status,
     createdAt: presentTimestamp(portfolio.createdAt),
     updatedAt: presentTimestamp(portfolio.updatedAt),
+  };
+}
+
+/** Portfolio-level valuation, shared by the overview and the scenario endpoints. */
+export const portfolioMetricsResponseSchema = z.object({
+  totalValue: moneySchema,
+  investedValue: moneySchema,
+  unrealizedPnL: moneySchema,
+  unrealizedPnLPercent: z.number(),
+});
+export type PortfolioMetricsResponse = z.infer<typeof portfolioMetricsResponseSchema>;
+
+export function presentPortfolioMetrics(metrics: PortfolioMetrics): PortfolioMetricsResponse {
+  return {
+    totalValue: presentMoney(metrics.totalValue),
+    investedValue: presentMoney(metrics.investedValue),
+    unrealizedPnL: presentMoney(metrics.unrealizedPnL),
+    unrealizedPnLPercent: metrics.unrealizedPnLPercent,
   };
 }
