@@ -19,6 +19,7 @@ export * from "./in-memory-portfolio-repository.js";
 export * from "./in-memory-position-repository.js";
 export * from "./in-memory-scenario-repository.js";
 export * from "./in-memory-transaction-repository.js";
+export * from "./in-memory-unit-of-work.js";
 export * from "./in-memory-user-preference-repository.js";
 export * from "./in-memory-user-repository.js";
 export * from "./in-memory-watchlist-item-repository.js";

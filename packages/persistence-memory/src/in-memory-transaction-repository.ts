@@ -9,9 +9,15 @@ import type {
 } from "@trading/domain";
 import type { InMemoryRepositoryOptions } from "./options.js";
 
-interface StoredTransaction {
+export interface StoredTransaction {
   readonly transaction: Transaction;
   /** Creation order, the tie-break between transactions that share an `executedAt`. */
+  readonly sequence: number;
+}
+
+/** Opaque copy of the repository state, for `snapshot` and `restore`. */
+export interface InMemoryTransactionSnapshot {
+  readonly rows: ReadonlyMap<string, StoredTransaction>;
   readonly sequence: number;
 }
 
@@ -33,6 +39,20 @@ export class InMemoryTransactionRepository implements TransactionRepository {
 
   constructor(options: InMemoryRepositoryOptions = {}) {
     this.now = options.now ?? (() => new Date());
+  }
+
+  /** Captures the current state; used by the unit of work to roll back. */
+  snapshot(): InMemoryTransactionSnapshot {
+    return { rows: new Map(this.rows), sequence: this.sequence };
+  }
+
+  /** Replaces the current state with a snapshot; the snapshot stays reusable. */
+  restore(snapshot: InMemoryTransactionSnapshot): void {
+    this.rows.clear();
+    for (const [id, row] of snapshot.rows) {
+      this.rows.set(id, row);
+    }
+    this.sequence = snapshot.sequence;
   }
 
   listByPortfolioId(

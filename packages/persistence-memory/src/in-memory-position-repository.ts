@@ -1,6 +1,12 @@
 import type { CreatePositionInput, Money, Position, PositionRepository } from "@trading/domain";
 import type { InMemoryRepositoryOptions } from "./options.js";
 
+/** Opaque copy of the repository state, for `snapshot` and `restore`. */
+export interface InMemoryPositionSnapshot {
+  readonly rows: ReadonlyMap<string, Position>;
+  readonly sequence: number;
+}
+
 /**
  * In-memory implementation of `PositionRepository`.
  * Source: docs/06-architecture.md §12-13, docs/12-demo-mode-spec.md §4.
@@ -17,6 +23,20 @@ export class InMemoryPositionRepository implements PositionRepository {
 
   constructor(options: InMemoryRepositoryOptions = {}) {
     this.now = options.now ?? (() => new Date());
+  }
+
+  /** Captures the current state; used by the unit of work to roll back. */
+  snapshot(): InMemoryPositionSnapshot {
+    return { rows: new Map(this.rows), sequence: this.sequence };
+  }
+
+  /** Replaces the current state with a snapshot; the snapshot stays reusable. */
+  restore(snapshot: InMemoryPositionSnapshot): void {
+    this.rows.clear();
+    for (const [id, row] of snapshot.rows) {
+      this.rows.set(id, row);
+    }
+    this.sequence = snapshot.sequence;
   }
 
   listByPortfolioId(portfolioId: string): Promise<Position[]> {
