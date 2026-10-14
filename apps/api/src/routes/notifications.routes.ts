@@ -3,11 +3,14 @@ import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
 import { listNotificationsQuerySchema, notificationIdParamsSchema } from "@trading/contracts";
-import {
+import { makeNotificationsController } from "../controllers/notifications.controller.js";
+import { composition } from "../composition.js";
+
+const {
   listNotificationsHandler,
   markAllNotificationsAsReadHandler,
   markNotificationAsReadHandler,
-} from "../controllers/notifications.controller.js";
+} = makeNotificationsController(composition.notificationService);
 
 export const notificationsRouter: ExpressRouter = Router();
 

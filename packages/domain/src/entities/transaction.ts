@@ -47,8 +47,11 @@ export class InvalidTransactionError extends Error {
 /**
  * Domain invariants for Transaction creation.
  * Source: docs/02-functional-requirements.md FR-018.
+ *
+ * `now` is the current instant, supplied by the caller (ADR-001 point 8): the
+ * domain never reads the system clock.
  */
-export function validateNewTransaction(input: CreateTransactionInput): void {
+export function validateNewTransaction(input: CreateTransactionInput, now: Date): void {
   if (!input.portfolioId || input.portfolioId.trim().length === 0) {
     throw new InvalidTransactionError("A transaction must belong to a portfolio.");
   }
@@ -79,7 +82,7 @@ export function validateNewTransaction(input: CreateTransactionInput): void {
     }
   }
 
-  if (input.executedAt !== undefined && input.executedAt > new Date()) {
+  if (input.executedAt !== undefined && input.executedAt > now) {
     throw new InvalidTransactionError("Execution date cannot be in the future.");
   }
 }

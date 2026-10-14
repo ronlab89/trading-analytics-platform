@@ -10,7 +10,10 @@ import {
   portfolioScenarioParamsSchema,
   updateScenarioRequestSchema,
 } from "@trading/contracts";
-import {
+import { makeScenariosController } from "../controllers/scenarios.controller.js";
+import { composition } from "../composition.js";
+
+const {
   archiveScenarioHandler,
   calculateScenarioHandler,
   compareScenariosHandler,
@@ -19,7 +22,7 @@ import {
   getScenarioByIdHandler,
   listScenariosHandler,
   updateScenarioHandler,
-} from "../controllers/scenarios.controller.js";
+} = makeScenariosController(composition.scenarioService);
 
 export const scenariosRouter: ExpressRouter = Router();
 

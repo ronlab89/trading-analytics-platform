@@ -1,6 +1,12 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import type { Request, Response } from "express";
 import type { ErrorResponse } from "@trading/contracts";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationFailedError,
+} from "@trading/application";
 import { errorHandler } from "./error-handler.js";
 
 function run(err: unknown) {
@@ -48,5 +54,44 @@ describe("errorHandler dependency failures", () => {
     const { status, body } = run(new Error("boom"));
     expect(status).toBe(500);
     expect(body.error.code).toBe("INTERNAL_ERROR");
+  });
+});
+
+describe("errorHandler application errors", () => {
+  it("maps NotFoundError to 404 NOT_FOUND keeping the use case message", () => {
+    const { status, body } = run(new NotFoundError("The requested resource could not be found."));
+    expect(status).toBe(404);
+    expect(body.error).toEqual({
+      code: "NOT_FOUND",
+      message: "The requested resource could not be found.",
+      requestId: "req-1",
+    });
+  });
+
+  it("maps ConflictError to 409 CONFLICT", () => {
+    const { status, body } = run(new ConflictError("The portfolio is archived."));
+    expect(status).toBe(409);
+    expect(body.error.code).toBe("CONFLICT");
+    expect(body.error.message).toBe("The portfolio is archived.");
+  });
+
+  it("maps ForbiddenError to 403 FORBIDDEN", () => {
+    const { status, body } = run(new ForbiddenError("Missing permission: portfolio:write."));
+    expect(status).toBe(403);
+    expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("maps ValidationFailedError to 400 VALIDATION_ERROR keeping its field details", () => {
+    const details = [{ field: "changes", code: "UNKNOWN_ASSET", message: "Unknown asset: a1" }];
+    const { status, body } = run(
+      new ValidationFailedError("The scenario references assets that do not exist.", details),
+    );
+    expect(status).toBe(400);
+    expect(body.error).toEqual({
+      code: "VALIDATION_ERROR",
+      message: "The scenario references assets that do not exist.",
+      requestId: "req-1",
+      details,
+    });
   });
 });

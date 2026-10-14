@@ -7,13 +7,16 @@ import {
   portfolioIdParamsSchema,
   updatePortfolioRequestSchema,
 } from "@trading/contracts";
-import {
+import { makePortfoliosController } from "../controllers/portfolios.controller.js";
+import { composition } from "../composition.js";
+
+const {
   archivePortfolioHandler,
   createPortfolioHandler,
   getPortfolioByIdHandler,
   listPortfoliosHandler,
   updatePortfolioHandler,
-} from "../controllers/portfolios.controller.js";
+} = makePortfoliosController(composition.portfolioService);
 
 export const portfoliosRouter: ExpressRouter = Router();
 

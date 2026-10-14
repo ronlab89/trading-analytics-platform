@@ -3,10 +3,12 @@ import type { Router as ExpressRouter } from "express";
 import { portfolioIdParamsSchema, portfolioPositionParamsSchema } from "@trading/contracts";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import {
-  getPositionByIdHandler,
-  listPositionsHandler,
-} from "../controllers/positions.controller.js";
+import { makePositionsController } from "../controllers/positions.controller.js";
+import { composition } from "../composition.js";
+
+const { getPositionByIdHandler, listPositionsHandler } = makePositionsController(
+  composition.positionService,
+);
 
 export const positionsRouter: ExpressRouter = Router();
 

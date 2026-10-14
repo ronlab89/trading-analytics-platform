@@ -3,7 +3,10 @@ import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
 import { batchPricesQuerySchema } from "@trading/contracts";
-import { getBatchPricesHandler } from "../controllers/market.controller.js";
+import { makeMarketController } from "../controllers/market.controller.js";
+import { composition } from "../composition.js";
+
+const { getBatchPricesHandler } = makeMarketController(composition.marketService);
 
 export const marketRouter: ExpressRouter = Router();
 

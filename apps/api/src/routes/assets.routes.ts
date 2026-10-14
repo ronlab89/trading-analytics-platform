@@ -7,12 +7,11 @@ import {
   assetIdParamsSchema,
   listAssetsQuerySchema,
 } from "@trading/contracts";
-import {
-  getAssetByIdHandler,
-  getAssetHistoryHandler,
-  getAssetPriceHandler,
-  listAssetsHandler,
-} from "../controllers/assets.controller.js";
+import { makeAssetsController } from "../controllers/assets.controller.js";
+import { composition } from "../composition.js";
+
+const { getAssetByIdHandler, getAssetHistoryHandler, getAssetPriceHandler, listAssetsHandler } =
+  makeAssetsController(composition.assetService, composition.marketService);
 
 export const assetsRouter: ExpressRouter = Router();
 

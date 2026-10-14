@@ -7,13 +7,16 @@ import {
   createAlertRequestSchema,
   updateAlertRequestSchema,
 } from "@trading/contracts";
-import {
+import { makeAlertsController } from "../controllers/alerts.controller.js";
+import { composition } from "../composition.js";
+
+const {
   createAlertHandler,
   deleteAlertHandler,
   getAlertByIdHandler,
   listAlertsHandler,
   updateAlertHandler,
-} from "../controllers/alerts.controller.js";
+} = makeAlertsController(composition.alertService);
 
 export const alertsRouter: ExpressRouter = Router();
 

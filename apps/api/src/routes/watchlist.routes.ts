@@ -3,11 +3,11 @@ import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
 import { addWatchlistItemRequestSchema, assetIdParamsSchema } from "@trading/contracts";
-import {
-  addWatchlistItemHandler,
-  listWatchlistHandler,
-  removeWatchlistItemHandler,
-} from "../controllers/watchlist.controller.js";
+import { makeWatchlistController } from "../controllers/watchlist.controller.js";
+import { composition } from "../composition.js";
+
+const { addWatchlistItemHandler, listWatchlistHandler, removeWatchlistItemHandler } =
+  makeWatchlistController(composition.watchlistService);
 
 export const watchlistRouter: ExpressRouter = Router();
 

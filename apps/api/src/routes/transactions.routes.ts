@@ -8,11 +8,11 @@ import {
   portfolioIdParamsSchema,
   portfolioTransactionParamsSchema,
 } from "@trading/contracts";
-import {
-  createTransactionHandler,
-  getTransactionByIdHandler,
-  listTransactionsHandler,
-} from "../controllers/transactions.controller.js";
+import { makeTransactionsController } from "../controllers/transactions.controller.js";
+import { composition } from "../composition.js";
+
+const { createTransactionHandler, getTransactionByIdHandler, listTransactionsHandler } =
+  makeTransactionsController(composition.transactionService);
 
 export const transactionsRouter: ExpressRouter = Router();
 

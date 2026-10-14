@@ -1,5 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
-import type { ErrorResponse } from "@trading/contracts";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationFailedError,
+} from "@trading/application";
+import type { ErrorDetail, ErrorResponse } from "@trading/contracts";
 import { AppError } from "../errors/app-error.js";
 
 type ErrorResponseBody = ErrorResponse;
@@ -73,6 +79,32 @@ function isDependencyError(err: unknown): boolean {
   return "code" in err && typeof err.code === "string" && DEPENDENCY_ERROR_CODES.has(err.code);
 }
 
+function mapApplicationError(err: unknown): {
+  status: number;
+  code: ErrorResponse["error"]["code"];
+  message: string;
+  details?: ErrorDetail[];
+} | null {
+  if (err instanceof ValidationFailedError) {
+    return {
+      status: 400,
+      code: "VALIDATION_ERROR",
+      message: err.message,
+      details: err.details.map((issue) => ({ ...issue })),
+    };
+  }
+  if (err instanceof NotFoundError) {
+    return { status: 404, code: "NOT_FOUND", message: err.message };
+  }
+  if (err instanceof ConflictError) {
+    return { status: 409, code: "CONFLICT", message: err.message };
+  }
+  if (err instanceof ForbiddenError) {
+    return { status: 403, code: "FORBIDDEN", message: err.message };
+  }
+  return null;
+}
+
 function logRequestFailed(requestId: string, err: unknown): void {
   console.error(
     JSON.stringify({
@@ -108,6 +140,22 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       },
     };
     res.status(err.statusCode).json(body);
+    return;
+  }
+
+  // Use-case failures raised by `@trading/application`. They carry no HTTP
+  // knowledge; this is the one place that gives them a status and a code.
+  const applicationFailure = mapApplicationError(err);
+  if (applicationFailure) {
+    const body: ErrorResponseBody = {
+      error: {
+        code: applicationFailure.code,
+        message: applicationFailure.message,
+        requestId,
+        ...(applicationFailure.details ? { details: applicationFailure.details } : {}),
+      },
+    };
+    res.status(applicationFailure.status).json(body);
     return;
   }
 

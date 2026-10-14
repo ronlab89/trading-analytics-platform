@@ -3,10 +3,12 @@ import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
 import { updateUserPreferenceRequestSchema } from "@trading/contracts";
-import {
-  getUserPreferencesHandler,
-  updateUserPreferencesHandler,
-} from "../controllers/preferences.controller.js";
+import { makePreferencesController } from "../controllers/preferences.controller.js";
+import { composition } from "../composition.js";
+
+const { getUserPreferencesHandler, updateUserPreferencesHandler } = makePreferencesController(
+  composition.userPreferenceService,
+);
 
 export const preferencesRouter: ExpressRouter = Router();
 

@@ -3,6 +3,8 @@ import { Money } from "../value-objects/money";
 import { TransactionType } from "./enums";
 import { InvalidTransactionError, validateNewTransaction } from "./transaction";
 
+const now = new Date("2026-06-15T12:00:00Z");
+
 const baseInput = {
   portfolioId: "portfolio_001",
   assetId: "asset_001",
@@ -14,89 +16,86 @@ const baseInput = {
 describe("validateNewTransaction", () => {
   it("should accept a valid transaction input", () => {
     expect(() => {
-      validateNewTransaction(baseInput);
+      validateNewTransaction(baseInput, now);
     }).not.toThrow();
   });
 
   it("should reject a missing portfolioId", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, portfolioId: "" });
+      validateNewTransaction({ ...baseInput, portfolioId: "" }, now);
     }).toThrow(InvalidTransactionError);
   });
 
   it("should reject a missing assetId", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, assetId: "" });
+      validateNewTransaction({ ...baseInput, assetId: "" }, now);
     }).toThrow(InvalidTransactionError);
   });
 
   it("should reject an unsupported transaction type", () => {
     expect(() => {
-      validateNewTransaction({
-        ...baseInput,
-        // @ts-expect-error intentionally invalid for the test
-        type: "DIVIDEND",
-      });
+      validateNewTransaction(
+        {
+          ...baseInput,
+          // @ts-expect-error intentionally invalid for the test
+          type: "DIVIDEND",
+        },
+        now,
+      );
     }).toThrow(InvalidTransactionError);
   });
 
   it("should reject a zero quantity", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, quantity: 0 });
+      validateNewTransaction({ ...baseInput, quantity: 0 }, now);
     }).toThrow(InvalidTransactionError);
   });
 
   it("should reject a negative quantity", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, quantity: -5 });
+      validateNewTransaction({ ...baseInput, quantity: -5 }, now);
     }).toThrow(InvalidTransactionError);
   });
 
   it("should reject a zero price", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, price: Money.zero("USD") });
+      validateNewTransaction({ ...baseInput, price: Money.zero("USD") }, now);
     }).toThrow(InvalidTransactionError);
   });
 
   it("should reject negative fees", () => {
     expect(() => {
-      validateNewTransaction({
-        ...baseInput,
-        fees: Money.of(-1, "USD"),
-      });
+      validateNewTransaction({ ...baseInput, fees: Money.of(-1, "USD") }, now);
     }).toThrow(InvalidTransactionError);
   });
 
   it("should accept zero fees", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, fees: Money.zero("USD") });
+      validateNewTransaction({ ...baseInput, fees: Money.zero("USD") }, now);
     }).not.toThrow();
   });
 
   it("should reject fees in a different currency than price", () => {
     expect(() => {
-      validateNewTransaction({
-        ...baseInput,
-        fees: Money.of(1, "EUR"),
-      });
+      validateNewTransaction({ ...baseInput, fees: Money.of(1, "EUR") }, now);
     }).toThrow(InvalidTransactionError);
   });
 
-  it("should reject a future execution date", () => {
-    const futureDate = new Date();
-    futureDate.setFullYear(futureDate.getFullYear() + 1);
-
+  it("should reject an execution date after the given now", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, executedAt: futureDate });
+      validateNewTransaction({ ...baseInput, executedAt: new Date("2026-07-01T00:00:00Z") }, now);
     }).toThrow(InvalidTransactionError);
   });
 
-  it("should accept a past execution date", () => {
-    const pastDate = new Date();
-    pastDate.setDate(pastDate.getDate() - 1);
-
+  it("should accept an execution date before the given now", () => {
     expect(() => {
-      validateNewTransaction({ ...baseInput, executedAt: pastDate });
+      validateNewTransaction({ ...baseInput, executedAt: new Date("2026-06-14T00:00:00Z") }, now);
+    }).not.toThrow();
+  });
+
+  it("should accept an execution date equal to the given now", () => {
+    expect(() => {
+      validateNewTransaction({ ...baseInput, executedAt: new Date(now) }, now);
     }).not.toThrow();
   });
 });
