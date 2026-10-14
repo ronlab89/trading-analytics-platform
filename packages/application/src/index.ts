@@ -5,3 +5,5 @@ export * from "./errors.js";
 export * from "./market-service.js";
 export * from "./permissions.js";
 export * from "./portfolio-service.js";
+export * from "./position-service.js";
+export * from "./transaction-service.js";

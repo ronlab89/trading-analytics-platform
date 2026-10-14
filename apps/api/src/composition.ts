@@ -3,11 +3,16 @@ import {
   PrismaHistoricalPriceRepository,
   PrismaMarketPriceRepository,
   PrismaPortfolioRepository,
+  PrismaPositionRepository,
+  PrismaTransactionRepository,
+  PrismaUnitOfWork,
 } from "@trading/database";
 import {
   createAssetService,
   createMarketService,
   createPortfolioService,
+  createPositionService,
+  createTransactionService,
 } from "@trading/application";
 import type { Clock } from "@trading/application";
 
@@ -35,7 +40,25 @@ export function buildComposition(clock: Clock) {
     historicalPriceRepository: new PrismaHistoricalPriceRepository(),
   });
 
-  return { clock, portfolioService, assetService, marketService };
+  const positionService = createPositionService({
+    positionRepository: new PrismaPositionRepository(),
+    portfolioService,
+  });
+  const transactionService = createTransactionService({
+    transactionRepository: new PrismaTransactionRepository(),
+    assetRepository,
+    unitOfWork: new PrismaUnitOfWork(),
+    portfolioService,
+  });
+
+  return {
+    clock,
+    portfolioService,
+    assetService,
+    marketService,
+    positionService,
+    transactionService,
+  };
 }
 
 export const composition = buildComposition(systemClock);
