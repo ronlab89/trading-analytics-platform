@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { listDecisionsQuerySchema } from "../schemas/decision.schema.js";
+import { presentDecision, presentDecisionReplay } from "@trading/contracts";
+import type { listDecisionsQuerySchema } from "@trading/contracts";
 import { getDecisionById, getDecisionReplay, listDecisions } from "../services/decision.service.js";
 
 type ListDecisionsQuery = z.infer<typeof listDecisionsQuerySchema>;
@@ -26,7 +27,7 @@ export async function listDecisionsHandler(
       ...(dateFrom !== undefined ? { dateFrom } : {}),
       ...(dateTo !== undefined ? { dateTo } : {}),
     });
-    res.json({ data: decisions });
+    res.json({ data: decisions.map(presentDecision) });
   } catch (error) {
     next(error);
   }
@@ -47,7 +48,7 @@ export async function getDecisionByIdHandler(
       req.params.portfolioId as string,
       req.params.decisionId as string,
     );
-    res.json({ data: decision });
+    res.json({ data: presentDecision(decision) });
   } catch (error) {
     next(error);
   }
@@ -64,7 +65,7 @@ export async function getDecisionReplayHandler(
 ): Promise<void> {
   try {
     const replay = await getDecisionReplay(req.auth.userId, req.params.decisionId as string);
-    res.json({ data: replay });
+    res.json({ data: presentDecisionReplay(replay) });
   } catch (error) {
     next(error);
   }

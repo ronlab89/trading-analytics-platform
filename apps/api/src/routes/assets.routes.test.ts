@@ -560,6 +560,7 @@ describe("assets routes", () => {
       expect(error.details).toEqual([
         {
           field: "from",
+          code: "custom",
           message: "'from' must not be after 'to'.",
         },
       ]);

@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { presentPosition, presentPositionDetail } from "@trading/contracts";
 import { getPositionById, listPositions } from "../services/position.service.js";
 
 /**
@@ -12,7 +13,7 @@ export async function listPositionsHandler(
 ): Promise<void> {
   try {
     const positions = await listPositions(req.auth.userId, req.params.portfolioId as string);
-    res.json({ data: positions });
+    res.json({ data: positions.map(presentPosition) });
   } catch (error) {
     next(error);
   }
@@ -31,12 +32,12 @@ export async function getPositionByIdHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { position, metrics } = await getPositionById(
+    const detail = await getPositionById(
       req.auth.userId,
       req.params.portfolioId as string,
       req.params.positionId as string,
     );
-    res.json({ data: { position, metrics } });
+    res.json({ data: presentPositionDetail(detail) });
   } catch (error) {
     next(error);
   }

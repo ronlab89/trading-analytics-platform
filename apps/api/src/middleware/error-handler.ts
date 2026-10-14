@@ -1,14 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
-import { AppError, type AppErrorDetail } from "../errors/app-error.js";
+import type { ErrorResponse } from "@trading/contracts";
+import { AppError } from "../errors/app-error.js";
 
-interface ErrorResponseBody {
-  error: {
-    code: string;
-    message: string;
-    details?: AppErrorDetail[];
-    requestId: string;
-  };
-}
+type ErrorResponseBody = ErrorResponse;
 
 /**
  * Matches the naming convention used by domain-boundary errors across
@@ -66,6 +60,32 @@ const BODY_PARSER_MESSAGES: Record<string, string> = {
 };
 
 /**
+ * Database-unreachable failures from the Prisma client, duck-typed on
+ * `name`/`code` so the middleware does not import Prisma:
+ * P1001 unreachable, P1002 timed out, P1008 operation timed out,
+ * P1017 server closed the connection.
+ */
+const DEPENDENCY_ERROR_CODES = new Set(["P1001", "P1002", "P1008", "P1017"]);
+
+function isDependencyError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  if (err.name === "PrismaClientInitializationError") return true;
+  return "code" in err && typeof err.code === "string" && DEPENDENCY_ERROR_CODES.has(err.code);
+}
+
+function logRequestFailed(requestId: string, err: unknown): void {
+  console.error(
+    JSON.stringify({
+      level: "error",
+      event: "request.failed",
+      requestId,
+      errorName: err instanceof Error ? err.name : "UnknownError",
+      message: err instanceof Error ? err.message : String(err),
+    }),
+  );
+}
+
+/**
  * Central error-handling middleware. Must be registered last, after all
  * routes. Normalizes AppErrors, domain invariant errors, and unexpected
  * exceptions into the response shape defined in 07-api-spec.md §5, and
@@ -120,17 +140,23 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return;
   }
 
+  // Database unreachable: 503, fixed message, details only in the log.
+  if (isDependencyError(err)) {
+    logRequestFailed(requestId, err);
+    const body: ErrorResponseBody = {
+      error: {
+        code: "DEPENDENCY_ERROR",
+        message: "A required service is temporarily unavailable.",
+        requestId,
+      },
+    };
+    res.status(503).json(body);
+    return;
+  }
+
   // Unexpected/unclassified error: log full detail server-side only,
   // return a safe generic message to the client.
-  console.error(
-    JSON.stringify({
-      level: "error",
-      event: "request.failed",
-      requestId,
-      errorName: err instanceof Error ? err.name : "UnknownError",
-      message: err instanceof Error ? err.message : String(err),
-    }),
-  );
+  logRequestFailed(requestId, err);
 
   const body: ErrorResponseBody = {
     error: {

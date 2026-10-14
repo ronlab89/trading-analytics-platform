@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
-import type { ListNotificationsQuery } from "../schemas/notification.schema.js";
+import { presentNotification } from "@trading/contracts";
+import type { ListNotificationsQuery } from "@trading/contracts";
 import {
   listNotifications,
   markAllNotificationsAsRead,
@@ -21,7 +22,7 @@ export async function listNotificationsHandler(
 
   try {
     const notifications = await listNotifications(req.auth.userId, { unreadOnly });
-    res.json({ data: notifications });
+    res.json({ data: notifications.map(presentNotification) });
   } catch (error) {
     next(error);
   }
@@ -41,7 +42,7 @@ export async function markNotificationAsReadHandler(
       req.auth.userId,
       req.params.notificationId as string,
     );
-    res.json({ data: notification });
+    res.json({ data: presentNotification(notification) });
   } catch (error) {
     next(error);
   }

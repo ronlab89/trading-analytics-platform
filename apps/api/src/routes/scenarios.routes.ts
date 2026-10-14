@@ -6,8 +6,10 @@ import {
   compareScenariosRequestSchema,
   createScenarioRequestSchema,
   listScenariosQuerySchema,
+  portfolioIdParamsSchema,
+  portfolioScenarioParamsSchema,
   updateScenarioRequestSchema,
-} from "../schemas/scenario.schema.js";
+} from "@trading/contracts";
 import {
   archiveScenarioHandler,
   calculateScenarioHandler,
@@ -24,6 +26,7 @@ export const scenariosRouter: ExpressRouter = Router();
 scenariosRouter.get(
   "/api/v1/portfolios/:portfolioId/scenarios",
   authenticate,
+  validate(portfolioIdParamsSchema, "params"),
   validate(listScenariosQuerySchema, "query"),
   listScenariosHandler,
 );
@@ -31,6 +34,7 @@ scenariosRouter.get(
 scenariosRouter.post(
   "/api/v1/portfolios/:portfolioId/scenarios",
   authenticate,
+  validate(portfolioIdParamsSchema, "params"),
   validate(createScenarioRequestSchema, "body"),
   createScenarioHandler,
 );
@@ -39,6 +43,7 @@ scenariosRouter.post(
 scenariosRouter.post(
   "/api/v1/portfolios/:portfolioId/scenarios/compare",
   authenticate,
+  validate(portfolioIdParamsSchema, "params"),
   validate(compareScenariosRequestSchema, "body"),
   compareScenariosHandler,
 );
@@ -46,12 +51,14 @@ scenariosRouter.post(
 scenariosRouter.get(
   "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId",
   authenticate,
+  validate(portfolioScenarioParamsSchema, "params"),
   getScenarioByIdHandler,
 );
 
 scenariosRouter.patch(
   "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId",
   authenticate,
+  validate(portfolioScenarioParamsSchema, "params"),
   validate(updateScenarioRequestSchema, "body"),
   updateScenarioHandler,
 );
@@ -59,17 +66,20 @@ scenariosRouter.patch(
 scenariosRouter.delete(
   "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId",
   authenticate,
+  validate(portfolioScenarioParamsSchema, "params"),
   deleteScenarioHandler,
 );
 
 scenariosRouter.post(
   "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive",
   authenticate,
+  validate(portfolioScenarioParamsSchema, "params"),
   archiveScenarioHandler,
 );
 
 scenariosRouter.post(
   "/api/v1/portfolios/:portfolioId/scenarios/:scenarioId/calculate",
   authenticate,
+  validate(portfolioScenarioParamsSchema, "params"),
   calculateScenarioHandler,
 );

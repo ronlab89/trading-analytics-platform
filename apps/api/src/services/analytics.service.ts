@@ -9,7 +9,7 @@ import {
   type Portfolio,
   type Position,
 } from "@trading/domain";
-import type { AllocationGroupBy } from "../schemas/analytics.schema.js";
+import type { AllocationGroupBy } from "@trading/contracts";
 import { getAssetsByIds } from "./asset.service.js";
 import { getPortfolioById } from "./portfolio.service.js";
 

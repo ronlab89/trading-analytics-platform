@@ -16,12 +16,19 @@ declare global {
       validated?: {
         query?: unknown;
         body?: unknown;
+        params?: unknown;
       };
     }
   }
 }
 
-type ValidationSource = "query" | "body";
+type ValidationSource = "query" | "body" | "params";
+
+const SOURCE_MESSAGES: Record<ValidationSource, string> = {
+  query: "The request contains invalid query parameters.",
+  body: "The request contains invalid fields.",
+  params: "The request contains invalid route parameters.",
+};
 
 /**
  * Generic request-validation middleware. Runs `schema.safeParse` against
@@ -40,18 +47,17 @@ type ValidationSource = "query" | "body";
  */
 export function validate(schema: ZodType, source: ValidationSource) {
   return (req: Request, _res: Response, next: NextFunction): void => {
-    const parsed = schema.safeParse(source === "query" ? req.query : req.body);
+    const parsed = schema.safeParse(req[source]);
 
     if (!parsed.success) {
       next(
         new AppError(
           "VALIDATION_ERROR",
-          source === "query"
-            ? "The request contains invalid query parameters."
-            : "The request contains invalid fields.",
+          SOURCE_MESSAGES[source],
           400,
           parsed.error.issues.map((issue) => ({
             field: issue.path.join("."),
+            code: issue.code,
             message: issue.message,
           })),
         ),

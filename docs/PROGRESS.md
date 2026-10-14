@@ -364,8 +364,8 @@ Market Data extension (§3.5).
   **7001**, not the earlier mismatched default of 3000); `index.ts`
   reads `env.PORT` instead of `process.env.PORT` directly.
   `.env.example` updated to match.
-- *Since then:* B0 changes the error contract (ADR-002): validation
-  details become `{ field, code, message }`, `TIMEOUT` leaves
+- *Since then:* B0.4 changed the error contract (ADR-002): validation
+  details became `{ field, code, message }`, `TIMEOUT` left
   `AppErrorCode`, a database outage returns 503 `DEPENDENCY_ERROR`, and
   route parameters are validated with a Zod schema (a malformed value is
   400). The 100 kB limit stays global; the CSV import route gets its own

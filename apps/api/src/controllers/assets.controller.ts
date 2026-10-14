@@ -1,8 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { listAssetsQuerySchema } from "../schemas/asset.schema.js";
-import type { assetHistoryQuerySchema } from "../schemas/market.schema.js";
-import { buildPaginationMeta } from "../schemas/pagination.schema.js";
+import {
+  buildPaginationMeta,
+  presentAsset,
+  presentHistoricalPrice,
+  presentMarketPrice,
+  type assetHistoryQuerySchema,
+  type listAssetsQuerySchema,
+} from "@trading/contracts";
 import { getAssetById, listAssets } from "../services/asset.service.js";
 import { getAssetHistory, getAssetPrice } from "../services/market.service.js";
 
@@ -34,7 +39,10 @@ export async function listAssetsHandler(
       },
       { page, pageSize },
     );
-    res.json({ data: result.items, meta: buildPaginationMeta(page, pageSize, result.total) });
+    res.json({
+      data: result.items.map(presentAsset),
+      meta: buildPaginationMeta(page, pageSize, result.total),
+    });
   } catch (error) {
     next(error);
   }
@@ -51,7 +59,7 @@ export async function getAssetByIdHandler(
 ): Promise<void> {
   try {
     const asset = await getAssetById(req.params.assetId as string);
-    res.json({ data: asset });
+    res.json({ data: presentAsset(asset) });
   } catch (error) {
     next(error);
   }
@@ -68,7 +76,7 @@ export async function getAssetPriceHandler(
 ): Promise<void> {
   try {
     const price = await getAssetPrice(req.params.assetId as string);
-    res.json({ data: price });
+    res.json({ data: presentMarketPrice(price) });
   } catch (error) {
     next(error);
   }
@@ -89,7 +97,7 @@ export async function getAssetHistoryHandler(
 
   try {
     const candles = await getAssetHistory(req.params.assetId as string, from, to);
-    res.json({ data: candles });
+    res.json({ data: candles.map(presentHistoricalPrice) });
   } catch (error) {
     next(error);
   }

@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
-import type { UpdateUserPreferenceRequestBody } from "../schemas/user-preference.schema.js";
+import { presentUserPreference } from "@trading/contracts";
+import type { UpdateUserPreferenceRequestBody } from "@trading/contracts";
 import { getUserPreferences, updateUserPreferences } from "../services/user-preference.service.js";
 
 /**
@@ -16,7 +17,7 @@ export async function getUserPreferencesHandler(
 ): Promise<void> {
   try {
     const preferences = await getUserPreferences(req.auth.userId);
-    res.json({ data: preferences });
+    res.json({ data: preferences ? presentUserPreference(preferences) : null });
   } catch (error) {
     next(error);
   }
@@ -44,7 +45,7 @@ export async function updateUserPreferencesHandler(
       ...(reducedMotion !== undefined ? { reducedMotion } : {}),
       ...(notificationPreferences !== undefined ? { notificationPreferences } : {}),
     });
-    res.json({ data: preferences });
+    res.json({ data: presentUserPreference(preferences) });
   } catch (error) {
     next(error);
   }

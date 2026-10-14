@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
-import type { AddWatchlistItemRequestBody } from "../schemas/watchlist.schema.js";
+import { presentWatchlistItem } from "@trading/contracts";
+import type { AddWatchlistItemRequestBody } from "@trading/contracts";
 import {
   addToWatchlist,
   listWatchlist,
@@ -17,7 +18,7 @@ export async function listWatchlistHandler(
 ): Promise<void> {
   try {
     const items = await listWatchlist(req.auth.userId);
-    res.json({ data: items });
+    res.json({ data: items.map(presentWatchlistItem) });
   } catch (error) {
     next(error);
   }
@@ -38,7 +39,7 @@ export async function addWatchlistItemHandler(
 
   try {
     const item = await addToWatchlist(req.auth.userId, assetId);
-    res.status(201).json({ data: item });
+    res.status(201).json({ data: presentWatchlistItem(item) });
   } catch (error) {
     next(error);
   }

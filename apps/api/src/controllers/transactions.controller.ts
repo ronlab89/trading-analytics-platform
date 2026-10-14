@@ -1,15 +1,17 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type {
-  createTransactionRequestSchema,
-  listTransactionsQuerySchema,
-} from "../schemas/transaction.schema.js";
+import {
+  buildPaginationMeta,
+  presentCreateTransactionResult,
+  presentTransaction,
+  type createTransactionRequestSchema,
+  type listTransactionsQuerySchema,
+} from "@trading/contracts";
 import {
   createTransaction,
   getTransactionById,
   listTransactions,
 } from "../services/transaction.service.js";
-import { buildPaginationMeta } from "../schemas/pagination.schema.js";
 import { Money } from "@trading/domain";
 
 type ListTransactionsQuery = z.infer<typeof listTransactionsQuerySchema>;
@@ -41,7 +43,10 @@ export async function listTransactionsHandler(
       },
       { page, pageSize },
     );
-    res.json({ data: result.items, meta: buildPaginationMeta(page, pageSize, result.total) });
+    res.json({
+      data: result.items.map(presentTransaction),
+      meta: buildPaginationMeta(page, pageSize, result.total),
+    });
   } catch (error) {
     next(error);
   }
@@ -62,7 +67,7 @@ export async function getTransactionByIdHandler(
       req.params.portfolioId as string,
       req.params.transactionId as string,
     );
-    res.json({ data: transaction });
+    res.json({ data: presentTransaction(transaction) });
   } catch (error) {
     next(error);
   }
@@ -97,7 +102,7 @@ export async function createTransactionHandler(
       ...(fees !== undefined ? { fees: Money.of(fees.amount, fees.currency) } : {}),
       ...(executedAt !== undefined ? { executedAt } : {}),
     });
-    res.status(201).json({ data: result });
+    res.status(201).json({ data: presentCreateTransactionResult(result) });
   } catch (error) {
     next(error);
   }

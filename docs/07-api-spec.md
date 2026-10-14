@@ -31,18 +31,18 @@ point 5), `Planned (FE)`.
 | # | Principle | Status |
 | --- | --- | --- |
 | 1 | Resource-oriented HTTP APIs. | `Implemented` |
-| 2 | Explicit DTOs built by presenters, never database or domain objects (ADR-002 point 4). | `Planned (B0)` |
+| 2 | Explicit DTOs built by presenters, never database or domain objects (ADR-002 point 4). | `Implemented` (B0.4) |
 | 3 | Consistent response structure (§4). | `Implemented` |
 | 4 | Consistent error structure (§5). | `Implemented` |
-| 5 | Explicit validation with Zod at the route boundary. | `Implemented`; schemas move to `@trading/contracts` `Planned (B0)` |
+| 5 | Explicit validation with Zod at the route boundary. | `Implemented`; request and response schemas live in `@trading/contracts` |
 | 6 | Pagination for large collections. | `Implemented` |
 | 7 | Filtering and sorting where required. | `Implemented` per endpoint |
 | 8 | `Idempotency-Key` where duplicates are dangerous (ADR-008 point 8). | `Planned (B4)` |
 | 9 | Versioned contracts, additive changes only within a version (ADR-002 point 8); OpenAPI generated from the schemas (ADR-002 point 7). | `Implemented` for versioning; OpenAPI `Planned (B6)` |
 | 10 | Realtime events are separate from HTTP responses (`08-realtime-spec.md`). | `Planned (B5)` |
 
-Wire format (ADR-002 point 3), `Implemented` for money and dates; enforced by
-response schemas `Planned (B0)`:
+Wire format (ADR-002 point 3), `Implemented`; enforced by the response schemas
+and presenters of `@trading/contracts`:
 
 - Money: `{ "amount": "<decimal string>", "currency": "USD" }`, never a number.
 - Dates: ISO-8601 strings in UTC.
@@ -69,7 +69,7 @@ new version. Unversioned routes are operational only: `GET /health` and
 
 # 4. Base Response Model
 
-**Status:** `Implemented`; response schemas `Planned (B0)` (ADR-002 point 2)
+**Status:** `Implemented` (ADR-002 point 2)
 
 Successful responses wrap the payload in `data`:
 
@@ -133,14 +133,13 @@ Codes are stable within `v1`; adding a code is an additive change.
 
 | Code | HTTP | Raised today |
 | --- | --- | --- |
-| `VALIDATION_ERROR` | 400 (413 for an oversized body) | Request validation, malformed JSON, `Invalid*Error` and `Insufficient*Error` domain errors |
+| `VALIDATION_ERROR` | 400 (413 for an oversized body) | Request validation (body, query and route parameters: a malformed ID is 400, a well-formed unknown or foreign ID is 404), malformed JSON, `Invalid*Error` and `Insufficient*Error` domain errors |
 | `UNAUTHORIZED` | 401 | Missing or invalid Bearer token, invalid credentials |
 | `FORBIDDEN` | 403 | Declared, not raised; role checks `Planned (B2)` (ADR-002 point 10) |
 | `NOT_FOUND` | 404 | Unknown route; missing resource or another user's resource (never 403, ADR-005 point 12) |
 | `CONFLICT` | 409 | Conflicting state changes |
 | `RATE_LIMITED` | 429 | Rate limiters (§9) |
-| `TIMEOUT` | — | Declared, not raised; removed from `AppErrorCode` `Planned (B0)` (ADR-002 point 10) |
-| `DEPENDENCY_ERROR` | 503 `Planned (B0)` | Declared, not raised; database unreachable (ADR-002 point 10) |
+| `DEPENDENCY_ERROR` | 503 | Database unreachable (Prisma `PrismaClientInitializationError`, P1001, P1002, P1008, P1017); fixed message, no connection details in the body (ADR-002 point 10) |
 | `INTERNAL_ERROR` | 500 | Unexpected errors |
 
 `FORBIDDEN` for a missing permission on an own resource is `Planned (B2)`
@@ -164,6 +163,7 @@ per issue. `field` is the dot-joined path:
     "details": [
       {
         "field": "quantity",
+        "code": "too_small",
         "message": "Quantity must be greater than zero."
       }
     ]
@@ -172,12 +172,11 @@ per issue. `field` is the dot-joined path:
 ```
 
 Invalid query parameters use the message
-`The request contains invalid query parameters.`. Zod issues carry no
-`code` yet; service-level details such as `UNKNOWN_ASSET` do (§25).
-`Planned (B0)` (ADR-002 point 10, amended 2026-10-08): each entry is
-`{ field, code, message }`, where `code` is either the Zod issue code (for
-example `too_small`) or a documented domain code, so the client can localize
-it (ADR-010 point 8). Domain codes:
+`The request contains invalid query parameters.`. Each entry is
+`{ field, code, message }`, where `code` is the Zod issue code (for example
+`too_small`; `custom` for a `refine` check) or a documented domain code, so
+the client can localize it (ADR-010 point 8). Implemented in B0.4
+(ADR-002 point 10, amended 2026-10-08). Domain codes:
 
 | Code | Raised when |
 | --- | --- |
@@ -311,8 +310,8 @@ refresh cookie. An access token already issued stays valid until it expires
 
 All endpoints require a Bearer token (§9) and are scoped to the caller: a
 portfolio of another user returns 404 `NOT_FOUND`, the same as a missing one.
-Payloads are serialized entities today; response schemas and presenters are
-`Planned (B0)` (ADR-002).
+Payloads are built by presenters from the response schemas of
+`@trading/contracts` (ADR-002).
 
 | Endpoint | Status |
 | --- | --- |
@@ -708,8 +707,8 @@ state that does not allow it returns 409 `CONFLICT` and changes nothing
 
 Assets are shared reference data: every endpoint requires a Bearer token
 (§9) but has no ownership check. Prices are `Money`
-(`{ amount, currency }`, ADR-002); payloads are serialized entities today,
-presenters `Planned (B0)` (ADR-002).
+(`{ amount, currency }`, ADR-002); payloads are built by presenters
+(ADR-002).
 
 | Endpoint | Status |
 | --- | --- |
@@ -1023,7 +1022,8 @@ GET /api/v1/portfolios/:portfolioId/decisions
 ```
 
 Query (all optional): `assetId`, `direction` (a `DecisionDirection`
-value), `dateFrom`, `dateTo` (dates). Returns 200 `{ "data": [decision] }`,
+value), `dateFrom`, `dateTo` (dates, both inclusive, compared with the
+decision's `createdAt`). Returns 200 `{ "data": [decision] }`,
 not paginated, with no `meta`. Errors: 400 `VALIDATION_ERROR`; 404
 `NOT_FOUND`. `outcome`, `page` and `pageSize` are `Deferred`: a portfolio
 holds few decisions and `outcome` is free-form.
@@ -1101,8 +1101,8 @@ decision's asset is missing (data integrity).
 
 All endpoints require a Bearer token (§9). The portfolio must be the
 caller's and the scenario must belong to it; otherwise 404 `NOT_FOUND`.
-Payloads are serialized entities today; response schemas and presenters are
-`Planned (B0)` (ADR-002). `Planned (B2)` (ADR-005 point 1): `VIEWER` reads
+Payloads are built by presenters from the response schemas of
+`@trading/contracts` (ADR-002). `Planned (B2)` (ADR-005 point 1): `VIEWER` reads
 only; writes need `TRADER` or `ADMIN`.
 
 | Endpoint | Status |
@@ -1496,7 +1496,7 @@ Marks every unread notification of the caller as read. Returns 204.
 
 # 29. User Preferences API
 
-**Status:** `Implemented` (FR-087); `language` limited to `en`/`es` `Planned (B0)` (ADR-010 point 8)
+**Status:** `Implemented` (FR-087); `theme` limited to `light`/`dark`/`system` and `language` to `en`/`es` (ADR-010 point 8)
 
 Both endpoints require a Bearer token (§9) and act on the caller's
 preferences; there is no user id in the route. Preferences are a per-user
@@ -1505,7 +1505,7 @@ singleton row.
 | Endpoint | Status |
 | --- | --- |
 | `GET /api/v1/preferences` | `Implemented` |
-| `PATCH /api/v1/preferences` | `Implemented`; `en`/`es` validation `Planned (B0)` |
+| `PATCH /api/v1/preferences` | `Implemented`; `theme` and `language` validated |
 
 ## Get Preferences
 
@@ -1523,7 +1523,7 @@ client then applies the application defaults.
 
 ## Update Preferences
 
-**Status:** `Implemented` (FR-087); `en`/`es` and `theme` validation `Planned (B0)`
+**Status:** `Implemented` (FR-087)
 
 ```text
 PATCH /api/v1/preferences
@@ -1545,12 +1545,9 @@ column defaults of `05-data-model.md` §23 (`theme = "system"`,
 `language = "en"`, `reducedMotion = false`, `notificationPreferences = {}`).
 `defaultPortfolioId: null` clears it. Returns 200 `{ "data": preferences }`.
 
-Errors: 400 `VALIDATION_ERROR` (no field, empty `theme` or `language`); 404
-`NOT_FOUND` (`defaultPortfolioId` missing or another user's). Today
-`theme` and `language` accept any non-empty string. `Planned (B0)` (ADR-010
-point 8): `language` other than `en` or `es` is 400 and changes nothing.
-`Planned (B0)` (ADR-002 point 10): `theme` other than `light`, `dark` or
-`system` is 400 and changes nothing.
+Errors: 400 `VALIDATION_ERROR` (no field, `theme` other than `light`, `dark` or
+`system`, `language` other than `en` or `es`; nothing is changed); 404
+`NOT_FOUND` (`defaultPortfolioId` missing or another user's).
 
 ---
 
@@ -1790,7 +1787,7 @@ The client sorts only lists loaded in full (`Planned (FE)`).
 
 # 43. Date Handling
 
-**Status:** `Implemented`; contract schemas `Planned (B0)` (ADR-002 point 3)
+**Status:** `Implemented` (ADR-002 point 3)
 
 Timestamps are ISO-8601 strings in UTC:
 
@@ -1805,7 +1802,7 @@ belongs to the presentation layer.
 
 # 44. Monetary Values
 
-**Status:** `Implemented` (output); response schemas `Planned (B0)` (ADR-002 point 3)
+**Status:** `Implemented` (ADR-002 point 3)
 
 ```json
 {
@@ -1826,8 +1823,8 @@ number today. Display rounding happens only in the client (ADR-010 point 9).
 
 - Bearer authentication on every `/api/v1` route except auth and health (§9).
 - Role and ownership authorization on the server; client checks are UX only.
-- Zod validation of query and body `Implemented`; of route params `Planned
-  (B0)` (ADR-002 point 10). JSON bodies capped at 100 kB.
+- Zod validation of query, body and route params (ADR-002 point 10). JSON
+  bodies capped at 100 kB.
 - `helmet` headers and CORS restricted to `CORS_ORIGIN`.
 - Normalized error bodies that never expose stack traces or driver errors.
 
@@ -1965,10 +1962,10 @@ frontend-stage ADR. The demo CSV import supports injectable failures
 
 # 56. API Contract Testing
 
-**Status:** `Planned (B0)` (ADR-002 point 6)
+**Status:** `Implemented` for the API integration tests (B0.4) (ADR-002 point 6)
 
 Responses are validated against their `@trading/contracts` schemas in the
-API integration tests and in the demo adapter during development. They are
+API integration tests (`response-contract.routes.test.ts`) and in the demo adapter during development. They are
 not validated at runtime in production.
 
 ---

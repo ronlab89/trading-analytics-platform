@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { validate } from "../middleware/validate.js";
-import { addWatchlistItemRequestSchema } from "../schemas/watchlist.schema.js";
+import { addWatchlistItemRequestSchema, assetIdParamsSchema } from "@trading/contracts";
 import {
   addWatchlistItemHandler,
   listWatchlistHandler,
@@ -20,4 +20,9 @@ watchlistRouter.post(
   addWatchlistItemHandler,
 );
 
-watchlistRouter.delete("/api/v1/watchlist/:assetId", authenticate, removeWatchlistItemHandler);
+watchlistRouter.delete(
+  "/api/v1/watchlist/:assetId",
+  authenticate,
+  validate(assetIdParamsSchema, "params"),
+  removeWatchlistItemHandler,
+);

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { batchPricesQuerySchema } from "../schemas/market.schema.js";
+import { presentMarketPrice } from "@trading/contracts";
+import type { batchPricesQuerySchema } from "@trading/contracts";
 import { getBatchPrices } from "../services/market.service.js";
 
 type BatchPricesQuery = z.infer<typeof batchPricesQuerySchema>;
@@ -20,7 +21,7 @@ export async function getBatchPricesHandler(
 
   try {
     const prices = await getBatchPrices(assetIds);
-    res.json({ data: prices });
+    res.json({ data: prices.map(presentMarketPrice) });
   } catch (error) {
     next(error);
   }

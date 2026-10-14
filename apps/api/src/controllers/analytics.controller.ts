@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { allocationQuerySchema } from "../schemas/analytics.schema.js";
+import { presentAllocation, presentAttribution } from "@trading/contracts";
+import type { allocationQuerySchema } from "@trading/contracts";
 import { getPortfolioAllocation, getPortfolioAttribution } from "../services/analytics.service.js";
 
 type AllocationQuery = z.infer<typeof allocationQuerySchema>;
@@ -24,7 +25,7 @@ export async function getPortfolioAllocationHandler(
       req.params.portfolioId as string,
       groupBy,
     );
-    res.json({ data: result });
+    res.json({ data: presentAllocation(result) });
   } catch (error) {
     next(error);
   }
@@ -41,7 +42,7 @@ export async function getPortfolioAttributionHandler(
 ): Promise<void> {
   try {
     const result = await getPortfolioAttribution(req.auth.userId, req.params.portfolioId as string);
-    res.json({ data: result });
+    res.json({ data: presentAttribution(result) });
   } catch (error) {
     next(error);
   }

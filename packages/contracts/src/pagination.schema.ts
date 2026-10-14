@@ -14,12 +14,13 @@ export const paginationQueryShape = {
   pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
 };
 
-export interface PaginationMeta {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}
+export const paginationMetaSchema = z.object({
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  total: z.number().int(),
+  totalPages: z.number().int(),
+});
+export type PaginationMeta = z.infer<typeof paginationMetaSchema>;
 
 export function buildPaginationMeta(page: number, pageSize: number, total: number): PaginationMeta {
   return { page, pageSize, total, totalPages: Math.ceil(total / pageSize) };
