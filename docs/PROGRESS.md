@@ -6,8 +6,9 @@
 > backend-first: blocks B0 to B7 close the backend, then the frontend stage
 > follows (`docs/BACKEND-ROADMAP.md`, `docs/15-implementation-plan.md` §4.1).
 > B0 is in progress: B0.1 (CI, `.nvmrc`, version alignment, `check-docs`
-> hardening) and B0.2 (runtime role, seed and reset guard, `CORS_ORIGIN`
-> validation, login timing) are done and B0.3 is next.
+> hardening), B0.2 (runtime role, seed and reset guard, `CORS_ORIGIN`
+> validation, login timing), B0.3 (route characterization tests) and B0.4
+> (shared contracts) are done; B0.5 (application layer) is in progress.
 
 **Last updated:** 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
@@ -47,9 +48,14 @@ CI (`.github/workflows/ci.yml`, first run green), `.nvmrc` (Node 24),
 `engines.node` `>=24.0.0`, aligned `@types/node` and `typescript` versions, and
 the hardened `scripts/check-docs.mjs` (task T1.5). **B0.2 is done** (`Implemented`): the DML-only runtime
 role, the seed and reset production guard, `CORS_ORIGIN` validation and login
-timing equalization. **B0.3 is next.** The rest
-of B0 has not started; `packages/application` does not exist, and
-`packages/contracts` and `packages/config` hold only a `.gitkeep`.
+timing equalization. **B0.3 and B0.4 are done** (`Implemented`): the characterization
+route tests, and `@trading/contracts` with request and response schemas,
+presenters, route-parameter validation and the final error contract.
+**B0.5 is in progress** (T1 to T4 done): `@trading/application` exists with
+the errors, `Actor`, permissions and `Clock`, the composition root and the
+import-boundary lint rule are in place, and portfolios, assets and market
+have moved; positions, transactions and the composite reads remain
+(`odd/tasks/b0-5-application-layer.md`). `packages/config` holds only a `.gitkeep`.
 
 **SDD reconciliation:** the spec set is `docs/00` to `docs/16` plus ADRs
 001-010 (`docs/adr/`). Phases 0-4 of `odd/tasks/sdd-source-of-truth.md` are
@@ -899,7 +905,7 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B0.3 (the characterization route tests); B0.1 and B0.2 are done. Phase 5 itself still has the reconciliation of
+**Next:** B0.5 T5 (positions and transactions); B0.1 to B0.4 are done. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in

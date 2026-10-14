@@ -1,6 +1,6 @@
-import { UserRole } from "@trading/domain";
 import type { Portfolio } from "@trading/domain";
 import { composition } from "../composition.js";
+import { transitionalActor } from "./transitional-actor.js";
 
 /**
  * Transitional adapter for the services that have not moved to
@@ -15,8 +15,5 @@ import { composition } from "../composition.js";
  * with the last of them (B0.5 T6).
  */
 export function getPortfolioById(userId: string, portfolioId: string): Promise<Portfolio> {
-  return composition.portfolioService.getPortfolioById(
-    { userId, role: UserRole.USER },
-    portfolioId,
-  );
+  return composition.portfolioService.getPortfolioById(transitionalActor(userId), portfolioId);
 }
