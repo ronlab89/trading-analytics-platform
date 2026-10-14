@@ -245,6 +245,9 @@ importers:
         specifier: workspace:*
         version: link:../domain
     devDependencies:
+      '@trading/persistence-memory':
+        specifier: workspace:*
+        version: link:../persistence-memory
       '@types/node':
         specifier: ^24
         version: 24.19.1
