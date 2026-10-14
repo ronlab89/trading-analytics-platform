@@ -1022,7 +1022,8 @@ GET /api/v1/portfolios/:portfolioId/decisions
 ```
 
 Query (all optional): `assetId`, `direction` (a `DecisionDirection`
-value), `dateFrom`, `dateTo` (dates). Returns 200 `{ "data": [decision] }`,
+value), `dateFrom`, `dateTo` (dates, both inclusive, compared with the
+decision's `createdAt`). Returns 200 `{ "data": [decision] }`,
 not paginated, with no `meta`. Errors: 400 `VALIDATION_ERROR`; 404
 `NOT_FOUND`. `outcome`, `page` and `pageSize` are `Deferred`: a portfolio
 holds few decisions and `outcome` is free-form.
@@ -1495,7 +1496,7 @@ Marks every unread notification of the caller as read. Returns 204.
 
 # 29. User Preferences API
 
-**Status:** `Implemented` (FR-087); `language` limited to `en`/`es` `Planned (B0)` (ADR-010 point 8)
+**Status:** `Implemented` (FR-087); `theme` limited to `light`/`dark`/`system` and `language` to `en`/`es` (ADR-010 point 8)
 
 Both endpoints require a Bearer token (§9) and act on the caller's
 preferences; there is no user id in the route. Preferences are a per-user
@@ -1522,7 +1523,7 @@ client then applies the application defaults.
 
 ## Update Preferences
 
-**Status:** `Implemented` (FR-087); `en`/`es` and `theme` validation `Planned (B0)`
+**Status:** `Implemented` (FR-087)
 
 ```text
 PATCH /api/v1/preferences
@@ -1544,10 +1545,9 @@ column defaults of `05-data-model.md` §23 (`theme = "system"`,
 `language = "en"`, `reducedMotion = false`, `notificationPreferences = {}`).
 `defaultPortfolioId: null` clears it. Returns 200 `{ "data": preferences }`.
 
-Errors: 400 `VALIDATION_ERROR` (no field, empty `theme` or `language`); 404
-`NOT_FOUND` (`defaultPortfolioId` missing or another user's). Today
-`theme` and `language` accept any non-empty string. `Planned (B0)` (ADR-010
-point 8): `language` other than `en` or `es` is 400 and changes nothing.
+Errors: 400 `VALIDATION_ERROR` (no field, `theme` other than `light`, `dark` or
+`system`, `language` other than `en` or `es`; nothing is changed); 404
+`NOT_FOUND` (`defaultPortfolioId` missing or another user's).
 `Planned (B0)` (ADR-002 point 10): `theme` other than `light`, `dark` or
 `system` is 400 and changes nothing.
 
