@@ -4,22 +4,26 @@ import {
   PrismaDecisionRepository,
   PrismaHistoricalPriceRepository,
   PrismaMarketPriceRepository,
+  PrismaNotificationRepository,
   PrismaPortfolioRepository,
   PrismaPositionRepository,
   PrismaScenarioRepository,
   PrismaTransactionRepository,
   PrismaUnitOfWork,
+  PrismaWatchlistItemRepository,
 } from "@trading/database";
 import {
   createAnalyticsService,
   createAssetService,
   createDecisionService,
   createMarketService,
+  createNotificationService,
   createOverviewService,
   createPortfolioService,
   createPositionService,
   createScenarioService,
   createTransactionService,
+  createWatchlistService,
 } from "@trading/application";
 import type { Clock } from "@trading/application";
 
@@ -86,6 +90,14 @@ export function buildComposition(clock: Clock) {
     portfolioService,
     assetService,
   });
+  const notificationService = createNotificationService({
+    notificationRepository: new PrismaNotificationRepository(),
+    clock,
+  });
+  const watchlistService = createWatchlistService({
+    watchlistRepository: new PrismaWatchlistItemRepository(),
+    assetService,
+  });
 
   return {
     clock,
@@ -98,6 +110,8 @@ export function buildComposition(clock: Clock) {
     overviewService,
     decisionService,
     scenarioService,
+    notificationService,
+    watchlistService,
   };
 }
 
