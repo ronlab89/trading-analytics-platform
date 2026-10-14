@@ -2,6 +2,7 @@ export * from "./actor.js";
 export * from "./analytics-service.js";
 export * from "./asset-service.js";
 export * from "./clock.js";
+export * from "./decision-service.js";
 export * from "./errors.js";
 export * from "./market-service.js";
 export * from "./overview-service.js";

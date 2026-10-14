@@ -1,5 +1,7 @@
 import {
   PrismaAssetRepository,
+  PrismaDecisionEventRepository,
+  PrismaDecisionRepository,
   PrismaHistoricalPriceRepository,
   PrismaMarketPriceRepository,
   PrismaPortfolioRepository,
@@ -10,6 +12,7 @@ import {
 import {
   createAnalyticsService,
   createAssetService,
+  createDecisionService,
   createMarketService,
   createOverviewService,
   createPortfolioService,
@@ -69,6 +72,12 @@ export function buildComposition(clock: Clock) {
     assetService,
     clock,
   });
+  const decisionService = createDecisionService({
+    decisionRepository: new PrismaDecisionRepository(),
+    decisionEventRepository: new PrismaDecisionEventRepository(),
+    assetRepository,
+    portfolioService,
+  });
 
   return {
     clock,
@@ -79,6 +88,7 @@ export function buildComposition(clock: Clock) {
     transactionService,
     analyticsService,
     overviewService,
+    decisionService,
   };
 }
 

@@ -8,11 +8,11 @@ import {
   portfolioDecisionParamsSchema,
   portfolioIdParamsSchema,
 } from "@trading/contracts";
-import {
-  getDecisionByIdHandler,
-  getDecisionReplayHandler,
-  listDecisionsHandler,
-} from "../controllers/decisions.controller.js";
+import { makeDecisionsController } from "../controllers/decisions.controller.js";
+import { composition } from "../composition.js";
+
+const { getDecisionByIdHandler, getDecisionReplayHandler, listDecisionsHandler } =
+  makeDecisionsController(composition.decisionService);
 
 export const decisionsRouter: ExpressRouter = Router();
 
