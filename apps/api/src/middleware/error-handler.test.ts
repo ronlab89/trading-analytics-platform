@@ -1,7 +1,12 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import type { Request, Response } from "express";
 import type { ErrorResponse } from "@trading/contracts";
-import { ConflictError, ForbiddenError, NotFoundError } from "@trading/application";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationFailedError,
+} from "@trading/application";
 import { errorHandler } from "./error-handler.js";
 
 function run(err: unknown) {
@@ -74,5 +79,19 @@ describe("errorHandler application errors", () => {
     const { status, body } = run(new ForbiddenError("Missing permission: portfolio:write."));
     expect(status).toBe(403);
     expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("maps ValidationFailedError to 400 VALIDATION_ERROR keeping its field details", () => {
+    const details = [{ field: "changes", code: "UNKNOWN_ASSET", message: "Unknown asset: a1" }];
+    const { status, body } = run(
+      new ValidationFailedError("The scenario references assets that do not exist.", details),
+    );
+    expect(status).toBe(400);
+    expect(body.error).toEqual({
+      code: "VALIDATION_ERROR",
+      message: "The scenario references assets that do not exist.",
+      requestId: "req-1",
+      details,
+    });
   });
 });

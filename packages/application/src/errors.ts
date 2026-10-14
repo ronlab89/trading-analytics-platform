@@ -24,3 +24,25 @@ export class ConflictError extends ApplicationError {}
 
 /** The actor is authenticated but lacks the permission for this use case. */
 export class ForbiddenError extends ApplicationError {}
+
+/** One problem found in a request, tied to the field that caused it. */
+export interface FieldIssue {
+  field: string;
+  code: string;
+  message: string;
+}
+
+/**
+ * The request is well formed but a value in it is not acceptable for this
+ * use case (for example a reference to a record that does not exist),
+ * reported with one issue per offending field so the client can fix them
+ * all in a single round trip.
+ */
+export class ValidationFailedError extends ApplicationError {
+  constructor(
+    message: string,
+    readonly details: readonly FieldIssue[],
+  ) {
+    super(message);
+  }
+}

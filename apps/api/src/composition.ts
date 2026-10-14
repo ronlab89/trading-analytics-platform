@@ -6,6 +6,7 @@ import {
   PrismaMarketPriceRepository,
   PrismaPortfolioRepository,
   PrismaPositionRepository,
+  PrismaScenarioRepository,
   PrismaTransactionRepository,
   PrismaUnitOfWork,
 } from "@trading/database";
@@ -17,6 +18,7 @@ import {
   createOverviewService,
   createPortfolioService,
   createPositionService,
+  createScenarioService,
   createTransactionService,
 } from "@trading/application";
 import type { Clock } from "@trading/application";
@@ -78,6 +80,12 @@ export function buildComposition(clock: Clock) {
     assetRepository,
     portfolioService,
   });
+  const scenarioService = createScenarioService({
+    scenarioRepository: new PrismaScenarioRepository(),
+    positionRepository,
+    portfolioService,
+    assetService,
+  });
 
   return {
     clock,
@@ -89,6 +97,7 @@ export function buildComposition(clock: Clock) {
     analyticsService,
     overviewService,
     decisionService,
+    scenarioService,
   };
 }
 
