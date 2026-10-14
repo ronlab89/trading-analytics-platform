@@ -29,7 +29,7 @@ docs/06-architecture.md
 
 ## Tasks
 
-- [ ] T1 Package scaffold (depends only on `@trading/domain`), application errors, `Actor`, permission mechanism, `Clock` port.
+- [x] T1 Package scaffold (depends only on `@trading/domain`), application errors, `Actor`, permission mechanism, `Clock` port. Route: inline. Evidence: RED observed (modules missing), then GREEN; `pnpm --filter @trading/application test` 3 files, 12/12; `pnpm typecheck` clean; `pnpm exec eslint .` clean. New package `packages/application` (`errors.ts`, `clock.ts` with `fixedClock`, `actor.ts`, `permissions.ts`), root `tsconfig.json` now references `contracts` and `application`, `pnpm-lock.yaml` gains only the new workspace importer. `apps/api` does not depend on the package yet (T2). `systemClock` is wired in the composition root (T2), so this package never calls `new Date()`. Risk: item 5 (new workspace package and lockfile entry, no runtime consumer yet).
 - [ ] T2 Composition root and ESLint import-boundary rule (replace the commented placeholder).
 - [ ] T3 Move portfolios (factory, tests with fakes).
 - [ ] T4 Move assets and market.
