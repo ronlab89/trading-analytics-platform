@@ -14,7 +14,7 @@ import { PrismaAssetRepository } from "./prisma-asset-repository.js";
  * implementation passes) against the real Docker Postgres instance (see
  * docker-compose.yml). It is NOT a unit test: the database must be up
  * (`docker compose up -d postgres`) and migrated
- * (`pnpm --filter @trading/database db:migrate`) before running.
+ * (`pnpm --filter @trading/database db:test:migrate`) before running.
  *
  * Assets have no owner, so there is nothing to cascade from. Every symbol the
  * suite creates starts with `ASSET_CONTRACT_SYMBOL_PREFIX`; teardown deletes by
