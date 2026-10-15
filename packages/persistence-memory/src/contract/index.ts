@@ -7,4 +7,5 @@
  * needs, so an implementation with foreign keys can create real rows while an
  * in-memory one returns any ids.
  */
+export * from "./asset-repository.contract.js";
 export * from "./portfolio-repository.contract.js";
