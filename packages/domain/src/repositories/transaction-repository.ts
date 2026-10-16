@@ -56,6 +56,17 @@ export interface TransactionRepository {
   listByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<Transaction[]>;
 
   /**
+   * Serializes concurrent units of work on one portfolio+asset until the
+   * current unit ends, so the chronological replay never reads a history that
+   * another in-flight unit is about to change (FR-017 race, ADR-001).
+   *
+   * Call it first inside a unit, before `listByPortfolioAndAsset`. Storages
+   * that already run units one at a time may do nothing. The lock is released
+   * when the unit commits or rolls back; outside a unit it has no effect.
+   */
+  lockPortfolioAsset(portfolioId: string, assetId: string): Promise<void>;
+
+  /**
    * Returns a single transaction by id, or null if it does not exist.
    */
   getById(id: string): Promise<Transaction | null>;

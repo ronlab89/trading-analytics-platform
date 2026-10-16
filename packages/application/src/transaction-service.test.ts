@@ -3,6 +3,7 @@ import {
   InsufficientPositionQuantityError,
   InvalidTransactionError,
   Money,
+  PortfolioStatus,
   TransactionStatus,
   TransactionType,
 } from "@trading/domain";
@@ -15,7 +16,7 @@ import type {
 } from "@trading/domain";
 import type { Actor } from "./actor.js";
 import { fixedClock } from "./clock.js";
-import { ForbiddenError, NotFoundError } from "./errors.js";
+import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createTransactionService } from "./transaction-service.js";
 
@@ -40,11 +41,14 @@ interface Calls {
   upserts: unknown[];
   deletes: string[];
   statusUpdates: string[];
+  /** Order of the lock and the history read inside the unit of work. */
+  reads: string[];
 }
 
 function build(
   options: {
     ownedPortfolios?: string[];
+    archivedPortfolios?: string[];
     assetExists?: boolean;
     stored?: Transaction[];
     /** The asset's existing transactions, in creation order, read for the chronological check. */
@@ -55,16 +59,24 @@ function build(
 ) {
   const {
     ownedPortfolios = ["p1"],
+    archivedPortfolios = [],
     assetExists = true,
     stored = [],
     history = [],
     existing = null,
   } = options;
-  const calls: Calls = { upserts: [], deletes: [], statusUpdates: [] };
+  const calls: Calls = { upserts: [], deletes: [], statusUpdates: [], reads: [] };
 
   const transactions = {
     listByPortfolioId: () => Promise.resolve({ items: stored, total: stored.length }),
-    listByPortfolioAndAsset: () => Promise.resolve(history),
+    lockPortfolioAsset: () => {
+      calls.reads.push("lock");
+      return Promise.resolve();
+    },
+    listByPortfolioAndAsset: () => {
+      calls.reads.push("history");
+      return Promise.resolve(history);
+    },
     getById: (id: string) => Promise.resolve(stored.find((t) => t.id === id) ?? null),
     create: (input: { portfolioId: string; assetId: string }) =>
       Promise.resolve({ ...transaction("new", input.portfolioId), assetId: input.assetId }),
@@ -91,7 +103,9 @@ function build(
   const portfolioService = {
     getPortfolioById: (_actor: Actor, portfolioId: string) =>
       ownedPortfolios.includes(portfolioId)
-        ? Promise.resolve({})
+        ? Promise.resolve(
+            archivedPortfolios.includes(portfolioId) ? { status: PortfolioStatus.ARCHIVED } : {},
+          )
         : Promise.reject(new NotFoundError("The requested resource could not be found.")),
   };
   const service = createTransactionService({
@@ -175,6 +189,94 @@ describe("transaction service", () => {
     expect(result.position).toBeNull();
     expect(calls.deletes).toEqual(["p1"]);
     expect(calls.upserts).toHaveLength(0);
+  });
+
+  describe("archived portfolio guard (ADR-010 point 5)", () => {
+    it("rejects creating a transaction in an archived portfolio and writes nothing", async () => {
+      const { service, calls } = build({ archivedPortfolios: ["p1"] });
+      const error = await service.createTransaction(actor, "p1", buy).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ConflictError);
+      expect((error as Error).message).toBe("An archived portfolio cannot be modified.");
+      expect(calls.reads).toHaveLength(0);
+      expect(calls.upserts).toHaveLength(0);
+      expect(calls.deletes).toHaveLength(0);
+      expect(calls.statusUpdates).toHaveLength(0);
+    });
+
+    it("still lists and reads the transactions of an archived portfolio", async () => {
+      const { service } = build({
+        archivedPortfolios: ["p1"],
+        stored: [transaction("t1", "p1")],
+      });
+      const page = await service.listTransactions(actor, "p1", {}, { page: 1, pageSize: 10 });
+      expect(page.total).toBe(1);
+      expect((await service.getTransactionById(actor, "p1", "t1")).id).toBe("t1");
+    });
+
+    it("keeps answering 404 for a portfolio of another user, archived or not", async () => {
+      const { service } = build({ ownedPortfolios: [], archivedPortfolios: ["p1"] });
+      await expect(service.createTransaction(actor, "p1", buy)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+  });
+
+  it("locks the portfolio and asset before it reads the history", async () => {
+    const { service, calls } = build();
+    await service.createTransaction(actor, "p1", buy);
+    expect(calls.reads).toEqual(["lock", "history"]);
+  });
+
+  describe("position replay", () => {
+    interface UpsertedPosition {
+      quantity: number;
+      averageEntryPrice: Money;
+      currentPrice: Money;
+      openedAt: Date;
+    }
+
+    it("upserts the replayed average and the earliest openedAt for a backdated BUY", async () => {
+      // Date order: BUY 10@100 (day 1), BUY 6@200 (day 2), SELL 4 (day 3):
+      // (1000 + 1200) / 16 = 137.5, not the 150 an incremental BUY would give.
+      const existing = { ...position(), quantity: 6, averageEntryPrice: Money.of("100", "USD") };
+      const { service, calls } = build({
+        existing,
+        history: [
+          entry("t1", TransactionType.BUY, 10, "2026-03-01T00:00:00Z"),
+          entry("t2", TransactionType.SELL, 4, "2026-03-03T00:00:00Z"),
+        ],
+      });
+      await service.createTransaction(actor, "p1", {
+        ...buy,
+        quantity: 6,
+        price: Money.of("200", "USD"),
+        executedAt: new Date("2026-03-02T00:00:00Z"),
+      });
+      const upserted = calls.upserts[0] as UpsertedPosition;
+      expect(upserted.quantity).toBe(12);
+      expect(upserted.averageEntryPrice.equals(Money.of("137.5", "USD"))).toBe(true);
+      expect(upserted.openedAt).toEqual(new Date("2026-03-01T00:00:00Z"));
+    });
+
+    it("keeps the market price of an existing position", async () => {
+      const existing = {
+        ...position(),
+        quantity: 2,
+        averageEntryPrice: Money.of("100", "USD"),
+        currentPrice: Money.of("120", "USD"),
+      };
+      const { service, calls } = build({ existing, history: [transaction("t0", "p1")] });
+      await service.createTransaction(actor, "p1", buy);
+      const upserted = calls.upserts[0] as UpsertedPosition;
+      expect(upserted.currentPrice.equals(Money.of("120", "USD"))).toBe(true);
+    });
+
+    it("seeds the market price from the trade price when the position first opens", async () => {
+      const { service, calls } = build();
+      await service.createTransaction(actor, "p1", buy);
+      const upserted = calls.upserts[0] as UpsertedPosition;
+      expect(upserted.currentPrice.equals(Money.of("100", "USD"))).toBe(true);
+    });
   });
 
   describe("chronological validation (FR-018)", () => {

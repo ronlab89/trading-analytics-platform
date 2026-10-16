@@ -93,6 +93,11 @@ export class InMemoryTransactionRepository implements TransactionRepository {
     return Promise.resolve(matching.map((s) => s.transaction));
   }
 
+  /** No-op: the in-memory unit of work already runs units one at a time. */
+  lockPortfolioAsset(): Promise<void> {
+    return Promise.resolve();
+  }
+
   getById(id: string): Promise<Transaction | null> {
     return Promise.resolve(this.rows.get(id)?.transaction ?? null);
   }

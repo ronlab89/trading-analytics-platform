@@ -112,6 +112,29 @@ describe("InMemoryUnitOfWork", () => {
     expect(events).toEqual(["first:start", "first:end", "second:start"]);
   });
 
+  it("lets a unit read what the unit before it wrote, so a read-check-write cannot race", async () => {
+    const { unitOfWork } = build();
+    const gate = deferred();
+    const seen: number[] = [];
+
+    // Each unit reads the history, waits, then writes: without serialization
+    // both would read an empty history.
+    const unit = (hold: boolean) =>
+      unitOfWork.run(async ({ transactions }) => {
+        seen.push((await transactions.listByPortfolioAndAsset("p1", "a1")).length);
+        if (hold) await gate.promise;
+        await transactions.create(transactionInput);
+      });
+
+    const first = unit(true);
+    const second = unit(false);
+
+    gate.release();
+    await Promise.all([first, second]);
+
+    expect(seen).toEqual([0, 1]);
+  });
+
   it("keeps accepting units after one failed", async () => {
     const { unitOfWork } = build();
 

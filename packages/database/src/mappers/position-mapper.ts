@@ -33,10 +33,12 @@ export function toDomainPosition(row: PrismaPosition): Position {
  * before this is called.
  *
  * Split into `create`/`update` payloads (rather than one shared object)
- * because `openedAt` must only ever be set once, when the position is
- * first opened — an upsert that re-runs `create`'s data on every
- * subsequent update would silently reset "when this position was
- * opened" every time a new transaction touches an already-open position.
+ * because, unless the caller passes `openedAt`, it must only ever be set
+ * once, when the position is first opened — an upsert that re-runs
+ * `create`'s data on every subsequent update would silently reset "when
+ * this position was opened" every time a new transaction touches an
+ * already-open position. An explicit `openedAt` (the transaction replay,
+ * when a backdated transaction moves it) is written on both paths.
  */
 export function toPrismaUpsertCreateData(input: CreatePositionInput) {
   return {
@@ -44,7 +46,7 @@ export function toPrismaUpsertCreateData(input: CreatePositionInput) {
     currency: input.averageEntryPrice.currency,
     averageEntryPrice: input.averageEntryPrice.toString(),
     currentPrice: input.currentPrice.toString(),
-    openedAt: new Date(),
+    openedAt: input.openedAt ?? new Date(),
   };
 }
 
@@ -54,5 +56,6 @@ export function toPrismaUpsertUpdateData(input: CreatePositionInput) {
     currency: input.averageEntryPrice.currency,
     averageEntryPrice: input.averageEntryPrice.toString(),
     currentPrice: input.currentPrice.toString(),
+    ...(input.openedAt !== undefined ? { openedAt: input.openedAt } : {}),
   };
 }

@@ -162,6 +162,15 @@ export function transactionRepositoryContract(
       expect(result).toEqual([early, late]);
     });
 
+    it("locks a portfolio and asset without changing any data", async () => {
+      const { portfolioId, assetId } = context.fixtures;
+      const created = await context.repository.create(input());
+      await expect(
+        context.repository.lockPortfolioAsset(portfolioId, assetId),
+      ).resolves.toBeUndefined();
+      expect(await context.repository.getById(created.id)).toEqual(created);
+    });
+
     it("updates the status only", async () => {
       const created = await context.repository.create(input());
       const processing = await context.repository.updateStatus(

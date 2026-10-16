@@ -69,6 +69,13 @@ export class PrismaTransactionRepository implements TransactionRepository {
     return rows.map(toDomainTransaction);
   }
 
+  async lockPortfolioAsset(portfolioId: string, assetId: string): Promise<void> {
+    // Transaction-level advisory lock keyed on the pair: the second unit waits
+    // here until the first commits, then reads the history it left behind.
+    const key = `transactions:${portfolioId}:${assetId}`;
+    await this.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+
   async getById(id: string): Promise<Transaction | null> {
     const row = await this.db.transaction.findUnique({ where: { id } });
     return row ? toDomainTransaction(row) : null;

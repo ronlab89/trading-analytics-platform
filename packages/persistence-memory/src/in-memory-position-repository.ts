@@ -64,7 +64,7 @@ export class InMemoryPositionRepository implements PositionRepository {
       quantity: input.quantity,
       averageEntryPrice: input.averageEntryPrice,
       currentPrice: input.currentPrice,
-      openedAt: existing?.openedAt ?? timestamp,
+      openedAt: input.openedAt ?? existing?.openedAt ?? timestamp,
       updatedAt: timestamp,
     };
     this.rows.set(position.id, position);
