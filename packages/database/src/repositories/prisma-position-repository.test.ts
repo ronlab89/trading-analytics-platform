@@ -1,113 +1,67 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { Money } from "@trading/domain";
+import { afterAll } from "vitest";
+import { positionRepositoryContract } from "@trading/persistence-memory/contract";
 import { prisma } from "../client.js";
 import { PrismaPositionRepository } from "./prisma-position-repository.js";
 
 /**
  * Integration test for `PrismaPositionRepository`.
- * See prisma-portfolio-repository.test.ts for the shared preconditions.
+ * Source: docs/10-testing-strategy.md §17 (Repository Testing).
+ *
+ * Runs the shared `PositionRepository` contract suite (the same one the
+ * in-memory implementation passes) against the real Docker Postgres instance
+ * (see docker-compose.yml). It is NOT a unit test: the database must be up
+ * (`docker compose up -d postgres`) and migrated
+ * (`pnpm --filter @trading/database db:test:migrate`) before running.
+ *
+ * Each test gets one dedicated user, two portfolios and two assets (the
+ * foreign key owners). Deleting the user cascades (onDelete: Cascade, see
+ * schema.prisma) to the portfolios and to the positions created by the test.
+ * The assets are deleted afterwards: a position restricts the deletion of its
+ * asset (onDelete: Restrict), so they can only go once the positions are gone.
  */
-describe("PrismaPositionRepository", () => {
-  const repository = new PrismaPositionRepository();
+afterAll(async () => {
+  await prisma.$disconnect();
+});
 
-  let userId: string;
-  let portfolioId: string;
-  let assetId: string;
-
-  beforeAll(async () => {
-    const user = await prisma.user.create({
-      data: {
-        email: `position-repo-test-${crypto.randomUUID()}@example.com`,
-        displayName: "Position Repository Test User",
-      },
-    });
-    userId = user.id;
-
-    const portfolio = await prisma.portfolio.create({
-      data: { userId, name: "Test Portfolio", baseCurrency: "USD" },
-    });
-    portfolioId = portfolio.id;
-
-    const asset = await prisma.asset.create({
-      data: {
-        symbol: `POS-${crypto.randomUUID().slice(0, 8)}`,
-        name: "Test Asset",
-        assetType: "CRYPTO",
-        currency: "USD",
-        exchange: "MOCK",
-      },
-    });
-    assetId = asset.id;
+function createAsset(label: string) {
+  return prisma.asset.create({
+    data: {
+      symbol: `POS-${label}-${crypto.randomUUID().slice(0, 8)}`,
+      name: "Position Test Asset",
+      assetType: "CRYPTO",
+      currency: "USD",
+      exchange: "MOCK",
+    },
   });
+}
 
-  afterAll(async () => {
-    await prisma.user.delete({ where: { id: userId } });
-    await prisma.asset.delete({ where: { id: assetId } });
-    await prisma.$disconnect();
+positionRepositoryContract("PrismaPositionRepository", async () => {
+  const user = await prisma.user.create({
+    data: {
+      email: `position-repo-test-${crypto.randomUUID()}@example.com`,
+      displayName: "Position Repository Test User",
+    },
   });
-
-  it("creates a position on first upsert", async () => {
-    const position = await repository.upsert({
-      portfolioId,
-      assetId,
-      quantity: 2,
-      averageEntryPrice: Money.of("100", "USD"),
-      currentPrice: Money.of("110", "USD"),
-    });
-
-    expect(position.quantity).toBe(2);
-    expect(position.averageEntryPrice.equals(Money.of("100", "USD"))).toBe(true);
-    expect(position.openedAt).toBeInstanceOf(Date);
+  const portfolio = await prisma.portfolio.create({
+    data: { userId: user.id, name: "Position Test Portfolio", baseCurrency: "USD" },
   });
-
-  it("updates quantity/prices on a second upsert WITHOUT resetting openedAt", async () => {
-    const first = await repository.upsert({
-      portfolioId,
-      assetId,
-      quantity: 2,
-      averageEntryPrice: Money.of("100", "USD"),
-      currentPrice: Money.of("110", "USD"),
-    });
-    const originalOpenedAt = first.openedAt.getTime();
-
-    const second = await repository.upsert({
-      portfolioId,
-      assetId,
-      quantity: 5,
-      averageEntryPrice: Money.of("104", "USD"),
-      currentPrice: Money.of("120", "USD"),
-    });
-
-    expect(second.quantity).toBe(5);
-    expect(second.averageEntryPrice.equals(Money.of("104", "USD"))).toBe(true);
-    expect(second.openedAt.getTime()).toBe(originalOpenedAt);
+  const otherPortfolio = await prisma.portfolio.create({
+    data: { userId: user.id, name: "Other Position Test Portfolio", baseCurrency: "USD" },
   });
+  const asset = await createAsset("A");
+  const otherAsset = await createAsset("B");
 
-  it("retrieves a position by portfolio and asset", async () => {
-    const found = await repository.getByPortfolioAndAsset(portfolioId, assetId);
-    expect(found?.portfolioId).toBe(portfolioId);
-    expect(found?.assetId).toBe(assetId);
-  });
-
-  it("returns null for a portfolio/asset pair with no position", async () => {
-    const found = await repository.getByPortfolioAndAsset(portfolioId, "nonexistent-asset-id");
-    expect(found).toBeNull();
-  });
-
-  it("updates only the current price via updateCurrentPrice", async () => {
-    const existing = await repository.getByPortfolioAndAsset(portfolioId, assetId);
-    if (!existing) throw new Error("Expected a position to exist from previous tests");
-
-    const updated = await repository.updateCurrentPrice(existing.id, Money.of("999.99", "USD"));
-
-    expect(updated.currentPrice.equals(Money.of("999.99", "USD"))).toBe(true);
-    // averageEntryPrice must remain untouched by a price-only update
-    expect(updated.averageEntryPrice.equals(existing.averageEntryPrice)).toBe(true);
-  });
-
-  it("deletes a position by portfolio and asset", async () => {
-    await repository.deleteByPortfolioAndAsset(portfolioId, assetId);
-    const found = await repository.getByPortfolioAndAsset(portfolioId, assetId);
-    expect(found).toBeNull();
-  });
+  return {
+    repository: new PrismaPositionRepository(),
+    fixtures: {
+      portfolioId: portfolio.id,
+      otherPortfolioId: otherPortfolio.id,
+      assetId: asset.id,
+      otherAssetId: otherAsset.id,
+    },
+    cleanup: async () => {
+      await prisma.user.deleteMany({ where: { id: user.id } });
+      await prisma.asset.deleteMany({ where: { id: { in: [asset.id, otherAsset.id] } } });
+    },
+  };
 });
