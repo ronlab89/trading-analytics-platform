@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { InvalidScenarioError, Money, ScenarioStatus } from "@trading/domain";
+import { InvalidScenarioError, Money, PortfolioStatus, ScenarioStatus } from "@trading/domain";
 import type { Asset, Portfolio, Position, Scenario } from "@trading/domain";
 import type { Actor } from "./actor.js";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationFailedError } from "./errors.js";
@@ -44,11 +44,16 @@ const knownAssets: Asset[] = [
 interface Options {
   scenarios?: Scenario[];
   ownedPortfolios?: string[];
+  archivedPortfolios?: string[];
   permissions?: RolePermissions;
 }
 
 function build(options: Options = {}) {
-  const { scenarios = [scenario("s1")], ownedPortfolios = ["p1"] } = options;
+  const {
+    scenarios = [scenario("s1")],
+    ownedPortfolios = ["p1"],
+    archivedPortfolios = [],
+  } = options;
 
   const create = vi.fn((input: { portfolioId: string; name: string }) =>
     Promise.resolve(scenario("new", { name: input.name })),
@@ -73,7 +78,11 @@ function build(options: Options = {}) {
     portfolioService: {
       getPortfolioById: (_actor: Actor, portfolioId: string) =>
         ownedPortfolios.includes(portfolioId)
-          ? Promise.resolve(portfolio)
+          ? Promise.resolve(
+              archivedPortfolios.includes(portfolioId)
+                ? { ...portfolio, status: PortfolioStatus.ARCHIVED }
+                : portfolio,
+            )
           : Promise.reject(new NotFoundError("The requested resource could not be found.")),
     },
     assetService: { getAssetsByIds },
@@ -236,6 +245,64 @@ describe("scenario service writes", () => {
     expect(remove).toHaveBeenCalledWith("s1");
     await expect(service.deleteScenario(actor, "p1", "s2")).rejects.toBeInstanceOf(NotFoundError);
     expect(remove).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("scenario service archived portfolio guard (ADR-010 point 5)", () => {
+  const archivedMessage = "An archived portfolio cannot be modified.";
+
+  it("refuses to create a scenario in an archived portfolio and writes nothing", async () => {
+    const { service, create, getAssetsByIds } = build({ archivedPortfolios: ["p1"] });
+    const error = await service
+      .createScenario(actor, "p1", { name: "New" })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as Error).message).toBe(archivedMessage);
+    expect(create).not.toHaveBeenCalled();
+    expect(getAssetsByIds).not.toHaveBeenCalled();
+  });
+
+  it("refuses to update a scenario of an archived portfolio and writes nothing", async () => {
+    const { service, update } = build({ archivedPortfolios: ["p1"] });
+    const error = await service
+      .updateScenario(actor, "p1", "s1", { name: "x" })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as Error).message).toBe(archivedMessage);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("refuses to archive a scenario of an archived portfolio, even one already archived", async () => {
+    const { service, update } = build({
+      scenarios: [scenario("s1"), scenario("s2", { status: ScenarioStatus.ARCHIVED })],
+      archivedPortfolios: ["p1"],
+    });
+    for (const id of ["s1", "s2"]) {
+      const error = await service.archiveScenario(actor, "p1", id).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ConflictError);
+      expect((error as Error).message).toBe(archivedMessage);
+    }
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("refuses to delete a scenario of an archived portfolio and writes nothing", async () => {
+    const { service, remove } = build({ archivedPortfolios: ["p1"] });
+    const error = await service.deleteScenario(actor, "p1", "s1").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as Error).message).toBe(archivedMessage);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("still lists, reads and calculates the scenarios of an archived portfolio", async () => {
+    const { service } = build({ archivedPortfolios: ["p1"] });
+    expect(await service.listScenarios(actor, "p1", {})).toHaveLength(1);
+    expect((await service.getScenarioById(actor, "p1", "s1")).id).toBe("s1");
+    await expect(service.calculateScenario(actor, "p1", "s1")).resolves.toBeDefined();
+  });
+
+  it("keeps answering 404 for a portfolio of another user, archived or not", async () => {
+    const { service } = build({ ownedPortfolios: [], archivedPortfolios: ["p1"] });
+    await expect(service.deleteScenario(actor, "p1", "s1")).rejects.toBeInstanceOf(NotFoundError);
   });
 });
 

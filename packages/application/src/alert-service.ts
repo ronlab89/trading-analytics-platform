@@ -5,6 +5,7 @@ import type { AssetService } from "./asset-service.js";
 import { NotFoundError } from "./errors.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
+import { assertPortfolioWritable } from "./portfolio-guard.js";
 import type { PortfolioService } from "./portfolio-service.js";
 
 export interface CreateAlertRequest {
@@ -38,6 +39,11 @@ export function createAlertService(dependencies: AlertServiceDependencies) {
     portfolioService,
     permissions = ROLE_PERMISSIONS,
   } = dependencies;
+
+  /** 404 when the portfolio is not the actor's, 409 when it is archived (ADR-010 point 5). */
+  async function assertPortfolioOpen(actor: Actor, portfolioId: string): Promise<void> {
+    assertPortfolioWritable(await portfolioService.getPortfolioById(actor, portfolioId));
+  }
 
   /** Returns every alert configured by the actor. */
   async function listAlerts(actor: Actor): Promise<Alert[]> {
@@ -78,7 +84,7 @@ export function createAlertService(dependencies: AlertServiceDependencies) {
     assertPermission(actor, "alert:write", permissions);
 
     if (input.portfolioId !== undefined) {
-      await portfolioService.getPortfolioById(actor, input.portfolioId);
+      await assertPortfolioOpen(actor, input.portfolioId);
     }
 
     if (input.assetId !== undefined) {
@@ -112,7 +118,10 @@ export function createAlertService(dependencies: AlertServiceDependencies) {
     input: Partial<Pick<Alert, "condition" | "threshold" | "enabled">>,
   ): Promise<Alert> {
     assertPermission(actor, "alert:write", permissions);
-    await getAlertById(actor, alertId);
+    const alert = await getAlertById(actor, alertId);
+    if (alert.portfolioId) {
+      await assertPortfolioOpen(actor, alert.portfolioId);
+    }
 
     return alertRepository.update(alertId, input);
   }
@@ -120,7 +129,10 @@ export function createAlertService(dependencies: AlertServiceDependencies) {
   /** Deletes an alert; ownership is checked first, same rationale as update. */
   async function deleteAlert(actor: Actor, alertId: string): Promise<void> {
     assertPermission(actor, "alert:write", permissions);
-    await getAlertById(actor, alertId);
+    const alert = await getAlertById(actor, alertId);
+    if (alert.portfolioId) {
+      await assertPortfolioOpen(actor, alert.portfolioId);
+    }
 
     await alertRepository.delete(alertId);
   }

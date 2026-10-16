@@ -22,6 +22,7 @@ import type { AssetService } from "./asset-service.js";
 import { ConflictError, NotFoundError, ValidationFailedError } from "./errors.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
+import { assertPortfolioWritable } from "./portfolio-guard.js";
 import type { PortfolioService } from "./portfolio-service.js";
 
 export interface ScenarioServiceDependencies {
@@ -253,7 +254,7 @@ export function createScenarioService(dependencies: ScenarioServiceDependencies)
     input: CreateScenarioRequest,
   ): Promise<Scenario> {
     assertPermission(actor, "scenario:write", permissions);
-    await portfolioService.getPortfolioById(actor, portfolioId);
+    assertPortfolioWritable(await portfolioService.getPortfolioById(actor, portfolioId));
 
     const createInput: CreateScenarioInput = {
       portfolioId,
@@ -287,7 +288,7 @@ export function createScenarioService(dependencies: ScenarioServiceDependencies)
     input: UpdateScenarioRequest,
   ): Promise<Scenario> {
     assertPermission(actor, "scenario:write", permissions);
-    await portfolioService.getPortfolioById(actor, portfolioId);
+    assertPortfolioWritable(await portfolioService.getPortfolioById(actor, portfolioId));
     const existing = await findScenarioInPortfolio(portfolioId, scenarioId);
 
     if (existing.status === ScenarioStatus.ARCHIVED) {
@@ -322,7 +323,7 @@ export function createScenarioService(dependencies: ScenarioServiceDependencies)
     scenarioId: string,
   ): Promise<ArchiveScenarioResult> {
     assertPermission(actor, "scenario:write", permissions);
-    await portfolioService.getPortfolioById(actor, portfolioId);
+    assertPortfolioWritable(await portfolioService.getPortfolioById(actor, portfolioId));
     const existing = await findScenarioInPortfolio(portfolioId, scenarioId);
 
     if (existing.status === ScenarioStatus.ARCHIVED) {
@@ -348,7 +349,7 @@ export function createScenarioService(dependencies: ScenarioServiceDependencies)
     scenarioId: string,
   ): Promise<void> {
     assertPermission(actor, "scenario:write", permissions);
-    await portfolioService.getPortfolioById(actor, portfolioId);
+    assertPortfolioWritable(await portfolioService.getPortfolioById(actor, portfolioId));
     await findScenarioInPortfolio(portfolioId, scenarioId);
 
     await scenarioRepository.delete(scenarioId);
