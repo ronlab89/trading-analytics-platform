@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { InvalidPortfolioError } from "@trading/domain";
 import type { CreatePortfolioInput, Portfolio, PortfolioRepository } from "@trading/domain";
 import type { Actor } from "./actor.js";
-import { ForbiddenError, NotFoundError } from "./errors.js";
+import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createPortfolioService } from "./portfolio-service.js";
 
@@ -123,6 +123,25 @@ describe("portfolio service", () => {
         NotFoundError,
       );
       expect(update).not.toHaveBeenCalled();
+    });
+
+    it("rejects updating an archived portfolio with a conflict and writes nothing", async () => {
+      const { repository, update } = fakeRepository([portfolio({ status: "ARCHIVED" })]);
+      const service = createPortfolioService({ portfolioRepository: repository });
+      const error = await service
+        .updatePortfolio(owner, "p1", { name: "x" })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ConflictError);
+      expect((error as Error).message).toBe("An archived portfolio cannot be modified.");
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("keeps answering 404 for another user's archived portfolio", async () => {
+      const { repository } = fakeRepository([portfolio({ status: "ARCHIVED" })]);
+      const service = createPortfolioService({ portfolioRepository: repository });
+      await expect(service.updatePortfolio(stranger, "p1", { name: "x" })).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
     });
   });
 
