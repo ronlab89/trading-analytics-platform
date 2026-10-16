@@ -9,6 +9,7 @@
  */
 export * from "./asset-repository.contract.js";
 export * from "./credential-repository.contract.js";
+export * from "./historical-price-repository.contract.js";
 export * from "./market-event-repository.contract.js";
 export * from "./market-price-repository.contract.js";
 export * from "./notification-repository.contract.js";
