@@ -1,131 +1,64 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll } from "vitest";
+import { decisionEventRepositoryContract } from "@trading/persistence-memory/contract";
 import { prisma } from "../client.js";
 import { PrismaDecisionEventRepository } from "./prisma-decision-event-repository.js";
 
-describe("PrismaDecisionEventRepository", () => {
-  const repository = new PrismaDecisionEventRepository();
+/**
+ * Integration test for `PrismaDecisionEventRepository`.
+ * Source: docs/10-testing-strategy.md §17 (Repository Testing).
+ *
+ * Runs the shared `DecisionEventRepository` contract suite (the same one the
+ * in-memory implementation passes) against the real Docker Postgres instance
+ * (see docker-compose.yml). It is NOT a unit test: the database must be up
+ * (`docker compose up -d postgres`) and migrated
+ * (`pnpm --filter @trading/database db:test:migrate`) before running.
+ *
+ * Each test gets one dedicated user, one portfolio, one asset and two
+ * decisions (the foreign key owners). Deleting the user cascades
+ * (onDelete: Cascade, see schema.prisma) to the portfolio, the decisions and
+ * their events. The asset is deleted afterwards: a decision restricts the
+ * deletion of its asset (onDelete: Restrict), so it can only go once the
+ * decisions are gone.
+ */
+afterAll(async () => {
+  await prisma.$disconnect();
+});
 
-  let userId: string;
-  let portfolioId: string;
-  let assetId: string;
-  let decisionId: string;
-
-  beforeAll(async () => {
-    const user = await prisma.user.create({
-      data: {
-        email: `decision-event-repo-test-${crypto.randomUUID()}@example.com`,
-        displayName: "Decision Event Repository Test User",
-      },
-    });
-    userId = user.id;
-
-    const portfolio = await prisma.portfolio.create({
-      data: { userId, name: "Test Portfolio", baseCurrency: "USD" },
-    });
-    portfolioId = portfolio.id;
-
-    const asset = await prisma.asset.create({
-      data: {
-        symbol: `EVT-${crypto.randomUUID().slice(0, 8)}`,
-        name: "Test Asset",
-        assetType: "CRYPTO",
-        currency: "USD",
-        exchange: "MOCK",
-      },
-    });
-    assetId = asset.id;
-
-    const decision = await prisma.decision.create({
-      data: {
-        portfolioId,
-        assetId,
-        title: "Test Decision",
-        thesis: "Testing decision events.",
-        direction: "LONG",
-      },
-    });
-    decisionId = decision.id;
+decisionEventRepositoryContract("PrismaDecisionEventRepository", async () => {
+  const user = await prisma.user.create({
+    data: {
+      email: `decision-event-repo-test-${crypto.randomUUID()}@example.com`,
+      displayName: "Decision Event Repository Test User",
+    },
   });
-
-  afterAll(async () => {
-    await prisma.user.delete({ where: { id: userId } });
-    await prisma.asset.delete({ where: { id: assetId } });
-    await prisma.$disconnect();
+  const portfolio = await prisma.portfolio.create({
+    data: { userId: user.id, name: "Decision Event Test Portfolio", baseCurrency: "USD" },
   });
-
-  it("creates an event with an explicit payload", async () => {
-    const event = await repository.create({
-      decisionId,
-      type: "DECISION_CREATED",
-      payload: { source: "manual" },
-    });
-
-    expect(event.payload).toEqual({ source: "manual" });
-    expect(event.timestamp).toBeInstanceOf(Date);
+  const asset = await prisma.asset.create({
+    data: {
+      symbol: `EVT-${crypto.randomUUID().slice(0, 8)}`,
+      name: "Decision Event Test Asset",
+      assetType: "CRYPTO",
+      currency: "USD",
+      exchange: "MOCK",
+    },
   });
-
-  it("defaults payload to {} when omitted", async () => {
-    const event = await repository.create({ decisionId, type: "THESIS_RECORDED" });
-    expect(event.payload).toEqual({});
+  const decisionData = (title: string) => ({
+    portfolioId: portfolio.id,
+    assetId: asset.id,
+    title,
+    thesis: "Testing decision events.",
+    direction: "LONG" as const,
   });
+  const decision = await prisma.decision.create({ data: decisionData("Test Decision") });
+  const otherDecision = await prisma.decision.create({ data: decisionData("Other Test Decision") });
 
-  it("persists an explicit timestamp instead of assigning now()", async () => {
-    const timestamp = new Date("2026-06-01T14:30:00.000Z");
-
-    const event = await repository.create({ decisionId, type: "POSITION_OPENED", timestamp });
-
-    expect(event.timestamp.toISOString()).toBe(timestamp.toISOString());
-  });
-
-  it("orders events by their real timestamp, not by insertion order", async () => {
-    const ordering = await prisma.decision.create({
-      data: {
-        portfolioId,
-        assetId,
-        title: "Ordering decision",
-        thesis: "Events inserted out of chronological order.",
-        direction: "LONG",
-      },
-    });
-
-    await repository.create({
-      decisionId: ordering.id,
-      type: "TARGET_REACHED",
-      timestamp: new Date("2026-08-15T16:00:00.000Z"),
-    });
-    await repository.create({
-      decisionId: ordering.id,
-      type: "DECISION_CREATED",
-      timestamp: new Date("2026-06-01T14:00:00.000Z"),
-    });
-    await repository.create({
-      decisionId: ordering.id,
-      type: "PRICE_UPDATE",
-      timestamp: new Date("2026-07-10T12:00:00.000Z"),
-    });
-
-    const events = await repository.listByDecisionId(ordering.id);
-
-    expect(events.map((e) => e.type)).toEqual([
-      "DECISION_CREATED",
-      "PRICE_UPDATE",
-      "TARGET_REACHED",
-    ]);
-  });
-
-  it("lists events for a decision in chronological order", async () => {
-    await repository.create({ decisionId, type: "POSITION_OPENED", payload: { step: 1 } });
-    await repository.create({ decisionId, type: "PRICE_UPDATE", payload: { step: 2 } });
-
-    const events = await repository.listByDecisionId(decisionId);
-
-    expect(events.length).toBeGreaterThanOrEqual(2);
-    for (let i = 1; i < events.length; i++) {
-      const previous = events[i - 1];
-      const current = events[i];
-      if (previous && current) {
-        expect(previous.timestamp.getTime()).toBeLessThanOrEqual(current.timestamp.getTime());
-      }
-    }
-  });
+  return {
+    repository: new PrismaDecisionEventRepository(),
+    fixtures: { decisionId: decision.id, otherDecisionId: otherDecision.id },
+    cleanup: async () => {
+      await prisma.user.deleteMany({ where: { id: user.id } });
+      await prisma.asset.deleteMany({ where: { id: asset.id } });
+    },
+  };
 });
