@@ -13,6 +13,8 @@ packages/contracts/src/**
 apps/api/src/**/*.test.ts
 docs/BACKEND-ROADMAP.md
 docs/PROGRESS.md
+docs/07-api-spec.md
+docs/05-data-model.md
 
 ## Tasks
 

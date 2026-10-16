@@ -9,9 +9,9 @@
 > hardening), B0.2 (runtime role, seed and reset guard, `CORS_ORIGIN`
 > validation, login timing), B0.3 (route characterization tests) and B0.4
 > (shared contracts) are done; B0.5 (application layer), B0.6 (in-memory
-> repositories) and B0.7 (transaction rules) are done. B0 itself closes once
-> the CI is green on the pull request and `07-api-spec.md` and
-> `05-data-model.md` are checked against the contracts package.
+> repositories) and B0.7 (transaction rules) are done, and `07-api-spec.md`
+> and `05-data-model.md` agree with the code. B0 itself closes once the CI is
+> green on the pull request.
 
 **Last updated:** 2026-10-16 (B0.7); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
@@ -67,8 +67,9 @@ has the 16 in-memory repositories, each run against the shared contract suite
   advisory transaction lock (in memory, by the unit-of-work queue); of two `SELL`s
   of 6 on a holding of 10, exactly one succeeds.
 - An archived portfolio is read-only (ADR-010 point 5): transaction, scenario
-  and alert mutations return 409 `CONFLICT` and write nothing. Order of errors:
-  permission, 404 ownership, 409 archived. `updatePortfolio` is not blocked.
+  and alert mutations, and a portfolio update, return 409 `CONFLICT` and write
+  nothing. Order of errors: permission, 404 ownership, 409 archived. CSV import
+  is not built yet and will carry the same guard.
 - Decimal strings (ADR-002 point 9): `scenario-impact.ts` builds the factor with
   `Decimal`; `decision-replay.ts` accepts only decimal strings in event payloads
   and reports anything else as an issue; `Money` and `moneySchema` use fixed
@@ -926,8 +927,7 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** close B0 (CI green on the pull request, and `07-api-spec.md` and
-`05-data-model.md` checked against the contracts package), then B1. B0.1 to
+**Next:** close B0 (CI green on the pull request), then B1. B0.1 to
 B0.7 are done. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and

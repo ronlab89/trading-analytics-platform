@@ -306,7 +306,7 @@ refresh cookie. An access token already issued stays valid until it expires
 
 # 10. Portfolio API
 
-**Status:** `Implemented`; archived-portfolio guard `Planned (B0)` (ADR-010 point 5)
+**Status:** `Implemented`; archived-portfolio guard `Implemented` (ADR-010 point 5)
 
 All endpoints require a Bearer token (§9) and are scoped to the caller: a
 portfolio of another user returns 404 `NOT_FOUND`, the same as a missing one.
@@ -318,7 +318,7 @@ Payloads are built by presenters from the response schemas of
 | `GET /api/v1/portfolios` | `Implemented` |
 | `GET /api/v1/portfolios/:portfolioId` | `Implemented` |
 | `POST /api/v1/portfolios` | `Implemented` |
-| `PATCH /api/v1/portfolios/:portfolioId` | `Implemented`; 409 on archived `Planned (B0)` |
+| `PATCH /api/v1/portfolios/:portfolioId` | `Implemented`; 409 on archived |
 | `POST /api/v1/portfolios/:portfolioId/archive` | `Implemented` |
 
 ## List Portfolios
@@ -386,7 +386,7 @@ Errors: 400 `VALIDATION_ERROR` (schema or domain invariants).
 
 ## Update Portfolio
 
-**Status:** `Implemented` (FR-010); archived guard `Planned (B0)`
+**Status:** `Implemented` (FR-010); archived guard `Implemented`
 
 ```text
 PATCH /api/v1/portfolios/:portfolioId
@@ -395,8 +395,8 @@ PATCH /api/v1/portfolios/:portfolioId
 Request: `name` and/or `description`; at least one is required.
 `baseCurrency` cannot change after creation. Returns 200 `{ "data": portfolio }`.
 
-Errors: 400 `VALIDATION_ERROR`; 404 `NOT_FOUND`. `Planned (B0)`: 409
-`CONFLICT` when the portfolio is archived (ADR-010 point 5).
+Errors: 400 `VALIDATION_ERROR`; 404 `NOT_FOUND`; 409 `CONFLICT` when the
+portfolio is archived (ADR-010 point 5).
 
 ---
 
@@ -420,9 +420,11 @@ Sets `status = ARCHIVED`; nothing is deleted. Idempotent: always 200, with
 
 Errors: 404 `NOT_FOUND`. Hard deletion and unarchiving are `Deferred`.
 
-`Planned (B0)` (ADR-010 point 5): an archived portfolio is read-only. Every
-mutation scoped to it (update, transactions, CSV imports) returns 409
-`CONFLICT` and writes nothing; reads and the archive call are unchanged.
+`Implemented` (ADR-010 point 5): an archived portfolio is read-only. Every
+mutation scoped to it (update, transactions, scenarios, alerts) returns 409
+`CONFLICT` and writes nothing; reads and the archive call are unchanged. The
+error order is permission, then 404 ownership, then 409. `Planned` (CSV
+import): the same 409 for imports.
 
 ---
 
@@ -608,12 +610,17 @@ when a `SELL` closes the position:
 ```
 
 Errors: 400 `VALIDATION_ERROR` (schema, domain invariants, `SELL` above the
-held quantity); 404 `NOT_FOUND` (portfolio or `assetId`).
+held quantity at any point in date order, backdated transactions included,
+ADR-003 point 6); 404 `NOT_FOUND` (portfolio or `assetId`); 409 `CONFLICT` on
+an archived portfolio (ADR-010 point 5).
+
+Transactions of one portfolio and asset are created one at a time, so of two
+concurrent `SELL`s that together exceed the holding exactly one succeeds. The
+position is rebuilt by replaying the asset's transactions in date order
+(ties by `executedAt`, then creation order).
 
 `Planned`:
 
-- (B0) Chronological validation of backdated transactions (ADR-003 point 6);
-  409 `CONFLICT` on an archived portfolio (ADR-010 point 5).
 - (B1) 400 when a `SELL` has `fees > quantity × price`, or the asset currency
   differs from `baseCurrency` (ADR-004 points 2 and 12).
 - (B4) `Idempotency-Key` header: the same key and request returns the stored
@@ -1062,7 +1069,7 @@ from seed and demo data. Expected vs actual (FR-035) is also `Deferred`.
 
 # 24. Decision Replay API
 
-**Status:** `Implemented` (FR-034); event payload prices as decimal strings `Planned (B0)` (ADR-002 point 9)
+**Status:** `Implemented` (FR-034); event payload prices and quantities as decimal strings `Implemented` (ADR-002 point 9)
 
 ## Get Replay Timeline
 
@@ -1084,8 +1091,10 @@ Response (200):
 ```
 
 `events` are in chronological order. `currency` is the asset's currency;
-event payload prices are plain numbers in it today (decimal strings
-`Planned (B0)`). `initialState` is the projection before the first event
+event payload `price` and `quantity` are decimal strings (`"150.25"`); a
+number or a malformed string is reported in `initialState.issues`, never
+coerced. `initialState.position.quantity` is a decimal string too.
+`initialState` is the projection before the first event
 (`currentIndex = -1`); the client advances by folding events with the same
 pure `projectDecisionReplay` from `@trading/domain` that the server uses.
 
@@ -1097,7 +1106,7 @@ decision's asset is missing (data integrity).
 
 # 25. Scenario API
 
-**Status:** `Implemented`; archived-portfolio guard `Planned (B0)` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
+**Status:** `Implemented`; archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
 
 All endpoints require a Bearer token (§9). The portfolio must be the
 caller's and the scenario must belong to it; otherwise 404 `NOT_FOUND`.
@@ -1109,10 +1118,10 @@ only; writes need `TRADER` or `ADMIN`.
 | --- | --- |
 | `GET /api/v1/portfolios/:portfolioId/scenarios` | `Implemented` |
 | `GET /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented` |
-| `POST /api/v1/portfolios/:portfolioId/scenarios` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
-| `PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
-| `POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive` | `Implemented` |
-| `DELETE /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
+| `POST /api/v1/portfolios/:portfolioId/scenarios` | `Implemented`; 409 on archived portfolio |
+| `PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented`; 409 on archived portfolio |
+| `POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive` | `Implemented`; 409 on archived portfolio |
+| `DELETE /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented`; 409 on archived portfolio |
 | `POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/calculate` | `Implemented` |
 | `POST /api/v1/portfolios/:portfolioId/scenarios/compare` | `Implemented` |
 
@@ -1242,8 +1251,7 @@ DELETE /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
 ```
 
 Returns 204 for any status. Errors: 404 `NOT_FOUND` (including a repeated
-delete). `Planned (B0)`: 409 `CONFLICT` when the portfolio is archived
-(ADR-010 point 5).
+delete); 409 `CONFLICT` when the portfolio is archived (ADR-010 point 5).
 
 ---
 
@@ -1338,7 +1346,7 @@ watchlist (including a repeated removal).
 
 # 27. Alerts API
 
-**Status:** `Implemented` (configuration, FR-053); evaluation `Planned (B5)` (ADR-007 point 9); archived-portfolio guard `Planned (B0)` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
+**Status:** `Implemented` (configuration, FR-053); evaluation `Planned (B5)` (ADR-007 point 9); archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
 
 All endpoints require a Bearer token (§9) and are scoped to the caller:
 another user's alert is 404 `NOT_FOUND`. Alerts are managed in the Alerts
@@ -1348,9 +1356,9 @@ tab under Markets (ADR-010 point 9). `Planned (B2)`: `VIEWER` reads only.
 | --- | --- |
 | `GET /api/v1/alerts` | `Implemented` |
 | `GET /api/v1/alerts/:alertId` | `Implemented` |
-| `POST /api/v1/alerts` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
-| `PATCH /api/v1/alerts/:alertId` | `Implemented`; 409 on archived portfolio `Planned (B0)` |
-| `DELETE /api/v1/alerts/:alertId` | `Implemented` |
+| `POST /api/v1/alerts` | `Implemented`; 409 on archived portfolio |
+| `PATCH /api/v1/alerts/:alertId` | `Implemented`; 409 on archived portfolio |
+| `DELETE /api/v1/alerts/:alertId` | `Implemented`; 409 on archived portfolio |
 
 Nothing evaluates alerts yet. `Planned (B5)` (ADR-007 point 9): the server
 evaluates alerts on every tick; an alert fires when its condition changes

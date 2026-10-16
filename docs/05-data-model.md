@@ -237,7 +237,7 @@ grouping.
 | `currency` | `String` | no | — | shared by both prices |
 | `averageEntryPrice` | `Decimal(18, 8)` | no | — | weighted average cost; see fees below |
 | `currentPrice` | `Decimal(18, 8)` | no | — | see Open detail |
-| `openedAt` | `DateTime` | no | — | set by the mapper to the current time on create |
+| `openedAt` | `DateTime` | no | — | date of the earliest transaction of the current holding, from the date-order replay; the mapper falls back to the current time when none is given |
 | `updatedAt` | `DateTime` | no | `@updatedAt` | |
 
 Unique: `(portfolioId, assetId)` — one position per asset per portfolio.
@@ -259,11 +259,13 @@ be lower by the `BUY` fees of the held units. Formulas and tests are in
 
 Open detail:
 
-- (B0) The projection is updated incrementally from the current row. With
+- (B0, `Implemented`) The projection is rebuilt by replaying the asset's
+  transactions in date order (ties by `executedAt`, then creation order),
+  inside the same unit of work and under a per-portfolio-and-asset lock. With
   backdated transactions (allowed by ADR-003 point 6), average entry price and
-  `openedAt` depend on date order, so the projection must be rebuilt by
-  replaying the asset's transactions in date order, as chronological
-  validation already requires.
+  `openedAt` depend on date order; the replay also rejects a `SELL` that would
+  leave a negative quantity at any point. A holding that reaches zero closes the
+  position, and the next `BUY` opens a new one.
 - (B5) `currentPrice` keeps the last trade price while `MarketPrice` ticks:
   drop it and read `MarketPrice`, or update it per tick (ADR-007 Deferred
   detail).
@@ -402,10 +404,9 @@ format (ADR-002 decision point 9).
 Decision Replay (`projectDecisionReplay`, `packages/domain`) understands these
 shapes. Prices are interpreted in the decision's currency.
 
-- Today: `price` and `quantity` are JSON numbers, read as JavaScript numbers.
-- B0: `price` and `quantity` are decimal strings (for example `"150.25"`)
-  parsed with `Decimal`. A number or a malformed string is reported as an
-  issue.
+- `price` and `quantity` are decimal strings in fixed notation (for example
+  `"150.25"`), parsed with `Decimal` (`Implemented`, B0). A number, an exponent
+  or any other malformed string is reported as an issue.
 
 ```text
 DECISION_CREATED   {}
