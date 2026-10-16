@@ -149,6 +149,19 @@ export function transactionRepositoryContract(
       expect(second.total).toBe(5);
     });
 
+    it("lists one asset's transactions of a portfolio, oldest first", async () => {
+      const { portfolioId, otherPortfolioId, otherAssetId } = context.fixtures;
+      expect(await context.repository.listByPortfolioAndAsset(portfolioId, base().assetId)).toEqual(
+        [],
+      );
+      const late = await context.repository.create(input({ executedAt: day(20) }));
+      const early = await context.repository.create(input({ executedAt: day(2) }));
+      await context.repository.create(input({ assetId: otherAssetId }));
+      await context.repository.create(input({ portfolioId: otherPortfolioId }));
+      const result = await context.repository.listByPortfolioAndAsset(portfolioId, base().assetId);
+      expect(result).toEqual([early, late]);
+    });
+
     it("updates the status only", async () => {
       const created = await context.repository.create(input());
       const processing = await context.repository.updateStatus(

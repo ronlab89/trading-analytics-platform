@@ -1,5 +1,6 @@
 import {
   TransactionStatus,
+  assertChronologicallyValid,
   calculatePositionAfterTransaction,
   validateNewTransaction,
 } from "@trading/domain";
@@ -103,7 +104,10 @@ export function createTransactionService(dependencies: TransactionServiceDepende
    *
    * Order: permission, portfolio ownership, asset existence (an unknown
    * asset is a client error, 404), domain validation. Then, inside one Unit
-   * of Work: persist the transaction, recalculate the position (upsert, or
+   * of Work: replay the asset's history with the new transaction in date
+   * order and reject it if the held quantity would ever go negative (FR-018,
+   * so a backdated transaction is checked too), persist the transaction,
+   * recalculate the position (upsert, or
    * delete when a SELL closes it exactly), and mark the transaction
    * COMPLETED. If any step fails, everything rolls back and no orphaned
    * DRAFT transaction remains.
@@ -134,6 +138,13 @@ export function createTransactionService(dependencies: TransactionServiceDepende
     validateNewTransaction(createInput, clock.now());
 
     return unitOfWork.run(async ({ transactions, positions }) => {
+      const history = await transactions.listByPortfolioAndAsset(portfolioId, input.assetId);
+      assertChronologicallyValid(history, {
+        type: input.type,
+        quantity: input.quantity,
+        executedAt: input.executedAt ?? clock.now(),
+      });
+
       const transaction = await transactions.create(createInput);
 
       const existingPosition = await positions.getByPortfolioAndAsset(portfolioId, input.assetId);

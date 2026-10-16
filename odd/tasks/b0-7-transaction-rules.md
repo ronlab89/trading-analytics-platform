@@ -8,6 +8,7 @@ packages/domain/src/**
 packages/application/src/**
 packages/database/src/**
 packages/database/prisma/seed.ts
+packages/persistence-memory/src/**
 packages/contracts/src/**
 apps/api/src/**/*.test.ts
 docs/BACKEND-ROADMAP.md

@@ -60,6 +60,15 @@ export class PrismaTransactionRepository implements TransactionRepository {
     return { items: rows.map(toDomainTransaction), total };
   }
 
+  async listByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<Transaction[]> {
+    const rows = await this.db.transaction.findMany({
+      where: { portfolioId, assetId },
+      orderBy: [{ executedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    });
+
+    return rows.map(toDomainTransaction);
+  }
+
   async getById(id: string): Promise<Transaction | null> {
     const row = await this.db.transaction.findUnique({ where: { id } });
     return row ? toDomainTransaction(row) : null;

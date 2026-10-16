@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  InsufficientPositionQuantityError,
   InvalidTransactionError,
   Money,
   TransactionStatus,
@@ -46,15 +47,24 @@ function build(
     ownedPortfolios?: string[];
     assetExists?: boolean;
     stored?: Transaction[];
+    /** The asset's existing transactions, in creation order, read for the chronological check. */
+    history?: Transaction[];
     existing?: Position | null;
     failOnStatus?: boolean;
   } = {},
 ) {
-  const { ownedPortfolios = ["p1"], assetExists = true, stored = [], existing = null } = options;
+  const {
+    ownedPortfolios = ["p1"],
+    assetExists = true,
+    stored = [],
+    history = [],
+    existing = null,
+  } = options;
   const calls: Calls = { upserts: [], deletes: [], statusUpdates: [] };
 
   const transactions = {
     listByPortfolioId: () => Promise.resolve({ items: stored, total: stored.length }),
+    listByPortfolioAndAsset: () => Promise.resolve(history),
     getById: (id: string) => Promise.resolve(stored.find((t) => t.id === id) ?? null),
     create: (input: { portfolioId: string; assetId: string }) =>
       Promise.resolve({ ...transaction("new", input.portfolioId), assetId: input.assetId }),
@@ -94,6 +104,15 @@ function build(
     clock: fixedClock(new Date("2026-06-15T12:00:00Z")),
   });
   return { service, calls };
+}
+
+function entry(
+  id: string,
+  type: TransactionType,
+  quantity: number,
+  executedAt: string,
+): Transaction {
+  return { ...transaction(id, "p1"), type, quantity, executedAt: new Date(executedAt) };
 }
 
 function position(): Position {
@@ -148,7 +167,7 @@ describe("transaction service", () => {
 
   it("deletes the position when a SELL closes it exactly", async () => {
     const existing = { ...position(), quantity: 2, averageEntryPrice: Money.of("100", "USD") };
-    const { service, calls } = build({ existing });
+    const { service, calls } = build({ existing, history: [transaction("t0", "p1")] });
     const result = await service.createTransaction(actor, "p1", {
       ...buy,
       type: TransactionType.SELL,
@@ -156,6 +175,76 @@ describe("transaction service", () => {
     expect(result.position).toBeNull();
     expect(calls.deletes).toEqual(["p1"]);
     expect(calls.upserts).toHaveLength(0);
+  });
+
+  describe("chronological validation (FR-018)", () => {
+    // BUY 5 on day 1, SELL 5 on day 3, BUY 10 on day 4: 10 held now, so the
+    // current-position check alone would accept a SELL 5 dated day 2.
+    const history = [
+      entry("t1", TransactionType.BUY, 5, "2026-03-01T00:00:00Z"),
+      entry("t2", TransactionType.SELL, 5, "2026-03-03T00:00:00Z"),
+      entry("t3", TransactionType.BUY, 10, "2026-03-04T00:00:00Z"),
+    ];
+    const existing = { ...position(), quantity: 10, averageEntryPrice: Money.of("100", "USD") };
+
+    it("rejects a SELL dated before the only BUY and writes nothing", async () => {
+      const { service, calls } = build({
+        existing,
+        history: [entry("t1", TransactionType.BUY, 10, "2026-03-02T00:00:00Z")],
+      });
+      await expect(
+        service.createTransaction(actor, "p1", {
+          ...buy,
+          type: TransactionType.SELL,
+          quantity: 5,
+          executedAt: new Date("2026-03-01T00:00:00Z"),
+        }),
+      ).rejects.toBeInstanceOf(InsufficientPositionQuantityError);
+      expect(calls.upserts).toHaveLength(0);
+      expect(calls.deletes).toHaveLength(0);
+      expect(calls.statusUpdates).toHaveLength(0);
+    });
+
+    it("accepts a backdated BUY", async () => {
+      const { service } = build({
+        existing,
+        history: [entry("t1", TransactionType.BUY, 10, "2026-03-02T00:00:00Z")],
+      });
+      const result = await service.createTransaction(actor, "p1", {
+        ...buy,
+        executedAt: new Date("2026-03-01T00:00:00Z"),
+      });
+      expect(result.transaction.status).toBe(TransactionStatus.COMPLETED);
+    });
+
+    it("rejects a backdated SELL that would make a later SELL oversell", async () => {
+      const { service, calls } = build({ existing, history });
+      await expect(
+        service.createTransaction(actor, "p1", {
+          ...buy,
+          type: TransactionType.SELL,
+          quantity: 5,
+          executedAt: new Date("2026-03-02T00:00:00Z"),
+        }),
+      ).rejects.toBeInstanceOf(InsufficientPositionQuantityError);
+      expect(calls.upserts).toHaveLength(0);
+      expect(calls.statusUpdates).toHaveLength(0);
+    });
+
+    it("validates at the clock time when executedAt is omitted", async () => {
+      // The clock is 2026-06-15; the only BUY is dated after it.
+      const { service } = build({
+        existing,
+        history: [entry("t1", TransactionType.BUY, 10, "2026-06-20T00:00:00Z")],
+      });
+      await expect(
+        service.createTransaction(actor, "p1", {
+          ...buy,
+          type: TransactionType.SELL,
+          quantity: 5,
+        }),
+      ).rejects.toBeInstanceOf(InsufficientPositionQuantityError);
+    });
   });
 
   it("raises NotFoundError with the asset message for an unknown asset", async () => {
