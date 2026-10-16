@@ -82,6 +82,27 @@ describe("alerts", () => {
     expect(body<ErrorEnvelope>(response).error.code).toBe("UNAUTHORIZED");
   });
 
+  it("rejects deleting an alert of an archived portfolio with 409 CONFLICT and keeps it", async () => {
+    const portfolio = await createTestPortfolio(ownerId);
+    const alert = await createOwnerAlert({ portfolioId: portfolio.id });
+    const auth = `Bearer ${ownerToken}`;
+
+    await request(app)
+      .post(`/api/v1/portfolios/${portfolio.id}/archive`)
+      .set("Authorization", auth);
+
+    const response = await request(app)
+      .delete(`/api/v1/alerts/${alert.id}`)
+      .set("Authorization", auth);
+
+    expect(response.status).toBe(409);
+    expect(body<ErrorEnvelope>(response).error.code).toBe("CONFLICT");
+    const stillThere = await request(app)
+      .get(`/api/v1/alerts/${alert.id}`)
+      .set("Authorization", auth);
+    expect(stillThere.status).toBe(200);
+  });
+
   it("creates an asset alert owned by the caller, enabled by default", async () => {
     const alert = await createOwnerAlert();
 

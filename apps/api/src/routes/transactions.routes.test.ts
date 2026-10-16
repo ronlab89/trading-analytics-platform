@@ -149,6 +149,77 @@ describe("transactions", () => {
     },
   );
 
+  it("lets exactly one of two concurrent SELLs of 6 on a holding of 10 succeed (FR-017 race)", async () => {
+    const raceAsset = await createTestAsset("RACE");
+    assetIds.push(raceAsset.id);
+    const send = (type: "BUY" | "SELL", quantity: number) =>
+      request(app)
+        .post(`/api/v1/portfolios/${portfolioId}/transactions`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ assetId: raceAsset.id, type, quantity, price: { amount: "50", currency: "USD" } });
+
+    expect((await send("BUY", 10)).status).toBe(201);
+
+    const [first, second] = await Promise.all([send("SELL", 6), send("SELL", 6)]);
+
+    expect([first.status, second.status].sort()).toEqual([201, 400]);
+    const loser = first.status === 400 ? first : second;
+    expect(body<ErrorEnvelope>(loser).error.code).toBe("VALIDATION_ERROR");
+
+    // The BUY and exactly one SELL are persisted, both COMPLETED.
+    const list = await request(app)
+      .get(`/api/v1/portfolios/${portfolioId}/transactions`)
+      .query({ assetId: raceAsset.id, pageSize: 50 })
+      .set("Authorization", `Bearer ${token}`);
+    const { data: transactions } = body<DataMetaEnvelope<TransactionDto[]>>(list);
+    expect(transactions).toHaveLength(2);
+    expect(transactions.every((t) => t.status === "COMPLETED")).toBe(true);
+
+    // 10 - 6 = 4 held, never -2.
+    const overviewResponse = await request(app)
+      .get(`/api/v1/portfolios/${portfolioId}/overview`)
+      .set("Authorization", `Bearer ${token}`);
+    interface OverviewDto {
+      positions: { position: { assetId: string; quantity: number } }[];
+    }
+    const overview = body<DataEnvelope<OverviewDto>>(overviewResponse).data;
+    const position = overview.positions.find((p) => p.position.assetId === raceAsset.id);
+    expect(position?.position.quantity).toBe(4);
+  });
+
+  it("rejects a transaction on an archived portfolio with 409 CONFLICT and writes nothing", async () => {
+    const archived = await createTestPortfolio(userId);
+    const buy = {
+      assetId,
+      type: "BUY",
+      quantity: 3,
+      price: { amount: "10", currency: "USD" },
+    };
+    const url = `/api/v1/portfolios/${archived.id}/transactions`;
+
+    expect(
+      (await request(app).post(url).set("Authorization", `Bearer ${token}`).send(buy)).status,
+    ).toBe(201);
+    expect(
+      (
+        await request(app)
+          .post(`/api/v1/portfolios/${archived.id}/archive`)
+          .set("Authorization", `Bearer ${token}`)
+      ).status,
+    ).toBe(200);
+
+    const response = await request(app).post(url).set("Authorization", `Bearer ${token}`).send(buy);
+
+    expect(response.status).toBe(409);
+    expect(body<ErrorEnvelope>(response).error.code).toBe("CONFLICT");
+
+    const list = await request(app)
+      .get(url)
+      .query({ pageSize: 50 })
+      .set("Authorization", `Bearer ${token}`);
+    expect(body<DataMetaEnvelope<TransactionDto[]>>(list).data).toHaveLength(1);
+  });
+
   it("returns 404 when the referenced asset does not exist", async () => {
     const response = await request(app)
       .post(`/api/v1/portfolios/${portfolioId}/transactions`)

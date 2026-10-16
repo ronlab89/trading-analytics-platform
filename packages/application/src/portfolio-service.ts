@@ -4,6 +4,7 @@ import type { Actor } from "./actor.js";
 import { NotFoundError } from "./errors.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
+import { assertPortfolioWritable } from "./portfolio-guard.js";
 
 export interface PortfolioServiceDependencies {
   portfolioRepository: PortfolioRepository;
@@ -94,7 +95,7 @@ export function createPortfolioService(dependencies: PortfolioServiceDependencie
     input: UpdatePortfolioRequest,
   ): Promise<Portfolio> {
     assertPermission(actor, "portfolio:write", permissions);
-    await getPortfolioById(actor, portfolioId);
+    assertPortfolioWritable(await getPortfolioById(actor, portfolioId));
 
     // Rebuilt with conditional spreads: under `exactOptionalPropertyTypes` an
     // optional field must be omitted, never assigned `undefined`.

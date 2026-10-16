@@ -81,6 +81,23 @@ export class InMemoryTransactionRepository implements TransactionRepository {
     });
   }
 
+  listByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<Transaction[]> {
+    const matching = [...this.rows.values()]
+      .filter(({ transaction: t }) => t.portfolioId === portfolioId && t.assetId === assetId)
+      .sort(
+        (a, b) =>
+          a.transaction.executedAt.getTime() - b.transaction.executedAt.getTime() ||
+          a.sequence - b.sequence,
+      );
+
+    return Promise.resolve(matching.map((s) => s.transaction));
+  }
+
+  /** No-op: the in-memory unit of work already runs units one at a time. */
+  lockPortfolioAsset(): Promise<void> {
+    return Promise.resolve();
+  }
+
   getById(id: string): Promise<Transaction | null> {
     return Promise.resolve(this.rows.get(id)?.transaction ?? null);
   }

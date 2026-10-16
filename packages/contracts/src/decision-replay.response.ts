@@ -38,7 +38,7 @@ export const decisionReplayStateResponseSchema = z.object({
   thesis: z.string().nullable(),
   riskLevel: z.string().nullable(),
   notes: z.array(z.string()),
-  position: z.object({ quantity: z.number(), entryPrice: moneySchema }).nullable(),
+  position: z.object({ quantity: z.string(), entryPrice: moneySchema }).nullable(),
   lastPrice: moneySchema.nullable(),
   unrealizedPnL: moneySchema.nullable(),
   realizedPnL: moneySchema.nullable(),
@@ -82,7 +82,10 @@ export function presentDecisionReplayState(
     riskLevel: state.riskLevel,
     notes: [...state.notes],
     position: state.position
-      ? { quantity: state.position.quantity, entryPrice: presentMoney(state.position.entryPrice) }
+      ? {
+          quantity: state.position.quantity.toFixed(),
+          entryPrice: presentMoney(state.position.entryPrice),
+        }
       : null,
     lastPrice: state.lastPrice ? presentMoney(state.lastPrice) : null,
     unrealizedPnL: state.unrealizedPnL ? presentMoney(state.unrealizedPnL) : null,

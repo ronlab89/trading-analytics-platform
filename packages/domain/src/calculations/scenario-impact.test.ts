@@ -67,6 +67,18 @@ describe("calculateScenarioImpact", () => {
     expect(result.scenario.totalValue.equals(Money.of(880, "USD"))).toBe(true);
   });
 
+  it("should apply a fractional percent change exactly (-12.3%)", () => {
+    const positions = [buildPosition({ currentPrice: Money.of(1000, "USD"), quantity: 1 })];
+
+    const result = calculateScenarioImpact(buildPortfolio(), positions, [
+      { assetId: "asset_001", percentChange: -12.3 },
+    ]);
+
+    // 1000 * (1 - 12.3 / 100) = 877 exactly, with no float residue.
+    expect(result.scenario.totalValue.equals(Money.of(877, "USD"))).toBe(true);
+    expect(result.difference.totalValue.add(Money.of(123, "USD")).isZero()).toBe(true);
+  });
+
   it("should apply a positive percent change to the matching position's current price", () => {
     const portfolio = buildPortfolio();
     const positions = [buildPosition({ currentPrice: Money.of(100, "USD") })];

@@ -8,18 +8,21 @@ packages/domain/src/**
 packages/application/src/**
 packages/database/src/**
 packages/database/prisma/seed.ts
+packages/persistence-memory/src/**
 packages/contracts/src/**
 apps/api/src/**/*.test.ts
 docs/BACKEND-ROADMAP.md
 docs/PROGRESS.md
+docs/07-api-spec.md
+docs/05-data-model.md
 
 ## Tasks
 
-- [ ] T1 Chronological validation (FR-018), tiebreak by `executedAt` then creation order, with the BUY/SELL same-timestamp test.
-- [ ] T2 Position projection rebuilt by date-order replay (backdating gives correct `averageEntryPrice` and `openedAt`).
-- [ ] T3 Concurrent SELL (6 and 6 on a holding of 10): exactly one succeeds; concurrent test.
-- [ ] T4 Archived-portfolio guard: mutations return 409 `CONFLICT` and write nothing (includes alert delete).
-- [ ] T5 Decimal strings: `decision-replay.ts` and `scenario-impact.ts` use `Decimal` (exact `-12.3` test); fixed notation, never `5e-8`; seed and fixtures rewritten to strings.
+- [x] T1 Chronological validation (FR-018), tiebreak by `executedAt` then creation order, with the BUY/SELL same-timestamp test.
+- [x] T2 Position projection rebuilt by date-order replay (backdating gives correct `averageEntryPrice` and `openedAt`).
+- [x] T3 Concurrent SELL (6 and 6 on a holding of 10): exactly one succeeds; concurrent test.
+- [x] T4 Archived-portfolio guard: mutations return 409 `CONFLICT` and write nothing (includes alert delete).
+- [x] T5 Decimal strings: `decision-replay.ts` and `scenario-impact.ts` use `Decimal` (exact `-12.3` test); fixed notation, never `5e-8`; seed and fixtures rewritten to strings.
 
 ## Done when
 

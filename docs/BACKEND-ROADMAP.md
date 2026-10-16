@@ -777,7 +777,7 @@ must exist before starting them:
 
 | Block | Status |
 |---|---|
-| B0 Application layer, shared contracts and minimal CI | In progress (B0.1 and B0.2 done) |
+| B0 Application layer, shared contracts and minimal CI | In progress (B0.1 to B0.7 done, 2026-10-16; closes once the CI is green on the pull request) |
 | B1 Performance and risk analytics | Not started |
 | B2 Auth and RBAC | Not started |
 | B3 Observability foundation | Not started |

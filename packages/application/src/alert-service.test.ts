@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { AlertType, InvalidAlertError } from "@trading/domain";
+import { AlertType, InvalidAlertError, PortfolioStatus } from "@trading/domain";
 import type { Alert } from "@trading/domain";
 import type { Actor } from "./actor.js";
 import { createAlertService } from "./alert-service.js";
-import { ForbiddenError, NotFoundError } from "./errors.js";
+import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 
 const actor: Actor = { userId: "u1", role: "USER" };
@@ -27,11 +27,17 @@ interface Options {
   stored?: Alert[];
   assetExists?: boolean;
   ownedPortfolios?: string[];
+  archivedPortfolios?: string[];
   permissions?: RolePermissions;
 }
 
 function build(options: Options = {}) {
-  const { stored = [alert("al1")], assetExists = true, ownedPortfolios = ["p1"] } = options;
+  const {
+    stored = [alert("al1")],
+    assetExists = true,
+    ownedPortfolios = ["p1"],
+    archivedPortfolios = [],
+  } = options;
 
   const create = vi.fn((input: { userId: string }) => Promise.resolve(alert("new", input.userId)));
   const update = vi.fn((id: string, _input: Partial<Alert>) => Promise.resolve(alert(id)));
@@ -43,7 +49,11 @@ function build(options: Options = {}) {
   );
   const getPortfolioById = vi.fn((_actor: Actor, portfolioId: string) =>
     ownedPortfolios.includes(portfolioId)
-      ? Promise.resolve({} as never)
+      ? Promise.resolve({
+          status: archivedPortfolios.includes(portfolioId)
+            ? PortfolioStatus.ARCHIVED
+            : PortfolioStatus.ACTIVE,
+        } as never)
       : Promise.reject(new NotFoundError("The requested resource could not be found.")),
   );
 
@@ -135,6 +145,53 @@ describe("alert service", () => {
     const { service, remove } = build();
     await service.deleteAlert(actor, "al1");
     expect(remove).toHaveBeenCalledWith("al1");
+  });
+
+  describe("archived portfolio guard (ADR-010 point 5)", () => {
+    const inP1 = { ...alert("al1"), portfolioId: "p1" };
+    const message = "An archived portfolio cannot be modified.";
+
+    it("rejects creating an alert in an archived portfolio before looking up the asset", async () => {
+      const { service, create, getAssetById } = build({ archivedPortfolios: ["p1"] });
+      const error = await service
+        .createAlert(actor, { ...priceAlert, assetId: "a1", portfolioId: "p1" })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ConflictError);
+      expect((error as Error).message).toBe(message);
+      expect(getAssetById).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("rejects updating and deleting an alert of an archived portfolio", async () => {
+      const { service, update, remove } = build({ stored: [inP1], archivedPortfolios: ["p1"] });
+      const updated = await service
+        .updateAlert(actor, "al1", { enabled: false })
+        .catch((e: unknown) => e);
+      const deleted = await service.deleteAlert(actor, "al1").catch((e: unknown) => e);
+      expect(updated).toBeInstanceOf(ConflictError);
+      expect(deleted).toBeInstanceOf(ConflictError);
+      expect((deleted as Error).message).toBe(message);
+      expect(update).not.toHaveBeenCalled();
+      expect(remove).not.toHaveBeenCalled();
+    });
+
+    it("still writes alerts of an active portfolio and alerts without a portfolio", async () => {
+      const { service, update, remove, getPortfolioById } = build({ stored: [inP1, alert("al2")] });
+      await service.updateAlert(actor, "al1", { enabled: false });
+      await service.deleteAlert(actor, "al1");
+      await service.deleteAlert(actor, "al2");
+      expect(update).toHaveBeenCalledWith("al1", { enabled: false });
+      expect(remove).toHaveBeenCalledTimes(2);
+      expect(getPortfolioById).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps answering 404 for another user's alert of an archived portfolio", async () => {
+      const { service } = build({
+        stored: [{ ...inP1, userId: "u2" }],
+        archivedPortfolios: ["p1"],
+      });
+      await expect(service.deleteAlert(actor, "al1")).rejects.toBeInstanceOf(NotFoundError);
+    });
   });
 
   it("needs alert:read for reads and alert:write for writes", async () => {

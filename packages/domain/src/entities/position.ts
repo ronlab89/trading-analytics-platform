@@ -35,10 +35,16 @@ export interface Position {
   readonly updatedAt: Date;
 }
 
+/**
+ * `openedAt` is optional: omitted, a new position opens now and an existing one
+ * keeps its date. The transaction replay passes it so a backdated transaction
+ * can move it (B0, FR-018).
+ */
 export type CreatePositionInput = Pick<
   Position,
   "portfolioId" | "assetId" | "quantity" | "averageEntryPrice" | "currentPrice"
->;
+> &
+  Partial<Pick<Position, "openedAt">>;
 
 export class InvalidPositionError extends Error {
   constructor(message: string) {

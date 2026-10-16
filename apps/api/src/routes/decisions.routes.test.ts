@@ -105,18 +105,18 @@ describe("decisions", () => {
           {
             type: "POSITION_OPENED",
             timestamp: new Date("2026-06-02T14:00:00Z"),
-            payload: { quantity: 10, price: 150 },
+            payload: { quantity: "10", price: "150" },
           },
           {
             type: "POSITION_CLOSED",
             timestamp: new Date("2026-06-10T14:00:00Z"),
-            payload: { price: 170 },
+            payload: { price: "170" },
           },
           { type: "DECISION_CREATED", timestamp: new Date("2026-06-01T14:00:00Z") },
           {
             type: "PRICE_UPDATE",
             timestamp: new Date("2026-06-05T14:00:00Z"),
-            payload: { price: 160 },
+            payload: { price: "160" },
           },
         ],
       })

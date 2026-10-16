@@ -45,6 +45,28 @@ export interface TransactionRepository {
   ): Promise<Page<Transaction>>;
 
   /**
+   * Returns every transaction of one asset in one portfolio, oldest first:
+   * by `executedAt` ascending, then creation order. The input of the
+   * chronological replay (FR-018, ADR-003 point 6).
+   *
+   * Creation order is exact in memory. In Prisma it falls back to `createdAt`
+   * then `id`, which can misorder inserts made in the same instant; T3
+   * (concurrent SELL) revisits that limit.
+   */
+  listByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<Transaction[]>;
+
+  /**
+   * Serializes concurrent units of work on one portfolio+asset until the
+   * current unit ends, so the chronological replay never reads a history that
+   * another in-flight unit is about to change (FR-017 race, ADR-001).
+   *
+   * Call it first inside a unit, before `listByPortfolioAndAsset`. Storages
+   * that already run units one at a time may do nothing. The lock is released
+   * when the unit commits or rolls back; outside a unit it has no effect.
+   */
+  lockPortfolioAsset(portfolioId: string, assetId: string): Promise<void>;
+
+  /**
    * Returns a single transaction by id, or null if it does not exist.
    */
   getById(id: string): Promise<Transaction | null>;

@@ -1,3 +1,4 @@
+import { Decimal } from "decimal.js";
 import type { Portfolio } from "../entities/portfolio";
 import type { Position } from "../entities/position";
 import type { ScenarioChange } from "../entities/scenario";
@@ -56,7 +57,9 @@ export function applyScenarioChanges(
       return position;
     }
 
-    const factor = 1 + percentChange / 100;
+    // Decimal end to end: `1 + -12.3 / 100` in floats carries binary noise (ADR-002 point 9).
+    // Fixed notation, because `toString()` can emit exponents such as "5e-8".
+    const factor = new Decimal(percentChange).div(100).plus(1).toFixed();
     return {
       ...position,
       currentPrice: position.currentPrice.multiply(factor),

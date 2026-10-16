@@ -41,6 +41,10 @@ export interface PositionRepository {
    * Source: FR-017's workflow ("Position recalculated" after a
    * transaction is created).
    *
+   * `openedAt`, when given, is stored on create and on update (a backdated
+   * transaction moves it). When omitted, a new position opens now and an
+   * existing one keeps its date.
+   *
    * Callers are expected to have already run `validateNewPosition` (see
    * entities/position.ts) on the resulting shape before calling this.
    */

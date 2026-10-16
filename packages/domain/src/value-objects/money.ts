@@ -155,10 +155,16 @@ export class Money {
 
   /**
    * Returns the exact decimal amount as a string, safe for persistence
-   * or serialization without precision loss.
+   * or serialization without precision loss. Always fixed notation, never
+   * an exponent such as "5e-8" (ADR-002 point 9).
    */
   toString(): string {
-    return this.amount.toString();
+    return this.amount.toFixed();
+  }
+
+  /** JSON form: the amount in fixed notation (Decimal's own `toJSON` can emit exponents). */
+  toJSON(): { amount: string; currency: string } {
+    return { amount: this.amount.toFixed(), currency: this.currency };
   }
 
   toFixed(decimalPlaces: number): string {

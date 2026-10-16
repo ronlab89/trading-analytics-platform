@@ -72,6 +72,17 @@ describe("InMemoryTransactionRepository", () => {
     expect(result.items.map((t) => t.id)).toEqual(created.map((t) => t.id).reverse());
   });
 
+  it("lists one asset's transactions oldest first, ties by creation order, even past nine", async () => {
+    const repository = build();
+    const created = [];
+    for (let i = 0; i < 11; i++) {
+      created.push(await repository.create(input({ executedAt: day(10) })));
+    }
+    const earlier = await repository.create(input({ executedAt: day(2) }));
+    const result = await repository.listByPortfolioAndAsset("p1", "a1");
+    expect(result.map((t) => t.id)).toEqual([earlier, ...created].map((t) => t.id));
+  });
+
   it("filters by asset, type and an inclusive date range", async () => {
     const repository = build();
     await repository.create(input({ assetId: "a1", executedAt: day(5) }));

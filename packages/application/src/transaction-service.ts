@@ -1,8 +1,4 @@
-import {
-  TransactionStatus,
-  calculatePositionAfterTransaction,
-  validateNewTransaction,
-} from "@trading/domain";
+import { TransactionStatus, replayPosition, validateNewTransaction } from "@trading/domain";
 import type {
   AssetRepository,
   Money,
@@ -19,6 +15,7 @@ import type { Actor } from "./actor.js";
 import type { Clock } from "./clock.js";
 import { NotFoundError } from "./errors.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
+import { assertPortfolioWritable } from "./portfolio-guard.js";
 import type { RolePermissions } from "./permissions.js";
 import type { PortfolioService } from "./portfolio-service.js";
 
@@ -101,9 +98,13 @@ export function createTransactionService(dependencies: TransactionServiceDepende
    * position (FR-017). Synchronous on purpose: the async job flow of
    * 07-api-spec.md §14 belongs to Phase 10 of 15-implementation-plan.md.
    *
-   * Order: permission, portfolio ownership, asset existence (an unknown
+   * Order: permission, portfolio ownership, archived-portfolio guard (409,
+   * ADR-010 point 5), asset existence (an unknown
    * asset is a client error, 404), domain validation. Then, inside one Unit
-   * of Work: persist the transaction, recalculate the position (upsert, or
+   * of Work: replay the asset's history with the new transaction in date
+   * order and reject it if the held quantity would ever go negative (FR-018,
+   * so a backdated transaction is checked too), persist the transaction,
+   * recalculate the position (upsert, or
    * delete when a SELL closes it exactly), and mark the transaction
    * COMPLETED. If any step fails, everything rolls back and no orphaned
    * DRAFT transaction remains.
@@ -114,7 +115,8 @@ export function createTransactionService(dependencies: TransactionServiceDepende
     input: CreateTransactionRequest,
   ): Promise<CreateTransactionResult> {
     assertPermission(actor, "transaction:create", permissions);
-    await portfolioService.getPortfolioById(actor, portfolioId);
+    const portfolio = await portfolioService.getPortfolioById(actor, portfolioId);
+    assertPortfolioWritable(portfolio);
 
     const asset = await assetRepository.getById(input.assetId);
     if (!asset) {
@@ -134,15 +136,31 @@ export function createTransactionService(dependencies: TransactionServiceDepende
     validateNewTransaction(createInput, clock.now());
 
     return unitOfWork.run(async ({ transactions, positions }) => {
+      // Serializes concurrent creations on this asset, so two SELLs cannot both
+      // be validated against the same history (FR-017 race).
+      await transactions.lockPortfolioAsset(portfolioId, input.assetId);
+
+      const history = await transactions.listByPortfolioAndAsset(portfolioId, input.assetId);
+      // Throws InsufficientPositionQuantityError when the candidate, at its
+      // place in date order, would leave a negative quantity at any point.
+      const replayed = replayPosition([
+        ...history,
+        {
+          type: input.type,
+          quantity: input.quantity,
+          price: input.price,
+          executedAt: input.executedAt ?? clock.now(),
+        },
+      ]);
+
       const transaction = await transactions.create(createInput);
 
       const existingPosition = await positions.getByPortfolioAndAsset(portfolioId, input.assetId);
-      const recalculated = calculatePositionAfterTransaction(existingPosition, createInput);
 
       let position: Position | null;
 
-      if (recalculated === null) {
-        // SELL exactly closed the position.
+      if (replayed === null) {
+        // The replay leaves nothing held: the position is closed.
         if (existingPosition) {
           await positions.deleteByPortfolioAndAsset(portfolioId, input.assetId);
         }
@@ -151,9 +169,11 @@ export function createTransactionService(dependencies: TransactionServiceDepende
         position = await positions.upsert({
           portfolioId,
           assetId: input.assetId,
-          quantity: recalculated.quantity,
-          averageEntryPrice: recalculated.averageEntryPrice,
-          currentPrice: recalculated.currentPrice,
+          quantity: replayed.quantity,
+          averageEntryPrice: replayed.averageEntryPrice,
+          // Tracks market data (FR-045): seeded from the trade price only when first opened.
+          currentPrice: existingPosition?.currentPrice ?? input.price,
+          openedAt: replayed.openedAt,
         });
       }
 

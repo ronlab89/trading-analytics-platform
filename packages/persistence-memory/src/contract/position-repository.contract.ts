@@ -80,6 +80,33 @@ export function positionRepositoryContract(
       expect(await idsOf(portfolioId)).toEqual([opened.id]);
     });
 
+    it("opens a position at an explicit openedAt", async () => {
+      const { portfolioId, assetId } = context.fixtures;
+      const openedAt = new Date("2026-01-05T00:00:00Z");
+      const created = await context.repository.upsert({
+        ...input(portfolioId, assetId),
+        openedAt,
+      });
+      expect(created.openedAt).toEqual(openedAt);
+      expect((await context.repository.getById(created.id))?.openedAt).toEqual(openedAt);
+    });
+
+    it("moves openedAt on update when one is given, and keeps id", async () => {
+      const { portfolioId, assetId } = context.fixtures;
+      const opened = await context.repository.upsert({
+        ...input(portfolioId, assetId),
+        openedAt: new Date("2026-01-10T00:00:00Z"),
+      });
+      const backdated = new Date("2026-01-02T00:00:00Z");
+      const updated = await context.repository.upsert({
+        ...input(portfolioId, assetId, 15),
+        openedAt: backdated,
+      });
+      expect(updated.id).toBe(opened.id);
+      expect(updated.openedAt).toEqual(backdated);
+      expect((await context.repository.getById(opened.id))?.openedAt).toEqual(backdated);
+    });
+
     it("finds a position by id and by portfolio and asset, and returns null otherwise", async () => {
       const { portfolioId, otherPortfolioId, assetId, otherAssetId } = context.fixtures;
       const created = await context.repository.upsert(input(portfolioId, assetId));
