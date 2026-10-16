@@ -29,6 +29,17 @@ describe("response common schemas", () => {
     expect(moneySchema.safeParse({ amount: 1, currency: "USD" }).success).toBe(false);
   });
 
+  it.each(["5e-8", "1E3", "", "abc", "1,5", " 1", "1."])(
+    "rejects the money amount %j (not a fixed-notation decimal)",
+    (amount) => {
+      expect(moneySchema.safeParse({ amount, currency: "USD" }).success).toBe(false);
+    },
+  );
+
+  it.each(["0", "-12.3", "877", "0.00000005"])("accepts the money amount %j", (amount) => {
+    expect(moneySchema.safeParse({ amount, currency: "USD" }).success).toBe(true);
+  });
+
   it("builds data and page envelopes", () => {
     expect(dataEnvelope(z.string()).safeParse({ data: "x" }).success).toBe(true);
     const page = pageEnvelope(z.string());

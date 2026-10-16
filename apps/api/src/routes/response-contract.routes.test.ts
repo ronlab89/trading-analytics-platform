@@ -103,12 +103,12 @@ describe("API responses match the @trading/contracts response schemas", () => {
           {
             type: "POSITION_OPENED",
             timestamp: new Date("2026-06-02T14:00:00Z"),
-            payload: { quantity: 10, price: 100 },
+            payload: { quantity: "10", price: "100" },
           },
           {
             type: "PRICE_UPDATE",
             timestamp: new Date("2026-06-03T14:00:00Z"),
-            payload: { price: 110 },
+            payload: { price: "110" },
           },
         ],
       })

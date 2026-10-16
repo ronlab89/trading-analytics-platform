@@ -26,21 +26,21 @@ const events: DecisionEvent[] = [
     decisionId: "d1",
     timestamp: new Date("2026-10-13T12:00:00.000Z"),
     type: "POSITION_OPENED",
-    payload: { quantity: 2, price: 100 },
+    payload: { quantity: "2", price: "100" },
   },
   {
     id: "e2",
     decisionId: "d1",
     timestamp: new Date("2026-10-14T12:00:00.000Z"),
     type: "PRICE_UPDATE",
-    payload: { price: 110.5 },
+    payload: { price: "110.5" },
   },
   {
     id: "e3",
     decisionId: "d1",
     timestamp: new Date("2026-10-15T12:00:00.000Z"),
     type: "POSITION_CLOSED",
-    payload: { price: 120 },
+    payload: { price: "120" },
   },
   {
     id: "e4",
@@ -71,7 +71,7 @@ describe("decision replay presenter", () => {
     const state = projectDecisionReplay({ decision, events, currency: "USD" }, 1);
     const dto = presentDecisionReplay({ decision, events, currency: "USD", initialState: state });
     expect(dto.initialState.position).toEqual({
-      quantity: 2,
+      quantity: "2",
       entryPrice: { amount: "100", currency: "USD" },
     });
     expect(dto.initialState.lastPrice).toEqual({ amount: "110.5", currency: "USD" });

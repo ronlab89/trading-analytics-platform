@@ -13,6 +13,15 @@ describe("Money.of", () => {
     expect(money.toString()).toBe("0.3");
   });
 
+  it("should serialize tiny and huge amounts in fixed notation, never an exponent", () => {
+    const tiny = Money.of("0.00000005", "USD");
+    const huge = Money.of("1000000000000000000000", "USD");
+
+    expect(tiny.toString()).toBe("0.00000005");
+    expect(huge.toString()).toBe("1000000000000000000000");
+    expect(JSON.parse(JSON.stringify(tiny))).toEqual({ amount: "0.00000005", currency: "USD" });
+  });
+
   it("should reject a lowercase currency code", () => {
     expect(() => Money.of(100, "usd")).toThrow(InvalidMoneyError);
   });

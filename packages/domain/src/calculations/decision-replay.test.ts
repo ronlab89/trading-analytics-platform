@@ -60,10 +60,10 @@ function longTargetHitEvents(): DecisionEvent[] {
   return [
     makeEvent(DecisionEventType.DECISION_CREATED),
     makeEvent(DecisionEventType.THESIS_RECORDED, { thesis: "Breakout above resistance." }),
-    makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 10, price: 150 }),
-    makeEvent(DecisionEventType.PRICE_UPDATE, { price: 160 }),
-    makeEvent(DecisionEventType.TARGET_REACHED, { price: 170 }),
-    makeEvent(DecisionEventType.POSITION_CLOSED, { price: 170 }),
+    makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "10", price: "150" }),
+    makeEvent(DecisionEventType.PRICE_UPDATE, { price: "160" }),
+    makeEvent(DecisionEventType.TARGET_REACHED, { price: "170" }),
+    makeEvent(DecisionEventType.POSITION_CLOSED, { price: "170" }),
   ];
 }
 
@@ -111,7 +111,7 @@ describe("projectDecisionReplay", () => {
     const state = projectDecisionReplay(makeInput(longTargetHitEvents()), 2);
 
     expect(state.phase).toBe("OPEN");
-    expect(state.position?.quantity).toBe(10);
+    expect(state.position?.quantity.toFixed()).toBe("10");
     expect(state.position?.entryPrice.toString()).toBe("150");
     expect(state.lastPrice?.toString()).toBe("150");
     expect(state.unrealizedPnL?.isZero()).toBe(true);
@@ -137,8 +137,8 @@ describe("projectDecisionReplay", () => {
 
   it("should realize a loss when a LONG decision closes at its stop", () => {
     const events = [
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 10, price: 150 }),
-      makeEvent(DecisionEventType.POSITION_CLOSED, { price: 140 }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "10", price: "150" }),
+      makeEvent(DecisionEventType.POSITION_CLOSED, { price: "140" }),
     ];
     const state = projectDecisionReplay(makeInput(events), 1);
 
@@ -149,9 +149,9 @@ describe("projectDecisionReplay", () => {
   it("should invert P/L for SHORT decisions", () => {
     const decision = makeDecision({ direction: DecisionDirection.SHORT });
     const events = [
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 5, price: 100 }),
-      makeEvent(DecisionEventType.PRICE_UPDATE, { price: 90 }),
-      makeEvent(DecisionEventType.POSITION_CLOSED, { price: 110 }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "5", price: "100" }),
+      makeEvent(DecisionEventType.PRICE_UPDATE, { price: "90" }),
+      makeEvent(DecisionEventType.POSITION_CLOSED, { price: "110" }),
     ];
 
     const open = projectDecisionReplay(makeInput(events, decision), 1);
@@ -163,12 +163,12 @@ describe("projectDecisionReplay", () => {
 
   it("should use a weighted-average entry price when the position is increased", () => {
     const events = [
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 10, price: 100 }),
-      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: 20, price: 130 }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "10", price: "100" }),
+      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: "20", price: "130" }),
     ];
     const state = projectDecisionReplay(makeInput(events), 1);
 
-    expect(state.position?.quantity).toBe(20);
+    expect(state.position?.quantity.toFixed()).toBe("20");
     expect(state.position?.entryPrice.toString()).toBe("115");
     expect(state.lastPrice?.toString()).toBe("130");
     expect(state.unrealizedPnL?.toString()).toBe("300");
@@ -177,12 +177,12 @@ describe("projectDecisionReplay", () => {
 
   it("should realize the reduced part and keep the entry price when the position is reduced", () => {
     const events = [
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 10, price: 100 }),
-      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: 4, price: 120 }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "10", price: "100" }),
+      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: "4", price: "120" }),
     ];
     const state = projectDecisionReplay(makeInput(events), 1);
 
-    expect(state.position?.quantity).toBe(4);
+    expect(state.position?.quantity.toFixed()).toBe("4");
     expect(state.position?.entryPrice.toString()).toBe("100");
     expect(state.realizedPnL?.toString()).toBe("120");
     expect(state.unrealizedPnL?.toString()).toBe("80");
@@ -190,9 +190,9 @@ describe("projectDecisionReplay", () => {
 
   it("should accumulate realized P/L across a reduction and the final close", () => {
     const events = [
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 10, price: 100 }),
-      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: 4, price: 120 }),
-      makeEvent(DecisionEventType.POSITION_CLOSED, { price: 130 }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "10", price: "100" }),
+      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: "4", price: "120" }),
+      makeEvent(DecisionEventType.POSITION_CLOSED, { price: "130" }),
     ];
     const state = projectDecisionReplay(makeInput(events), 2);
 
@@ -202,12 +202,49 @@ describe("projectDecisionReplay", () => {
 
   it("should avoid floating point error in fractional quantity deltas", () => {
     const events = [
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 0.1, price: 100 }),
-      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: 0.3, price: 100 }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "0.1", price: "100" }),
+      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: "0.3", price: "100" }),
     ];
     const state = projectDecisionReplay(makeInput(events), 1);
 
     expect(state.position?.entryPrice.toString()).toBe("100");
+  });
+
+  it("should keep fractional quantities exact in the weighted-average entry price", () => {
+    const events = [
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "0.1", price: "100" }),
+      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: "0.3", price: "130" }),
+    ];
+    const state = projectDecisionReplay(makeInput(events), 1);
+
+    // (0.1 * 100 + 0.2 * 130) / 0.3 = 120
+    expect(state.position?.quantity.toFixed()).toBe("0.3");
+    expect(state.position?.entryPrice.toString()).toBe("120");
+  });
+
+  it.each([
+    ["a JS number", 150],
+    ["an exponent string", "1e3"],
+    ["a signed string", "-5"],
+    ["a string with spaces", " 5 "],
+    ["zero", "0"],
+    ["an empty string", ""],
+  ])("should report an issue when the price is %s", (_label, price) => {
+    const events = [makeEvent(DecisionEventType.PRICE_UPDATE, { price })];
+    const state = projectDecisionReplay(makeInput(events), 0);
+
+    expect(state.lastPrice).toBeNull();
+    expect(state.issues).toHaveLength(1);
+    expect(state.issues[0]?.message).toBe("PRICE_UPDATE requires a positive decimal string price.");
+  });
+
+  it("should report an issue when the quantity is a JS number", () => {
+    const events = [makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 10, price: "150" })];
+    const state = projectDecisionReplay(makeInput(events), 0);
+
+    expect(state.phase).toBe("PLANNED");
+    expect(state.position).toBeNull();
+    expect(state.issues).toHaveLength(1);
   });
 
   it("should track risk level changes and notes as they happen", () => {
@@ -227,7 +264,7 @@ describe("projectDecisionReplay", () => {
   });
 
   it("should record a price update before any position as market context only", () => {
-    const events = [makeEvent(DecisionEventType.PRICE_UPDATE, { price: 155 })];
+    const events = [makeEvent(DecisionEventType.PRICE_UPDATE, { price: "155" })];
     const state = projectDecisionReplay(makeInput(events), 0);
 
     expect(state.phase).toBe("PLANNED");
@@ -239,7 +276,7 @@ describe("projectDecisionReplay", () => {
     const events = [
       makeEvent(DecisionEventType.PRICE_UPDATE, { price: "abc" }),
       makeEvent(DecisionEventType.NOTE_ADDED, { note: "   " }),
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: -5, price: 150 }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: -5, price: "150" }),
     ];
     const state = projectDecisionReplay(makeInput(events), 2);
 
@@ -254,10 +291,10 @@ describe("projectDecisionReplay", () => {
 
   it("should report an issue for out-of-sequence position events", () => {
     const events = [
-      makeEvent(DecisionEventType.POSITION_CLOSED, { price: 160 }),
-      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: 5, price: 160 }),
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 10, price: 150 }),
-      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: 10, price: 155 }),
+      makeEvent(DecisionEventType.POSITION_CLOSED, { price: "160" }),
+      makeEvent(DecisionEventType.POSITION_ADJUSTED, { quantity: "5", price: "160" }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "10", price: "150" }),
+      makeEvent(DecisionEventType.POSITION_OPENED, { quantity: "10", price: "155" }),
     ];
     const state = projectDecisionReplay(makeInput(events), 3);
 

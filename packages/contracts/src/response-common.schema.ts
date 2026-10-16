@@ -11,7 +11,8 @@ import { paginationMetaSchema } from "./pagination.schema.js";
  */
 
 export const moneySchema = z.object({
-  amount: z.string(),
+  // Fixed-notation decimal string: no exponent such as "5e-8" (ADR-002 point 9).
+  amount: z.string().regex(/^-?\d+(\.\d+)?$/),
   currency: z.string().length(3),
 });
 export type MoneyDto = z.infer<typeof moneySchema>;

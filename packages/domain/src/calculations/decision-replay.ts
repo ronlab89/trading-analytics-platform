@@ -21,8 +21,9 @@ import { Money } from "../value-objects/money";
  * - `currency` is supplied by the caller (in practice the asset's
  *   currency). `Decision` has no currency of its own: only its
  *   optional prices carry one, and all three may be null. Event
- *   payload prices are plain numbers and are interpreted in this
- *   currency.
+ *   payload prices are decimal strings (ADR-002 point 9) and are
+ *   interpreted in this currency. Quantities are decimal strings too;
+ *   a JS number is reported as an issue, never coerced.
  * - `currentIndex` is -1 ("before the first event") or a valid event
  *   index. Anything else is a programming error and throws, rather
  *   than being silently clamped.
@@ -58,7 +59,7 @@ import { Money } from "../value-objects/money";
 export type ReplayPhase = "PLANNED" | "OPEN" | "CLOSED";
 
 export interface ReplayPosition {
-  readonly quantity: number;
+  readonly quantity: Decimal;
   readonly entryPrice: Money;
 }
 
@@ -118,9 +119,21 @@ function readString(payload: Payload, key: string): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
-function readPositiveNumber(payload: Payload, key: string): number | null {
+/** Plain fixed-notation decimal: no sign, exponent, separators or surrounding spaces. */
+const DECIMAL_STRING = /^\d+(\.\d+)?$/;
+
+/**
+ * Reads a strictly positive decimal that was persisted as a string
+ * (ADR-002 point 9). A JS number is rejected on purpose: it already went
+ * through a binary float, so the exact value is unrecoverable.
+ */
+function readPositiveDecimal(payload: Payload, key: string): Decimal | null {
   const value = payload[key];
-  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+  if (typeof value !== "string" || !DECIMAL_STRING.test(value)) {
+    return null;
+  }
+  const decimal = new Decimal(value);
+  return decimal.gt(0) ? decimal : null;
 }
 
 /**
@@ -184,12 +197,12 @@ function applyEvent(
 
     case DecisionEventType.PRICE_UPDATE:
     case DecisionEventType.TARGET_REACHED: {
-      const price = readPositiveNumber(payload, "price");
+      const price = readPositiveDecimal(payload, "price");
       if (price === null) {
-        reportIssue(acc, event, `${event.type} requires a positive numeric price.`);
+        reportIssue(acc, event, `${event.type} requires a positive decimal string price.`);
         return;
       }
-      acc.lastPrice = Money.of(price, currency);
+      acc.lastPrice = Money.of(price.toFixed(), currency);
       return;
     }
 
@@ -198,13 +211,17 @@ function applyEvent(
         reportIssue(acc, event, "POSITION_OPENED is only valid before a position exists.");
         return;
       }
-      const quantity = readPositiveNumber(payload, "quantity");
-      const price = readPositiveNumber(payload, "price");
+      const quantity = readPositiveDecimal(payload, "quantity");
+      const price = readPositiveDecimal(payload, "price");
       if (quantity === null || price === null) {
-        reportIssue(acc, event, "POSITION_OPENED requires a positive quantity and price.");
+        reportIssue(
+          acc,
+          event,
+          "POSITION_OPENED requires a positive decimal string quantity and price.",
+        );
         return;
       }
-      const entryPrice = Money.of(price, currency);
+      const entryPrice = Money.of(price.toFixed(), currency);
       acc.position = { quantity, entryPrice };
       acc.lastPrice = entryPrice;
       acc.phase = "OPEN";
@@ -217,26 +234,30 @@ function applyEvent(
         reportIssue(acc, event, "POSITION_ADJUSTED is only valid while a position is open.");
         return;
       }
-      const newQuantity = readPositiveNumber(payload, "quantity");
-      const price = readPositiveNumber(payload, "price");
+      const newQuantity = readPositiveDecimal(payload, "quantity");
+      const price = readPositiveDecimal(payload, "price");
       if (newQuantity === null || price === null) {
-        reportIssue(acc, event, "POSITION_ADJUSTED requires a positive quantity and price.");
+        reportIssue(
+          acc,
+          event,
+          "POSITION_ADJUSTED requires a positive decimal string quantity and price.",
+        );
         return;
       }
 
-      const adjustmentPrice = Money.of(price, currency);
+      const adjustmentPrice = Money.of(price.toFixed(), currency);
 
-      if (newQuantity > position.quantity) {
+      if (newQuantity.gt(position.quantity)) {
         // Increase: weighted-average entry price.
-        const added = new Decimal(newQuantity).minus(position.quantity).toString();
+        const added = newQuantity.minus(position.quantity).toFixed();
         const entryPrice = position.entryPrice
-          .multiply(position.quantity)
+          .multiply(position.quantity.toFixed())
           .add(adjustmentPrice.multiply(added))
-          .divide(newQuantity);
+          .divide(newQuantity.toFixed());
         acc.position = { quantity: newQuantity, entryPrice };
-      } else if (newQuantity < position.quantity) {
+      } else if (newQuantity.lt(position.quantity)) {
         // Reduction: entry price is unchanged; the reduced part is realized.
-        const removed = new Decimal(position.quantity).minus(newQuantity).toString();
+        const removed = position.quantity.minus(newQuantity).toFixed();
         addRealized(
           acc,
           calculatePnL(decision.direction, position.entryPrice, adjustmentPrice, removed),
@@ -254,15 +275,20 @@ function applyEvent(
         reportIssue(acc, event, "POSITION_CLOSED is only valid while a position is open.");
         return;
       }
-      const price = readPositiveNumber(payload, "price");
+      const price = readPositiveDecimal(payload, "price");
       if (price === null) {
-        reportIssue(acc, event, "POSITION_CLOSED requires a positive numeric price.");
+        reportIssue(acc, event, "POSITION_CLOSED requires a positive decimal string price.");
         return;
       }
-      const exitPrice = Money.of(price, currency);
+      const exitPrice = Money.of(price.toFixed(), currency);
       addRealized(
         acc,
-        calculatePnL(decision.direction, position.entryPrice, exitPrice, position.quantity),
+        calculatePnL(
+          decision.direction,
+          position.entryPrice,
+          exitPrice,
+          position.quantity.toFixed(),
+        ),
       );
       acc.position = null;
       acc.lastPrice = exitPrice;
@@ -315,7 +341,7 @@ export function projectDecisionReplay(
           decision.direction,
           acc.position.entryPrice,
           acc.lastPrice,
-          acc.position.quantity,
+          acc.position.quantity.toFixed(),
         )
       : null;
 

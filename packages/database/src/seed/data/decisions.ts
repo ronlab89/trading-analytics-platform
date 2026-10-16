@@ -61,17 +61,17 @@ export const SEED_DECISIONS: readonly DecisionBlueprint[] = [
       {
         type: DecisionEventType.POSITION_OPENED,
         timestamp: new Date("2026-06-01T14:30:00Z"),
-        payload: { quantity: 10, price: 150 },
+        payload: { quantity: "10", price: "150" },
       },
       {
         type: DecisionEventType.PRICE_UPDATE,
         timestamp: new Date("2026-07-10T12:00:00Z"),
-        payload: { price: 165.5 },
+        payload: { price: "165.5" },
       },
       {
         type: DecisionEventType.TARGET_REACHED,
         timestamp: new Date("2026-08-15T16:00:00Z"),
-        payload: { price: 184.22 },
+        payload: { price: "184.22" },
       },
     ],
   },
@@ -99,17 +99,17 @@ export const SEED_DECISIONS: readonly DecisionBlueprint[] = [
       {
         type: DecisionEventType.POSITION_OPENED,
         timestamp: new Date("2026-05-15T15:30:00Z"),
-        payload: { quantity: 5, price: 420 },
+        payload: { quantity: "5", price: "420" },
       },
       {
         type: DecisionEventType.PRICE_UPDATE,
         timestamp: new Date("2026-07-05T10:00:00Z"),
-        payload: { price: 398 },
+        payload: { price: "398" },
       },
       {
         type: DecisionEventType.POSITION_CLOSED,
         timestamp: new Date("2026-07-20T13:30:00Z"),
-        payload: { price: 385 },
+        payload: { price: "385" },
       },
     ],
   },
