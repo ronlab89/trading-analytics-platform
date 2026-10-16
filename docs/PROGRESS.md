@@ -5,13 +5,13 @@
 > reconciled with them and with the code, slice by slice. The build order is
 > backend-first: blocks B0 to B7 close the backend, then the frontend stage
 > follows (`docs/BACKEND-ROADMAP.md`, `docs/15-implementation-plan.md` §4.1).
-> B0 is in progress: B0.1 (CI, `.nvmrc`, version alignment, `check-docs`
-> hardening), B0.2 (runtime role, seed and reset guard, `CORS_ORIGIN`
-> validation, login timing), B0.3 (route characterization tests) and B0.4
-> (shared contracts) are done; B0.5 (application layer), B0.6 (in-memory
-> repositories) and B0.7 (transaction rules) are done, and `07-api-spec.md`
-> and `05-data-model.md` agree with the code. B0 itself closes once the CI is
-> green on the pull request.
+> **B0 is done** (2026-10-16, merged into `develop`): B0.1 (CI, `.nvmrc`,
+> version alignment, `check-docs` hardening), B0.2 (runtime role, seed and
+> reset guard, `CORS_ORIGIN` validation, login timing), B0.3 (route
+> characterization tests), B0.4 (shared contracts), B0.5 (application layer),
+> B0.6 (in-memory repositories) and B0.7 (transaction rules), with
+> `07-api-spec.md` and `05-data-model.md` aligned with the code. The next block
+> is B1.
 
 **Last updated:** 2026-10-16 (B0.7); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
@@ -927,8 +927,7 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** close B0 (CI green on the pull request), then B1. B0.1 to
-B0.7 are done. Phase 5 itself still has the reconciliation of
+**Next:** B1 (performance and risk analytics). B0 is done. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in
