@@ -17,6 +17,7 @@ export * from "./market-event-repository.contract.js";
 export * from "./market-price-repository.contract.js";
 export * from "./notification-repository.contract.js";
 export * from "./portfolio-repository.contract.js";
+export * from "./position-repository.contract.js";
 export * from "./scenario-repository.contract.js";
 export * from "./user-preference-repository.contract.js";
 export * from "./user-repository.contract.js";
