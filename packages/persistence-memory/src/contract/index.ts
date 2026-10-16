@@ -16,3 +16,4 @@ export * from "./notification-repository.contract.js";
 export * from "./portfolio-repository.contract.js";
 export * from "./user-preference-repository.contract.js";
 export * from "./user-repository.contract.js";
+export * from "./watchlist-item-repository.contract.js";
