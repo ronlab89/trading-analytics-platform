@@ -8,9 +8,12 @@
 > B0 is in progress: B0.1 (CI, `.nvmrc`, version alignment, `check-docs`
 > hardening), B0.2 (runtime role, seed and reset guard, `CORS_ORIGIN`
 > validation, login timing), B0.3 (route characterization tests) and B0.4
-> (shared contracts) are done; B0.5 (application layer) is in progress.
+> (shared contracts) are done; B0.5 (application layer), B0.6 (in-memory
+> repositories) and B0.7 (transaction rules) are done. B0 itself closes once
+> the CI is green on the pull request and `07-api-spec.md` and
+> `05-data-model.md` are checked against the contracts package.
 
-**Last updated:** 2026-10-08. §1 and §2 are reconciled with the ADRs and the
+**Last updated:** 2026-10-16 (B0.7); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
 the work as it was done.
 **Branch:** `docs/sdd-operations`, the source-of-truth work (ADRs 001-010,
@@ -51,11 +54,29 @@ role, the seed and reset production guard, `CORS_ORIGIN` validation and login
 timing equalization. **B0.3 and B0.4 are done** (`Implemented`): the characterization
 route tests, and `@trading/contracts` with request and response schemas,
 presenters, route-parameter validation and the final error contract.
-**B0.5 is in progress** (T1 to T4 done): `@trading/application` exists with
-the errors, `Actor`, permissions and `Clock`, the composition root and the
-import-boundary lint rule are in place, and portfolios, assets and market
-have moved; positions, transactions and the composite reads remain
+**B0.5 and B0.6 are done** (`Implemented`): `@trading/application` holds the
+use cases behind the import-boundary lint rule, and `@trading/persistence-memory`
+has the 16 in-memory repositories, each run against the shared contract suite
 (`odd/tasks/b0-5-application-layer.md`). `packages/config` holds only a `.gitkeep`.
+**B0.7 is done** (`Implemented`, `odd/tasks/b0-7-transaction-rules.md`):
+- A transaction is validated in date order (FR-018): the asset's history is
+  replayed with the new transaction at its place (ties by `executedAt`, then
+  creation order), so a backdated `SELL` that would oversell is rejected and the
+  position's `averageEntryPrice` and `openedAt` come from the replay.
+- Concurrent creations on one portfolio and asset are serialized by a Postgres
+  advisory transaction lock (in memory, by the unit-of-work queue); of two `SELL`s
+  of 6 on a holding of 10, exactly one succeeds.
+- An archived portfolio is read-only (ADR-010 point 5): transaction, scenario
+  and alert mutations return 409 `CONFLICT` and write nothing. Order of errors:
+  permission, 404 ownership, 409 archived. `updatePortfolio` is not blocked.
+- Decimal strings (ADR-002 point 9): `scenario-impact.ts` builds the factor with
+  `Decimal`; `decision-replay.ts` accepts only decimal strings in event payloads
+  and reports anything else as an issue; `Money` and `moneySchema` use fixed
+  notation, never `"5e-8"`. The replay response now carries `position.quantity`
+  as a string. Seed data is rewritten to strings.
+- Not done: the scale and rounding of computed amounts (ADR-002), and the
+  `createdAt` tiebreak under concurrency on Prisma (the app should set it after
+  taking the lock).
 
 **SDD reconciliation:** the spec set is `docs/00` to `docs/16` plus ADRs
 001-010 (`docs/adr/`). Phases 0-4 of `odd/tasks/sdd-source-of-truth.md` are
@@ -905,7 +926,9 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B0.5 T5 (positions and transactions); B0.1 to B0.4 are done. Phase 5 itself still has the reconciliation of
+**Next:** close B0 (CI green on the pull request, and `07-api-spec.md` and
+`05-data-model.md` checked against the contracts package), then B1. B0.1 to
+B0.7 are done. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in
