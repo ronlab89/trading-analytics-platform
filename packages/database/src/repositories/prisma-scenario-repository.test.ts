@@ -1,20 +1,64 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { scenarioRepositoryContract } from "@trading/persistence-memory/contract";
 import { prisma } from "../client.js";
 import { PrismaScenarioRepository } from "./prisma-scenario-repository.js";
 
-describe("PrismaScenarioRepository", () => {
+/**
+ * Integration test for `PrismaScenarioRepository`.
+ * Source: docs/10-testing-strategy.md §17 (Repository Testing).
+ *
+ * Runs the shared `ScenarioRepository` contract suite (the same one the
+ * in-memory implementation passes) against the real Docker Postgres instance
+ * (see docker-compose.yml). It is NOT a unit test: the database must be up
+ * (`docker compose up -d postgres`) and migrated
+ * (`pnpm --filter @trading/database db:test:migrate`) before running.
+ *
+ * Each contract test gets one dedicated user and two portfolios (the foreign
+ * key owners). Deleting the user cascades (onDelete: Cascade, see
+ * schema.prisma) to the portfolios and to the scenarios created by the test.
+ *
+ * The checks below the contract are Prisma-only: they write rows straight into
+ * the table, which the repository interface cannot do.
+ */
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+function createUser(label: string) {
+  return prisma.user.create({
+    data: {
+      email: `scenario-repo-test-${label}-${crypto.randomUUID()}@example.com`,
+      displayName: "Scenario Repository Test User",
+    },
+  });
+}
+
+scenarioRepositoryContract("PrismaScenarioRepository", async () => {
+  const user = await createUser("contract");
+  const portfolio = await prisma.portfolio.create({
+    data: { userId: user.id, name: "Scenario Test Portfolio", baseCurrency: "USD" },
+  });
+  const otherPortfolio = await prisma.portfolio.create({
+    data: { userId: user.id, name: "Other Scenario Test Portfolio", baseCurrency: "USD" },
+  });
+
+  return {
+    repository: new PrismaScenarioRepository(),
+    fixtures: { portfolioId: portfolio.id, otherPortfolioId: otherPortfolio.id },
+    cleanup: async () => {
+      await prisma.user.deleteMany({ where: { id: user.id } });
+    },
+  };
+});
+
+describe("PrismaScenarioRepository (Prisma-only checks)", () => {
   const repository = new PrismaScenarioRepository();
 
   let userId: string;
   let portfolioId: string;
 
   beforeAll(async () => {
-    const user = await prisma.user.create({
-      data: {
-        email: `scenario-repo-test-${crypto.randomUUID()}@example.com`,
-        displayName: "Scenario Repository Test User",
-      },
-    });
+    const user = await createUser("prisma-only");
     userId = user.id;
 
     const portfolio = await prisma.portfolio.create({
@@ -25,129 +69,6 @@ describe("PrismaScenarioRepository", () => {
 
   afterAll(async () => {
     await prisma.user.delete({ where: { id: userId } });
-    await prisma.$disconnect();
-  });
-
-  it("creates a scenario with default DRAFT status", async () => {
-    const scenario = await repository.create({
-      portfolioId,
-      name: "Increase technology exposure",
-      description: "Evaluate higher technology allocation.",
-    });
-
-    expect(scenario.status).toBe("DRAFT");
-    expect(scenario.baseSnapshotId).toBeNull();
-  });
-
-  it("creates a scenario with no changes by default", async () => {
-    const scenario = await repository.create({ portfolioId, name: "No Changes Yet" });
-
-    expect(scenario.changes).toEqual([]);
-  });
-
-  it("creates a scenario with its changes", async () => {
-    const scenario = await repository.create({
-      portfolioId,
-      name: "Created With Changes",
-      changes: [
-        { assetId: "asset_001", percentChange: 15 },
-        { assetId: "asset_002", percentChange: -10 },
-      ],
-    });
-
-    expect(scenario.changes).toEqual([
-      { assetId: "asset_001", percentChange: 15 },
-      { assetId: "asset_002", percentChange: -10 },
-    ]);
-  });
-
-  it("retrieves a scenario by id and lists by portfolio", async () => {
-    const created = await repository.create({ portfolioId, name: "Listable Scenario" });
-
-    expect((await repository.getById(created.id))?.id).toBe(created.id);
-
-    const scenarios = await repository.listByPortfolioId(portfolioId);
-    expect(scenarios.some((s) => s.id === created.id)).toBe(true);
-  });
-
-  it("updates name, description and status", async () => {
-    const created = await repository.create({ portfolioId, name: "To Rename" });
-
-    const updated = await repository.update(created.id, {
-      name: "Renamed Scenario",
-      status: "SAVED",
-    });
-
-    expect(updated.name).toBe("Renamed Scenario");
-    expect(updated.status).toBe("SAVED");
-  });
-
-  it("keeps the changes when name, description or status are updated", async () => {
-    const created = await repository.create({
-      portfolioId,
-      name: "Keeps Changes",
-      changes: [{ assetId: "asset_001", percentChange: 7 }],
-    });
-
-    const updated = await repository.update(created.id, { name: "Still Has Changes" });
-
-    expect(updated.changes).toEqual([{ assetId: "asset_001", percentChange: 7 }]);
-  });
-
-  it("updates name and changes together in a single call", async () => {
-    const created = await repository.create({
-      portfolioId,
-      name: "Before",
-      changes: [{ assetId: "asset_001", percentChange: 1 }],
-    });
-
-    const updated = await repository.update(created.id, {
-      name: "After",
-      changes: [{ assetId: "asset_002", percentChange: -8 }],
-    });
-
-    expect(updated.name).toBe("After");
-    expect(updated.changes).toEqual([{ assetId: "asset_002", percentChange: -8 }]);
-    expect((await repository.getById(created.id))?.changes).toEqual(updated.changes);
-  });
-
-  it("persists changes via updateChanges and reads them back", async () => {
-    const created = await repository.create({ portfolioId, name: "With Changes" });
-
-    const updated = await repository.updateChanges(created.id, [
-      { assetId: "asset_001", percentChange: 10 },
-      { assetId: "asset_002", percentChange: -5 },
-    ]);
-
-    const expected = [
-      { assetId: "asset_001", percentChange: 10 },
-      { assetId: "asset_002", percentChange: -5 },
-    ];
-
-    expect(updated.id).toBe(created.id);
-    expect(updated.changes).toEqual(expected);
-    expect((await repository.getById(created.id))?.changes).toEqual(expected);
-
-    const listed = (await repository.listByPortfolioId(portfolioId)).find(
-      (s) => s.id === created.id,
-    );
-    expect(listed?.changes).toEqual(expected);
-  });
-
-  it("replaces the previous changes, and an empty array resets them", async () => {
-    const created = await repository.create({
-      portfolioId,
-      name: "To Reset",
-      changes: [{ assetId: "asset_001", percentChange: 10 }],
-    });
-
-    const replaced = await repository.updateChanges(created.id, [
-      { assetId: "asset_009", percentChange: -3 },
-    ]);
-    expect(replaced.changes).toEqual([{ assetId: "asset_009", percentChange: -3 }]);
-
-    const reset = await repository.updateChanges(created.id, []);
-    expect(reset.changes).toEqual([]);
   });
 
   it("ignores malformed stored changes instead of failing the read", async () => {
@@ -197,13 +118,5 @@ describe("PrismaScenarioRepository", () => {
     const scenarios = await repository.listByPortfolioId(orderingPortfolio.id);
 
     expect(scenarios.map((s) => s.name)).toEqual(["Newest", "Middle", "Oldest"]);
-  });
-
-  it("deletes a scenario", async () => {
-    const created = await repository.create({ portfolioId, name: "To Delete" });
-
-    await repository.delete(created.id);
-
-    expect(await repository.getById(created.id)).toBeNull();
   });
 });

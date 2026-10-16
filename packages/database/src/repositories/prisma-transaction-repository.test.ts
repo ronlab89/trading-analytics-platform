@@ -1,185 +1,68 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { Money } from "@trading/domain";
+import { afterAll } from "vitest";
+import { transactionRepositoryContract } from "@trading/persistence-memory/contract";
 import { prisma } from "../client.js";
 import { PrismaTransactionRepository } from "./prisma-transaction-repository.js";
 
 /**
  * Integration test for `PrismaTransactionRepository`.
- * See prisma-portfolio-repository.test.ts for the shared preconditions
- * (Docker Postgres up and migrated).
+ * Source: docs/10-testing-strategy.md §17 (Repository Testing).
  *
- * A dedicated user, portfolio and asset are created once for the whole
- * suite (transactions require valid FKs to both). Deleting the user at
- * teardown cascades through the portfolio to its transactions; the
- * asset is deleted separately since Transaction -> Asset uses
- * onDelete: Restrict (schema.prisma), so it must outlive every
- * transaction created against it and be cleaned up last.
+ * Runs the shared `TransactionRepository` contract suite (the same one the
+ * in-memory implementation passes) against the real Docker Postgres instance
+ * (see docker-compose.yml). It is NOT a unit test: the database must be up
+ * (`docker compose up -d postgres`) and migrated
+ * (`pnpm --filter @trading/database db:test:migrate`) before running.
+ *
+ * Each test gets one dedicated user, two portfolios and two assets (the
+ * foreign key owners). Deleting the user cascades (onDelete: Cascade, see
+ * schema.prisma) to the portfolios and to the transactions created by the
+ * test. The assets are deleted afterwards: a transaction restricts the
+ * deletion of its asset (onDelete: Restrict), so they can only go once the
+ * transactions are gone.
  */
-describe("PrismaTransactionRepository", () => {
-  const repository = new PrismaTransactionRepository();
+afterAll(async () => {
+  await prisma.$disconnect();
+});
 
-  let userId: string;
-  let portfolioId: string;
-  let assetId: string;
-
-  beforeAll(async () => {
-    const user = await prisma.user.create({
-      data: {
-        email: `transaction-repo-test-${crypto.randomUUID()}@example.com`,
-        displayName: "Transaction Repository Test User",
-      },
-    });
-    userId = user.id;
-
-    const portfolio = await prisma.portfolio.create({
-      data: { userId, name: "Test Portfolio", baseCurrency: "USD" },
-    });
-    portfolioId = portfolio.id;
-
-    const asset = await prisma.asset.create({
-      data: {
-        symbol: `TXN-${crypto.randomUUID().slice(0, 8)}`,
-        name: "Test Asset",
-        assetType: "CRYPTO",
-        currency: "USD",
-        exchange: "MOCK",
-      },
-    });
-    assetId = asset.id;
+function createAsset(label: string) {
+  return prisma.asset.create({
+    data: {
+      symbol: `TXN-${label}-${crypto.randomUUID().slice(0, 8)}`,
+      name: "Transaction Test Asset",
+      assetType: "CRYPTO",
+      currency: "USD",
+      exchange: "MOCK",
+    },
   });
+}
 
-  afterAll(async () => {
-    await prisma.user.delete({ where: { id: userId } });
-    await prisma.asset.delete({ where: { id: assetId } });
-    await prisma.$disconnect();
+transactionRepositoryContract("PrismaTransactionRepository", async () => {
+  const user = await prisma.user.create({
+    data: {
+      email: `transaction-repo-test-${crypto.randomUUID()}@example.com`,
+      displayName: "Transaction Repository Test User",
+    },
   });
-
-  it("creates a transaction, defaulting fees to zero and status to DRAFT", async () => {
-    const transaction = await repository.create({
-      portfolioId,
-      assetId,
-      type: "BUY",
-      quantity: 10,
-      price: Money.of("150.25", "USD"),
-    });
-
-    expect(transaction.status).toBe("DRAFT");
-    expect(transaction.quantity).toBe(10);
-    expect(transaction.price.equals(Money.of("150.25", "USD"))).toBe(true);
-    expect(transaction.fees.equals(Money.of("0", "USD"))).toBe(true);
-    expect(transaction.executedAt).toBeInstanceOf(Date);
+  const portfolio = await prisma.portfolio.create({
+    data: { userId: user.id, name: "Transaction Test Portfolio", baseCurrency: "USD" },
   });
-
-  it("preserves decimal precision for price and fees through the round trip", async () => {
-    const transaction = await repository.create({
-      portfolioId,
-      assetId,
-      type: "BUY",
-      quantity: 0.12345678,
-      price: Money.of("184.87654321", "USD"),
-      fees: Money.of("2.50000001", "USD"),
-    });
-
-    const found = await repository.getById(transaction.id);
-
-    expect(found?.price.toString()).toBe("184.87654321");
-    expect(found?.fees.toString()).toBe("2.50000001");
-    expect(found?.quantity).toBeCloseTo(0.12345678, 8);
+  const otherPortfolio = await prisma.portfolio.create({
+    data: { userId: user.id, name: "Other Transaction Test Portfolio", baseCurrency: "USD" },
   });
+  const asset = await createAsset("A");
+  const otherAsset = await createAsset("B");
 
-  it("respects an explicit executedAt instead of defaulting to now", async () => {
-    const explicitDate = new Date("2026-01-15T10:00:00.000Z");
-
-    const transaction = await repository.create({
-      portfolioId,
-      assetId,
-      type: "SELL",
-      quantity: 1,
-      price: Money.of("100", "USD"),
-      executedAt: explicitDate,
-    });
-
-    expect(transaction.executedAt.toISOString()).toBe(explicitDate.toISOString());
-  });
-
-  it("lists transactions for a portfolio filtered by type and date range", async () => {
-    const buy = await repository.create({
-      portfolioId,
-      assetId,
-      type: "BUY",
-      quantity: 1,
-      price: Money.of("50", "USD"),
-      executedAt: new Date("2026-02-01T00:00:00.000Z"),
-    });
-
-    const results = await repository.listByPortfolioId(
-      portfolioId,
-      {
-        type: "BUY",
-        dateFrom: new Date("2026-02-01T00:00:00.000Z"),
-        dateTo: new Date("2026-02-28T00:00:00.000Z"),
-      },
-      { page: 1, pageSize: 100 },
-    );
-
-    expect(results.items.some((t) => t.id === buy.id)).toBe(true);
-    expect(results.items.every((t) => t.type === "BUY")).toBe(true);
-  });
-
-  it("paginates newest-first with a stable order and reports the total", async () => {
-    const dates = ["2027-03-01", "2027-03-02", "2027-03-03"];
-    for (const date of dates) {
-      await repository.create({
-        portfolioId,
-        assetId,
-        type: "BUY",
-        quantity: 1,
-        price: Money.of("10", "USD"),
-        executedAt: new Date(`${date}T00:00:00.000Z`),
-      });
-    }
-
-    // Date range isolates this test's rows from other tests' transactions.
-    const filter = {
-      dateFrom: new Date("2027-03-01T00:00:00.000Z"),
-      dateTo: new Date("2027-03-31T00:00:00.000Z"),
-    };
-    const first = await repository.listByPortfolioId(portfolioId, filter, {
-      page: 1,
-      pageSize: 2,
-    });
-    const second = await repository.listByPortfolioId(portfolioId, filter, {
-      page: 2,
-      pageSize: 2,
-    });
-
-    expect(first.total).toBe(3);
-    expect(first.items.map((t) => t.executedAt.toISOString().slice(0, 10))).toEqual([
-      "2027-03-03",
-      "2027-03-02",
-    ]);
-    expect(second.items.map((t) => t.executedAt.toISOString().slice(0, 10))).toEqual([
-      "2027-03-01",
-    ]);
-  });
-
-  it("returns null when a transaction does not exist", async () => {
-    expect(await repository.getById("nonexistent-id")).toBeNull();
-  });
-
-  it("transitions status via updateStatus", async () => {
-    const transaction = await repository.create({
-      portfolioId,
-      assetId,
-      type: "BUY",
-      quantity: 1,
-      price: Money.of("10", "USD"),
-    });
-
-    const processing = await repository.updateStatus(transaction.id, "PROCESSING");
-    expect(processing.status).toBe("PROCESSING");
-
-    const completed = await repository.updateStatus(transaction.id, "COMPLETED");
-    expect(completed.status).toBe("COMPLETED");
-  });
+  return {
+    repository: new PrismaTransactionRepository(),
+    fixtures: {
+      portfolioId: portfolio.id,
+      otherPortfolioId: otherPortfolio.id,
+      assetId: asset.id,
+      otherAssetId: otherAsset.id,
+    },
+    cleanup: async () => {
+      await prisma.user.deleteMany({ where: { id: user.id } });
+      await prisma.asset.deleteMany({ where: { id: { in: [asset.id, otherAsset.id] } } });
+    },
+  };
 });

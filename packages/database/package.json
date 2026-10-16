@@ -27,6 +27,7 @@
     "@trading/domain": "workspace:*"
   },
   "devDependencies": {
+    "@trading/persistence-memory": "workspace:*",
     "@types/node": "^24",
     "dotenv-cli": "^11.0.0",
     "prisma": "^6.0.0",

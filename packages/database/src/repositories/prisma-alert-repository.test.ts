@@ -1,93 +1,63 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll } from "vitest";
+import { alertRepositoryContract } from "@trading/persistence-memory/contract";
 import { prisma } from "../client.js";
 import { PrismaAlertRepository } from "./prisma-alert-repository.js";
 
-describe("PrismaAlertRepository", () => {
-  const repository = new PrismaAlertRepository();
+/**
+ * Integration test for `PrismaAlertRepository`.
+ * Source: docs/10-testing-strategy.md §17 (Repository Testing).
+ *
+ * Runs the shared `AlertRepository` contract suite (the same one the in-memory
+ * implementation passes) against the real Docker Postgres instance (see
+ * docker-compose.yml). It is NOT a unit test: the database must be up
+ * (`docker compose up -d postgres`) and migrated
+ * (`pnpm --filter @trading/database db:test:migrate`) before running.
+ *
+ * Each test gets two dedicated users, one asset and one portfolio (the foreign
+ * key owners). Deleting the users cascades (onDelete: Cascade, see
+ * schema.prisma) to the portfolio and to the alerts created by the test; the
+ * asset is deleted on its own.
+ */
+afterAll(async () => {
+  await prisma.$disconnect();
+});
 
-  let userId: string;
-  let assetId: string;
+function createUser(label: string) {
+  return prisma.user.create({
+    data: {
+      email: `alert-repo-test-${label}-${crypto.randomUUID()}@example.com`,
+      displayName: "Alert Repository Test User",
+    },
+  });
+}
 
-  beforeAll(async () => {
-    const user = await prisma.user.create({
-      data: {
-        email: `alert-repo-test-${crypto.randomUUID()}@example.com`,
-        displayName: "Alert Repository Test User",
-      },
-    });
-    userId = user.id;
-
-    const asset = await prisma.asset.create({
-      data: {
-        symbol: `ALRT-${crypto.randomUUID().slice(0, 8)}`,
-        name: "Test Asset",
-        assetType: "CRYPTO",
-        currency: "USD",
-        exchange: "MOCK",
-      },
-    });
-    assetId = asset.id;
+alertRepositoryContract("PrismaAlertRepository", async () => {
+  const user = await createUser("a");
+  const otherUser = await createUser("b");
+  const asset = await prisma.asset.create({
+    data: {
+      symbol: `ALRT-${crypto.randomUUID().slice(0, 8)}`,
+      name: "Alert Test Asset",
+      assetType: "CRYPTO",
+      currency: "USD",
+      exchange: "MOCK",
+    },
+  });
+  const portfolio = await prisma.portfolio.create({
+    data: { userId: user.id, name: "Alert Test Portfolio", baseCurrency: "USD" },
   });
 
-  afterAll(async () => {
-    await prisma.user.delete({ where: { id: userId } });
-    await prisma.asset.delete({ where: { id: assetId } });
-    await prisma.$disconnect();
-  });
-
-  it("creates an alert with default enabled=true", async () => {
-    const alert = await repository.create({
-      userId,
-      assetId,
-      type: "PRICE",
-      condition: "ABOVE",
-      threshold: 200,
-    });
-
-    expect(alert.enabled).toBe(true);
-    expect(alert.portfolioId).toBeNull();
-  });
-
-  it("retrieves an alert by id and lists by user", async () => {
-    const created = await repository.create({
-      userId,
-      assetId,
-      type: "PRICE",
-      condition: "BELOW",
-      threshold: 100,
-    });
-
-    expect((await repository.getById(created.id))?.id).toBe(created.id);
-
-    const alerts = await repository.listByUserId(userId);
-    expect(alerts.some((a) => a.id === created.id)).toBe(true);
-  });
-
-  it("updates condition, threshold and enabled", async () => {
-    const created = await repository.create({
-      userId,
-      assetId,
-      type: "PRICE",
-      condition: "ABOVE",
-      threshold: 150,
-    });
-
-    const updated = await repository.update(created.id, { threshold: 175, enabled: false });
-
-    expect(updated.threshold).toBe(175);
-    expect(updated.enabled).toBe(false);
-  });
-
-  it("deletes an alert", async () => {
-    const created = await repository.create({
-      userId,
-      assetId,
-      type: "PRICE",
-      condition: "ABOVE",
-      threshold: 500,
-    });
-
-    await repository.delete(created.id);
-    expect(await repository.getById(created.id)).toBeNull();
-  });
+  return {
+    repository: new PrismaAlertRepository(),
+    fixtures: {
+      userId: user.id,
+      otherUserId: otherUser.id,
+      assetId: asset.id,
+      portfolioId: portfolio.id,
+    },
+    cleanup: async () => {
+      await prisma.user.deleteMany({ where: { id: { in: [user.id, otherUser.id] } } });
+      await prisma.asset.deleteMany({ where: { id: asset.id } });
+    },
+  };
 });

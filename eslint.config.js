@@ -63,6 +63,27 @@ export default [
   },
 
   {
+    // @trading/persistence-memory imports nothing except @trading/domain (and its own files).
+    // The contract suites under src/contract are test code and import vitest.
+    files: ["packages/persistence-memory/src/**/*.ts"],
+    ignores: ["**/*.test.ts", "packages/persistence-memory/src/contract/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^(?!@trading/domain$|\\.{1,2}/).+",
+              message:
+                "@trading/persistence-memory may only import @trading/domain: no Prisma, Express, Zod, @trading/application or other packages (ADR-001 point 1).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
     // Config files and repository scripts live outside any tsconfig `include`, so type-aware rules
     // (which require project membership) must be disabled for them.
     // This is typescript-eslint's documented pattern for root-level config files.
