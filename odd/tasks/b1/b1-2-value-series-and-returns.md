@@ -22,7 +22,9 @@ docs/PROGRESS.md
 - [x] T2 One pure function maps a preset period (`1W`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL`) and `to` to `from`, with month-end, leap-year and `YTD` tests. Day boundaries are UTC calendar dates.
 - [x] T3 Daily quantity timeline per asset from the transactions (date-order replay).
 - [x] T4 Daily portfolio value series: the last close is carried forward; an asset that never had a price is `InsufficientData`. Hand-computed tests.
-- [ ] T5 Time-weighted return and absolute P/L over a period (`BUY` as inflow, `SELL` as outflow; boundaries `V(day before from)` and flows over `[from, to]`; clamped periods state `effectiveFrom`). `Decimal` throughout.
+- [ ] T5 Time-weighted return and absolute P/L over a period (`BUY` as inflow, `SELL` as outflow; boundaries `V(day before from)` and flows over `[from, to]`; clamped periods state `effectiveFrom`). `Decimal` throughout. Split in two commits:
+  - [x] T5a Daily flows `B(d)`/`S(d)` and the daily return `r(d)` (`daily-return.ts`), hand-computed tests of §4 and §6.
+  - [ ] T5b Period performance (`period-performance.ts`): `TWR` and `P/L` with the §5 clamp and `effectiveFrom`; status `OK` or `INSUFFICIENT_DATA` (`UNKNOWN` is not produced here); the daily returns of the counted days.
 
 ## Done when
 
@@ -38,5 +40,6 @@ pnpm --filter @trading/domain test; pnpm --filter @trading/application test; pnp
 - T2: `resolvePeriodWindow` returns `null` for `ALL` without transactions; T5 maps it to the no-data status. It does not clamp to `effectiveFrom`.
 - T3: `buildQuantityTimeline` sums with `Decimal` so quantities that cancel out reach exactly `0`. The UTC day helpers moved to the internal `calculations/utc-date.ts`, shared with `period.ts`. Flows `B(d)`/`S(d)` are not part of T3; T5 needs them.
 - T4: `buildValueSeries` marks a day `INSUFFICIENT_DATA` with `value: null` when a held asset has no candle on or before it; it does not compute `effectiveFrom` (T5). Requirement for the caller (B1.4 service): read candles from before the first day of the range, or the carry-forward prices the first days wrongly as insufficient data.
+- T5a: returns are `Decimal` fractions (`0.1` is +10%); percentage points are the presenter's job (ADR-004). `calculateDailyReturn` returns `null`, not `0`, when `V(d-1) + B(d)` is zero.
 - Follow-up (B0 debt, not B1.2): `replayPosition` subtracts quantities with `number`, so `0.3 - 0.1 - 0.2` leaves a residual instead of closing the position.
 - Reconcile at the end of B1.2: `16-analytics-spec.md` §3 and §8 are still marked `Planned (B1)`.
