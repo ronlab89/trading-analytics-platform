@@ -50,6 +50,9 @@ function build(
     ownedPortfolios?: string[];
     archivedPortfolios?: string[];
     assetExists?: boolean;
+    /** Currencies of the portfolio and of the asset; both USD unless a test says otherwise. */
+    baseCurrency?: string;
+    assetCurrency?: string;
     stored?: Transaction[];
     /** The asset's existing transactions, in creation order, read for the chronological check. */
     history?: Transaction[];
@@ -61,6 +64,8 @@ function build(
     ownedPortfolios = ["p1"],
     archivedPortfolios = [],
     assetExists = true,
+    baseCurrency = "USD",
+    assetCurrency = "USD",
     stored = [],
     history = [],
     existing = null,
@@ -104,14 +109,17 @@ function build(
     getPortfolioById: (_actor: Actor, portfolioId: string) =>
       ownedPortfolios.includes(portfolioId)
         ? Promise.resolve(
-            archivedPortfolios.includes(portfolioId) ? { status: PortfolioStatus.ARCHIVED } : {},
+            archivedPortfolios.includes(portfolioId)
+              ? { status: PortfolioStatus.ARCHIVED, baseCurrency }
+              : { baseCurrency },
           )
         : Promise.reject(new NotFoundError("The requested resource could not be found.")),
   };
   const service = createTransactionService({
     transactionRepository: transactions,
     assetRepository: {
-      getById: () => Promise.resolve(assetExists ? ({ id: "a1" } as Asset) : null),
+      getById: () =>
+        Promise.resolve(assetExists ? ({ id: "a1", currency: assetCurrency } as Asset) : null),
     },
     unitOfWork,
     portfolioService: portfolioService as never,
@@ -189,6 +197,36 @@ describe("transaction service", () => {
     expect(result.position).toBeNull();
     expect(calls.deletes).toEqual(["p1"]);
     expect(calls.upserts).toHaveLength(0);
+  });
+
+  describe("single currency (ADR-004 point 12)", () => {
+    it("rejects an asset in another currency than the portfolio base currency and writes nothing", async () => {
+      const { service, calls } = build({ baseCurrency: "USD", assetCurrency: "EUR" });
+      const error = await service.createTransaction(actor, "p1", buy).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(InvalidTransactionError);
+      expect((error as Error).message).toBe(
+        "The asset is in EUR but the portfolio is in USD: version 1 is single-currency.",
+      );
+      expect(calls.reads).toHaveLength(0);
+      expect(calls.upserts).toHaveLength(0);
+      expect(calls.statusUpdates).toHaveLength(0);
+    });
+
+    it("accepts an asset in the portfolio base currency", async () => {
+      const { service } = build({ baseCurrency: "EUR", assetCurrency: "EUR" });
+      const result = await service.createTransaction(actor, "p1", {
+        ...buy,
+        price: Money.of("100", "EUR"),
+      });
+      expect(result.transaction.status).toBe(TransactionStatus.COMPLETED);
+    });
+
+    it("keeps answering 404 for an unknown asset before comparing currencies", async () => {
+      const { service } = build({ assetExists: false, baseCurrency: "USD", assetCurrency: "EUR" });
+      await expect(service.createTransaction(actor, "p1", buy)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
   });
 
   describe("archived portfolio guard (ADR-010 point 5)", () => {

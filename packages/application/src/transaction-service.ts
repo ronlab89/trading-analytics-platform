@@ -1,4 +1,10 @@
-import { Money, TransactionStatus, replayPosition, validateNewTransaction } from "@trading/domain";
+import {
+  InvalidTransactionError,
+  Money,
+  TransactionStatus,
+  replayPosition,
+  validateNewTransaction,
+} from "@trading/domain";
 import type {
   AssetRepository,
   Page,
@@ -99,7 +105,8 @@ export function createTransactionService(dependencies: TransactionServiceDepende
    *
    * Order: permission, portfolio ownership, archived-portfolio guard (409,
    * ADR-010 point 5), asset existence (an unknown
-   * asset is a client error, 404), domain validation. Then, inside one Unit
+   * asset is a client error, 404), the single-currency rule (400, ADR-004
+   * point 12), domain validation. Then, inside one Unit
    * of Work: replay the asset's history with the new transaction in date
    * order and reject it if the held quantity would ever go negative (FR-018,
    * so a backdated transaction is checked too), persist the transaction,
@@ -120,6 +127,11 @@ export function createTransactionService(dependencies: TransactionServiceDepende
     const asset = await assetRepository.getById(input.assetId);
     if (!asset) {
       throw new NotFoundError("The referenced asset could not be found.");
+    }
+    if (asset.currency !== portfolio.baseCurrency) {
+      throw new InvalidTransactionError(
+        `The asset is in ${asset.currency} but the portfolio is in ${portfolio.baseCurrency}: version 1 is single-currency.`,
+      );
     }
 
     const createInput = {

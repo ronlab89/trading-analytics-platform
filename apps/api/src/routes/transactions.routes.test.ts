@@ -267,6 +267,30 @@ describe("transactions", () => {
     expect(body<DataMetaEnvelope<TransactionDto[]>>(list).data).toHaveLength(1);
   });
 
+  it("rejects an asset in another currency than the portfolio with 400 and writes nothing", async () => {
+    const euroAsset = await createTestAsset("EURO", { currency: "EUR" });
+    assetIds.push(euroAsset.id);
+
+    const response = await request(app)
+      .post(`/api/v1/portfolios/${portfolioId}/transactions`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        assetId: euroAsset.id,
+        type: "BUY",
+        quantity: 1,
+        price: { amount: "10", currency: "EUR" },
+      });
+
+    expect(response.status).toBe(400);
+    expect(body<ErrorEnvelope>(response).error.code).toBe("VALIDATION_ERROR");
+
+    const list = await request(app)
+      .get(`/api/v1/portfolios/${portfolioId}/transactions`)
+      .query({ assetId: euroAsset.id, pageSize: 50 })
+      .set("Authorization", `Bearer ${token}`);
+    expect(body<DataMetaEnvelope<TransactionDto[]>>(list).data).toHaveLength(0);
+  });
+
   it("returns 404 when the referenced asset does not exist", async () => {
     const response = await request(app)
       .post(`/api/v1/portfolios/${portfolioId}/transactions`)
