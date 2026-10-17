@@ -531,7 +531,7 @@ rises by the `BUY` fees of the held units, so `unrealizedPnL`,
 performance dimension of §15 are lower by those fees than before B1.1.
 
 **Realized P/L** (`Implemented` as the pure function `replayRealizedPnL` in
-`realized-pnl.ts`; persistence and API exposure `Planned (B1)`, ADR-003 point 4,
+`realized-pnl.ts`; API exposure `Implemented`, calculated when read and not stored, ADR-003 point 4,
 ADR-004 point 15): realized on each `SELL` against the weighted-average cost at
 the time of the sale, net of the `SELL` fees; sale proceeds leave the portfolio.
 

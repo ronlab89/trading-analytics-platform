@@ -955,7 +955,10 @@ keeps its current-state shape. **B1.6 is done** (`Implemented`,
 `1M` period, with the largest contributor and detractor of the range attribution
 (ties go to the first symbol) and the positions opened and closed, built from the
 same series as `performance`. Alerts triggered in the period wait for the alert
-evaluation. Phase 5 itself still has the reconciliation of
+evaluation. **B1.7 is done** (`Implemented`,
+`odd/tasks/b1/b1-7-realized-pnl-and-currency.md`): a transaction on an asset whose
+currency differs from the portfolio's is rejected with 400, and every transaction
+response carries the `realizedPnL` of a `SELL`, calculated when it is read. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in
