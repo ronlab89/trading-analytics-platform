@@ -7,6 +7,8 @@
  * calendar dates (ADR-004).
  */
 
+import { addUtcDays, startOfUtcDay } from "./utc-date";
+
 /** The presets served by the daily series. `1D` comes from `MarketPrice`. */
 export const PRESET_PERIODS = ["1W", "1M", "3M", "6M", "YTD", "1Y", "ALL"] as const;
 
@@ -21,18 +23,8 @@ export interface PeriodWindow {
   from: Date;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /** The months that each month-based preset counts back from `to`. */
 const MONTH_OFFSETS = { "1M": 1, "3M": 3, "6M": 6, "1Y": 12 } as const;
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
-function addUtcDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * DAY_MS);
-}
 
 /**
  * `date` minus whole calendar months. A day that does not exist in the target
