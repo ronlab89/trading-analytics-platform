@@ -86,7 +86,6 @@ function build(options: Options = {}) {
   const listTransactions = vi.fn(() =>
     Promise.resolve({ items: transactions, total: transactions.length }),
   );
-  const listCandles = vi.fn((_assetId: string, _from: Date, _to: Date) => Promise.resolve([]));
   const listSeriesCandles = vi.fn((_assetIds: readonly string[], _from: Date, _to: Date) =>
     Promise.resolve(candles),
   );
@@ -98,7 +97,7 @@ function build(options: Options = {}) {
       listCompletedByPortfolioId: () => Promise.resolve(transactions),
     },
     marketPriceRepository: { listByAssetIds: () => Promise.resolve(marketPrices) },
-    historicalPriceRepository: { listByAssetId: listCandles, listByAssetIds: listSeriesCandles },
+    historicalPriceRepository: { listByAssetIds: listSeriesCandles },
     portfolioService: {
       getPortfolioById: () =>
         owned
@@ -113,7 +112,7 @@ function build(options: Options = {}) {
     ...(permissions ? { permissions } : {}),
   });
 
-  return { service, listTransactions, listCandles };
+  return { service, listTransactions, listSeriesCandles };
 }
 
 describe("overview service", () => {
@@ -184,11 +183,51 @@ describe("overview service", () => {
     expect(overview.recentTransactions[0]?.asset?.symbol).toBe("AAA");
   });
 
-  it("reads historical prices up to the clock's now, never the system time", async () => {
-    const { service, listCandles } = build();
+  it("reads historical prices up to the day after the last closed day, never the system time", async () => {
+    const { service, listSeriesCandles } = build();
     await service.getPortfolioOverview(actor, "p1");
-    expect(listCandles).toHaveBeenCalledTimes(1);
-    expect(listCandles.mock.calls[0]?.[2]).toEqual(now);
+    // One read for the 1M performance and one for the 1Y pulse inputs.
+    expect(listSeriesCandles).toHaveBeenCalledTimes(2);
+    for (const call of listSeriesCandles.mock.calls) {
+      expect(call[2]).toEqual(new Date("2026-09-20T00:00:00Z"));
+    }
+  });
+
+  it("classifies the pulse volatility and drawdown from the portfolio series over 1Y", async () => {
+    // Held from 2026-01-01; the close alternates 100 and 105 every day up to the last closed day.
+    const candles = Array.from({ length: 262 }, (_, day) => ({
+      assetId: "a1",
+      timestamp: new Date(Date.UTC(2026, 0, 1 + day)),
+      close: Money.of(day % 2 === 0 ? "100" : "105", "USD"),
+    })) as HistoricalPrice[];
+
+    const { service } = build({ candles });
+    const { pulse } = await service.getPortfolioOverview(actor, "p1");
+
+    // Returns of +5% and -4.76% a day: sigma ~ 4.9%, annualized with sqrt(365) about 93%.
+    expect(pulse.volatility.classification).toBe("HIGH");
+    expect(pulse.volatility.value).toBeGreaterThan(90);
+    expect(pulse.volatility.value).toBeLessThan(97);
+    // The deepest fall is 100 / 105 - 1 = -4.76%.
+    expect(pulse.drawdown.classification).toBe("LOW");
+    expect(pulse.drawdown.value).toBeCloseTo(-4.7619, 3);
+  });
+
+  it("leaves the pulse volatility UNKNOWN under 20 returns but keeps the drawdown", async () => {
+    // Held since 2026-01-01 but priced only over the last 10 closed days.
+    const candles = Array.from({ length: 10 }, (_, day) => ({
+      assetId: "a1",
+      timestamp: new Date(Date.UTC(2026, 8, 10 + day)),
+      close: Money.of(day % 2 === 0 ? "100" : "85", "USD"),
+    })) as HistoricalPrice[];
+
+    const { service } = build({ candles });
+    const { pulse } = await service.getPortfolioOverview(actor, "p1");
+
+    expect(pulse.volatility.classification).toBe("UNKNOWN");
+    expect(pulse.volatility.value).toBeNull();
+    expect(pulse.drawdown.classification).toBe("MODERATE");
+    expect(pulse.drawdown.value).toBeCloseTo(-15, 5);
   });
 
   it("raises NotFoundError for a portfolio the actor does not own", async () => {

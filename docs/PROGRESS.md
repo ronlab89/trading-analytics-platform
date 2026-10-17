@@ -285,7 +285,7 @@ malformed payload) — never reveals which one applies.
 | Transactions | `GET/POST /api/v1/portfolios/:id/transactions` (paginated, filterable), `GET .../transactions/:transactionId` | Creation is **synchronous** (not the async job/jobId flow: synchronous by design, ADR-008 point 12). Wrapped in `PrismaUnitOfWork`: transaction record + position recalculation + status update commit or roll back together. |
 | Assets | `GET /api/v1/assets` (paginated, filters: search/assetType/exchange/currency/status), `GET /api/v1/assets/:assetId` | Global reference data, no ownership. `getByIds()` added for batch enrichment (avoids N+1 when building overview/analytics). |
 | Market Data (new, Step C) | `GET /api/v1/assets/:assetId/price`, `GET /api/v1/market/prices?assetIds=...` (batch, up to 50, never 404s — unknown ids just absent), `GET /api/v1/assets/:assetId/history?from=&to=&interval=` | `/price` distinguishes "asset doesn't exist" from "asset exists, no price yet" (both 404, different message — no anti-enumeration concern, assets are public reference data). `interval` currently only accepts `"1d"` (400 for anything else) — only daily candles exist; **user has confirmed weekly/monthly aggregation is a planned future addition**, not needed now. |
-| Analytics | `GET /api/v1/portfolios/:id/analytics/allocation?groupBy=asset\|assetType\|currency`, `GET .../analytics/attribution` | `sector` grouping and attribution `from/to/groupBy` from the spec are deferred — no data exists yet to support them meaningfully. |
+| Analytics | `GET /api/v1/portfolios/:id/analytics/allocation?groupBy=asset\|assetType\|currency`, `GET .../analytics/attribution` | `sector` grouping is deferred. Attribution takes `period`, `from`/`to` and `groupBy` (`asset` or `assetType`) for the range form; without them it is the current-state form (B1.5). |
 | Overview | `GET /api/v1/portfolios/:id/overview` | Purpose-built read model: portfolio + summary + positions (each with `allocationPercent` **and now `dailyChange`**, Step C) + allocation + attribution + last 5 transactions + **`dailyChange`** (portfolio-level) + **`pulse`** (Step C). `performance` (FR-025/026, historical performance by period) remains the one deliberately omitted field — it needs a portfolio value time series reconstructed from Transaction[], a distinct piece of design not yet built. |
 | Health | `GET /health`, `GET /health/ready` | Registered before rate limiting. |
 | Watchlist (Step D) | `GET/POST /api/v1/watchlist`, `DELETE /api/v1/watchlist/:assetId` | User-scoped (no portfolio in the path). Add validates the asset exists (404) and relies on the repo's unique constraint for duplicates (400 `VALIDATION_ERROR`). Remove checks existence first via the new `getByUserAndAsset` (404 instead of a raw Prisma P2025 → 500). |
@@ -945,7 +945,12 @@ serves them with `null` plus `status` for unavailable values. The asset-level
 `odd/tasks/b1/b1-4-performance-api.md`): `GET /portfolios/:id/analytics/performance`
 serves the period `TWR`, P/L and daily series, and the overview carries the same
 result for `1M` in its `performance` field. Risk and performance share one series
-pipeline (`buildPortfolioSeries`). Phase 5 itself still has the reconciliation of
+pipeline (`buildPortfolioSeries`). **B1.5 is done** (`Implemented`,
+`odd/tasks/b1/b1-5-pulse-and-attribution.md`): the Pulse volatility and drawdown come from
+the portfolio series over `1Y` with the annualized thresholds 20 and 60, and
+`GET .../analytics/attribution` serves the money-only range attribution with
+`period`, `from`/`to` and `groupBy` (`asset` or `assetType`); without them it
+keeps its current-state shape. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in

@@ -3,6 +3,7 @@ export * from "./alert-service.js";
 export * from "./analytics-service.js";
 export * from "./risk-service.js";
 export * from "./performance-service.js";
+export * from "./range-attribution-service.js";
 export type { AnalyticsPeriod } from "./portfolio-series.js";
 export * from "./asset-service.js";
 export * from "./clock.js";

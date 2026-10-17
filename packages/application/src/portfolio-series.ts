@@ -7,10 +7,13 @@ import {
 } from "@trading/domain";
 import type {
   DailyValue,
+  HistoricalPrice,
   HistoricalPriceRepository,
   PeriodPerformance,
   Portfolio,
   PresetPeriod,
+  QuantityTimeline,
+  Transaction,
   TransactionRepository,
 } from "@trading/domain";
 import type { Clock } from "./clock.js";
@@ -40,6 +43,17 @@ export interface PortfolioSeries {
   /** The baseline day and the days of the period, in date order. */
   values: DailyValue[];
   performance: PeriodPerformance;
+  /**
+   * What the series was built from, for measures that split it by asset (the range
+   * attribution). `null` when no series was built: nothing to measure, or `from` after `asOf`.
+   */
+  inputs: SeriesInputs | null;
+}
+
+export interface SeriesInputs {
+  timeline: QuantityTimeline;
+  candles: HistoricalPrice[];
+  transactions: Transaction[];
 }
 
 function startOfUtcDay(date: Date): Date {
@@ -80,7 +94,12 @@ export async function buildPortfolioSeries(
       : { anchor: addUtcDays(startOfUtcDay(query.from), -1), from: startOfUtcDay(query.from) };
 
   if (window === null) {
-    return { asOf, values: [], performance: calculatePeriodPerformance([], [], currency) };
+    return {
+      asOf,
+      values: [],
+      performance: calculatePeriodPerformance([], [], currency),
+      inputs: null,
+    };
   }
 
   if (window.from.getTime() > asOf.getTime()) {
@@ -94,6 +113,7 @@ export async function buildPortfolioSeries(
         pnl: null,
         returns: [],
       },
+      inputs: null,
     };
   }
 
@@ -108,5 +128,10 @@ export async function buildPortfolioSeries(
   // No asset to value means no value series, so there are no days to flow over either.
   const flows = values.length === 0 ? [] : buildDailyFlows(transactions, timeline.days, currency);
 
-  return { asOf, values, performance: calculatePeriodPerformance(values, flows, currency) };
+  return {
+    asOf,
+    values,
+    performance: calculatePeriodPerformance(values, flows, currency),
+    inputs: { timeline, candles, transactions },
+  };
 }
