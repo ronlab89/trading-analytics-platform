@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { Money, TransactionStatus, TransactionType } from "@trading/domain";
-import type { Asset, MarketPrice, Portfolio, Position, Transaction } from "@trading/domain";
+import type {
+  Asset,
+  HistoricalPrice,
+  MarketPrice,
+  Portfolio,
+  Position,
+  Transaction,
+} from "@trading/domain";
 import type { Actor } from "./actor.js";
 import { fixedClock } from "./clock.js";
 import { ForbiddenError, NotFoundError } from "./errors.js";
@@ -61,6 +68,7 @@ interface Options {
   positions?: Position[];
   transactions?: Transaction[];
   marketPrices?: MarketPrice[];
+  candles?: HistoricalPrice[];
   owned?: boolean;
   permissions?: RolePermissions;
 }
@@ -70,6 +78,7 @@ function build(options: Options = {}) {
     positions = [position],
     transactions = [transaction],
     marketPrices = [marketPrice],
+    candles = [],
     owned = true,
     permissions,
   } = options;
@@ -78,12 +87,18 @@ function build(options: Options = {}) {
     Promise.resolve({ items: transactions, total: transactions.length }),
   );
   const listCandles = vi.fn((_assetId: string, _from: Date, _to: Date) => Promise.resolve([]));
+  const listSeriesCandles = vi.fn((_assetIds: readonly string[], _from: Date, _to: Date) =>
+    Promise.resolve(candles),
+  );
 
   const service = createOverviewService({
     positionRepository: { listByPortfolioId: () => Promise.resolve(positions) },
-    transactionRepository: { listByPortfolioId: listTransactions },
+    transactionRepository: {
+      listByPortfolioId: listTransactions,
+      listCompletedByPortfolioId: () => Promise.resolve(transactions),
+    },
     marketPriceRepository: { listByAssetIds: () => Promise.resolve(marketPrices) },
-    historicalPriceRepository: { listByAssetId: listCandles },
+    historicalPriceRepository: { listByAssetId: listCandles, listByAssetIds: listSeriesCandles },
     portfolioService: {
       getPortfolioById: () =>
         owned
@@ -109,6 +124,35 @@ describe("overview service", () => {
     expect(overview.recentTransactions).toEqual([]);
     expect(overview.dailyChange?.changePercent).toBe(0);
     expect(overview.pulse).toBeDefined();
+  });
+
+  it("serves the 1M performance of the portfolio value series", async () => {
+    // Bought 2026-01-01 (2 units at 100); the last closed day is 2026-09-19, so 1M starts 2026-08-20.
+    const candles = [
+      { assetId: "a1", timestamp: new Date("2026-08-19T00:00:00Z"), close: Money.of("100", "USD") },
+      { assetId: "a1", timestamp: new Date("2026-09-19T00:00:00Z"), close: Money.of("150", "USD") },
+    ] as HistoricalPrice[];
+
+    const { service } = build({ candles });
+    const { performance } = await service.getPortfolioOverview(actor, "p1");
+
+    expect(performance.status).toBe("OK");
+    expect(performance.asOf).toEqual(new Date("2026-09-19T00:00:00Z"));
+    expect(performance.effectiveFrom).toEqual(new Date("2026-08-20T00:00:00Z"));
+    // V goes from 2 x 100 to 2 x 150 on the last day, with no flows: P/L = 100.
+    expect(performance.pnl?.equals(Money.of("100", "USD"))).toBe(true);
+    expect(performance.twr?.toFixed(6)).toBe("0.500000");
+    expect(performance.series.at(-1)?.date).toEqual(new Date("2026-09-19T00:00:00Z"));
+  });
+
+  it("reports an empty performance for an empty portfolio", async () => {
+    const { service } = build({ positions: [], transactions: [], marketPrices: [] });
+    const { performance } = await service.getPortfolioOverview(actor, "p1");
+
+    expect(performance.status).toBe("OK");
+    expect(performance.twr).toBeNull();
+    expect(performance.pnl?.isZero()).toBe(true);
+    expect(performance.series).toEqual([]);
   });
 
   it("enriches each position with its asset summary, allocation and daily change", async () => {

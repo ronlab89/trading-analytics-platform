@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "@trading/domain";
+import { Decimal, Money } from "@trading/domain";
 import type {
   Portfolio,
   PortfolioDailyChange,
@@ -118,14 +118,42 @@ const overview: OverviewSource = {
   },
   recentTransactions: [{ transaction, asset: assetSummary }],
   dailyChange,
+  performance: {
+    asOf: new Date("2026-10-12T00:00:00.000Z"),
+    effectiveFrom: new Date("2026-10-01T00:00:00.000Z"),
+    status: "OK",
+    twr: new Decimal("0.05"),
+    pnl: usd("50"),
+    series: [
+      {
+        date: new Date("2026-10-12T00:00:00.000Z"),
+        value: usd("1050"),
+        returnRate: new Decimal("0.05"),
+      },
+    ],
+  },
   pulse,
 };
 
 describe("overview presenter", () => {
   it("serializes the overview exactly as before", () => {
-    const dto = presentOverview(overview);
-    expect(dto).toEqual(JSON.parse(JSON.stringify(overview)));
-    expect(overviewResponseSchema.safeParse(dto).success).toBe(true);
+    const { performance: _performance, ...rest } = overview;
+    const { performance: _presented, ...dto } = presentOverview(overview);
+    expect(dto).toEqual(JSON.parse(JSON.stringify(rest)));
+    expect(overviewResponseSchema.safeParse(presentOverview(overview)).success).toBe(true);
+  });
+
+  it("presents the performance with the performance contract", () => {
+    expect(presentOverview(overview).performance).toEqual({
+      asOf: "2026-10-12",
+      effectiveFrom: "2026-10-01",
+      status: "OK",
+      twrPercent: 5,
+      pnl: { amount: "50", currency: "USD" },
+      series: [
+        { date: "2026-10-12", value: { amount: "1050", currency: "USD" }, returnPercent: 5 },
+      ],
+    });
   });
 
   it("keeps a null dailyChange and null per-position data", () => {
@@ -143,6 +171,7 @@ describe("overview presenter", () => {
         "allocation",
         "attribution",
         "dailyChange",
+        "performance",
         "portfolio",
         "positions",
         "pulse",

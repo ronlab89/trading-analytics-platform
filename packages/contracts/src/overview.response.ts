@@ -27,6 +27,7 @@ import {
   presentPosition,
   presentPositionMetrics,
 } from "./position.response.js";
+import { performanceResponseSchema, presentPerformance } from "./performance.response.js";
 import { moneySchema, presentMoney } from "./response-common.schema.js";
 import { presentTransaction, transactionResponseSchema } from "./transaction.response.js";
 
@@ -77,6 +78,7 @@ export const overviewResponseSchema = z.object({
       excludedAssetIds: z.array(z.string()),
     })
     .nullable(),
+  performance: performanceResponseSchema,
   pulse: z.object({
     performance: pulseDimensionSchema(["POSITIVE", "NEUTRAL", "NEGATIVE"]),
     concentration: pulseDimensionSchema(["LOW", "MODERATE", "HIGH"]),
@@ -108,6 +110,7 @@ export interface OverviewSource {
   attribution: Parameters<typeof presentAttribution>[0];
   recentTransactions: readonly { transaction: Transaction; asset: AssetSummarySource | null }[];
   dailyChange: PortfolioDailyChange | null;
+  performance: Parameters<typeof presentPerformance>[0];
   pulse: PortfolioPulse;
 }
 
@@ -158,6 +161,7 @@ export function presentOverview(overview: OverviewSource): OverviewResponse {
           excludedAssetIds: [...overview.dailyChange.excludedAssetIds],
         }
       : null,
+    performance: presentPerformance(overview.performance),
     pulse: {
       performance: presentPulseDimension(overview.pulse.performance),
       concentration: presentPulseDimension(overview.pulse.concentration),
