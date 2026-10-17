@@ -2007,7 +2007,7 @@ Recommended strategy:
 |---|---|---|
 | Store timestamps in UTC | Prisma `DateTime` columns are `TIMESTAMP(3)` without a time zone, and Prisma writes UTC instants (migrations in `packages/database/prisma/migrations`) | `Implemented` |
 | Serialize consistently | Timestamps are ISO-8601 strings in UTC (`07-api-spec.md`); a `Date` serialized to JSON is UTC, and the health `timestamp` uses `toISOString()` | `Implemented` |
-| Analytics days are UTC calendar dates | ADR-004; `16-analytics-spec.md` §2; the demo and the simulator use the same boundaries | `Planned (B1)` |
+| Analytics days are UTC calendar dates | ADR-004; `16-analytics-spec.md` §2; the demo and the simulator use the same boundaries | `Implemented` |
 | Convert to user-local time in the UI | Timestamps show in the user's local zone; analytics days stay UTC dates (`11-ui-ux-spec.md`, ADR-010 point 9) | `Planned (FE)` |
 | Do not depend on the server-local time zone | No local-time accessor appears in the non-test code of `apps/api`, `packages/domain` or `packages/database` (`getHours`, `getDate`, `getFullYear`, `toLocale*`, `getTimezoneOffset`); the seed uses `getUTC*` and `setUTC*` | `Implemented` by inspection; no test enforces it |
 | One time source | One shared `Clock` port (ADR-001 point 8); the simulator clock uses it (ADR-007 point 7) | `Planned (B0)`; simulator `Planned (B5)` |
