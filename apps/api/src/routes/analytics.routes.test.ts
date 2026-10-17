@@ -37,7 +37,7 @@ interface AttributionDto {
  * Characterization tests for the analytics routes (B0.3 T1). They pin
  * today's HTTP behavior, including known quirks, so the layering refactor
  * is provably behavior-preserving. Do not "fix" an assertion here without
- * recording it in odd/tasks/b0-3-route-tests.md.
+ * recording it in odd/tasks/b0/b0-3-route-tests.md.
  */
 describe("analytics routes", () => {
   const app = createApp();

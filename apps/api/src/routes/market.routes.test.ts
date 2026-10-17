@@ -31,7 +31,7 @@ type PricesBody = DataEnvelope<MarketPriceDto[]>;
  * Characterization tests for GET /api/v1/market/prices (B0.3 T4). They pin
  * today's HTTP behavior, including known quirks, so the layering refactor is
  * provably behavior-preserving. Do not "fix" an assertion here without
- * recording it in odd/tasks/b0-3-route-tests.md.
+ * recording it in odd/tasks/b0/b0-3-route-tests.md.
  *
  * The repository query is `findMany({ where: { assetId: { in } } })` with no
  * orderBy, so ordering is not guaranteed: tests match items by assetId.

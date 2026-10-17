@@ -13,7 +13,7 @@ packages/database/package.json
 tsconfig.json
 eslint.config.js
 pnpm-lock.yaml
-odd/tasks/b0-6-in-memory-contract-suite.md
+odd/tasks/b0/b0-6-in-memory-contract-suite.md
 
 ## Tasks
 

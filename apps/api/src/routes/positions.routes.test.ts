@@ -43,7 +43,7 @@ interface PositionDetailDto {
  * Characterization tests for the positions routes (B0.3 T2). They pin
  * today's HTTP behavior, including known quirks, so the layering refactor
  * is provably behavior-preserving. Do not "fix" an assertion here without
- * recording it in odd/tasks/b0-3-route-tests.md.
+ * recording it in odd/tasks/b0/b0-3-route-tests.md.
  */
 describe("positions routes", () => {
   const app = createApp();
