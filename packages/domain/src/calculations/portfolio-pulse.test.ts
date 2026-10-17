@@ -159,7 +159,7 @@ describe("calculatePortfolioPulse", () => {
 
     it("should classify an annualized volatility of 15% as LOW", () => {
       const pulse = calculatePortfolioPulse(buildPortfolio(), [buildPosition()], {
-        volatility: { volatilityPercent: 15, annualized: true, sampleSize: 30 },
+        volatility: { volatilityPercent: 15 },
       });
 
       expect(pulse.volatility.classification).toBe("LOW");
@@ -167,7 +167,7 @@ describe("calculatePortfolioPulse", () => {
 
     it("should classify an annualized volatility of 80% as HIGH", () => {
       const pulse = calculatePortfolioPulse(buildPortfolio(), [buildPosition()], {
-        volatility: { volatilityPercent: 80, annualized: true, sampleSize: 30 },
+        volatility: { volatilityPercent: 80 },
       });
 
       expect(pulse.volatility.classification).toBe("HIGH");
@@ -224,7 +224,7 @@ describe("calculatePortfolioPulse", () => {
       [60.01, "HIGH"],
     ] as const)("should classify an annualized volatility of %s as %s", (percent, expected) => {
       const pulse = calculatePortfolioPulse(buildPortfolio(), [buildPosition()], {
-        volatility: { volatilityPercent: percent, annualized: true, sampleSize: 30 },
+        volatility: { volatilityPercent: percent },
       });
 
       expect(pulse.volatility.classification).toBe(expected);
@@ -239,8 +239,6 @@ describe("calculatePortfolioPulse", () => {
       const pulse = calculatePortfolioPulse(buildPortfolio(), [buildPosition()], {
         drawdown: {
           maxDrawdownPercent: percent,
-          peakTimestamp: new Date("2026-01-01"),
-          troughTimestamp: new Date("2026-01-05"),
         },
       });
 
@@ -266,8 +264,6 @@ describe("calculatePortfolioPulse", () => {
       const pulse = calculatePortfolioPulse(portfolio, positions, {
         drawdown: {
           maxDrawdownPercent: -35,
-          peakTimestamp: new Date("2026-01-01"),
-          troughTimestamp: new Date("2026-01-05"),
         },
       });
 
@@ -281,8 +277,6 @@ describe("calculatePortfolioPulse", () => {
       const pulse = calculatePortfolioPulse(portfolio, positions, {
         drawdown: {
           maxDrawdownPercent: -2,
-          peakTimestamp: new Date("2026-01-01"),
-          troughTimestamp: new Date("2026-01-05"),
         },
       });
 

@@ -1,16 +1,14 @@
 import {
-  calculateAllocation,
-  calculateDrawdown,
   calculatePortfolioDailyChange,
   calculatePortfolioMetrics,
   calculatePortfolioPulse,
   calculatePositionMetrics,
-  calculateVolatility,
+  calculateReturnDrawdown,
+  calculateReturnVolatility,
   InsufficientDataError,
 } from "@trading/domain";
 import type {
   Asset,
-  DrawdownResult,
   HistoricalPriceRepository,
   MarketPrice,
   MarketPriceRepository,
@@ -21,9 +19,10 @@ import type {
   Position,
   PositionMetrics,
   PositionRepository,
+  PulseDrawdownInput,
+  PulseVolatilityInput,
   Transaction,
   TransactionRepository,
-  VolatilityResult,
 } from "@trading/domain";
 import type { Actor } from "./actor.js";
 import { buildAllocation, buildAttribution } from "./analytics-service.js";
@@ -38,14 +37,6 @@ import type { RolePermissions } from "./permissions.js";
 import type { PortfolioService } from "./portfolio-service.js";
 
 const RECENT_TRANSACTIONS_LIMIT = 5;
-
-/**
- * Wide enough to include the entire seeded historical series regardless
- * of the real wall-clock date the server happens to run on, without
- * hardcoding a window relative to "now" (see seed/data/historical-prices.ts,
- * which seeds a fixed ~90-day range ending 2026-09-14).
- */
-const HISTORICAL_PRICE_EPOCH = new Date(0);
 
 export interface AssetSummary {
   id: string;
@@ -105,7 +96,7 @@ export interface OverviewServiceDependencies {
     "listByPortfolioId" | "listCompletedByPortfolioId"
   >;
   marketPriceRepository: Pick<MarketPriceRepository, "listByAssetIds">;
-  historicalPriceRepository: Pick<HistoricalPriceRepository, "listByAssetId" | "listByAssetIds">;
+  historicalPriceRepository: Pick<HistoricalPriceRepository, "listByAssetIds">;
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
   assetService: Pick<AssetService, "getAssetsByIds">;
   /** The only source of "now": nothing here calls `new Date()` (ADR-001 point 8). */
@@ -130,65 +121,39 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
     positionRepository,
     transactionRepository,
     marketPriceRepository,
-    historicalPriceRepository,
     portfolioService,
     assetService,
-    clock,
     permissions = ROLE_PERMISSIONS,
   } = dependencies;
 
   /**
-   * Computes volatility/drawdown for the portfolio's largest-weight
-   * asset, to feed Portfolio Pulse's optional dimensions. Both
-   * `calculateVolatility`/`calculateDrawdown` operate at asset level only
-   * (see their module docs) — using the largest holding is the same
-   * concentration-driven proxy already used for the "concentration"
-   * dimension itself, not a portfolio-level calculation.
-   *
-   * Returns `{}` (both undefined) when there are no positions, or when
-   * the largest asset has too little historical data — Portfolio Pulse
-   * already renders these as "UNKNOWN" rather than fabricating a value.
+   * Volatility and drawdown of the portfolio's own daily series over a
+   * trailing `1Y` window ending on the last closed day, to feed Portfolio
+   * Pulse's optional dimensions (ADR-004 point 11, 16-analytics-spec.md §15).
+   * With less history the window is clamped to `effectiveFrom`; a measure
+   * without enough returns is left out and Pulse renders it as "UNKNOWN"
+   * rather than fabricating a value.
    */
   async function getPulseInputs(
-    positions: readonly Position[],
-  ): Promise<{ volatility?: VolatilityResult; drawdown?: DrawdownResult }> {
-    if (positions.length === 0) {
-      return {};
-    }
+    portfolio: Portfolio,
+  ): Promise<{ volatility?: PulseVolatilityInput; drawdown?: PulseDrawdownInput }> {
+    const { performance } = await buildPortfolioSeries(dependencies, portfolio, {
+      kind: "preset",
+      period: "1Y",
+    });
 
-    const allocation = calculateAllocation(positions, (p) => p.assetId);
-    const largest = allocation.reduce((max, group) =>
-      group.percentage > max.percentage ? group : max,
+    const volatility = calculateReturnVolatility(
+      performance.returns.flatMap((point) => (point.rate === null ? [] : [point.rate])),
     );
-
-    const candles = await historicalPriceRepository.listByAssetId(
-      largest.key,
-      HISTORICAL_PRICE_EPOCH,
-      clock.now(),
-    );
-
-    let volatility: VolatilityResult | undefined;
-    let drawdown: DrawdownResult | undefined;
-
-    try {
-      volatility = calculateVolatility(candles);
-    } catch (error) {
-      if (!(error instanceof InsufficientDataError)) {
-        throw error;
-      }
-    }
-
-    try {
-      drawdown = calculateDrawdown(candles);
-    } catch (error) {
-      if (!(error instanceof InsufficientDataError)) {
-        throw error;
-      }
-    }
+    const drawdown = calculateReturnDrawdown(performance.returns);
 
     return {
-      ...(volatility !== undefined ? { volatility } : {}),
-      ...(drawdown !== undefined ? { drawdown } : {}),
+      ...(volatility.volatilityPercent !== null
+        ? { volatility: { volatilityPercent: volatility.volatilityPercent.toNumber() } }
+        : {}),
+      ...(drawdown.maxDrawdown !== null
+        ? { drawdown: { maxDrawdownPercent: drawdown.maxDrawdown.times(100).toNumber() } }
+        : {}),
     };
   }
 
@@ -233,7 +198,7 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
       dailyChange = null;
     }
 
-    const pulseInputs = await getPulseInputs(positions);
+    const pulseInputs = await getPulseInputs(portfolio);
     const performance = buildPerformanceResult(
       await buildPortfolioSeries(dependencies, portfolio, { kind: "preset", period: "1M" }),
     );

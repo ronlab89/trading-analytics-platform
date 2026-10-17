@@ -63,6 +63,14 @@ export interface PortfolioPulse {
   readonly drawdown: PulseDimension<DrawdownClassification>;
 }
 
+/**
+ * What Pulse reads of the volatility and the drawdown: the annualized percentage
+ * and the maximum drawdown. Both asset-level results and the portfolio-series
+ * results fit.
+ */
+export type PulseVolatilityInput = Pick<VolatilityResult, "volatilityPercent">;
+export type PulseDrawdownInput = Pick<DrawdownResult, "maxDrawdownPercent">;
+
 // Thresholds — see module-level comment above.
 const PERFORMANCE_POSITIVE_THRESHOLD = 5;
 const PERFORMANCE_NEGATIVE_THRESHOLD = -5;
@@ -134,7 +142,7 @@ function classifyConcentration(
 }
 
 function classifyVolatility(
-  volatility: VolatilityResult | undefined,
+  volatility: PulseVolatilityInput | undefined,
 ): PulseDimension<VolatilityClassification> {
   if (!volatility) {
     return {
@@ -168,7 +176,7 @@ function classifyVolatility(
 }
 
 function classifyDrawdown(
-  drawdown: DrawdownResult | undefined,
+  drawdown: PulseDrawdownInput | undefined,
 ): PulseDimension<DrawdownClassification> {
   if (!drawdown) {
     return {
@@ -202,8 +210,8 @@ function classifyDrawdown(
 }
 
 export interface CalculatePortfolioPulseOptions {
-  readonly volatility?: VolatilityResult;
-  readonly drawdown?: DrawdownResult;
+  readonly volatility?: PulseVolatilityInput;
+  readonly drawdown?: PulseDrawdownInput;
 }
 
 /**
