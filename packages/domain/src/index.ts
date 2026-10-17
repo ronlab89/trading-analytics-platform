@@ -16,6 +16,7 @@ export * from "./entities/decision";
 export * from "./entities/decision-event";
 export * from "./entities/scenario";
 export * from "./value-objects/money";
+export { Decimal } from "decimal.js";
 export * from "./calculations/position-metrics";
 export * from "./calculations/portfolio-metrics";
 export * from "./calculations/portfolio-daily-change";
