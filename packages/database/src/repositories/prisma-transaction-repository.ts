@@ -69,6 +69,15 @@ export class PrismaTransactionRepository implements TransactionRepository {
     return rows.map(toDomainTransaction);
   }
 
+  async listCompletedByPortfolioId(portfolioId: string): Promise<Transaction[]> {
+    const rows = await this.db.transaction.findMany({
+      where: { portfolioId, status: "COMPLETED" },
+      orderBy: [{ executedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    });
+
+    return rows.map(toDomainTransaction);
+  }
+
   async lockPortfolioAsset(portfolioId: string, assetId: string): Promise<void> {
     // Transaction-level advisory lock keyed on the pair: the second unit waits
     // here until the first commits, then reads the history it left behind.

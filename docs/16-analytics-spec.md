@@ -74,12 +74,15 @@ not resolved here.
 - **Day boundaries.** Days are UTC calendar dates everywhere, including the
   demo and the simulator clock (ADR-004 Deferred detail, `Planned (B1)`).
 - **Counted transactions.** Only transactions with status `COMPLETED` count
-  (ADR-004 point 1, amended 2026-10-05, `Planned (B1)`).
+  (ADR-004 point 1, amended 2026-10-05, `Implemented` in the read behind the
+  daily series, `listCompletedByPortfolioId`).
 - **Decimal returns.** Returns, ratios and percentages are computed in
   `Decimal` end to end and converted to a JavaScript number only in the
-  presenter (ADR-004 point 14, amended 2026-10-05; ADR-002 point 9;
-  `Planned (B1)`). Today the calculations call `toNumber()` before dividing
-  (`Implemented`, to be replaced). Tests compare returns exactly in
+  presenter (ADR-004 point 14, amended 2026-10-05; ADR-002 point 9). The
+  portfolio series functions of §3 to §7 return `Decimal` fractions
+  (`Implemented`); the presenter is `Planned (B1)`. The older asset-level
+  calculations still call `toNumber()` before dividing (`Implemented`, to be
+  replaced). Tests compare returns exactly in
   `Decimal`: in §7, `TWR` of the worked example equals
   `Decimal(117).div(101).minus(1)` without tolerance.
 - **TWR on the wire.** The period return is the field `twrPercent`, in
@@ -96,7 +99,7 @@ not resolved here.
 
 # 3. Daily Value Series
 
-**Status:** `Planned (B1)`  
+**Status:** `Implemented` as pure functions (`quantity-timeline.ts`, `value-series.ts`); building it per request from the repositories `Planned (B1)`.  
 **Decisions:** ADR-004 point 1; ADR-003 points 1-3 and 6; ADR-007 point 8.  
 **Requirements:** FR-025, FR-026.
 
@@ -120,7 +123,7 @@ Rules:
    transaction with `executedAt` on or before the end of `d` (UTC). It never
    uses the stored `Position` row.
 3. `q(a, d) ≥ 0` for every `a` and `d`, guaranteed by ADR-003 point 6
-   (chronological validation, `Planned (B0)`). Therefore `V(d) ≥ 0`.
+   (chronological validation, `Implemented`). Therefore `V(d) ≥ 0`.
 4. The series ends at the last closed UTC day. Candles come from the seed
    and from the simulator's daily closes (ADR-007 point 8, `Planned (B5)`).
 
@@ -134,9 +137,9 @@ Edge cases:
 | Backdated transaction | Changes `q(a, d)` from its day onward; since the series is rebuilt per request, the next read reflects it. |
 | Asset fully sold | `q(a, d) = 0`; the asset contributes `0` and needs no price. |
 
-Counted transactions (`Planned (B1)`, ADR-004 point 1, amended
-2026-10-05): only `status = COMPLETED` is read, for `q(a, d)`, `B(d)` and
-`S(d)`. Today only `COMPLETED` rows are ever committed (`05-data-model.md`
+Counted transactions (`Implemented` as the repository read
+`listCompletedByPortfolioId`, ADR-004 point 1, amended 2026-10-05): only
+`status = COMPLETED` is read, for `q(a, d)`, `B(d)` and `S(d)`. Today only `COMPLETED` rows are ever committed (`05-data-model.md`
 §10), so the filter is explicit rather than implied by the write path. Test:
 a fixture with a `COMPLETED` `BUY 10 @ 10` and a `DRAFT` `BUY 5 @ 10` on the
 same day gives `q = 10` and `B = 100`.
@@ -145,7 +148,7 @@ same day gives `q = 10` and `B = 100`.
 
 # 4. Cash Flows
 
-**Status:** `Planned (B1)`  
+**Status:** `Implemented` (`buildDailyFlows` in `daily-return.ts`).  
 **Decisions:** ADR-004 point 2; ADR-003 point 3.  
 **Requirements:** FR-025.
 
@@ -171,7 +174,7 @@ Edge cases:
 
 # 5. Missing Prices and Insufficient History
 
-**Status:** `Planned (B1)`  
+**Status:** `Implemented` (carry-forward and `InsufficientData` per day in `value-series.ts`; the `effectiveFrom` clamp in `period-performance.ts`).  
 **Decisions:** ADR-004 points 6 and 7, Deferred detail (period boundaries).  
 **Requirements:** FR-025, FR-026, FR-058.
 
@@ -197,7 +200,7 @@ Edge cases:
 
 # 6. Daily Return
 
-**Status:** `Planned (B1)`  
+**Status:** `Implemented` (`calculateDailyReturn` in `daily-return.ts`; a `Decimal` fraction, converted to percentage points by the presenter).  
 **Decisions:** ADR-004 point 3 (corrected 2026-10-04).  
 **Requirements:** FR-025, FR-026, FR-029.
 
@@ -245,7 +248,7 @@ Edge cases:
 
 # 7. Period Return and Period P/L
 
-**Status:** `Planned (B1)`  
+**Status:** `Implemented` (`calculatePeriodPerformance` in `period-performance.ts`; exposure by the API `Planned (B1)`).  
 **Decisions:** ADR-004 point 4, Deferred detail (period boundaries).  
 **Requirements:** FR-025, FR-026.
 
@@ -259,7 +262,7 @@ Clamped period (effectiveFrom > from):
   P/L = V(to) − V(effectiveFrom) − Σ_{d in (effectiveFrom, to]} F(d)
 ```
 
-`TWR` uses the same days as `P/L` (`Planned (B1)`, ADR-004 point 4,
+`TWR` uses the same days as `P/L` (`Implemented`, ADR-004 point 4,
 amended 2026-10-05).
 
 The time-weighted return is the headline; `P/L` (`Money`) is the investor's
@@ -308,7 +311,7 @@ In the clamped case, `P/L` and `TWR` both measure from the close of `d2`:
 
 # 8. Periods
 
-**Status:** `Planned (B1)`; `1D` `Implemented`.  
+**Status:** preset windows `Implemented` (`period.ts`); end of the series and custom range validation `Planned (B1)`; `1D` `Implemented`.  
 **Decisions:** ADR-004 points 5 and 6.  
 **Requirements:** FR-025.
 
@@ -321,7 +324,7 @@ In the clamped case, `P/L` and `TWR` both measure from the close of `d2`:
 FR-025 lists `1D`, `1W`, `1M`, `3M`, `6M`, `1Y` and custom; the periods
 are defined in ADR-004 point 5, which adds `YTD` and `ALL`.
 
-**Preset windows** (`Planned (B1)`, ADR-004 point 5, amended 2026-10-05).
+**Preset windows** (`Implemented` as `resolvePeriodWindow`, ADR-004 point 5, amended 2026-10-05).
 Windows are counted back from `to` (after the clamp below) in UTC calendar
 dates. The anchor `to − offset` is the baseline day `from − 1` of §7, so
 `from = (to − offset) + 1 day`, P/L subtracts `V(to − offset)`, and `TWR`
@@ -550,7 +553,7 @@ Edge cases:
 | --- | --- |
 | No positions | All totals zero in `baseCurrency`, percent `0` (`Implemented`, FR-058). |
 | Zero cost basis on a position | `PositionMetricsCalculationError` (`Implemented`); unreachable while `price > 0`. |
-| Backdated transactions | Average cost depends on date order; the projection must be rebuilt in date order (`05-data-model.md` §8, `Planned (B0)`). |
+| Backdated transactions | Average cost depends on date order; the projection is rebuilt in date order (`05-data-model.md` §8, `Implemented`). |
 
 `Position.currentPrice` keeps the last trade price while `MarketPrice` ticks
 (`05-data-model.md` §8, B5).

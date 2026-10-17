@@ -17,6 +17,15 @@ export interface HistoricalPriceRepository {
   listByAssetId(assetId: string, from: Date, to: Date): Promise<HistoricalPrice[]>;
 
   /**
+   * Returns the candles of several assets within an inclusive time range, in
+   * one read, ordered by timestamp ascending. Candles that share a timestamp
+   * are in no guaranteed order. An asset without candles contributes none, and
+   * an empty `assetIds` returns `[]`. The input of the portfolio value series
+   * (docs/16-analytics-spec.md §3).
+   */
+  listByAssetIds(assetIds: readonly string[], from: Date, to: Date): Promise<HistoricalPrice[]>;
+
+  /**
    * Creates a historical price candle.
    * Callers are expected to have already run `validateNewHistoricalPrice`
    * (see entities/historical-price.ts) before calling this. Implementations

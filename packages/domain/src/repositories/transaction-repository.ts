@@ -56,6 +56,16 @@ export interface TransactionRepository {
   listByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<Transaction[]>;
 
   /**
+   * Returns every `COMPLETED` transaction of a portfolio, unpaginated and
+   * oldest first: by `executedAt` ascending, then creation order. The input of
+   * the portfolio value series (docs/16-analytics-spec.md §3, ADR-004), which
+   * counts only transactions that already moved the position.
+   *
+   * Same ordering limit as `listByPortfolioAndAsset` in Prisma.
+   */
+  listCompletedByPortfolioId(portfolioId: string): Promise<Transaction[]>;
+
+  /**
    * Serializes concurrent units of work on one portfolio+asset until the
    * current unit ends, so the chronological replay never reads a history that
    * another in-flight unit is about to change (FR-017 race, ADR-001).

@@ -931,7 +931,13 @@ Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 (`Implemented`, `odd/tasks/b1/b1-1-fees.md`): a `SELL` whose fees exceed its gross
 proceeds is rejected with 400, `averageEntryPrice` includes `BUY` fees in the
 date-order replay, and `replayRealizedPnL` computes realized P/L net of `SELL`
-fees (pure function, not yet exposed by the API). Phase 5 itself still has the reconciliation of
+fees (pure function, not yet exposed by the API). **B1.2 is done**
+(`Implemented`, `odd/tasks/b1/b1-2-value-series-and-returns.md`): the repositories
+read `COMPLETED` transactions and the candles of several assets in one call, and
+pure functions build the daily quantity timeline, the portfolio value series
+(last close carried forward, `INSUFFICIENT_DATA` per day), the daily flows and
+returns, the preset period windows, and the period `TWR` and P/L with the
+`effectiveFrom` clamp. Nothing is exposed by the API yet (B1.4). Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in

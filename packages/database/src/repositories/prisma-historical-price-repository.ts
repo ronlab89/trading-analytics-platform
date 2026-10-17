@@ -28,6 +28,18 @@ export class PrismaHistoricalPriceRepository implements HistoricalPriceRepositor
     return rows.map(toDomainHistoricalPrice);
   }
 
+  async listByAssetIds(
+    assetIds: readonly string[],
+    from: Date,
+    to: Date,
+  ): Promise<HistoricalPrice[]> {
+    const rows = await prisma.historicalPrice.findMany({
+      where: { assetId: { in: [...assetIds] }, timestamp: { gte: from, lte: to } },
+      orderBy: { timestamp: "asc" },
+    });
+    return rows.map(toDomainHistoricalPrice);
+  }
+
   async create(input: CreateHistoricalPriceInput): Promise<HistoricalPrice> {
     const data = toPrismaCreateInput(input);
     const row = await prisma.historicalPrice.upsert({

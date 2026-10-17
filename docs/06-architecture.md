@@ -532,15 +532,16 @@ handler logs by category (ADR-009 point 6).
 transaction-bound `transactions` and `positions` repositories; any error
 rolls back and is rethrown unchanged.
 
-`createTransaction` validates the input, then in one unit of work reads the
-position, recalculates it with `calculatePositionAfterTransaction`, and
-writes the transaction and the position together.
+`createTransaction` validates the input, then in one unit of work locks the
+portfolio and asset, reads the asset's transactions, rebuilds the position by
+replaying them in date order with `replayPosition`, and writes the transaction
+and the position together.
 
 | Boundary | Decision | Status |
 | --- | --- | --- |
-| Isolation for concurrent position updates | ADR-001 Deferred detail | `Planned (B0)` |
-| In-memory `UnitOfWork` with rollback, serialized | ADR-001 Deferred detail | `Planned (B0)` |
-| Chronological holding check inside the unit | ADR-003 point 6 | `Planned (B0)` |
+| Isolation for concurrent position updates | ADR-001 Deferred detail | `Implemented` (advisory lock, `lockPortfolioAsset`) |
+| In-memory `UnitOfWork` with rollback, serialized | ADR-001 Deferred detail | `Implemented` |
+| Chronological holding check inside the unit | ADR-003 point 6 | `Implemented` (`replayPosition`) |
 | CSV apply in one unit that also sets `COMPLETED` | ADR-008 points 2, 5 | `Planned (B4)` |
 | Idempotency record written in the mutation's unit | ADR-008 Deferred detail | `Planned (B4)` |
 | Alert state and notification in one transaction | ADR-007 Deferred detail | `Planned (B5)` |
@@ -788,19 +789,19 @@ sequence per asset (ADR-007 Deferred detail).
 
 # 50. Data Flow Example — Transaction
 
-**Status:** `Implemented`; idempotency `Planned (B4)`; chronological check `Planned (B0)`; event `Planned (B5)`.
+**Status:** `Implemented`, chronological check included; idempotency `Planned (B4)`; event `Planned (B5)`.
 
 ```text
 POST /api/v1/portfolios/:portfolioId/transactions
   -> authenticate -> validate(createTransactionRequestSchema)
   -> createTransactionHandler -> createTransaction
        ownership (getPortfolioById), asset lookup, validateNewTransaction
-       UnitOfWork: read position -> calculatePositionAfterTransaction -> write transaction + position
+       UnitOfWork: lock -> read asset transactions -> replayPosition -> write transaction + position
   -> 201 with the created transaction
 ```
 
-Additions: `Idempotency-Key` (ADR-008 point 8), chronological validation
-(ADR-003 point 6), `PORTFOLIO_UPDATED` after commit (ADR-007 point 6).
+Additions: `Idempotency-Key` (ADR-008 point 8), `PORTFOLIO_UPDATED` after
+commit (ADR-007 point 6).
 
 ---
 
