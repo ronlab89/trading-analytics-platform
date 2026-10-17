@@ -80,7 +80,7 @@ not resolved here.
   `Decimal` end to end and converted to a JavaScript number only in the
   presenter (ADR-004 point 14, amended 2026-10-05; ADR-002 point 9). The
   portfolio series functions of §3 to §7 return `Decimal` fractions
-  (`Implemented`); the presenter is `Planned (B1)`. The older asset-level
+  (`Implemented`), and the presenters convert them (`Implemented`). The older asset-level
   calculations still call `toNumber()` before dividing (`Implemented`, to be
   replaced). Tests compare returns exactly in
   `Decimal`: in §7, `TWR` of the worked example equals
@@ -88,7 +88,7 @@ not resolved here.
 - **TWR on the wire.** The period return is the field `twrPercent`, in
   percentage points like `unrealizedPnLPercent` and `volatilityPercent`
   (`0.158416` → `15.8416…`), not rounded; rounding is a UI concern
-  (ADR-002 point 3, `Planned (B1)`). When `TWR` has no value (§7),
+  (ADR-002 point 3, `Implemented`). When `TWR` has no value (§7),
   `twrPercent` is `null`, never `0`. Test: the §7 example gives
   `twrPercent = Decimal(117).div(101).minus(1).times(100).toNumber()`
   (`≈ 15.841584`), unrounded.
@@ -99,7 +99,7 @@ not resolved here.
 
 # 3. Daily Value Series
 
-**Status:** `Implemented` as pure functions (`quantity-timeline.ts`, `value-series.ts`); building it per request from the repositories `Planned (B1)`.  
+**Status:** `Implemented` as pure functions (`quantity-timeline.ts`, `value-series.ts`); built per request from the repositories by `buildPortfolioSeries` (`Implemented`).  
 **Decisions:** ADR-004 point 1; ADR-003 points 1-3 and 6; ADR-007 point 8.  
 **Requirements:** FR-025, FR-026.
 
@@ -248,7 +248,7 @@ Edge cases:
 
 # 7. Period Return and Period P/L
 
-**Status:** `Implemented` (`calculatePeriodPerformance` in `period-performance.ts`; exposure by the API `Planned (B1)`).  
+**Status:** `Implemented` (`calculatePeriodPerformance` in `period-performance.ts`; served by the performance endpoint and the overview).  
 **Decisions:** ADR-004 point 4, Deferred detail (period boundaries).  
 **Requirements:** FR-025, FR-026.
 
@@ -311,7 +311,7 @@ In the clamped case, `P/L` and `TWR` both measure from the close of `d2`:
 
 # 8. Periods
 
-**Status:** preset windows `Implemented` (`period.ts`); end of the series and custom range validation `Implemented` for the risk endpoint (`analyticsPeriodQuerySchema`, `risk-service.ts`), `Planned (B1)` for performance; `1D` `Implemented`.  
+**Status:** preset windows `Implemented` (`period.ts`); end of the series and custom range validation `Implemented` for the performance and risk endpoints (`analyticsPeriodQuerySchema`, `buildPortfolioSeries`); `1D` `Implemented`.  
 **Decisions:** ADR-004 points 5 and 6.  
 **Requirements:** FR-025.
 

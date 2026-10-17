@@ -430,7 +430,7 @@ import): the same 409 for imports.
 
 # 11. Portfolio Overview
 
-**Status:** `Implemented` (FR-004); period `performance` field and the What Changed field `Planned (B1)` (ADR-004, ADR-010 point 1, `16-analytics-spec.md` §11-§15)
+**Status:** `Implemented` (FR-004, `performance` field); the What Changed field `Planned (B1)` (ADR-004, ADR-010 point 1, `16-analytics-spec.md` §11-§15)
 
 ```text
 GET /api/v1/portfolios/:portfolioId/overview
@@ -447,11 +447,13 @@ allocation
 attribution          current-state attribution
 recentTransactions   [{ transaction, asset }]
 dailyChange          null when no held asset has a market price
+performance          the result of GET .../analytics/performance for the fixed period 1M (§20)
 pulse
 ```
 
 An empty portfolio returns zeroed totals in `baseCurrency`, empty lists and a
-non-null `dailyChange`. Errors: 404 `NOT_FOUND`.
+non-null `dailyChange` and a `performance` with a zero P/L, no `twrPercent` and an
+empty `series`. Errors: 404 `NOT_FOUND`.
 
 **What Changed** (FR-006), `Planned (B1)`: carried as a field of this
 overview response, not as its own endpoint (decided 2026-10-08). Its content
@@ -834,7 +836,7 @@ without a current price are omitted, never 404. Errors: 400
 
 # 20. Analytics API
 
-**Status:** allocation and risk `Implemented` (FR-027, FR-028, FR-029); performance `Planned (B1)` (FR-025, FR-026, FR-085; ADR-004)
+**Status:** allocation, performance and risk `Implemented` (FR-025 to FR-029, FR-085; ADR-004); benchmark comparison `Deferred` (ADR-010 point 7)
 
 All endpoints require a Bearer token and portfolio ownership (another
 user's portfolio returns 404 `NOT_FOUND`). Money fields are `Money`;
@@ -844,35 +846,37 @@ returns and percentages are unrounded numbers in percentage points
 | Endpoint | Status |
 | --- | --- |
 | `GET /api/v1/portfolios/:portfolioId/analytics/allocation` | `Implemented` |
-| `GET /api/v1/portfolios/:portfolioId/analytics/performance` | `Planned (B1)` |
+| `GET /api/v1/portfolios/:portfolioId/analytics/performance` | `Implemented` |
 | `GET /api/v1/portfolios/:portfolioId/analytics/risk` | `Implemented` |
 | `GET /api/v1/portfolios/:portfolioId/analytics/attribution` | §22 |
 
 ## Portfolio Performance
 
-**Status:** `Planned (B1)` (FR-025, FR-026, FR-085; `16-analytics-spec.md` §5, §7, §8); `1D` `Implemented` as `dailyChange` in §11
+**Status:** `Implemented` (FR-025, FR-026; `16-analytics-spec.md` §5, §7, §8); `1D` `Implemented` as `dailyChange` in §11
 
 ```text
 GET /api/v1/portfolios/:portfolioId/analytics/performance
 ```
 
 Query: `period` (`1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`) or a
-custom `from` / `to` (UTC dates, inclusive). `1D` is not accepted here: the
+custom `from` with an optional `to` (`YYYY-MM-DD`, UTC, inclusive; an omitted
+`to` is today). `1D` is not accepted here: the
 1D change comes from `MarketPrice` through the overview `dailyChange` (§11,
 ADR-004 point 5). They are mutually exclusive:
-sending both is 400 `VALIDATION_ERROR`; the default is `1M` (ADR-002 point
-10). Response fields (ADR-002 point 10; semantics in `16`):
+sending both is 400 `VALIDATION_ERROR`, and so is `to` without `from`; the
+default is `1M` (ADR-002 point 10). Response fields (ADR-002 point 10; semantics in `16`):
 
 ```text
-asOf            effective end date (to clamped to the last closed day)
-effectiveFrom   first day on which every held asset has a price (§5 clamp)
-status          OK | INSUFFICIENT_DATA | UNKNOWN
+asOf            effective end date (to clamped to the last closed UTC day, the day before today)
+effectiveFrom   first day on which every held asset has a price (§5 clamp); null without data
+status          OK | INSUFFICIENT_DATA (UNKNOWN is not produced)
 twrPercent      number, percentage points, unrounded; null when TWR has no value
-pnl             Money over the same days as TWR; null when unavailable
-series          [{ date, value, returnPercent }]; date is a UTC calendar date, value is Money (FR-026, 16 §3)
+pnl             Money over the same days as TWR; null when unavailable; zero for a portfolio without transactions
+series          [{ date, value, returnPercent }] from effectiveFrom to asOf; date is YYYY-MM-DD, value is Money (FR-026, 16 §3), returnPercent is null on a day without a return
 ```
 
-Unavailable values are `null`, never `0` (ADR-002 point 10).
+Unavailable values are `null`, never `0` (ADR-002 point 10). Days before the
+first purchase are in the series with a value of `0` and no return.
 
 Errors: 400 `VALIDATION_ERROR` when `from > to`. A valid range with no
 closed day (`asOf < from`) returns 200 with `status: "INSUFFICIENT_DATA"` and `asOf`,

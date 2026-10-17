@@ -295,7 +295,7 @@ this file):
 | A `SELL` with `fees > quantity × price` is rejected with 400; fees equal to the gross proceeds are accepted (done in B1.1) | ADR-004 |
 | Period P/L boundaries: `V(day before from)` and flows over `[from, to]`; clamped periods use `V(effectiveFrom)` and flows over `(effectiveFrom, to]` (done in B1.2 as `calculatePeriodPerformance`) | ADR-004 |
 | One pure function maps a preset period and `to` to `from`, with tests for month-end, leap-year and `YTD` cases (done in B1.2 as `resolvePeriodWindow`) | ADR-004 |
-| Returns computed in `Decimal` and converted only in the presenter (the domain side is done in B1.2; the presenter comes with the API in B1.4) | ADR-004 |
+| Returns computed in `Decimal` and converted only in the presenter (the domain side is done in B1.2; the presenters are done in B1.3 and B1.4) | ADR-004 |
 | `averageEntryPrice` includes `BUY` fees; `SELL` fees reduce realized P/L (done in B1.1 as the pure function `replayRealizedPnL`; persistence and API exposure follow in later B1 slices) | ADR-004 |
 | Pulse thresholds keep their constants, lose the placeholder comment and get boundary tests | ADR-004 |
 | Volatility always annualizes with the square root of 365 and needs 20 returns (done in B1.3 as `calculateReturnVolatility`, also used by the asset-level `calculateVolatility`); Pulse volatility thresholds are 20% and 60% | ADR-004 |
