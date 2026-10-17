@@ -691,15 +691,15 @@ A user can complete the primary portfolio workflow against the real backend.
 | --- | --- | --- |
 | Transaction endpoints: list with filters (`assetId`, `type`, `dateFrom`, `dateTo`, `page`, `pageSize`), get by id and create (`apps/api/src/routes/transactions.routes.ts`) | `Implemented` | none |
 | Creation is synchronous: the transaction, its position recalculation and its `COMPLETED` status commit in one `UnitOfWork` (`transaction.service.ts`, `PrismaUnitOfWork`); a failure rolls the whole unit back | `Implemented` | none |
-| Position projection: `calculatePositionAfterTransaction` upserts the position, or deletes it when a `SELL` closes it exactly | `Implemented` (incremental, from the current row) | none |
+| Position projection: `replayPosition` rebuilds the position from the asset's transactions in date order; the unit upserts it, or deletes it when a `SELL` closes it exactly | `Implemented` | none |
 | Validation today: `BUY` or `SELL`, `quantity > 0`, `price > 0`, `fees ≥ 0`, fee currency equals price currency, `executedAt` not in the future, unknown `assetId` is 404, `SELL` above the held quantity is 400 | `Implemented` (FR-018) | none |
-| Current time from the `Clock` port instead of `new Date()` in `validateNewTransaction` (ADR-001 point 8) | `Planned (B0)` | B0 |
-| Chronological validation: the holding stays non-negative at `executedAt` and after every later transaction in date order; backdating is allowed; the same `executedAt` is ordered by creation order (ADR-003 point 6 and Deferred detail) | `Planned (B0)` | B0 |
-| Position projection rebuilt by replaying the asset's transactions in date order, so a backdated transaction gives the right `averageEntryPrice` and `openedAt` (`05-data-model.md` §8 Open detail) | `Planned (B0)` | B0 |
-| Position isolation under concurrency: two concurrent `SELL 6` on a holding of 10, exactly one succeeds (ADR-001 Deferred detail, FR-017) | `Planned (B0)` | B0 |
-| Archived portfolio: creating a transaction returns 409 `CONFLICT` and writes nothing (ADR-010 point 5) | `Planned (B0)` | B0 |
-| `BUY` fees in the cost basis (`averageEntryPrice` becomes `(held × average + quantity × price + fees) / (held + quantity)`) and `SELL` fees subtracted from realized P/L (ADR-004 point 15) | `Planned (B1)` | B1 |
-| A `SELL` with `fees > quantity × price` is rejected with 400; fees equal to the gross proceeds are accepted (ADR-004 point 2) | `Planned (B1)` | B1 |
+| Current time from the `Clock` port instead of `new Date()` in `validateNewTransaction` (ADR-001 point 8) | `Implemented` | none |
+| Chronological validation: the holding stays non-negative at `executedAt` and after every later transaction in date order; backdating is allowed; the same `executedAt` is ordered by creation order (ADR-003 point 6 and Deferred detail) | `Implemented` | none |
+| Position projection rebuilt by replaying the asset's transactions in date order, so a backdated transaction gives the right `averageEntryPrice` and `openedAt` (`05-data-model.md` §8 Open detail) | `Implemented` | none |
+| Position isolation under concurrency: two concurrent `SELL 6` on a holding of 10, exactly one succeeds (ADR-001 Deferred detail, FR-017) | `Implemented` | none |
+| Archived portfolio: creating a transaction returns 409 `CONFLICT` and writes nothing (ADR-010 point 5) | `Implemented` | none |
+| `BUY` fees in the cost basis (`averageEntryPrice` becomes `(held × average + quantity × price + fees) / (held + quantity)`) and `SELL` fees subtracted from realized P/L (ADR-004 point 15) | `Implemented` (B1.1; realized P/L as a pure function, not yet exposed by the API) | B1 |
+| A `SELL` with `fees > quantity × price` is rejected with 400; fees equal to the gross proceeds are accepted (ADR-004 point 2) | `Implemented` (B1.1) | none |
 | An asset whose currency differs from the portfolio's `baseCurrency` is rejected with 400, never 500 (ADR-004 point 12) | `Planned (B1)` | B1 |
 | Role check on create: a `VIEWER` is denied (ADR-005) | `Planned (B2)` | B2 |
 | Duplicate prevention: `Idempotency-Key` on `POST .../transactions`; a repeated key and request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Planned (B4)` | B4 |
@@ -711,8 +711,8 @@ Code vs ADR:
 
 - The original task list includes "edit transaction where permitted" and "delete/cancel where permitted". The API has no update or delete route (`transactions.routes.ts`), `07-api-spec.md` §13 and ADR-003 point 7 state that transactions are immutable, and no FR asks for either action. The tasks stay below as the original intent, not as scope.
 - "Conflict handling" has two sources in version 1: 409 `CONFLICT` on an archived portfolio (B0) and on a repeated `Idempotency-Key` with a different request (B4). Overselling stays a 400 validation error.
-- Nothing checks the order of transactions today: a `SELL` dated before an earlier `BUY` passes when the current position is large enough, and the position is rebuilt only from the current row. ADR-003 point 6 and `05-data-model.md` §8 put both fixes in B0.
-- The fee handling change is visible in the code as well: `position-recalculation.ts` ignores `fees`, so `averageEntryPrice` excludes the `BUY` fees and unrealized P/L is higher than ADR-004 point 15 will report.
+- Before B0, nothing checked the order of transactions: a `SELL` dated before an earlier `BUY` passed when the current position was large enough, and the position was rebuilt only from the current row. ADR-003 point 6 and `05-data-model.md` §8 put both fixes in B0, and `replayPosition` now does both.
+- Before B1.1, `averageEntryPrice` excluded the `BUY` fees and unrealized P/L was higher than ADR-004 point 15 reports. `replayPosition` now includes them. `calculatePositionAfterTransaction` in `position-recalculation.ts` has no caller left; removing it is pending cleanup.
 - `05-data-model.md` §8 Open detail and §45 put the concurrent read-modify-write of the position in B7. ADR-001 Deferred detail and FR-017 put it in B0, and the ADR precedes; `05` and `BACKEND-ROADMAP.md` now say B0 (T5.3, 2026-10-08).
 - The "Important Principle" below holds and is stronger under ADR-001: business rules live in domain validators and, from B0, in `@trading/application`. Today they live in `apps/api/src/services/` and `packages/domain`. React holds none, and the demo runs the same use cases in process (§16).
 
