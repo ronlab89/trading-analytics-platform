@@ -1767,7 +1767,7 @@ Required properties:
 
 How the columns map to the code and blocks:
 
-- **Unit.** Domain calculations, validation and entity rules are `Implemented` (§7-§9). Application-service unit tests (authorization, portfolios, transactions, notifications) are `Planned (B0)` (ADR-001 point 7); analytics `Planned (B1)`; background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
+- **Unit.** Domain calculations, validation and entity rules are `Implemented` (§7-§9). Application-service unit tests (authorization, portfolios, transactions, notifications) are `Planned (B0)` (ADR-001 point 7); analytics `Implemented`; background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
 - **Component** and **E2E.** `Planned (FE)` for every row; tools `Deferred` to the frontend-stage ADR (ADR-006 point 11).
 - **Integration.** Authentication, authorization, portfolios, transactions and notifications are `Implemented` (§16, §26, §29-§30). `analytics.routes.ts`, `positions.routes.ts`, `assets.routes.ts` and `market.routes.ts` have no route test file yet (the overview is exercised once, in `transactions.routes.test.ts`). Their HTTP integration tests are `Planned (B0)`, added before the layering refactor as its safety net (ADR-001 point 8); the reworked analytics endpoints are then tested in B1 (ADR-004). Background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
 - **Background jobs** means the CSV import (ADR-008), whose E2E flow is in §33. **Tables** follow ADR-010 points 4 and 9 (§27). **Performance** targets are those of §39-§41; no server load test is planned.
@@ -1823,7 +1823,7 @@ Before the project is considered portfolio-ready, the following must exist:
 | --- | --- | --- |
 | Unit | Domain calculations, `Money`, transaction input rules (`transaction.test.ts`), position rules, request validation middleware (`validate.test.ts`) | Chronological validation and application services `Planned (B0)`; permissions `Planned (B2)`; simulation and realtime event processing `Planned (B5)` |
 | Component | Nothing | All items `Planned (FE)` |
-| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests and route tests for analytics, positions, assets and market `Planned (B0)` (ADR-001 point 8); reworked analytics API `Planned (B1)`; import API `Planned (B4)`; realtime events `Planned (B5)` |
+| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests and route tests for analytics, positions, assets and market `Planned (B0)` (ADR-001 point 8); reworked analytics API `Implemented`; import API `Planned (B4)`; realtime events `Planned (B5)` |
 | E2E | Nothing | All items `Planned (FE)`; CSV import added on 2026-10-06 (§33); reset `Deferred` (ADR-010 point 6), so "logout/reset" means logout |
 
 ---
