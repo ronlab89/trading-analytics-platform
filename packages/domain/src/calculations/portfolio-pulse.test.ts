@@ -157,26 +157,94 @@ describe("calculatePortfolioPulse", () => {
       expect(pulse.volatility.value).toBeNull();
     });
 
-    it("should classify volatility as LOW when a low value is provided", () => {
-      const portfolio = buildPortfolio();
-      const positions = [buildPosition()];
-
-      const pulse = calculatePortfolioPulse(portfolio, positions, {
-        volatility: { volatilityPercent: 0.5, annualized: false, sampleSize: 30 },
+    it("should classify an annualized volatility of 15% as LOW", () => {
+      const pulse = calculatePortfolioPulse(buildPortfolio(), [buildPosition()], {
+        volatility: { volatilityPercent: 15, annualized: true, sampleSize: 30 },
       });
 
       expect(pulse.volatility.classification).toBe("LOW");
     });
 
-    it("should classify volatility as HIGH when a high value is provided", () => {
-      const portfolio = buildPortfolio();
-      const positions = [buildPosition()];
-
-      const pulse = calculatePortfolioPulse(portfolio, positions, {
-        volatility: { volatilityPercent: 5, annualized: false, sampleSize: 30 },
+    it("should classify an annualized volatility of 80% as HIGH", () => {
+      const pulse = calculatePortfolioPulse(buildPortfolio(), [buildPosition()], {
+        volatility: { volatilityPercent: 80, annualized: true, sampleSize: 30 },
       });
 
       expect(pulse.volatility.classification).toBe("HIGH");
+    });
+  });
+
+  describe("threshold boundaries (docs/16-analytics-spec.md §15)", () => {
+    // The operators are strict: a value on the threshold stays in the lower class.
+    it.each([
+      [100, 105, "NEUTRAL"],
+      [100, 105.01, "POSITIVE"],
+      [100, 95, "NEUTRAL"],
+      [100, 94.99, "NEGATIVE"],
+    ] as const)(
+      "should classify entry %s and price %s as %s performance",
+      (entry, price, expected) => {
+        const pulse = calculatePortfolioPulse(buildPortfolio(), [
+          buildPosition({
+            averageEntryPrice: Money.of(entry, "USD"),
+            currentPrice: Money.of(price, "USD"),
+          }),
+        ]);
+
+        expect(pulse.performance.classification).toBe(expected);
+      },
+    );
+
+    // Four assets of 1 unit each; `values` are their prices, so the largest share is values[0] / sum.
+    it.each([
+      [[2500, 2500, 2500, 2500], "LOW"],
+      [[2501, 2499, 2500, 2500], "MODERATE"],
+      [[5000, 5000], "MODERATE"],
+      [[5001, 4999], "HIGH"],
+    ] as const)("should classify prices %j as %s concentration", (prices, expected) => {
+      const positions = prices.map((price, index) =>
+        buildPosition({
+          id: `position_${String(index)}`,
+          assetId: `asset_${String(index)}`,
+          quantity: 1,
+          averageEntryPrice: Money.of(price, "USD"),
+          currentPrice: Money.of(price, "USD"),
+        }),
+      );
+
+      const pulse = calculatePortfolioPulse(buildPortfolio(), positions);
+
+      expect(pulse.concentration.classification).toBe(expected);
+    });
+
+    it.each([
+      [20, "LOW"],
+      [20.01, "MODERATE"],
+      [60, "MODERATE"],
+      [60.01, "HIGH"],
+    ] as const)("should classify an annualized volatility of %s as %s", (percent, expected) => {
+      const pulse = calculatePortfolioPulse(buildPortfolio(), [buildPosition()], {
+        volatility: { volatilityPercent: percent, annualized: true, sampleSize: 30 },
+      });
+
+      expect(pulse.volatility.classification).toBe(expected);
+    });
+
+    it.each([
+      [-10, "LOW"],
+      [-10.01, "MODERATE"],
+      [-20, "MODERATE"],
+      [-20.01, "SEVERE"],
+    ] as const)("should classify a maximum drawdown of %s as %s", (percent, expected) => {
+      const pulse = calculatePortfolioPulse(buildPortfolio(), [buildPosition()], {
+        drawdown: {
+          maxDrawdownPercent: percent,
+          peakTimestamp: new Date("2026-01-01"),
+          troughTimestamp: new Date("2026-01-05"),
+        },
+      });
+
+      expect(pulse.drawdown.classification).toBe(expected);
     });
   });
 

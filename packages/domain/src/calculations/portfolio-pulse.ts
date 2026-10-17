@@ -18,13 +18,11 @@ import { calculatePortfolioMetrics } from "./portfolio-metrics";
  *   - Performance    → always calculated (from PortfolioMetrics).
  *   - Concentration  → always calculated (from calculateAllocation,
  *                      grouped by assetId).
- *   - Volatility     → OPTIONAL. calculateVolatility only operates at
- *                      asset level (see volatility.ts scope note), not
- *                      portfolio level. This function accepts an
+ *   - Volatility     → OPTIONAL. This function accepts an
  *                      already-calculated VolatilityResult from the
- *                      caller (e.g. for the largest position, or a
- *                      weighted average — that decision belongs to the
- *                      application layer, not this module). When not
+ *                      caller; where it comes from (the portfolio's
+ *                      daily series, a single asset) is decided by the
+ *                      application layer, not this module. When not
  *                      provided, classified as "UNKNOWN" rather than
  *                      fabricating a value.
  *   - Drawdown       → OPTIONAL, same reasoning as Volatility above.
@@ -40,13 +38,11 @@ import { calculatePortfolioMetrics } from "./portfolio-metrics";
  *                      model (no bid/ask spread, no volume-based
  *                      liquidity signal).
  *
- * THRESHOLDS: the numeric thresholds used below (e.g. what counts as
- * "high concentration") are ARBITRARY PLACEHOLDERS, not a validated
- * product decision. They exist so the classification is deterministic
- * and testable, per FR-007 ("classifications are generated from
- * deterministic rules"). They must not be presented as tuned business
- * thresholds until a real product decision sets them — see
- * 15-implementation-plan.md §2 ("Do not invent... business... metrics").
+ * THRESHOLDS: decided in ADR-004 point 11 (docs/16-analytics-spec.md §15)
+ * so the classification is deterministic and testable, per FR-007
+ * ("classifications are generated from deterministic rules"). The
+ * operators are strict: a value exactly on a threshold stays in the
+ * lower class. Volatility is the annualized value (√365, §9).
  */
 
 export type PerformanceClassification = "POSITIVE" | "NEUTRAL" | "NEGATIVE";
@@ -67,13 +63,13 @@ export interface PortfolioPulse {
   readonly drawdown: PulseDimension<DrawdownClassification>;
 }
 
-// Placeholder thresholds — see module-level comment above.
+// Thresholds — see module-level comment above.
 const PERFORMANCE_POSITIVE_THRESHOLD = 5;
 const PERFORMANCE_NEGATIVE_THRESHOLD = -5;
 const CONCENTRATION_HIGH_THRESHOLD = 50;
 const CONCENTRATION_MODERATE_THRESHOLD = 25;
-const VOLATILITY_HIGH_THRESHOLD = 3;
-const VOLATILITY_MODERATE_THRESHOLD = 1;
+const VOLATILITY_HIGH_THRESHOLD = 60;
+const VOLATILITY_MODERATE_THRESHOLD = 20;
 const DRAWDOWN_SEVERE_THRESHOLD = -20;
 const DRAWDOWN_MODERATE_THRESHOLD = -10;
 
