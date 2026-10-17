@@ -4,10 +4,20 @@ import {
   presentAllocation,
   presentAttribution,
   presentPerformance,
+  presentRangeAttribution,
   presentRisk,
 } from "@trading/contracts";
-import type { AnalyticsPeriodQuery, allocationQuerySchema } from "@trading/contracts";
-import type { AnalyticsService, PerformanceService, RiskService } from "@trading/application";
+import type {
+  AnalyticsPeriodQuery,
+  AttributionQuery,
+  allocationQuerySchema,
+} from "@trading/contracts";
+import type {
+  AnalyticsService,
+  PerformanceService,
+  RangeAttributionService,
+  RiskService,
+} from "@trading/application";
 import { actorOf } from "../middleware/authenticate.js";
 
 type AllocationQuery = z.infer<typeof allocationQuerySchema>;
@@ -17,6 +27,7 @@ export function makeAnalyticsController(
   analyticsService: AnalyticsService,
   riskService: RiskService,
   performanceService: PerformanceService,
+  rangeAttributionService: RangeAttributionService,
 ) {
   /**
    * GET /api/v1/portfolios/:portfolioId/analytics/allocation
@@ -46,13 +57,30 @@ export function makeAnalyticsController(
   /**
    * GET /api/v1/portfolios/:portfolioId/analytics/attribution
    * Source: 07-api-spec.md §22 (Attribution), FR-030/FR-031.
+   *
+   * Query validated upstream by `validate(attributionQuerySchema, "query")`. Without
+   * range parameters it is the current-state attribution, unchanged; with any of
+   * them it is the range attribution.
    */
   async function getPortfolioAttributionHandler(
     req: Request,
     res: Response,
     next: NextFunction,
   ): Promise<void> {
+    const query = req.validated?.query as AttributionQuery;
+
     try {
+      if (query.kind === "range") {
+        const result = await rangeAttributionService.getRangeAttribution(
+          actorOf(req),
+          req.params.portfolioId as string,
+          query.period,
+          query.groupBy,
+        );
+        res.json({ data: presentRangeAttribution(result) });
+        return;
+      }
+
       const result = await analyticsService.getPortfolioAttribution(
         actorOf(req),
         req.params.portfolioId as string,

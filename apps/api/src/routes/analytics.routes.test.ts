@@ -309,13 +309,22 @@ describe("analytics routes", () => {
       });
     });
 
-    it("ignores unknown query parameters (no query validation)", async () => {
+    it("ignores query parameters it does not know", async () => {
       const response = await request(app)
-        .get(`${attributionUrl(portfolioId)}?groupBy=bogus&from=garbage`)
+        .get(`${attributionUrl(portfolioId)}?bogus=1`)
         .set(...auth(ownerToken));
 
       expect(response.status).toBe(200);
       expect(body<DataEnvelope<AttributionDto>>(response).data.items).toHaveLength(2);
+    });
+
+    it("rejects an invalid range query with 400 VALIDATION_ERROR", async () => {
+      const response = await request(app)
+        .get(`${attributionUrl(portfolioId)}?groupBy=bogus&from=garbage`)
+        .set(...auth(ownerToken));
+
+      expect(response.status).toBe(400);
+      expect(body<ErrorEnvelope>(response).error.code).toBe("VALIDATION_ERROR");
     });
 
     it("returns zero total in the base currency and no items for an empty portfolio", async () => {

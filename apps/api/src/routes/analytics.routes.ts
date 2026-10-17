@@ -5,6 +5,7 @@ import { validate } from "../middleware/validate.js";
 import {
   allocationQuerySchema,
   analyticsPeriodQuerySchema,
+  attributionQuerySchema,
   portfolioIdParamsSchema,
 } from "@trading/contracts";
 import { makeAnalyticsController } from "../controllers/analytics.controller.js";
@@ -19,6 +20,7 @@ const {
   composition.analyticsService,
   composition.riskService,
   composition.performanceService,
+  composition.rangeAttributionService,
 );
 
 export const analyticsRouter: ExpressRouter = Router();
@@ -35,6 +37,7 @@ analyticsRouter.get(
   "/api/v1/portfolios/:portfolioId/analytics/attribution",
   authenticate,
   validate(portfolioIdParamsSchema, "params"),
+  validate(attributionQuerySchema, "query"),
   getPortfolioAttributionHandler,
 );
 
