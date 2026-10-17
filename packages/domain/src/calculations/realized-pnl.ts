@@ -17,6 +17,8 @@ import type { ReplayEntry, ReplayedPosition } from "./position-replay";
 
 /** The P/L realized by one SELL. */
 export interface RealizedSale {
+  /** The id of the SELL, when its entry had one. */
+  transactionId?: string;
   executedAt: Date;
   quantity: number;
   realizedPnL: Money;
@@ -59,7 +61,12 @@ export function replayRealizedPnL(
       .subtract(entry.fees);
 
     total = total.add(realizedPnL);
-    sales.push({ executedAt: entry.executedAt, quantity: entry.quantity, realizedPnL });
+    sales.push({
+      ...(entry.id !== undefined ? { transactionId: entry.id } : {}),
+      executedAt: entry.executedAt,
+      quantity: entry.quantity,
+      realizedPnL,
+    });
     position = applySell(held, entry);
   }
 

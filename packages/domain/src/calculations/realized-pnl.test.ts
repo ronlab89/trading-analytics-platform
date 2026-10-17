@@ -96,6 +96,47 @@ describe("replayRealizedPnL", () => {
     expect(result.total.equals(Money.of("8", "USD"))).toBe(true);
   });
 
+  describe("identifying each sale", () => {
+    const withId = (id: string, replayEntry: ReplayEntry): ReplayEntry => ({ ...replayEntry, id });
+
+    it("should carry the id of the transaction that made each sale, in date order", () => {
+      const result = replayRealizedPnL(
+        [
+          withId("b1", buy(10, "10", day1)),
+          withId("s2", sell(3, "11", day4)),
+          withId("s1", sell(2, "12", day2)),
+        ],
+        "USD",
+      );
+
+      expect(result.sales.map((sale) => sale.transactionId)).toEqual(["s1", "s2"]);
+      expect(result.sales.map((sale) => sale.realizedPnL.toString())).toEqual(["4", "3"]);
+    });
+
+    it("should reflect a backdated BUY in the sales recorded before it", () => {
+      // Recorded in this order: BUY d1 10 @ 10, SELL d4 5 @ 12, then a BUY d2 10 @ 20 backdated.
+      // At the SELL the average is (10 x 10 + 10 x 20) / 20 = 15: 5 x (12 - 15) = -15.
+      const result = replayRealizedPnL(
+        [
+          withId("b1", buy(10, "10", day1)),
+          withId("s1", sell(5, "12", day4)),
+          withId("b2", buy(10, "20", day2)),
+        ],
+        "USD",
+      );
+
+      expect(result.sales).toHaveLength(1);
+      expect(result.sales[0]?.transactionId).toBe("s1");
+      expect(result.sales[0]?.realizedPnL.toString()).toBe("-15");
+    });
+
+    it("should leave the id out when the entries have none", () => {
+      const result = replayRealizedPnL([buy(10, "10", day1), sell(4, "12", day2)], "USD");
+
+      expect(result.sales[0]).not.toHaveProperty("transactionId");
+    });
+  });
+
   it("should throw when a SELL exceeds what is held at its point of the timeline", () => {
     expect(() => replayRealizedPnL([buy(5, "10", day1), sell(6, "12", day2)], "USD")).toThrow(
       InsufficientPositionQuantityError,

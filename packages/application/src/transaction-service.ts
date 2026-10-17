@@ -1,4 +1,12 @@
-import { Money, TransactionStatus, replayPosition, validateNewTransaction } from "@trading/domain";
+import {
+  InvalidTransactionError,
+  Money,
+  TransactionStatus,
+  TransactionType,
+  replayPosition,
+  replayRealizedPnL,
+  validateNewTransaction,
+} from "@trading/domain";
 import type {
   AssetRepository,
   Page,
@@ -7,7 +15,6 @@ import type {
   Transaction,
   TransactionListFilter,
   TransactionRepository,
-  TransactionType,
   UnitOfWork,
 } from "@trading/domain";
 import type { Actor } from "./actor.js";
@@ -17,9 +24,13 @@ import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import { assertPortfolioWritable } from "./portfolio-guard.js";
 import type { RolePermissions } from "./permissions.js";
 import type { PortfolioService } from "./portfolio-service.js";
+import { buildRealizedByTransaction } from "./realized-sales.js";
 
 export interface TransactionServiceDependencies {
-  transactionRepository: Pick<TransactionRepository, "listByPortfolioId" | "getById">;
+  transactionRepository: Pick<
+    TransactionRepository,
+    "listByPortfolioId" | "listCompletedByPortfolioId" | "getById"
+  >;
   assetRepository: Pick<AssetRepository, "getById">;
   /** Runs the create-transaction writes atomically (FR-074, NFR-015). */
   unitOfWork: UnitOfWork;
@@ -39,8 +50,13 @@ export interface CreateTransactionRequest {
   executedAt?: Date;
 }
 
-export interface CreateTransactionResult {
+/** A transaction with the P/L it realized: `null` for a BUY and for a transaction that is not `COMPLETED`. */
+export interface TransactionWithRealizedPnL {
   transaction: Transaction;
+  realizedPnL: Money | null;
+}
+
+export interface CreateTransactionResult extends TransactionWithRealizedPnL {
   position: Position | null;
 }
 
@@ -61,27 +77,43 @@ export function createTransactionService(dependencies: TransactionServiceDepende
     permissions = ROLE_PERMISSIONS,
   } = dependencies;
 
-  /** Returns one page of an owned portfolio's transactions, optionally filtered. */
+  /**
+   * Returns one page of an owned portfolio's transactions, optionally filtered, each
+   * SELL with the P/L it realized. The P/L comes from replaying the whole history,
+   * not only the page, because the average cost at a sale depends on every earlier BUY.
+   */
   async function listTransactions(
     actor: Actor,
     portfolioId: string,
     filter: TransactionListFilter,
     page: PageRequest,
-  ): Promise<Page<Transaction>> {
+  ): Promise<Page<TransactionWithRealizedPnL>> {
     assertPermission(actor, "transaction:read", permissions);
-    await portfolioService.getPortfolioById(actor, portfolioId);
+    const portfolio = await portfolioService.getPortfolioById(actor, portfolioId);
 
-    return transactionRepository.listByPortfolioId(portfolioId, filter, page);
+    const [items, completed] = await Promise.all([
+      transactionRepository.listByPortfolioId(portfolioId, filter, page),
+      transactionRepository.listCompletedByPortfolioId(portfolioId),
+    ]);
+    const realized = buildRealizedByTransaction(completed, portfolio.baseCurrency);
+
+    return {
+      ...items,
+      items: items.items.map((transaction) => ({
+        transaction,
+        realizedPnL: realized.get(transaction.id) ?? null,
+      })),
+    };
   }
 
-  /** Returns one transaction, scoped to its owning portfolio. */
+  /** Returns one transaction, scoped to its owning portfolio, with the P/L it realized. */
   async function getTransactionById(
     actor: Actor,
     portfolioId: string,
     transactionId: string,
-  ): Promise<Transaction> {
+  ): Promise<TransactionWithRealizedPnL> {
     assertPermission(actor, "transaction:read", permissions);
-    await portfolioService.getPortfolioById(actor, portfolioId);
+    const portfolio = await portfolioService.getPortfolioById(actor, portfolioId);
 
     const transaction = await transactionRepository.getById(transactionId);
 
@@ -89,7 +121,12 @@ export function createTransactionService(dependencies: TransactionServiceDepende
       throw new NotFoundError("The requested resource could not be found.");
     }
 
-    return transaction;
+    const realized = buildRealizedByTransaction(
+      await transactionRepository.listCompletedByPortfolioId(portfolioId),
+      portfolio.baseCurrency,
+    );
+
+    return { transaction, realizedPnL: realized.get(transaction.id) ?? null };
   }
 
   /**
@@ -99,7 +136,8 @@ export function createTransactionService(dependencies: TransactionServiceDepende
    *
    * Order: permission, portfolio ownership, archived-portfolio guard (409,
    * ADR-010 point 5), asset existence (an unknown
-   * asset is a client error, 404), domain validation. Then, inside one Unit
+   * asset is a client error, 404), the single-currency rule (400, ADR-004
+   * point 12), domain validation. Then, inside one Unit
    * of Work: replay the asset's history with the new transaction in date
    * order and reject it if the held quantity would ever go negative (FR-018,
    * so a backdated transaction is checked too), persist the transaction,
@@ -120,6 +158,11 @@ export function createTransactionService(dependencies: TransactionServiceDepende
     const asset = await assetRepository.getById(input.assetId);
     if (!asset) {
       throw new NotFoundError("The referenced asset could not be found.");
+    }
+    if (asset.currency !== portfolio.baseCurrency) {
+      throw new InvalidTransactionError(
+        `The asset is in ${asset.currency} but the portfolio is in ${portfolio.baseCurrency}: version 1 is single-currency.`,
+      );
     }
 
     const createInput = {
@@ -182,7 +225,18 @@ export function createTransactionService(dependencies: TransactionServiceDepende
         TransactionStatus.COMPLETED,
       );
 
-      return { transaction: completedTransaction, position };
+      // A SELL realizes against the average cost at its place in date order, with
+      // the same replay as the position; a BUY realizes nothing.
+      const realizedPnL =
+        completedTransaction.type === TransactionType.SELL
+          ? (replayRealizedPnL(
+              [...history, completedTransaction],
+              portfolio.baseCurrency,
+            ).sales.find((sale) => sale.transactionId === completedTransaction.id)?.realizedPnL ??
+            null)
+          : null;
+
+      return { transaction: completedTransaction, position, realizedPnL };
     });
   }
 

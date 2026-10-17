@@ -15,7 +15,13 @@ import { InsufficientPositionQuantityError } from "./position-recalculation";
  */
 
 /** The fields of a transaction the replay needs. */
-export type ReplayEntry = Pick<Transaction, "type" | "quantity" | "price" | "fees" | "executedAt">;
+export type ReplayEntry = Pick<
+  Transaction,
+  "type" | "quantity" | "price" | "fees" | "executedAt"
+> & {
+  /** The transaction the entry comes from, when the caller needs to tell the entries apart. */
+  id?: string;
+};
 
 /** The replayed state of an open position. `currentPrice` tracks market data and is not replayed. */
 export interface ReplayedPosition {

@@ -296,7 +296,7 @@ this file):
 | Period P/L boundaries: `V(day before from)` and flows over `[from, to]`; clamped periods use `V(effectiveFrom)` and flows over `(effectiveFrom, to]` (done in B1.2 as `calculatePeriodPerformance`) | ADR-004 |
 | One pure function maps a preset period and `to` to `from`, with tests for month-end, leap-year and `YTD` cases (done in B1.2 as `resolvePeriodWindow`) | ADR-004 |
 | Returns computed in `Decimal` and converted only in the presenter (the domain side is done in B1.2; the presenters are done in B1.3 and B1.4) | ADR-004 |
-| `averageEntryPrice` includes `BUY` fees; `SELL` fees reduce realized P/L (done in B1.1 as the pure function `replayRealizedPnL`; persistence and API exposure follow in later B1 slices) | ADR-004 |
+| `averageEntryPrice` includes `BUY` fees; `SELL` fees reduce realized P/L (done in B1.1 as the pure function `replayRealizedPnL`; exposed by the transaction API in B1.7, calculated when read and not stored) | ADR-004 |
 | Pulse thresholds keep their constants, lose the placeholder comment and get boundary tests; the volatility thresholds become the annualized 20 and 60 (done in B1.5) | ADR-004 |
 | Volatility always annualizes with the square root of 365 and needs 20 returns (done in B1.3 as `calculateReturnVolatility`, also used by the asset-level `calculateVolatility`); Pulse volatility thresholds are 20% and 60% | ADR-004 |
 | Day boundaries are UTC calendar dates everywhere | ADR-004 |

@@ -11,6 +11,7 @@ import type {
   Asset,
   HistoricalPriceRepository,
   MarketPrice,
+  Money,
   MarketPriceRepository,
   Portfolio,
   PortfolioDailyChange,
@@ -32,6 +33,7 @@ import type { Clock } from "./clock.js";
 import { buildPerformanceResult } from "./performance-service.js";
 import type { PerformanceResult } from "./performance-service.js";
 import { buildPortfolioSeries } from "./portfolio-series.js";
+import { buildRealizedByTransaction } from "./realized-sales.js";
 import { buildWhatChanged } from "./what-changed.js";
 import type { WhatChanged } from "./what-changed.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
@@ -70,6 +72,8 @@ export interface OverviewPosition {
 
 export interface OverviewTransaction {
   transaction: Transaction;
+  /** The P/L this SELL realized; `null` for a BUY. */
+  realizedPnL: Money | null;
   asset: AssetSummary | null;
 }
 
@@ -210,6 +214,10 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
       dailyChange = null;
     }
 
+    const realized = buildRealizedByTransaction(
+      await transactionRepository.listCompletedByPortfolioId(portfolioId),
+      portfolio.baseCurrency,
+    );
     const pulseInputs = await getPulseInputs(portfolio);
     const performance = buildPerformanceResult(series);
 
@@ -235,6 +243,7 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
       attribution: buildAttribution(portfolio, positions, assetsById),
       recentTransactions: recent.items.map((transaction) => ({
         transaction,
+        realizedPnL: realized.get(transaction.id) ?? null,
         asset: toAssetSummary(assetsById.get(transaction.assetId)),
       })),
       dailyChange,

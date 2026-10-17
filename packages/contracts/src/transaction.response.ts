@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TransactionStatus, TransactionType } from "@trading/domain";
-import type { Position, Transaction } from "@trading/domain";
+import type { Money, Position, Transaction } from "@trading/domain";
 import { positionResponseSchema, presentPosition } from "./position.response.js";
 import {
   isoTimestampSchema,
@@ -30,6 +30,11 @@ export const transactionResponseSchema = z.object({
   quantity: z.number(),
   price: moneySchema,
   fees: moneySchema,
+  /**
+   * The P/L this SELL realized, after its fees (ADR-004 point 15). `null` for a BUY,
+   * which realizes nothing, and for a transaction that is not `COMPLETED`.
+   */
+  realizedPnL: moneySchema.nullable(),
   status: z.enum(transactionStatusValues),
   executedAt: isoTimestampSchema,
   createdAt: isoTimestampSchema,
@@ -43,7 +48,10 @@ export const createTransactionResponseSchema = z.object({
 });
 export type CreateTransactionResponse = z.infer<typeof createTransactionResponseSchema>;
 
-export function presentTransaction(transaction: Transaction): TransactionResponse {
+export function presentTransaction(
+  transaction: Transaction,
+  realizedPnL: Money | null,
+): TransactionResponse {
   return {
     id: transaction.id,
     portfolioId: transaction.portfolioId,
@@ -52,6 +60,7 @@ export function presentTransaction(transaction: Transaction): TransactionRespons
     quantity: transaction.quantity,
     price: presentMoney(transaction.price),
     fees: presentMoney(transaction.fees),
+    realizedPnL: realizedPnL === null ? null : presentMoney(realizedPnL),
     status: transaction.status,
     executedAt: presentTimestamp(transaction.executedAt),
     createdAt: presentTimestamp(transaction.createdAt),
@@ -61,9 +70,10 @@ export function presentTransaction(transaction: Transaction): TransactionRespons
 export function presentCreateTransactionResult(result: {
   transaction: Transaction;
   position: Position | null;
+  realizedPnL: Money | null;
 }): CreateTransactionResponse {
   return {
-    transaction: presentTransaction(result.transaction),
+    transaction: presentTransaction(result.transaction, result.realizedPnL),
     position: result.position ? presentPosition(result.position) : null,
   };
 }

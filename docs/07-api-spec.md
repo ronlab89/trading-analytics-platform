@@ -582,7 +582,7 @@ pageSize    default 20, max 100
 ```
 
 Ordered by `executedAt` descending, then `id` descending; `sort` is
-`Deferred`. Response (200):
+`Deferred`. Each transaction carries `realizedPnL` (see Create Transaction). Response (200):
 
 ```json
 {
@@ -603,7 +603,7 @@ Errors: 400 `VALIDATION_ERROR` (invalid filter); 404 `NOT_FOUND`.
 GET /api/v1/portfolios/:portfolioId/transactions/:transactionId
 ```
 
-Returns 200 `{ "data": transaction }`. Errors: 404 `NOT_FOUND` when the
+Returns 200 `{ "data": transaction }`, with its `realizedPnL`. Errors: 404 `NOT_FOUND` when the
 transaction belongs to another portfolio or user.
 
 ---
@@ -637,27 +637,40 @@ when a `SELL` closes the position:
 ```json
 {
   "data": {
-    "transaction": { "id": "...", "status": "COMPLETED" },
+    "transaction": {
+      "id": "...",
+      "status": "COMPLETED",
+      "realizedPnL": { "amount": "4.6", "currency": "USD" }
+    },
     "position": {}
   }
 }
 ```
 
+`realizedPnL` is `Implemented` (FR-012, ADR-004 point 15) on every transaction
+response, in the list, the detail and the create result, and in the
+`recentTransactions` of the overview. A `SELL` carries the P/L it realized, after
+its fees, against the weighted-average cost at its place in date order; a `BUY`,
+and a transaction that is not `COMPLETED`, carry `null`. It is calculated when it
+is read, from the portfolio's history, and is not stored: a `BUY` dated in the past
+changes the average cost at every later `SELL`, so the value of an earlier `SELL`
+can change.
+
 Errors: 400 `VALIDATION_ERROR` (schema, domain invariants, `SELL` above the
 held quantity at any point in date order, backdated transactions included,
 ADR-003 point 6; a `SELL` whose `fees` exceed `quantity × price`, while fees
-equal to the gross proceeds are accepted, ADR-004 point 2); 404 `NOT_FOUND` (portfolio or `assetId`); 409 `CONFLICT` on
-an archived portfolio (ADR-010 point 5).
+equal to the gross proceeds are accepted, ADR-004 point 2; an asset whose currency
+differs from the portfolio `baseCurrency`, ADR-004 point 12, `Implemented`); 404
+`NOT_FOUND` (portfolio or `assetId`); 409 `CONFLICT` on an archived portfolio
+(ADR-010 point 5).
 
 Transactions of one portfolio and asset are created one at a time, so of two
 concurrent `SELL`s that together exceed the holding exactly one succeeds. The
 position is rebuilt by replaying the asset's transactions in date order
 (ties by `executedAt`, then creation order).
 
-`Planned`:
-
-- (B1) 400 when the asset currency differs from `baseCurrency` (ADR-004
-  point 12).
+The currency of `price` and `fees` is not compared with the portfolio's: only the
+asset's is (ADR-004 point 12).
 - (B4) `Idempotency-Key` header: the same key and request returns the stored
   response; a different request returns 409 `CONFLICT` (ADR-008 point 8).
 

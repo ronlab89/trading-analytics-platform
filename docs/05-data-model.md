@@ -253,8 +253,10 @@ Fees in cost basis (`Implemented`, ADR-004 point 15, decided 2026-10-05):
 `(heldQuantity × averageEntryPrice + quantity × price + fees) /
 (heldQuantity + quantity)`, computed by the date-order replay
 (`position-replay.ts`); a `SELL` leaves it unchanged and its fees are
-subtracted from realized P/L (`realized-pnl.ts`, `Implemented` as a pure
-function; not yet persisted or exposed by the API). Unrealized P/L (§25) is
+subtracted from realized P/L (`realized-pnl.ts`, `Implemented`). It is not
+stored: each `SELL` of the transaction API carries the `realizedPnL` calculated
+when it is read, because a `BUY` dated in the past changes the average cost at
+every later `SELL`. Unrealized P/L (§25) is
 lower by the `BUY` fees of the held units. Formulas and tests are in
 `16-analytics-spec.md` §12.
 
@@ -314,7 +316,7 @@ type (ADR-003 point 1).
 | Overselling rejected against the current position (`InsufficientPositionQuantityError`) | `Implemented` |
 | Holding stays non-negative at `executedAt` and after every later transaction, replayed in date order (ADR-003 point 6) | `Planned (B0)` |
 | Same-`executedAt` tiebreak: `executedAt`, then creation order (row order for an import) (ADR-003 Deferred detail) | `Planned (B0)` |
-| Asset currency equals portfolio `baseCurrency`, else 400 (ADR-004 point 12) | `Planned (B1)` |
+| Asset currency equals portfolio `baseCurrency`, else 400 (ADR-004 point 12) | `Implemented` (`transaction-service.ts`, B1.7) |
 | `SELL` with `fees > quantity × price` rejected with 400, so outflows are never negative; fees equal to the gross proceeds are accepted (ADR-004 point 2, amended 2026-10-05) | `Implemented` (`packages/domain/src/entities/transaction.ts`) |
 | `Idempotency-Key` on `POST /portfolios/:id/transactions` (ADR-008 point 8) | `Planned (B4)`, see §53 |
 

@@ -116,7 +116,7 @@ const overview: OverviewSource = {
       },
     ],
   },
-  recentTransactions: [{ transaction, asset: assetSummary }],
+  recentTransactions: [{ transaction, realizedPnL: null, asset: assetSummary }],
   dailyChange,
   performance: {
     asOf: new Date("2026-10-12T00:00:00.000Z"),
@@ -145,14 +145,37 @@ const overview: OverviewSource = {
 
 describe("overview presenter", () => {
   it("serializes the overview exactly as before", () => {
-    const { performance: _performance, whatChanged: _whatChanged, ...rest } = overview;
+    const {
+      performance: _performance,
+      whatChanged: _whatChanged,
+      recentTransactions: _recent,
+      ...rest
+    } = overview;
     const {
       performance: _presented,
       whatChanged: _presentedWhatChanged,
+      recentTransactions: _presentedRecent,
       ...dto
     } = presentOverview(overview);
     expect(dto).toEqual(JSON.parse(JSON.stringify(rest)));
     expect(overviewResponseSchema.safeParse(presentOverview(overview)).success).toBe(true);
+  });
+
+  it("presents each recent transaction with its realized P/L", () => {
+    const dto = presentOverview({
+      ...overview,
+      recentTransactions: [
+        { transaction, realizedPnL: usd("12.5"), asset: assetSummary },
+        { transaction, realizedPnL: null, asset: null },
+      ],
+    });
+
+    expect(dto.recentTransactions.map((entry) => entry.transaction.realizedPnL)).toEqual([
+      { amount: "12.5", currency: "USD" },
+      null,
+    ]);
+    expect(dto.recentTransactions[1]?.asset).toBeNull();
+    expect(overviewResponseSchema.safeParse(dto).success).toBe(true);
   });
 
   it("presents the performance with the performance contract", () => {

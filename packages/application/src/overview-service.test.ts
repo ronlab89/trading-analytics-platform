@@ -183,6 +183,24 @@ describe("overview service", () => {
     expect(overview.recentTransactions[0]?.asset?.symbol).toBe("AAA");
   });
 
+  it("gives each recent SELL the P/L it realized and a BUY none", async () => {
+    const sale: Transaction = {
+      ...transaction,
+      id: "t2",
+      type: TransactionType.SELL,
+      quantity: 1,
+      price: Money.of("130", "USD"),
+      executedAt: new Date("2026-02-01T00:00:00Z"),
+    };
+    const { service } = build({ transactions: [transaction, sale] });
+    const overview = await service.getPortfolioOverview(actor, "p1");
+
+    // Bought 2 at 100; sold 1 at 130.
+    expect(
+      overview.recentTransactions.map((entry) => entry.realizedPnL?.toString() ?? null),
+    ).toEqual([null, "30"]);
+  });
+
   it("reads historical prices up to the day after the last closed day, never the system time", async () => {
     const { service, listSeriesCandles } = build();
     await service.getPortfolioOverview(actor, "p1");

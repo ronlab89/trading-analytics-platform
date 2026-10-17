@@ -110,7 +110,11 @@ export interface OverviewSource {
   }[];
   allocation: Parameters<typeof presentAllocation>[0];
   attribution: Parameters<typeof presentAttribution>[0];
-  recentTransactions: readonly { transaction: Transaction; asset: AssetSummarySource | null }[];
+  recentTransactions: readonly {
+    transaction: Transaction;
+    realizedPnL: Money | null;
+    asset: AssetSummarySource | null;
+  }[];
   dailyChange: PortfolioDailyChange | null;
   performance: Parameters<typeof presentPerformance>[0];
   pulse: PortfolioPulse;
@@ -154,7 +158,7 @@ export function presentOverview(overview: OverviewSource): OverviewResponse {
     allocation: presentAllocation(overview.allocation),
     attribution: presentAttribution(overview.attribution),
     recentTransactions: overview.recentTransactions.map((entry) => ({
-      transaction: presentTransaction(entry.transaction),
+      transaction: presentTransaction(entry.transaction, entry.realizedPnL),
       asset: presentAssetSummary(entry.asset),
     })),
     dailyChange: overview.dailyChange
