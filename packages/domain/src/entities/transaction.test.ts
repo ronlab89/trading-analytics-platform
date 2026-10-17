@@ -81,6 +81,30 @@ describe("validateNewTransaction", () => {
     }).toThrow(InvalidTransactionError);
   });
 
+  it("should reject a SELL whose fees exceed its gross proceeds", () => {
+    expect(() => {
+      validateNewTransaction(
+        { ...baseInput, type: TransactionType.SELL, fees: Money.of("1500.01", "USD") },
+        now,
+      );
+    }).toThrow(InvalidTransactionError);
+  });
+
+  it("should accept a SELL whose fees equal its gross proceeds", () => {
+    expect(() => {
+      validateNewTransaction(
+        { ...baseInput, type: TransactionType.SELL, fees: Money.of(1500, "USD") },
+        now,
+      );
+    }).not.toThrow();
+  });
+
+  it("should accept a BUY whose fees exceed quantity times price", () => {
+    expect(() => {
+      validateNewTransaction({ ...baseInput, fees: Money.of(2000, "USD") }, now);
+    }).not.toThrow();
+  });
+
   it("should reject an execution date after the given now", () => {
     expect(() => {
       validateNewTransaction({ ...baseInput, executedAt: new Date("2026-07-01T00:00:00Z") }, now);
