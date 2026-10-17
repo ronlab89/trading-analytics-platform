@@ -25,7 +25,7 @@ docs/PROGRESS.md
 - [x] T5 Time-weighted return and absolute P/L over a period (`BUY` as inflow, `SELL` as outflow; boundaries `V(day before from)` and flows over `[from, to]`; clamped periods state `effectiveFrom`). `Decimal` throughout. Split in two commits:
   - [x] T5a Daily flows `B(d)`/`S(d)` and the daily return `r(d)` (`daily-return.ts`), hand-computed tests of §4 and §6.
   - [x] T5b Period performance (`period-performance.ts`): `TWR` and `P/L` with the §5 clamp and `effectiveFrom`; status `OK` or `INSUFFICIENT_DATA` (`UNKNOWN` is not produced here); the daily returns of the counted days.
-- [ ] T6 Reconcile `16-analytics-spec.md` (§3 to §8 `Planned (B1)` to `Implemented` as pure functions), the roadmap and `PROGRESS.md` with T1 to T5.
+- [x] T6 Reconcile `16-analytics-spec.md` (§3 to §8 `Planned (B1)` to `Implemented` as pure functions), the roadmap and `PROGRESS.md` with T1 to T5.
 
 ## Done when
 
