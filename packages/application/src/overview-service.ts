@@ -32,6 +32,8 @@ import type { Clock } from "./clock.js";
 import { buildPerformanceResult } from "./performance-service.js";
 import type { PerformanceResult } from "./performance-service.js";
 import { buildPortfolioSeries } from "./portfolio-series.js";
+import { buildWhatChanged } from "./what-changed.js";
+import type { WhatChanged } from "./what-changed.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
 import type { PortfolioService } from "./portfolio-service.js";
@@ -87,6 +89,8 @@ export interface PortfolioOverview {
   /** The last month of the portfolio's value, as in `GET .../analytics/performance?period=1M`. */
   performance: PerformanceResult;
   pulse: PortfolioPulse;
+  /** What changed over the same `1M` period, from the same series as `performance`. */
+  whatChanged: WhatChanged;
 }
 
 export interface OverviewServiceDependencies {
@@ -114,7 +118,8 @@ export interface OverviewServiceDependencies {
  * through the domain calculations (single source of truth, NFR-036).
  *
  * `performance` (FR-025/026) is the same result as the performance
- * endpoint for the fixed `1M` period (07-api-spec.md §11).
+ * endpoint for the fixed `1M` period (07-api-spec.md §11). `whatChanged`
+ * (FR-006) covers that same period and is built from the same series.
  */
 export function createOverviewService(dependencies: OverviewServiceDependencies) {
   const {
@@ -174,9 +179,16 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
       ),
     ]);
 
+    // One series for `performance` and `whatChanged`: the period is the same.
+    const series = await buildPortfolioSeries(dependencies, portfolio, {
+      kind: "preset",
+      period: "1M",
+    });
+
     const assetsById = await assetService.getAssetsByIds(actor, [
       ...positions.map((p) => p.assetId),
       ...recent.items.map((t) => t.assetId),
+      ...(series.inputs?.timeline.byAsset.keys() ?? []),
     ]);
 
     const marketPrices = await marketPriceRepository.listByAssetIds(
@@ -199,9 +211,7 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
     }
 
     const pulseInputs = await getPulseInputs(portfolio);
-    const performance = buildPerformanceResult(
-      await buildPortfolioSeries(dependencies, portfolio, { kind: "preset", period: "1M" }),
-    );
+    const performance = buildPerformanceResult(series);
 
     return {
       portfolio,
@@ -230,6 +240,7 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
       dailyChange,
       performance,
       pulse: calculatePortfolioPulse(portfolio, positions, pulseInputs),
+      whatChanged: buildWhatChanged(series, assetsById, portfolio.baseCurrency),
     };
   }
 
