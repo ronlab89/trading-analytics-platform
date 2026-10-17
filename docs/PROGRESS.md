@@ -937,7 +937,12 @@ read `COMPLETED` transactions and the candles of several assets in one call, and
 pure functions build the daily quantity timeline, the portfolio value series
 (last close carried forward, `INSUFFICIENT_DATA` per day), the daily flows and
 returns, the preset period windows, and the period `TWR` and P/L with the
-`effectiveFrom` clamp. Nothing is exposed by the API yet (B1.4). Phase 5 itself still has the reconciliation of
+`effectiveFrom` clamp. **B1.3 is done** (`Implemented`, `odd/tasks/b1/b1-3-risk.md`):
+volatility (√365, at least 20 returns) and drawdown on the cumulative return index
+are pure functions over the daily returns, and `GET /portfolios/:id/analytics/risk`
+serves them with `null` plus `status` for unavailable values. The asset-level
+`calculateVolatility` now uses the same rule. Performance is not exposed by the API
+yet (B1.4). Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in
