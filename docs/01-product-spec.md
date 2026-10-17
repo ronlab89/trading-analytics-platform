@@ -124,7 +124,7 @@ Settings covers the user's preferences (FR-087).
 
 # 5. Dashboard
 
-**Status:** API `Implemented` (overview, pulse); What Changed `Planned (B1)`; UI `Planned (FE)`
+**Status:** API `Implemented` (overview, pulse); What Changed `Implemented`; UI `Planned (FE)`
 
 The dashboard is the primary overview of the selected portfolio (FR-004,
 FR-005). It answers three questions:
@@ -137,7 +137,7 @@ FR-005). It answers three questions:
 
 ## 5.1 Portfolio Overview
 
-**Status:** API `Implemented`; period performance `Planned (B1)`; portfolio selection and UI `Planned (FE)`
+**Status:** API `Implemented`; period performance `Implemented`; portfolio selection and UI `Planned (FE)`
 
 The overview shows total value, daily change, performance, allocation,
 positions and main contributors of the selected portfolio. See FR-004 and,
@@ -147,7 +147,7 @@ for portfolio selection, FR-005.
 
 ## 5.2 What Changed?
 
-**Status:** `Planned (B1)` (API); UI `Planned (FE)`; threshold-based events `Deferred`
+**Status:** `Implemented` (API); UI `Planned (FE)`; threshold-based events `Deferred`
 
 A summary of meaningful changes in the selected period, derived only from
 real data. Version 1 reports only events that need no threshold (ADR-010
@@ -164,7 +164,7 @@ Significant value change, unusual volatility and allocation changes are
 
 ## 5.3 Portfolio Pulse
 
-**Status:** `Implemented`; volatility and drawdown inputs `Planned (B1)`; exposure and liquidity `Deferred`
+**Status:** `Implemented`; volatility and drawdown inputs `Implemented`; exposure and liquidity `Deferred`
 
 A deterministic, explainable classification of the portfolio state, with no
 external AI service (ADR-004 point 11). Each dimension shows its
@@ -222,7 +222,7 @@ can be cancelled. See FR-011.
 
 # 7. Positions
 
-**Status:** API `Implemented`; fees in average entry price `Planned (B1)`; live current price `Planned (B5)`; UI `Planned (FE)`
+**Status:** API `Implemented`; fees in average entry price `Implemented`; live current price `Planned (B5)`; UI `Planned (FE)`
 
 Positions represent the user's current holdings. A position shows asset,
 quantity, average entry price, current price, current value, unrealized P/L,
@@ -306,7 +306,7 @@ FR-022, FR-023 and FR-024.
 
 # 11. Analytics
 
-**Status:** allocation `Implemented`; `1D` change `Implemented`; period performance, historical series, portfolio drawdown and volatility `Planned (B1)`; charts `Planned (FE)`; sector allocation and exposure `Deferred`; benchmark comparison `Deferred` (ADR-010 point 7)
+**Status:** allocation `Implemented`; `1D` change `Implemented`; period performance, historical series, portfolio drawdown and volatility `Implemented`; charts `Planned (FE)`; sector allocation and exposure `Deferred`; benchmark comparison `Deferred` (ADR-010 point 7)
 
 Analytics explain portfolio behavior over a period: time-weighted return and
 P/L (FR-025), historical performance (FR-026), allocation (FR-027), drawdown
@@ -318,7 +318,7 @@ data boundaries are defined by ADR-004 and `16-analytics-spec.md`
 
 # 12. Performance Attribution
 
-**Status:** current-state attribution `Implemented`; range attribution and money contribution per asset `Planned (B1)`; factor breakdown `Deferred` (ADR-004 point 10)
+**Status:** current-state attribution `Implemented`; range attribution and money contribution per asset `Implemented`; factor breakdown `Deferred` (ADR-004 point 10)
 
 Performance Attribution explains which assets produced a result, instead of
 showing only a portfolio total:
