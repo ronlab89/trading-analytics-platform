@@ -1,34 +1,34 @@
+import { Decimal } from "decimal.js";
 import type { HistoricalPrice } from "../entities/historical-price";
 import { InsufficientDataError } from "./drawdown";
 
 /**
  * Volatility calculation.
- * Source: docs/06-architecture.md §10, docs/02-functional-requirements.md
- * FR-029.
+ * Source: docs/16-analytics-spec.md §9, docs/02-functional-requirements.md FR-029.
  *
- * SCOPE LIMITATION: same as calculateDrawdown (see drawdown.ts) — this
- * calculates volatility for a SINGLE ASSET from its historical price
- * series, not portfolio-level volatility. Portfolio-level volatility
- * requires a reconstructed portfolio value time series from
- * Transaction[], which is future work.
+ * Method: sample standard deviation (Bessel's correction, dividing by n-1) of
+ * daily returns, annualized with √365 because the series is calendar-daily
+ * (ADR-004). Sample (not population) deviation is used because the observed
+ * returns are a sample of the behavior, the conventional choice for historical
+ * volatility.
  *
- * Method: sample standard deviation (Bessel's correction, dividing by
- * n-1) of daily returns, where
- * return_t = (close_t - close_t-1) / close_t-1.
- *
- * Sample (not population) standard deviation is used because the
- * observed returns are treated as a sample of the asset's return
- * behavior, not the entire population of possible returns — the
- * conventional choice for historical volatility in finance.
- *
- * `annualize` is an optional parameter: when true, the daily standard
- * deviation is scaled by √252 (approximate number of trading days in
- * a year), a standard finance convention for comparing volatility
- * across different time horizons. Defaults to false (returns daily
- * volatility) to keep the base calculation simple.
+ * `calculateReturnVolatility` works on any return series, so the portfolio
+ * series and an asset's close-to-close returns share one rule.
+ * `calculateVolatility` is the asset-level entry point (see drawdown.ts for the
+ * scope limitation of the asset-level calculations).
  */
 
-const TRADING_DAYS_PER_YEAR = 252;
+const DAYS_PER_YEAR = 365;
+
+/** Fewer returns than this make the deviation too noisy to report (§9). */
+export const MIN_VOLATILITY_RETURNS = 20;
+
+export interface ReturnVolatility {
+  readonly status: "OK" | "UNKNOWN";
+  /** Annualized, in percentage points. `null`, never `0`, when `UNKNOWN`. */
+  readonly volatilityPercent: Decimal | null;
+  readonly sampleSize: number;
+}
 
 export interface VolatilityResult {
   readonly volatilityPercent: number;
@@ -36,8 +36,31 @@ export interface VolatilityResult {
   readonly sampleSize: number;
 }
 
-function calculateDailyReturns(sorted: readonly HistoricalPrice[]): number[] {
-  const returns: number[] = [];
+/**
+ * Annualized volatility of `returns`, the daily returns as fractions with the
+ * days that have no return already left out. `UNKNOWN` under
+ * `MIN_VOLATILITY_RETURNS` returns.
+ */
+export function calculateReturnVolatility(returns: readonly Decimal[]): ReturnVolatility {
+  const sampleSize = returns.length;
+
+  if (sampleSize < MIN_VOLATILITY_RETURNS) {
+    return { status: "UNKNOWN", volatilityPercent: null, sampleSize };
+  }
+
+  const mean = Decimal.sum(...returns).dividedBy(sampleSize);
+  const sumOfSquaredDeviations = Decimal.sum(...returns.map((rate) => rate.minus(mean).pow(2)));
+  const dailyStandardDeviation = sumOfSquaredDeviations.dividedBy(sampleSize - 1).sqrt();
+
+  return {
+    status: "OK",
+    volatilityPercent: dailyStandardDeviation.times(Decimal.sqrt(DAYS_PER_YEAR)).times(100),
+    sampleSize,
+  };
+}
+
+function calculateDailyReturns(sorted: readonly HistoricalPrice[]): Decimal[] {
+  const returns: Decimal[] = [];
 
   for (let i = 1; i < sorted.length; i++) {
     const previous = sorted[i - 1];
@@ -46,58 +69,35 @@ function calculateDailyReturns(sorted: readonly HistoricalPrice[]): number[] {
       continue;
     }
 
-    const previousClose = previous.close.toNumber();
-    const currentClose = current.close.toNumber();
+    const previousClose = new Decimal(previous.close.toString());
+    const currentClose = new Decimal(current.close.toString());
 
-    returns.push((currentClose - previousClose) / previousClose);
+    returns.push(currentClose.minus(previousClose).dividedBy(previousClose));
   }
 
   return returns;
 }
 
 /**
- * Calculates the sample standard deviation of daily returns across a
- * historical price series, expressed as a percentage.
+ * Annualized volatility of a single asset's close-to-close returns, as a
+ * percentage. `prices` does not need to be pre-sorted by timestamp.
  *
- * `prices` does not need to be pre-sorted by timestamp.
- *
- * Requires at least 3 data points: computing daily returns needs at
- * least 2 points, and a sample standard deviation over a single
- * return (n=1) is undefined (division by n-1=0). Throws
- * `InsufficientDataError` otherwise, for the same reason as
- * `calculateDrawdown` — this is a calculation precondition, not a
- * valid empty/zero business state.
+ * Needs `MIN_VOLATILITY_RETURNS` returns, which is one more price point.
+ * Throws `InsufficientDataError` otherwise, for the same reason as
+ * `calculateDrawdown`: this is a calculation precondition, not a valid
+ * empty/zero business state.
  */
-export function calculateVolatility(
-  prices: readonly HistoricalPrice[],
-  options: { annualize?: boolean } = {},
-): VolatilityResult {
-  if (prices.length < 3) {
+export function calculateVolatility(prices: readonly HistoricalPrice[]): VolatilityResult {
+  const sorted = [...prices].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  const { volatilityPercent, sampleSize } = calculateReturnVolatility(
+    calculateDailyReturns(sorted),
+  );
+
+  if (volatilityPercent === null) {
     throw new InsufficientDataError(
-      "At least 3 historical price points are required to calculate volatility.",
+      `At least ${String(MIN_VOLATILITY_RETURNS + 1)} historical price points are required to calculate volatility.`,
     );
   }
 
-  const sorted = [...prices].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-  const returns = calculateDailyReturns(sorted);
-  const sampleSize = returns.length;
-
-  const mean = returns.reduce((sum, value) => sum + value, 0) / sampleSize;
-
-  const sumOfSquaredDeviations = returns.reduce((sum, value) => sum + (value - mean) ** 2, 0);
-
-  const sampleVariance = sumOfSquaredDeviations / (sampleSize - 1);
-  const dailyStandardDeviation = Math.sqrt(sampleVariance);
-
-  const annualize = options.annualize ?? false;
-  const standardDeviation = annualize
-    ? dailyStandardDeviation * Math.sqrt(TRADING_DAYS_PER_YEAR)
-    : dailyStandardDeviation;
-
-  return {
-    volatilityPercent: standardDeviation * 100,
-    annualized: annualize,
-    sampleSize,
-  };
+  return { volatilityPercent: volatilityPercent.toNumber(), annualized: true, sampleSize };
 }
