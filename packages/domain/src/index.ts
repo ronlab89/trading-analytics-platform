@@ -28,6 +28,7 @@ export * from "./calculations/volatility";
 export * from "./calculations/portfolio-pulse";
 export * from "./calculations/position-recalculation";
 export * from "./calculations/position-replay";
+export * from "./calculations/realized-pnl";
 export * from "./calculations/decision-replay";
 export type { PortfolioRepository } from "./repositories/portfolio-repository";
 export type { UserRepository } from "./repositories/user-repository";

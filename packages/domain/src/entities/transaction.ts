@@ -80,6 +80,13 @@ export function validateNewTransaction(input: CreateTransactionInput, now: Date)
     if (input.fees.currency !== input.price.currency) {
       throw new InvalidTransactionError("Fees currency must match the transaction price currency.");
     }
+
+    if (
+      input.type === TransactionType.SELL &&
+      input.fees.greaterThan(input.price.multiply(input.quantity))
+    ) {
+      throw new InvalidTransactionError("Fees cannot exceed the gross proceeds of a SELL.");
+    }
   }
 
   if (input.executedAt !== undefined && input.executedAt > now) {

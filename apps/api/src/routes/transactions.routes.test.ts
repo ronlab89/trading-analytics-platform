@@ -94,6 +94,53 @@ describe("transactions", () => {
     expect(body<ErrorEnvelope>(response).error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("rejects a SELL whose fees exceed its gross proceeds with 400 and writes nothing", async () => {
+    const localAsset = await createTestAsset("FEECAP");
+    assetIds.push(localAsset.id);
+
+    await request(app)
+      .post(`/api/v1/portfolios/${portfolioId}/transactions`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        assetId: localAsset.id,
+        type: "BUY",
+        quantity: 10,
+        price: { amount: "100", currency: "USD" },
+      });
+
+    const sell = await request(app)
+      .post(`/api/v1/portfolios/${portfolioId}/transactions`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        assetId: localAsset.id,
+        type: "SELL",
+        quantity: 2,
+        price: { amount: "100", currency: "USD" },
+        fees: { amount: "200.01", currency: "USD" },
+      });
+
+    expect(sell.status).toBe(400);
+    expect(body<ErrorEnvelope>(sell).error.code).toBe("VALIDATION_ERROR");
+
+    const list = await request(app)
+      .get(`/api/v1/portfolios/${portfolioId}/transactions`)
+      .query({ assetId: localAsset.id, pageSize: 50 })
+      .set("Authorization", `Bearer ${token}`);
+    expect(body<DataMetaEnvelope<TransactionDto[]>>(list).data).toHaveLength(1);
+
+    const equal = await request(app)
+      .post(`/api/v1/portfolios/${portfolioId}/transactions`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        assetId: localAsset.id,
+        type: "SELL",
+        quantity: 2,
+        price: { amount: "100", currency: "USD" },
+        fees: { amount: "200", currency: "USD" },
+      });
+    expect(equal.status).toBe(201);
+  });
+
   it(
     "rolls back the whole operation when a SELL exceeds the held quantity, " +
       "leaving no orphaned transaction behind (Unit of Work)",

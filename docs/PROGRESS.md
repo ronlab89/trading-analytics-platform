@@ -927,7 +927,11 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B1 (performance and risk analytics). B0 is done. Phase 5 itself still has the reconciliation of
+**Next:** B1 (performance and risk analytics). B0 is done. **B1.1 is done**
+(`Implemented`, `odd/tasks/b1/b1-1-fees.md`): a `SELL` whose fees exceed its gross
+proceeds is rejected with 400, `averageEntryPrice` includes `BUY` fees in the
+date-order replay, and `replayRealizedPnL` computes realized P/L net of `SELL`
+fees (pure function, not yet exposed by the API). Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in

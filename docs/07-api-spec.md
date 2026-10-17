@@ -510,8 +510,8 @@ Returns the position with derived metrics:
 
 `allocation` is not returned here; it is in the overview
 (`positions[].allocationPercent`, §11). Errors: 404 `NOT_FOUND` when the
-position belongs to another portfolio or user. `BUY` fees in
-`averageEntryPrice` are `Planned (B1)` (ADR-004 point 15).
+position belongs to another portfolio or user. `averageEntryPrice` includes the
+`BUY` fees of the held units (`Implemented`, ADR-004 point 15).
 
 ---
 
@@ -611,7 +611,8 @@ when a `SELL` closes the position:
 
 Errors: 400 `VALIDATION_ERROR` (schema, domain invariants, `SELL` above the
 held quantity at any point in date order, backdated transactions included,
-ADR-003 point 6); 404 `NOT_FOUND` (portfolio or `assetId`); 409 `CONFLICT` on
+ADR-003 point 6; a `SELL` whose `fees` exceed `quantity × price`, while fees
+equal to the gross proceeds are accepted, ADR-004 point 2); 404 `NOT_FOUND` (portfolio or `assetId`); 409 `CONFLICT` on
 an archived portfolio (ADR-010 point 5).
 
 Transactions of one portfolio and asset are created one at a time, so of two
@@ -621,8 +622,8 @@ position is rebuilt by replaying the asset's transactions in date order
 
 `Planned`:
 
-- (B1) 400 when a `SELL` has `fees > quantity × price`, or the asset currency
-  differs from `baseCurrency` (ADR-004 points 2 and 12).
+- (B1) 400 when the asset currency differs from `baseCurrency` (ADR-004
+  point 12).
 - (B4) `Idempotency-Key` header: the same key and request returns the stored
   response; a different request returns 409 `CONFLICT` (ADR-008 point 8).
 
