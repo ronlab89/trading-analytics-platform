@@ -165,7 +165,7 @@ Edge cases:
 | Case | Expected |
 | --- | --- |
 | No trades on `d` | `B(d) = S(d) = F(d) = 0`. |
-| `SELL` fees greater than gross proceeds | Rejected with a 400 validation error (`Planned (B1)`, ADR-004 point 2, amended 2026-10-05; `05-data-model.md` §9.2), so `S(d) ≥ 0` always. Tests: `SELL 2 @ 5, fees 10` is accepted with `S = 0`; `SELL 2 @ 5, fees 10.00000001` is rejected with 400. |
+| `SELL` fees greater than gross proceeds | Rejected with a 400 validation error (`Implemented`, ADR-004 point 2, amended 2026-10-05; `05-data-model.md` §9.2), so `S(d) ≥ 0` always. Tests: `SELL 2 @ 5, fees 10` is accepted with `S = 0`; `SELL 2 @ 5, fees 10.00000001` is rejected with 400. |
 
 ---
 
@@ -497,7 +497,7 @@ and `previousPrice` (§18). `previousPrice` is the last closed daily candle
 
 # 12. Current-State Metrics and P/L
 
-**Status:** unrealized `Implemented` (`portfolio-metrics.ts`, `position-metrics.ts`); realized `Planned (B1)`.  
+**Status:** unrealized `Implemented` (`portfolio-metrics.ts`, `position-metrics.ts`); fees in cost basis `Implemented` (`position-replay.ts`); realized P/L `Implemented` as a pure function (`realized-pnl.ts`), exposure by the API `Planned (B1)`.  
 **Decisions:** ADR-003 point 4; ADR-004 points 14 and 15.  
 **Requirements:** FR-025, FR-030.
 
@@ -509,12 +509,11 @@ unrealizedPnLPercent  = unrealizedPnL / costBasis × 100
 portfolio totals      = Σ over positions; percent 0 when total cost basis is 0
 ```
 
-`averageEntryPrice` is the weighted average cost of `BUY` prices; a `SELL`
-leaves it unchanged (`position-recalculation.ts`, `Implemented`). `BUY` fees
-are not part of it today.
+`averageEntryPrice` is the weighted average cost of `BUY` prices and fees; a
+`SELL` leaves it unchanged (`position-replay.ts`, `Implemented`).
 
-**Fees in cost basis** (`Planned (B1)`, ADR-004 point 15, decided
-2026-10-05; a code change in `position-recalculation.ts`):
+**Fees in cost basis** (`Implemented`, ADR-004 point 15, decided 2026-10-05;
+`applyBuy` in `position-replay.ts`):
 
 ```text
 on BUY:  newAverageEntryPrice = (heldQuantity × averageEntryPrice + quantity × price + fees)
@@ -524,20 +523,22 @@ on BUY:  newAverageEntryPrice = (heldQuantity × averageEntryPrice + quantity ×
 A `SELL` still leaves it unchanged. Effect on unrealized P/L: `costBasis`
 rises by the `BUY` fees of the held units, so `unrealizedPnL`,
 `unrealizedPnLPercent`, the current-state attribution of §14 and the Pulse
-performance dimension of §15 are lower by those fees than today.
+performance dimension of §15 are lower by those fees than before B1.1.
 
-**Realized P/L** (`Planned (B1)`, ADR-003 point 4, ADR-004 point 15):
-realized on each `SELL` against the weighted-average cost at the time of the
-sale, net of the `SELL` fees; sale proceeds leave the portfolio.
+**Realized P/L** (`Implemented` as the pure function `replayRealizedPnL` in
+`realized-pnl.ts`; persistence and API exposure `Planned (B1)`, ADR-003 point 4,
+ADR-004 point 15): realized on each `SELL` against the weighted-average cost at
+the time of the sale, net of the `SELL` fees; sale proceeds leave the portfolio.
 
 ```text
 realizedPnL(SELL) = quantity × (price − averageEntryPrice at the sale) − fees
 ```
 
-Hand-computed test (B1), the §7 example with `currentPrice = 12`:
+Hand-computed test (`Implemented` in `realized-pnl.test.ts` and
+`position-replay.test.ts`), the §7 example with `currentPrice = 12`:
 
 ```text
-d1: BUY 10 @ 10, fees 1      averageEntryPrice = 101 / 10 = 10.1   (today: 10)
+d1: BUY 10 @ 10, fees 1      averageEntryPrice = 101 / 10 = 10.1   (before B1.1: 10)
 d3: SELL 4 @ 11.5, fees 1    realizedPnL = 4 × (11.5 − 10.1) − 1 = 4.6
 remaining 6 @ 12             costBasis = 60.6, unrealizedPnL = 72 − 60.6 = 11.4
 realized + unrealized        = 16 = P/L over [d1, d3] (§7)
