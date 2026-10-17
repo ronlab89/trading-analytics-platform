@@ -311,7 +311,7 @@ In the clamped case, `P/L` and `TWR` both measure from the close of `d2`:
 
 # 8. Periods
 
-**Status:** preset windows `Implemented` (`period.ts`); end of the series and custom range validation `Planned (B1)`; `1D` `Implemented`.  
+**Status:** preset windows `Implemented` (`period.ts`); end of the series and custom range validation `Implemented` for the risk endpoint (`analyticsPeriodQuerySchema`, `risk-service.ts`), `Planned (B1)` for performance; `1D` `Implemented`.  
 **Decisions:** ADR-004 points 5 and 6.  
 **Requirements:** FR-025.
 
@@ -369,6 +369,7 @@ closes. Test: with the last closed day `2026-03-31`, a request with
 | `to` in the future or after the last closed day | Clamped, `asOf` reported (above). |
 | `from` before the first available data | Clamped to `effectiveFrom` (§5). |
 | `from = to` | Valid single-day period: `TWR` from `r(from)` alone, P/L over one day. |
+| `to` without `from` | 400 validation error: a range needs its start. An omitted `to` is today (clamped). |
 | `period` together with `from`/`to` | 400 validation error; with neither, the period is `1M` (ADR-002 point 10). |
 
 `Planned (B1)` (decided 2026-10-05): a valid `from ≤ to` where `from` is
@@ -382,7 +383,7 @@ Test: last closed day `2026-03-09`, `from = to = 2026-03-10` gives 200,
 
 # 9. Volatility
 
-**Status:** asset-level `Implemented` (`volatility.ts`); portfolio-level `Planned (B1)`.  
+**Status:** `Implemented` (`calculateReturnVolatility` and the asset-level `calculateVolatility` in `volatility.ts`; portfolio level served by the risk endpoint).  
 **Decisions:** ADR-004 point 8 (√365, amended 2026-10-05).  
 **Requirements:** FR-029.
 
@@ -395,12 +396,12 @@ volatilityPercent = σ × A × 100
 A      = √365 per ADR-004 point 8 (calendar-day series, §5)
 ```
 
-`Implemented` today: `calculateVolatility` takes one asset's candles,
-computes close-to-close returns, requires at least 3 prices (2 returns) and
-throws `InsufficientDataError` below that, and annualizes with √252 only when
-`annualize: true` (default daily). ADR-004 point 8 generalizes it to accept
-a return series, raises the minimum to 20 returns and always annualizes
-with √365.
+`Implemented`: `calculateReturnVolatility` takes a series of `Decimal` daily
+returns and returns `{ status, volatilityPercent, sampleSize }`, with `null`
+and `UNKNOWN` under 20 returns. The asset-level `calculateVolatility` computes
+one asset's close-to-close returns and delegates to it, so it needs 21 prices,
+always annualizes with √365 and throws `InsufficientDataError` below that
+(ADR-004 point 8; before B1.3 it needed 3 prices and used √252 only when asked).
 
 Edge cases:
 
@@ -411,7 +412,7 @@ Edge cases:
 | Days with no return | Excluded from `R` and from `n`. |
 | Gaps filled by carry-forward | Produce zero price-change returns for held assets; they are samples. |
 
-Test (B1): 20 alternating returns of `+0.01` and `−0.01` give
+Test (`Implemented`): 20 alternating returns of `+0.01` and `−0.01` give
 `σ = sqrt(20 × 0.0001 / 19) ≈ 0.0102598` and
 `volatilityPercent ≈ 0.0102598 × √365 × 100 ≈ 19.601`. 19 returns give
 `UNKNOWN`.
@@ -420,7 +421,7 @@ Test (B1): 20 alternating returns of `+0.01` and `−0.01` give
 
 # 10. Drawdown
 
-**Status:** asset-level `Implemented` (`drawdown.ts`); portfolio-level `Planned (B1)`.  
+**Status:** `Implemented` (`calculateReturnDrawdown` in `return-drawdown.ts`; asset-level `calculateDrawdown` in `drawdown.ts`; portfolio level served by the risk endpoint).  
 **Decisions:** ADR-004 point 9.  
 **Requirements:** FR-028.
 
@@ -459,10 +460,11 @@ Edge cases:
 | --- | --- |
 | Monotonically rising index | `maxDrawdown = 0`, `currentDrawdown = 0`. |
 | Purchase on a down day | Only `r(d)` moves the index; the inflow does not. |
-| Fewer than 2 index points | `UNKNOWN`. The index holds `I(start) = 1` plus one point per day with a return, so at least one return is required (`Planned (B1)`, ADR-004 point 9, amended 2026-10-05). Test: a period with no day that has a return gives `UNKNOWN`; one return of `−5%` gives `maxDrawdown = −5%`. |
+| Fewer than 2 index points | `UNKNOWN`. The index holds `I(start) = 1` plus one point per day with a return, so at least one return is required (`Implemented`, ADR-004 point 9, amended 2026-10-05). Test: a period with no day that has a return gives `UNKNOWN`; one return of `−5%` gives `maxDrawdown = −5%`. |
+| No decline | `maxDrawdown = 0` and `currentDrawdown = 0` with no peak or trough date (`null` in the response). |
 | Equal peaks | The first is reported: `P` changes only when `I(d) > P(d−1)`, strictly, matching `drawdown.ts` (ADR-004 point 9, amended 2026-10-05). |
 
-Equal-peak test (B1), exact in `Decimal`:
+Equal-peak test (`Implemented`), exact in `Decimal`:
 
 ```text
 r = +25%, −20%, +25%, −20%

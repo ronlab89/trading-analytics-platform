@@ -298,7 +298,7 @@ this file):
 | Returns computed in `Decimal` and converted only in the presenter (the domain side is done in B1.2; the presenter comes with the API in B1.4) | ADR-004 |
 | `averageEntryPrice` includes `BUY` fees; `SELL` fees reduce realized P/L (done in B1.1 as the pure function `replayRealizedPnL`; persistence and API exposure follow in later B1 slices) | ADR-004 |
 | Pulse thresholds keep their constants, lose the placeholder comment and get boundary tests | ADR-004 |
-| Volatility always annualizes with the square root of 365 and needs 20 returns; Pulse volatility thresholds are 20% and 60% | ADR-004 |
+| Volatility always annualizes with the square root of 365 and needs 20 returns (done in B1.3 as `calculateReturnVolatility`, also used by the asset-level `calculateVolatility`); Pulse volatility thresholds are 20% and 60% | ADR-004 |
 | Day boundaries are UTC calendar dates everywhere | ADR-004 |
 | Ties for the largest contributor or detractor go to the alphabetically first symbol | ADR-010 |
 | A position that opens and closes in the same period reports both events, in date order | ADR-010 |

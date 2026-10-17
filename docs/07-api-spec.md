@@ -834,7 +834,7 @@ without a current price are omitted, never 404. Errors: 400
 
 # 20. Analytics API
 
-**Status:** allocation `Implemented` (FR-027); performance and risk `Planned (B1)` (FR-025, FR-026, FR-028, FR-029, FR-085; ADR-004)
+**Status:** allocation and risk `Implemented` (FR-027, FR-028, FR-029); performance `Planned (B1)` (FR-025, FR-026, FR-085; ADR-004)
 
 All endpoints require a Bearer token and portfolio ownership (another
 user's portfolio returns 404 `NOT_FOUND`). Money fields are `Money`;
@@ -845,7 +845,7 @@ returns and percentages are unrounded numbers in percentage points
 | --- | --- |
 | `GET /api/v1/portfolios/:portfolioId/analytics/allocation` | `Implemented` |
 | `GET /api/v1/portfolios/:portfolioId/analytics/performance` | `Planned (B1)` |
-| `GET /api/v1/portfolios/:portfolioId/analytics/risk` | `Planned (B1)` |
+| `GET /api/v1/portfolios/:portfolioId/analytics/risk` | `Implemented` |
 | `GET /api/v1/portfolios/:portfolioId/analytics/attribution` | §22 |
 
 ## Portfolio Performance
@@ -917,27 +917,41 @@ transaction is `Planned (B1)` (`16` §2).
 
 ## Risk
 
-**Status:** `Planned (B1)` (FR-028, FR-029; `16-analytics-spec.md` §9, §10)
+**Status:** `Implemented` (FR-028, FR-029; `16-analytics-spec.md` §9, §10)
 
 ```text
 GET /api/v1/portfolios/:portfolioId/analytics/risk
 ```
 
 Portfolio-level volatility and drawdown on the daily series over the
-requested period (same query, `asOf` and `effectiveFrom` as performance):
+requested period (same query, `asOf` and `effectiveFrom` as performance).
+Query: `period` (`1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`; default `1M`) or a
+custom `from` with an optional `to` (`YYYY-MM-DD`, UTC, inclusive; an omitted
+`to` is today). `period` and `from`/`to` are mutually exclusive, and `to`
+without `from` is 400 `VALIDATION_ERROR`.
 
 ```text
+asOf                    effective end date: to clamped to the last closed UTC day (the day before today)
+effectiveFrom           first day on which every held asset has a price; null without data
 status                  OK | INSUFFICIENT_DATA | UNKNOWN
 volatilityPercent       annualized (√365), percentage points; null when fewer than 20 returns
-maxDrawdownPercent      negative percentage; null when fewer than 2 index points
-currentDrawdownPercent  drawdown on the last day of the period
-peakDate, troughDate    UTC dates bounding maxDrawdownPercent
+maxDrawdownPercent      negative percentage, 0 without a decline; null when no day has a return
+currentDrawdownPercent  drawdown on the last day of the period; null when no day has a return
+peakDate, troughDate    UTC dates (YYYY-MM-DD) bounding maxDrawdownPercent; null without a decline
 ```
+
+`status` is `INSUFFICIENT_DATA` when `asOf` has no price for a held asset or
+`from` is after `asOf`; `UNKNOWN` when neither measure has a value (for example,
+no transactions); `OK` otherwise. A single field can be `null` under `OK`:
+with 1 to 19 returns the drawdown is known and `volatilityPercent` is `null`.
 
 Field names and `status` follow ADR-002 point 10; unavailable values are
 `null`, never `0`.
 
-Errors: as performance. The risk endpoint returns no composite
+Errors: 400 `VALIDATION_ERROR` for `from > to`, `period` with `from`/`to`, `to`
+without `from`, `1D` or a date that does not exist; 404 `NOT_FOUND`. A valid
+range with no closed day returns 200 with `status: "INSUFFICIENT_DATA"` (`16`
+§8). The risk endpoint returns no composite
 `riskLevel` or `concentration` score: classification belongs to the Pulse
 (ADR-004 point 11, §21), so a second scale is not added.
 

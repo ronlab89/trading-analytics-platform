@@ -1,13 +1,14 @@
+import { Decimal } from "decimal.js";
 import { describe, expect, it } from "vitest";
 import { Money } from "../value-objects/money";
 import type { HistoricalPrice } from "../entities/historical-price";
 import { InsufficientDataError } from "./drawdown";
-import { calculateVolatility } from "./volatility";
+import { calculateReturnVolatility, calculateVolatility } from "./volatility";
 
-function buildPoint(timestamp: string, close: number): HistoricalPrice {
+function buildPoint(day: number, close: number): HistoricalPrice {
   return {
     assetId: "asset_001",
-    timestamp: new Date(timestamp),
+    timestamp: new Date(Date.UTC(2026, 0, 1 + day)),
     open: Money.of(close, "USD"),
     high: Money.of(close, "USD"),
     low: Money.of(close, "USD"),
@@ -16,105 +17,93 @@ function buildPoint(timestamp: string, close: number): HistoricalPrice {
   };
 }
 
-describe("calculateVolatility", () => {
-  it("should throw InsufficientDataError with fewer than 3 points", () => {
-    const points = [buildPoint("2026-01-01", 100), buildPoint("2026-01-02", 110)];
+/** `count` alternating +1% / -1% returns. */
+function alternatingReturns(count: number): Decimal[] {
+  return Array.from({ length: count }, (_, i) => new Decimal(i % 2 === 0 ? "0.01" : "-0.01"));
+}
 
+/** `count` + 1 closes that grow by the given returns, starting at 100. */
+function pricesFromReturns(returns: readonly Decimal[]): HistoricalPrice[] {
+  let close = new Decimal(100);
+  const points = [buildPoint(0, 100)];
+  returns.forEach((rate, i) => {
+    close = close.times(rate.plus(1));
+    points.push(buildPoint(i + 1, close.toNumber()));
+  });
+  return points;
+}
+
+describe("calculateReturnVolatility", () => {
+  it("annualizes the sample standard deviation with sqrt(365)", () => {
+    // 20 alternating +-1% returns: mean 0, variance 0.002 / 19, sigma ~ 0.0102598.
+    const result = calculateReturnVolatility(alternatingReturns(20));
+
+    expect(result.status).toBe("OK");
+    expect(result.sampleSize).toBe(20);
+    expect(result.volatilityPercent?.toNumber()).toBeCloseTo(19.601, 3);
+  });
+
+  it("is UNKNOWN with null, never 0, under 20 returns", () => {
+    const result = calculateReturnVolatility(alternatingReturns(19));
+
+    expect(result).toEqual({ status: "UNKNOWN", volatilityPercent: null, sampleSize: 19 });
+  });
+
+  it("is UNKNOWN for an empty series", () => {
+    expect(calculateReturnVolatility([])).toEqual({
+      status: "UNKNOWN",
+      volatilityPercent: null,
+      sampleSize: 0,
+    });
+  });
+
+  it("is zero, with status OK, when every return is equal", () => {
+    const result = calculateReturnVolatility(Array.from({ length: 20 }, () => new Decimal("0.01")));
+
+    expect(result.status).toBe("OK");
+    expect(result.volatilityPercent?.isZero()).toBe(true);
+  });
+});
+
+describe("calculateVolatility", () => {
+  it("throws InsufficientDataError with fewer than 21 points (20 returns)", () => {
+    const points = pricesFromReturns(alternatingReturns(19));
+
+    expect(points).toHaveLength(20);
     expect(() => {
       calculateVolatility(points);
     }).toThrow(InsufficientDataError);
   });
 
-  it("should throw InsufficientDataError with zero points", () => {
+  it("throws InsufficientDataError with zero points", () => {
     expect(() => {
       calculateVolatility([]);
     }).toThrow(InsufficientDataError);
   });
 
-  it("should return zero volatility for a series with constant returns", () => {
-    // Constant 10% daily growth → identical returns → zero deviation
-    const points = [
-      buildPoint("2026-01-01", 100),
-      buildPoint("2026-01-02", 110),
-      buildPoint("2026-01-03", 121),
-    ];
+  it("returns the annualized volatility and counts returns, not price points", () => {
+    const result = calculateVolatility(pricesFromReturns(alternatingReturns(20)));
 
-    const result = calculateVolatility(points);
+    expect(result.sampleSize).toBe(20);
+    expect(result.annualized).toBe(true);
+    expect(result.volatilityPercent).toBeCloseTo(19.601, 3);
+  });
+
+  it("returns zero volatility for a series with constant returns", () => {
+    const returns = Array.from({ length: 20 }, () => new Decimal("0.01"));
+
+    const result = calculateVolatility(pricesFromReturns(returns));
 
     expect(result.volatilityPercent).toBeCloseTo(0, 5);
   });
 
-  it("should return a positive volatility for a series with varying returns", () => {
-    const points = [
-      buildPoint("2026-01-01", 100),
-      buildPoint("2026-01-02", 110),
-      buildPoint("2026-01-03", 95),
-      buildPoint("2026-01-04", 120),
-    ];
+  it("does not depend on the input being pre-sorted by timestamp", () => {
+    const sorted = pricesFromReturns(alternatingReturns(20));
+    const shuffled = [...sorted].reverse();
 
-    const result = calculateVolatility(points);
-
-    expect(result.volatilityPercent).toBeGreaterThan(0);
-  });
-
-  it("should report the correct sample size (number of returns, not price points)", () => {
-    const points = [
-      buildPoint("2026-01-01", 100),
-      buildPoint("2026-01-02", 110),
-      buildPoint("2026-01-03", 95),
-      buildPoint("2026-01-04", 120),
-    ];
-
-    const result = calculateVolatility(points);
-
-    // 4 price points → 3 daily returns
-    expect(result.sampleSize).toBe(3);
-  });
-
-  it("should default to non-annualized volatility", () => {
-    const points = [
-      buildPoint("2026-01-01", 100),
-      buildPoint("2026-01-02", 110),
-      buildPoint("2026-01-03", 95),
-    ];
-
-    const result = calculateVolatility(points);
-
-    expect(result.annualized).toBe(false);
-  });
-
-  it("should scale volatility by sqrt(252) when annualize is true", () => {
-    const points = [
-      buildPoint("2026-01-01", 100),
-      buildPoint("2026-01-02", 110),
-      buildPoint("2026-01-03", 95),
-      buildPoint("2026-01-04", 120),
-    ];
-
-    const daily = calculateVolatility(points, { annualize: false });
-    const annualized = calculateVolatility(points, { annualize: true });
-
-    expect(annualized.annualized).toBe(true);
-    expect(annualized.volatilityPercent).toBeCloseTo(daily.volatilityPercent * Math.sqrt(252), 5);
-  });
-
-  it("should not depend on the input being pre-sorted by timestamp", () => {
-    const sorted = [
-      buildPoint("2026-01-01", 100),
-      buildPoint("2026-01-02", 110),
-      buildPoint("2026-01-03", 95),
-      buildPoint("2026-01-04", 120),
-    ];
-    const shuffled = [
-      buildPoint("2026-01-04", 120),
-      buildPoint("2026-01-01", 100),
-      buildPoint("2026-01-03", 95),
-      buildPoint("2026-01-02", 110),
-    ];
-
-    const resultSorted = calculateVolatility(sorted);
-    const resultShuffled = calculateVolatility(shuffled);
-
-    expect(resultShuffled.volatilityPercent).toBeCloseTo(resultSorted.volatilityPercent, 10);
+    expect(calculateVolatility(shuffled).volatilityPercent).toBeCloseTo(
+      calculateVolatility(sorted).volatilityPercent,
+      10,
+    );
   });
 });

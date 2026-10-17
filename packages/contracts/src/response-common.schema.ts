@@ -37,3 +37,8 @@ export function presentMoney(money: Money): MoneyDto {
 export function presentTimestamp(date: Date): string {
   return date.toISOString();
 }
+
+/** A UTC calendar date as `YYYY-MM-DD` (ADR-004). */
+export function presentDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}

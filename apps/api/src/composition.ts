@@ -24,6 +24,7 @@ import {
   createOverviewService,
   createPortfolioService,
   createPositionService,
+  createRiskService,
   createScenarioService,
   createTransactionService,
   createUserPreferenceService,
@@ -66,6 +67,12 @@ export function buildComposition(clock: Clock) {
     positionRepository,
     portfolioService,
     assetService,
+  });
+  const riskService = createRiskService({
+    portfolioService,
+    transactionRepository,
+    historicalPriceRepository,
+    clock,
   });
   const transactionService = createTransactionService({
     transactionRepository,
@@ -121,6 +128,7 @@ export function buildComposition(clock: Clock) {
     positionService,
     transactionService,
     analyticsService,
+    riskService,
     overviewService,
     decisionService,
     scenarioService,
