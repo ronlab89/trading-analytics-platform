@@ -193,7 +193,7 @@ deleting a portfolio cascades to all of them. Archiving is a status change and
 is preferred over deletion (§42).
 
 Version 1 is single-currency: every transaction's asset currency must equal
-`baseCurrency` (ADR-004 point 12, `Planned (B1)`).
+`baseCurrency` (ADR-004 point 12, `Implemented`).
 
 ---
 
@@ -342,7 +342,7 @@ row.
 
 `VALIDATING`, `PROCESSING` and `FAILED` exist in the enum but are never
 written. Analytics count only `COMPLETED` transactions (ADR-004 point 1,
-amended 2026-10-05, `Planned (B1)`). Asynchronous work (CSV import) has its own state model on `Job`
+amended 2026-10-05, `Implemented`). Asynchronous work (CSV import) has its own state model on `Job`
 (§52), not on `Transaction`.
 
 Open detail (B0): drop the unused values from `TransactionStatus` or keep
@@ -679,14 +679,14 @@ clear it.
 
 # 24. Derived Portfolio Metrics
 
-**Status:** `Implemented` (current-state metrics); period analytics `Planned (B1)`.
+**Status:** `Implemented` (current-state metrics); period analytics `Implemented`.
 
 Current-state metrics are calculated from positions and market prices
 (`portfolio-metrics.ts`, `portfolio-daily-change.ts`): `totalValue`,
 `investedValue`, `unrealizedPnL`, `unrealizedPnLPercent`, and the daily change
 measured against `MarketPrice.previousPrice`.
 
-`Planned (B1)`, defined by ADR-004 and specified in `16-analytics-spec.md`:
+`Implemented`, defined by ADR-004 and specified in `16-analytics-spec.md`:
 realized P/L (ADR-003 point 4), period return (time-weighted), period P/L,
 volatility and drawdown, each with `effectiveFrom` when clamped.
 
@@ -725,7 +725,7 @@ covered by `16-analytics-spec.md`.
 
 # 27. Performance Metrics
 
-**Status:** `Planned (B1)`
+**Status:** `Implemented`
 
 ADR-004 points 1-7 define the daily value series, cash flows (every `BUY` an
 inflow, every `SELL` an outflow, ADR-003 point 3), daily return, time-weighted
@@ -736,7 +736,7 @@ Formulas and worked examples live in `16-analytics-spec.md`.
 
 # 28. Attribution
 
-**Status:** `Implemented` (current state); range attribution `Planned (B1)`.
+**Status:** `Implemented` (current state); range attribution `Implemented`.
 
 Attribution is derived and never stored. Over a range, each asset's
 contribution is its value change minus its own flows, and contributions sum
@@ -746,7 +746,7 @@ exactly to the period P/L (ADR-004 point 10). No Brinson-style decomposition.
 
 # 29. Portfolio Pulse
 
-**Status:** `Implemented` (`portfolio-pulse.ts`); real volatility and drawdown inputs `Planned (B1)`.
+**Status:** `Implemented` (`portfolio-pulse.ts`); real volatility and drawdown inputs `Implemented`.
 
 A deterministic, explainable classification. Each dimension carries a
 `classification`, the underlying `value` and an `explanation`:
@@ -929,7 +929,7 @@ Deferred detail), are fixed with the contracts.
 - On the wire, dates are ISO-8601 strings in UTC (ADR-002).
 - Day boundaries for analytics, `YTD` and candles are UTC calendar dates,
   including the demo and the simulator clock (ADR-004 Deferred detail,
-  `Planned (B1)`).
+  `Implemented`).
 
 | Kind | Fields |
 | --- | --- |

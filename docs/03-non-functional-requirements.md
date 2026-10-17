@@ -810,7 +810,7 @@ Code review against `11-ui-ux-spec.md`.
 
 **Priority:** P0  
 **Status:** domain calculations `Implemented` (`@trading/domain`);
-analytics `Planned (B1)` (ADR-004); read models `Planned (B0)` (ADR-001
+analytics `Implemented` (ADR-004); read models `Planned (B0)` (ADR-001
 point 6)
 
 ### Target
@@ -922,7 +922,7 @@ these are covered by review (NFR-070).
 ## NFR-042 — Deterministic Business Logic
 
 **Priority:** P0  
-**Status:** domain calculations `Implemented`; analytics `Planned (B1)`
+**Status:** domain calculations and analytics `Implemented`
 (ADR-004)
 
 ### Target

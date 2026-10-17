@@ -112,7 +112,7 @@ come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
 | Market data reads, watchlist, alerts, notifications, preferences | `Implemented` | — |
 | Decisions and replay, scenarios | `Implemented` | — |
 | Overview (dashboard data) | `Implemented` | — |
-| Performance and risk analytics (TWR, P/L, drawdown, volatility, attribution, Pulse) | `Planned (B1)` | ADR-004, `16-analytics-spec.md` |
+| Performance and risk analytics (TWR, P/L, drawdown, volatility, attribution, Pulse) | `Implemented` | ADR-004, `16-analytics-spec.md` |
 | Structured logging | `Planned (B3)` | ADR-009 |
 | CSV transaction import (background jobs) and idempotency | `Planned (B4)` | ADR-008 |
 | Realtime prices and events, shared market simulator | `Planned (B5)` | ADR-007 |

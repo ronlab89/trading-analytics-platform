@@ -14,9 +14,8 @@ specification: the SDD (`00`-`16`) stays the source of truth for behavior,
 left, in what order, and when each block counts as closed.
 
 **Last updated:** 2026-10-08 (reconciled with ADR-001 to ADR-010)
-**Status:** B0 is in progress (B0.1 done: minimal CI, `.nvmrc`, version
-alignment, `check-docs` hardening; B0.2 done: runtime role, seed and reset
-guard, `CORS_ORIGIN` validation, login timing). B0 comes first, then B1 to B7.
+**Status:** B0 and B1 are done (B0.1 to B0.7 on 2026-10-16; B1.1 to B1.7 on
+2026-10-17). The next block is B2, then B3 to B7.
 **Decision behind it:** the user chose to finish the backend completely
 before starting the frontend. This is a deliberate override of the phase
 order in `15-implementation-plan.md` §4, which alternated backend and

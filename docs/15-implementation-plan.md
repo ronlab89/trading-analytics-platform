@@ -137,14 +137,14 @@ Code vs ADR:
 | Phase | Backend | Frontend |
 | --- | --- | --- |
 | 0 Repository foundation | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Implemented` | none |
-| 1 Product and domain foundation | `Implemented` (`packages/domain`); analytics additions `Planned (B1)`; application layer and `@trading/contracts` `Planned (B0)` | none |
+| 1 Product and domain foundation | `Implemented` (`packages/domain`); analytics additions `Implemented`; application layer and `@trading/contracts` `Planned (B0)` | none |
 | 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Planned (B4)`; runtime database role `Implemented` | none |
 | 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Planned (B6)` | none |
 | 4 Authentication and RBAC | login and `me` `Implemented`; refresh, logout and role enforcement `Planned (B2)` | session screens `Planned (FE1)` |
 | 5 Frontend foundation | none | `Planned (FE0)` |
 | 6 Core portfolio workflow | endpoints `Implemented` | `Planned (FE1)` |
-| 7 Transactions and positions | endpoints `Implemented`; fee handling change `Planned (B1)` | `Planned (FE1)` |
-| 8 Tables, filters and analytics | allocation and attribution `Implemented`; performance and risk endpoints `Planned (B1)` | `Planned (FE2)` |
+| 7 Transactions and positions | endpoints `Implemented`; fee handling change `Implemented` | `Planned (FE1)` |
+| 8 Tables, filters and analytics | allocation and attribution `Implemented`; performance and risk endpoints `Implemented` | `Planned (FE2)` |
 | 9 Realtime | server `Planned (B5)` | client `Planned (FE3)` |
 | 10 Background operations | jobs and idempotency `Planned (B4)` | screens `Planned (FE3)` |
 | 11 Demo Mode | `@trading/market-sim` `Planned (B5)` | `Planned (FE4)` |
@@ -263,7 +263,7 @@ Create the repository structure and development conventions.
 | Transaction states (`TransactionStatus`: `DRAFT`, `VALIDATING`, `PROCESSING`, `COMPLETED`, `FAILED`) | `Implemented` | none |
 | Deterministic tiebreak for transactions with the same `executedAt` (ADR-003 Deferred detail) | `Planned (B0)` | B0 |
 | Portfolio calculations and derived data: allocation, current-state attribution, portfolio and position metrics, daily change, Pulse, asset-level volatility and drawdown, decision replay, scenario impact and comparison (`packages/domain/src/calculations`) | `Implemented` | none |
-| Analytics additions: portfolio-level performance (TWR), risk series, period handling, realized P/L, range attribution, fee handling change, `Decimal` end to end (ADR-004, `16-analytics-spec.md`) | `Planned (B1)` | B1 |
+| Analytics additions: portfolio-level performance (TWR), risk series, period handling, realized P/L, range attribution, fee handling change, `Decimal` end to end (ADR-004, `16-analytics-spec.md`) | `Implemented` | B1 |
 | Domain `quantity` as a plain `number` | Open: no ADR decides it | B1 |
 | `@trading/application` (use cases moved out of `apps/api/src/services`, ADR-001) | `Planned (B0)` | B0 |
 | `@trading/contracts` (request and response schemas, error envelope, presenters, DTO types, ADR-002) | `Planned (B0)` | B0 |
@@ -625,7 +625,7 @@ The final structure may evolve during implementation.
 | --- | --- | --- |
 | Portfolio endpoints: list, create, get by id, update (`PATCH`) and archive (`apps/api/src/routes/portfolios.routes.ts`) | `Implemented` | none |
 | Position endpoints: list and get by id (`positions.routes.ts`) | `Implemented` | none |
-| Overview endpoint with the Pulse (`overview.routes.ts`, `GET /api/v1/portfolios/:portfolioId/overview`) | `Implemented`; the period `performance` field `Planned (B1)` (`07-api-spec.md` §11) | B1 |
+| Overview endpoint with the Pulse (`overview.routes.ts`, `GET /api/v1/portfolios/:portfolioId/overview`) | `Implemented`, with the period `performance` field (`07-api-spec.md` §11) | B1 |
 | Asset endpoints: list, detail, price and history (`assets.routes.ts`), and the batch price endpoint (`market.routes.ts`) | `Implemented`; change semantics against the last closed candle `Planned (B5)` (ADR-007 point 14) | B5 |
 | Archived portfolio is read-only: any mutation scoped to it returns 409 `CONFLICT` and writes nothing; reads and the archive call are unchanged (ADR-010 point 5). A delete on an archived portfolio, such as deleting one of its alerts, is a mutation and returns 409 too | `Planned (B0)` | B0 |
 | Route tests for the positions, assets, market and analytics routes, before the services move into `@trading/application` (ADR-001 point 8) | `Planned (B0)` | B0 |
@@ -700,7 +700,7 @@ A user can complete the primary portfolio workflow against the real backend.
 | Archived portfolio: creating a transaction returns 409 `CONFLICT` and writes nothing (ADR-010 point 5) | `Implemented` | none |
 | `BUY` fees in the cost basis (`averageEntryPrice` becomes `(held × average + quantity × price + fees) / (held + quantity)`) and `SELL` fees subtracted from realized P/L (ADR-004 point 15) | `Implemented` (B1.1; realized P/L as a pure function, not yet exposed by the API) | B1 |
 | A `SELL` with `fees > quantity × price` is rejected with 400; fees equal to the gross proceeds are accepted (ADR-004 point 2) | `Implemented` (B1.1) | none |
-| An asset whose currency differs from the portfolio's `baseCurrency` is rejected with 400, never 500 (ADR-004 point 12) | `Planned (B1)` | B1 |
+| An asset whose currency differs from the portfolio's `baseCurrency` is rejected with 400, never 500 (ADR-004 point 12) | `Implemented` | B1 |
 | Role check on create: a `VIEWER` is denied (ADR-005) | `Planned (B2)` | B2 |
 | Duplicate prevention: `Idempotency-Key` on `POST .../transactions`; a repeated key and request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Planned (B4)` | B4 |
 | `PORTFOLIO_UPDATED` emitted after the commit (ADR-007 point 6) | `Planned (B5)` | B5 |
@@ -760,14 +760,14 @@ Domain/application services remain responsible for business behavior.
 | --- | --- | --- |
 | Allocation: `GET /api/v1/portfolios/:portfolioId/analytics/allocation`, `groupBy` = `asset`, `assetType` or `currency` (`analytics.routes.ts`); sector is `Deferred` (ADR-004 point 13) | `Implemented` | none |
 | Attribution, current state: each position's contribution to unrealized P/L, no query parameters (`GET .../analytics/attribution`) | `Implemented` | none |
-| Attribution over a range: `period` or `from` / `to`, `groupBy` = `asset` or `assetType`, contributions in `Money` summing exactly to the period P/L (ADR-004 point 10) | `Planned (B1)` | B1 |
-| Performance: `GET .../analytics/performance`, periods `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL` or a custom `from` / `to` (default `1M`; `1D` is not a period of this endpoint); TWR in `twrPercent`, `pnl` in `Money`, `series`, `asOf`, `effectiveFrom` and `status` (`OK`, `INSUFFICIENT_DATA`, `UNKNOWN`); unavailable values are `null`, never `0` (ADR-004 points 1 to 7, ADR-002 point 10) | `Planned (B1)`; `1D` `Implemented` as `dailyChange` in the overview | B1 |
-| Risk: `GET .../analytics/risk`, volatility annualized with √365 (at least 20 daily returns) and drawdown on the cumulative return index (at least 2 index points), with peak and trough dates (ADR-004 points 8 and 9) | `Planned (B1)` | B1 |
-| Pulse: stays inside the overview; volatility and drawdown come from the portfolio series over a trailing `1Y` window, volatility `HIGH` above 60 and `MODERATE` above 20 (ADR-004 point 11) | `Implemented` with the largest-position proxy; portfolio-series inputs `Planned (B1)`; a standalone endpoint, exposure and an `overall` classification `Deferred` | B1 |
-| Realized P/L reported per `SELL`, after fees (ADR-003 point 4, ADR-004 point 15) | `Planned (B1)` | B1 |
-| What Changed (FR-006): largest contributor and detractor, positions opened and closed, alerts triggered, over the same period as performance (ADR-010 point 1); "significant value change", "unusual volatility" and "allocation changes" | `Planned (B1)`; the three thresholded types `Deferred` | B1 |
-| Returns, ratios and percentages computed in `Decimal` end to end and converted to a number only in the presenter; day boundaries are UTC calendar dates (ADR-004 points 14 and Deferred detail) | `Planned (B1)` | B1 |
-| Analytics tests against hand-computed examples (ADR-004 Consequences, the examples in `16-analytics-spec.md`) | `Planned (B1)` | B1 |
+| Attribution over a range: `period` or `from` / `to`, `groupBy` = `asset` or `assetType`, contributions in `Money` summing exactly to the period P/L (ADR-004 point 10) | `Implemented` | B1 |
+| Performance: `GET .../analytics/performance`, periods `1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL` or a custom `from` / `to` (default `1M`; `1D` is not a period of this endpoint); TWR in `twrPercent`, `pnl` in `Money`, `series`, `asOf`, `effectiveFrom` and `status` (`OK`, `INSUFFICIENT_DATA`, `UNKNOWN`); unavailable values are `null`, never `0` (ADR-004 points 1 to 7, ADR-002 point 10) | `Implemented`; `1D` also as `dailyChange` in the overview | B1 |
+| Risk: `GET .../analytics/risk`, volatility annualized with √365 (at least 20 daily returns) and drawdown on the cumulative return index (at least 2 index points), with peak and trough dates (ADR-004 points 8 and 9) | `Implemented` | B1 |
+| Pulse: stays inside the overview; volatility and drawdown come from the portfolio series over a trailing `1Y` window, volatility `HIGH` above 60 and `MODERATE` above 20 (ADR-004 point 11) | `Implemented`, with portfolio-series inputs; a standalone endpoint, exposure and an `overall` classification `Deferred` | B1 |
+| Realized P/L reported per `SELL`, after fees (ADR-003 point 4, ADR-004 point 15) | `Implemented` | B1 |
+| What Changed (FR-006): largest contributor and detractor, positions opened and closed, alerts triggered, over the same period as performance (ADR-010 point 1); "significant value change", "unusual volatility" and "allocation changes" | `Implemented` except alerts, `Planned`; the three thresholded types `Deferred` | B1 |
+| Returns, ratios and percentages computed in `Decimal` end to end and converted to a number only in the presenter; day boundaries are UTC calendar dates (ADR-004 points 14 and Deferred detail) | `Implemented` | B1 |
+| Analytics tests against hand-computed examples (ADR-004 Consequences, the examples in `16-analytics-spec.md`) | `Implemented` | B1 |
 | Transaction filters (`assetId`, `type`, `dateFrom`, `dateTo`) and pagination for assets and transactions (FR-014, FR-016, FR-056) | `Implemented` | none |
 | Transaction search (FR-015): satisfied by the FR-016 filters and the asset search of FR-020; no free-text transaction search (ADR-010 point 2) | Satisfied by filters | none |
 | Sorting in the client, only for lists loaded in full (positions, watchlist, allocation, scenarios); paginated lists keep the API order; server-side sort parameters `Deferred` (ADR-010 point 4, FR-055) | `Planned (FE2)` | FE2 |
@@ -782,7 +782,7 @@ Code vs ADR:
 - The original category list names win/loss statistics, exposure and transaction statistics. No FR or ADR defines win/loss or transaction statistics, and exposure is `Deferred` (`01-product-spec.md` §5 and §11, `07-api-spec.md` §21). The phase rule "implement only metrics defined by the product specification" therefore leaves them out until an FR defines them. Decided (ADR-010 point 10, approved by the user on 2026-10-07): win/loss and transaction statistics are not part of version 1.
 - The code has no portfolio-level performance, volatility or drawdown. `calculateVolatility` and `calculateDrawdown` work on one asset's closes, and volatility annualizes with √252 only when asked. ADR-004 point 8 changes this to a return series, √365 and a 20-return minimum (B1).
 - Wire details that ADR-004 and ADR-002 fix and that the original text does not: the period return is the field `twrPercent` (`16-analytics-spec.md` §2), `asOf` is the end date after clamping to the last closed day, a valid range with no closed day answers 200 with `status: "INSUFFICIENT_DATA"` and not 400 (`16-analytics-spec.md` §8), and `from > to` is 400. `InsufficientData` is a domain error in `16-analytics-spec.md` and `INSUFFICIENT_DATA` is its wire status.
-- Mixed currencies in a portfolio surface as a 500 in allocation today (`CurrencyMismatchError`); the 400 on the transaction that would create them is `Planned (B1)` (ADR-004 point 12, `16-analytics-spec.md` §2).
+- A transaction on an asset in another currency is rejected with 400, so a portfolio cannot reach mixed currencies (`CurrencyMismatchError` in allocation stays as a guard for data written before the rule; ADR-004 point 12, `16-analytics-spec.md` §2).
 - Period analytics cover closed days only and do not change on price ticks (FR-045). Current-state values (allocation, Pulse, `1D`) are recomputed in the client on ticks in FE3 (§14).
 - FR-015 needs no work in this phase beyond the FR-016 filters and the asset search (ADR-010 point 2).
 
@@ -1069,7 +1069,7 @@ The same product/application behavior should remain conceptually shared with the
 | Contract tests against the `@trading/contracts` schemas (ADR-002 point 6) | `Planned (B0)` | B0 |
 | Token tests: expired token and wrong signature return 401, with refresh, logout and role enforcement tests (`10` §29); no test covers an expired or wrongly signed token today | `Planned (B2)` | B2 |
 | Redaction and event-name unit tests; an integration test that a request's `requestId` appears in its log entries (ADR-009 point 13) | `Planned (B3)` | B3 |
-| Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | `Planned (B1)` to `Planned (B6)`, per block | B1 to B6 |
+| Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | B1 `Implemented`; B4 to B6 `Planned`, per block | B1 to B6 |
 | Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Implemented`; the CI test database uses the ADR-005 point 13 roles | none |
 | Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the runner and React Testing Library `Deferred` to the frontend-stage ADR | FE5 |
 | Realtime client tests (connect, disconnect, reconnect, event processing) | Server `Planned (B5)`; client `Planned (FE3)` with the feature; component and E2E checks `Planned (FE5)` | B5, FE3, FE5 |
@@ -1497,13 +1497,13 @@ How the original nodes map to the blocks:
 | Original node | Where it lands | Status |
 | --- | --- | --- |
 | Repository | Phase 0 `Implemented`; the minimal CI is the new first step | `Implemented`; CI `Implemented` |
-| Domain | Phase 1 `Implemented` in `packages/domain`; analytics additions in B1; application layer and contracts in B0 | `Implemented`; `Planned (B0)`, `Planned (B1)` |
+| Domain | Phase 1 `Implemented` in `packages/domain`; analytics additions in B1; application layer and contracts in B0 | `Implemented`; `Planned (B0)` |
 | Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented`; `Planned (B4)` |
 | Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Planned (B6)` |
 | Auth | Phase 4 login and `me` `Implemented`; refresh, logout and roles in B2; session screens in FE1 | `Planned (B2)`, `Planned (FE1)` |
 | Frontend | Phase 5, FE0 | `Planned (FE0)` |
 | Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | `Planned (FE1)` |
-| Analytics | Allocation and attribution `Implemented`; performance and risk in B1; views in FE2 | `Planned (B1)`, `Planned (FE2)` |
+| Analytics | Allocation and attribution `Implemented`; performance and risk in B1; views in FE2 | `Implemented`; `Planned (FE2)` |
 | Realtime | Server B5; client FE3 | `Planned (B5)`, `Planned (FE3)` |
 | Background operations | Jobs B4; screens FE3 | `Planned (B4)`, `Planned (FE3)` |
 | Demo | Engine in B5 (with the application layer from B0); demo mode in FE4 | `Planned (B5)`, `Planned (FE4)` |
@@ -1531,8 +1531,8 @@ Code vs ADR:
 | --- | --- | --- |
 | 1 Authentication | Login and `me` `Implemented`; refresh, logout and role enforcement `Planned (B2)` | Session screens and the authenticated shell: FE1, on the FE0 foundation |
 | 2 Portfolio | API and database `Implemented`; layering and archived-portfolio guard `Planned (B0)` | Portfolio screens: FE1 |
-| 3 Transaction | Validation, persistence and position update `Implemented`; `Clock` port and chronological validation `Planned (B0)`; fee handling `Planned (B1)`; `Idempotency-Key` `Planned (B4)` | Transaction and position screens: FE1 |
-| 4 Analytics | Allocation and attribution `Implemented`; performance and risk calculation and endpoints `Planned (B1)` | Table and chart views: FE2 |
+| 3 Transaction | Validation, persistence and position update `Implemented`; `Clock` port and chronological validation `Planned (B0)`; fee handling `Implemented`; `Idempotency-Key` `Planned (B4)` | Transaction and position screens: FE1 |
+| 4 Analytics | Allocation and attribution `Implemented`; performance and risk calculation and endpoints `Implemented` | Table and chart views: FE2 |
 | 5 Realtime | Server and event contract `Planned (B5)` | Client, notifications and alerts: FE3 |
 | 6 Background operation | CSV import job, progress and completion `Planned (B4)`; job events over the socket `Planned (B5)` | Upload, progress and completion screens: FE3 |
 | 7 Demo | Application layer and in-memory repositories `Planned (B0)`; shared simulation engine `Planned (B5)` | In-process adapters, composition root and publication: FE4 |
@@ -1660,7 +1660,7 @@ This reduces accidental coupling.
 | Portfolios, positions, transactions: list, read and create (no edit, delete or cancel, ADR-003 point 7) | `Implemented`; archived-portfolio guard (ADR-010 point 5) and chronological validation (ADR-003 point 6) `Planned (B0)`; `Idempotency-Key` on transaction creation `Planned (B4)` | B0, B4 |
 | Decisions, scenarios, assets, market, overview, watchlist, alerts, preferences | `Implemented` | none |
 | Analytics: allocation and attribution | `Implemented` | none |
-| Analytics: performance, risk and What Changed | `Planned (B1)` | B1 |
+| Analytics: performance, risk and What Changed | `Implemented` | B1 |
 | Notifications: list and mark as read | `Implemented`; creation by import jobs `Planned (B4)` (ADR-008 point 6, ADR-010 point 9) | B4 |
 | Background jobs: `POST /api/v1/portfolios/:portfolioId/imports` and the `jobs` endpoints (ADR-008 point 9) | `Planned (B4)` | B4 |
 | Simulation control: `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode` (ADR-007 point 15) | `Planned (B5)` | B5 |
@@ -2380,7 +2380,7 @@ Avoid enormous commits containing unrelated systems.
 
 | Dimension | Where it is delivered | Status |
 | --- | --- | --- |
-| Domain | `packages/domain`; analytics additions in B1 | `Implemented`; `Planned (B1)` |
+| Domain | `packages/domain`; analytics additions in B1 | `Implemented` |
 | API | Endpoints in each backend block; OpenAPI document in B6 | `Implemented` in part; `Planned (B6)` |
 | Persistence | `packages/database` (Prisma); `Job` and `IdempotencyKey` models in B4 | `Implemented`; `Planned (B4)` |
 | UI | Frontend blocks FE1 to FE4 | `Planned (FE1)` |
@@ -2429,7 +2429,7 @@ Omissions must be intentional.
 
 | Criterion | Status | Block |
 | --- | --- | --- |
-| Core domain is implemented | `Implemented` (`packages/domain`); portfolio performance and risk `Planned (B1)` | B1 |
+| Core domain is implemented | `Implemented` (`packages/domain`); portfolio performance and risk `Implemented` | B1 |
 | Backend is functional | `Planned (B7)`: the backend counts as done when B0 to B7 are closed (§4.1) | B7 |
 | Frontend is functional | `Planned (FE5)`: `apps/web` holds only a wireframe | FE5 |
 | Authentication works | Login and `me` `Implemented`; refresh and logout `Planned (B2)` | B2 |
@@ -2479,11 +2479,11 @@ The project is technically complete when:
 | Step | Status | Block |
 | --- | --- | --- |
 | Sign in | Login `Implemented` in the API; screens `Planned (FE1)` | FE1 |
-| View dashboard | Overview endpoint `Implemented`; `performance` field and the What Changed read model `Planned (B1)` (ADR-010 point 1); views `Planned (FE2)` | B1, FE2 |
+| View dashboard | Overview endpoint `Implemented`; `performance` field and the What Changed read model `Implemented` except alerts (ADR-010 point 1); views `Planned (FE2)` | B1, FE2 |
 | Manage portfolio | Endpoints `Implemented`; archived portfolios read-only (409 `CONFLICT`) `Planned (B0)` (ADR-010 point 5); screens `Planned (FE1)` | B0, FE1 |
 | Inspect positions | Endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
 | Record transactions | `BUY` and `SELL` only, no cash balance (ADR-003 points 1 and 2); chronological validation `Planned (B0)` (ADR-003 point 6); a transaction cannot be edited or deleted, no such endpoint (ADR-003 point 7); the form `Planned (FE1)` | B0, FE1 |
-| Review analytics | Allocation and attribution `Implemented`; performance and risk `Planned (B1)`; views `Planned (FE2)`; win/loss and transaction statistics are not in version 1 (ADR-010 point 10) | B1, FE2 |
+| Review analytics | Allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)`; win/loss and transaction statistics are not in version 1 (ADR-010 point 10) | B1, FE2 |
 | Experience realtime updates | `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
 | Receive operation feedback | Job progress and notifications `Planned (B4)`; screens `Planned (FE3)` | B4, FE3 |
 | Coherent loading, empty, success and failure states | API empty results and error envelope `Implemented`; UI states `Planned (FE1)` | FE1 |
@@ -3088,7 +3088,7 @@ observable runtime
 
 ## 54. Milestone 3 — Functional Product
 
-**Status:** `Planned (FE)` for the frontend items; the backend support is partly `Implemented` and partly `Planned (B1)`
+**Status:** `Planned (FE)` for the frontend items; the backend support is `Implemented`
 
 **Owning blocks:** Backend: B1 (performance and risk analytics). Frontend: FE0 (shell), FE1 (authentication screens, portfolios, positions, transactions), FE2 (dashboard views and analytics). Decisions: ADR-004, ADR-005, ADR-010 points 4, 7, 9 and 10.
 
@@ -3097,7 +3097,7 @@ observable runtime
 | Frontend shell | `Planned (FE0)`; `apps/web` holds only `WIREFRAME-PLAN.md` and `wireframe.html` | FE0 |
 | Authentication UI | `Planned (FE1)`; needs B2 | FE1 |
 | Portfolios, positions, transactions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
-| Dashboard and analytics | allocation and attribution endpoints `Implemented`; performance and risk endpoints `Planned (B1)`; views `Planned (FE2)` | B1, FE2 |
+| Dashboard and analytics | allocation and attribution endpoints `Implemented`; performance and risk endpoints `Implemented`; views `Planned (FE2)` | B1, FE2 |
 
 Code vs ADR:
 
@@ -3528,7 +3528,7 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 03 Docker | `Implemented` for the default Compose profile (PostgreSQL); `full` profile and API Dockerfile `Planned (B7)` | B7 |
 | 04 PostgreSQL | `Implemented` | none |
 | 05 Migrations | `Implemented` (Prisma); runtime database role `Implemented` | none |
-| 06 Domain model | `Implemented` (`packages/domain`); analytics additions `Planned (B1)` | B1 |
+| 06 Domain model | `Implemented` (`packages/domain`); analytics additions `Implemented` | B1 |
 | 07 Repository layer | `Implemented` (`packages/database`, repository contracts in `packages/domain`); the application layer over it `Planned (B0)` (ADR-001) | B0 |
 | 08 Express/API foundation | `Implemented`; layering over `@trading/application` and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002); OpenAPI `Planned (B6)` | B0, B6 |
 | 09 Observability foundation | `Planned (B3)` (ADR-009) | B3 |
@@ -3536,11 +3536,11 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 11 RBAC | `Planned (B2)`; the permission mechanism `Planned (B0)` (ADR-005 point 3) | B0, B2 |
 | 12 Frontend shell | `Planned (FE0)`; `apps/web` holds only a wireframe | FE0 |
 | 13 Auth UI | `Planned (FE1)` | FE1 |
-| 14 Dashboard | overview endpoint `Implemented`; `performance` field and What Changed `Planned (B1)`; views `Planned (FE2)` | B1, FE2 |
+| 14 Dashboard | overview endpoint `Implemented`, with the `performance` field and What Changed; views `Planned (FE2)` | B1, FE2 |
 | 15 Portfolio | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
 | 16 Positions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
 | 17 Transactions | endpoints `Implemented`; chronological validation `Planned (B0)`; screens `Planned (FE1)` | B0, FE1 |
-| 18 Analytics | allocation and attribution `Implemented`; performance and risk `Planned (B1)`; views `Planned (FE2)` | B1, FE2 |
+| 18 Analytics | allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)` | B1, FE2 |
 | 19 Tables/filters | `Planned (FE2)` (sorting is client-side, ADR-010 point 4) | FE2 |
 | 20 Realtime | server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
 | 21 Background operations | `Planned (B4)` (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
@@ -3733,7 +3733,7 @@ The portfolio should demonstrate:
 
 | Group | Where it is delivered | Status | Block |
 | --- | --- | --- | --- |
-| Product | Core workflows: endpoints `Implemented`, screens in FE1 to FE3; analytics from B1 (ADR-004); no win/loss or transaction statistics in version 1 (ADR-010 point 10); holdings only, no cash balance (ADR-003 points 1 and 2); see §41 | `Implemented` in part; `Planned (B1)`; `Planned (FE1)` | B1, FE1 to FE3 |
+| Product | Core workflows: endpoints `Implemented`, screens in FE1 to FE3; analytics from B1 (ADR-004); no win/loss or transaction statistics in version 1 (ADR-010 point 10); holdings only, no cash balance (ADR-003 points 1 and 2); see §41 | `Implemented` in part; `Planned (FE1)` | B1, FE1 to FE3 |
 | Architecture | Application layer, contracts and ports (ADR-001, ADR-002) in B0; Demo Mode substitution in FE4; boundaries documented by the ADRs; see §64 | `Planned (B0)`; `Planned (FE4)` | B0, FE4 |
 | Frontend | The frontend blocks; the libraries named in the original list are not decided by any ADR and stay `Deferred` (confirmed 2026-10-08, see Decided); see §40 | `Planned (FE0)` | FE0 to FE5 |
 | Backend | Node.js and TypeScript API, PostgreSQL persistence, validation, error envelope and health routes `Implemented`; contracts `Planned (B0)`; authentication and RBAC `Planned (B2)` (ADR-005); OpenAPI `Planned (B6)`; see §40 | `Implemented` in part; `Planned (B0)`; `Planned (B2)` | B0, B2, B6 |

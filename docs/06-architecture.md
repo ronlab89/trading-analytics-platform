@@ -220,7 +220,7 @@ Rules:
 - Repository contracts document ordering and behavior precisely enough to be
   implemented in memory (ADR-001, Consequences).
 
-Portfolio-level performance and risk calculations are `Planned (B1)`
+Portfolio-level performance and risk calculations are `Implemented`
 (ADR-004, `16-analytics-spec.md`).
 
 ---

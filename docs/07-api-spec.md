@@ -959,8 +959,8 @@ Response (200):
 ```
 
 An empty portfolio returns `groups: []`. Errors: 400 `VALIDATION_ERROR`;
-404 `NOT_FOUND`. Mixed currencies surface as 500 today; 400 on the
-transaction is `Planned (B1)` (`16` §2).
+404 `NOT_FOUND`. A transaction on an asset in another currency is rejected
+with 400, so a portfolio cannot reach mixed currencies (`16` §2).
 
 ---
 
