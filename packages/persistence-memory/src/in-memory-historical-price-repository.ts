@@ -35,6 +35,20 @@ export class InMemoryHistoricalPriceRepository implements HistoricalPriceReposit
     return Promise.resolve(found);
   }
 
+  listByAssetIds(assetIds: readonly string[], from: Date, to: Date): Promise<HistoricalPrice[]> {
+    const wanted = new Set(assetIds);
+    const found = [...this.rows.values()]
+      .filter(
+        (row) =>
+          wanted.has(row.assetId) &&
+          row.timestamp.getTime() >= from.getTime() &&
+          row.timestamp.getTime() <= to.getTime(),
+      )
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    return Promise.resolve(found);
+  }
+
   create(input: CreateHistoricalPriceInput): Promise<HistoricalPrice> {
     const candle: HistoricalPrice = { ...input, timestamp: input.timestamp ?? this.now() };
     this.rows.set(`${candle.assetId}|${String(candle.timestamp.getTime())}`, candle);

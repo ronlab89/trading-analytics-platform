@@ -104,5 +104,38 @@ export function historicalPriceRepositoryContract(
       ]);
       expect(await timestampsOf(context.fixtures.otherAssetId, day(10), day(30))).toEqual([]);
     });
+
+    it("lists the candles of several assets in the inclusive range, oldest first", async () => {
+      const { assetId, otherAssetId } = context.fixtures;
+      for (const n of [7, 1, 20]) {
+        await context.repository.create(candle(assetId, day(n), "100"));
+      }
+      for (const n of [5, 3, 25]) {
+        await context.repository.create(candle(otherAssetId, day(n), "200"));
+      }
+      const found = await context.repository.listByAssetIds(
+        [assetId, otherAssetId],
+        day(3),
+        day(7),
+      );
+      expect(found.map((c) => [c.assetId, c.timestamp])).toEqual([
+        [otherAssetId, day(3)],
+        [otherAssetId, day(5)],
+        [assetId, day(7)],
+      ]);
+    });
+
+    it("lists only the requested assets and ignores one without candles", async () => {
+      const { assetId, otherAssetId } = context.fixtures;
+      await context.repository.create(candle(assetId, day(5)));
+      await context.repository.create(candle(otherAssetId, day(5)));
+      const mine = await context.repository.listByAssetIds(
+        [assetId, "no-such-asset"],
+        day(1),
+        day(30),
+      );
+      expect(mine.map((c) => c.assetId)).toEqual([assetId]);
+      expect(await context.repository.listByAssetIds([], day(1), day(30))).toEqual([]);
+    });
   });
 }

@@ -162,6 +162,27 @@ export function transactionRepositoryContract(
       expect(result).toEqual([early, late]);
     });
 
+    it("lists a portfolio's COMPLETED transactions of every asset, oldest first", async () => {
+      const { portfolioId, otherPortfolioId, otherAssetId } = context.fixtures;
+      const complete = (id: string) =>
+        context.repository.updateStatus(id, TransactionStatus.COMPLETED);
+      expect(await context.repository.listCompletedByPortfolioId(portfolioId)).toEqual([]);
+      const late = await complete(
+        (await context.repository.create(input({ executedAt: day(20) }))).id,
+      );
+      const early = await complete(
+        (await context.repository.create(input({ assetId: otherAssetId, executedAt: day(2) }))).id,
+      );
+      await context.repository.create(input({ executedAt: day(5) }));
+      const processing = await context.repository.create(input({ executedAt: day(6) }));
+      await context.repository.updateStatus(processing.id, TransactionStatus.PROCESSING);
+      await complete(
+        (await context.repository.create(input({ portfolioId: otherPortfolioId }))).id,
+      );
+      const result = await context.repository.listCompletedByPortfolioId(portfolioId);
+      expect(result).toEqual([early, late]);
+    });
+
     it("locks a portfolio and asset without changing any data", async () => {
       const { portfolioId, assetId } = context.fixtures;
       const created = await context.repository.create(input());
