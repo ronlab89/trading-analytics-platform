@@ -45,7 +45,7 @@ not resolved here.
 
 # 2. Common Rules
 
-**Status:** `Planned (B1)` except where marked.  
+**Status:** `Implemented` except where marked.  
 **Decisions:** ADR-002 point 3; ADR-004 points 12 and 14.  
 **Requirements:** FR-025 to FR-031, FR-058.
 
@@ -59,7 +59,7 @@ not resolved here.
   `5`), for example `volatilityPercent`, `changePercent` (`Implemented`).
 - **Single currency.** Every metric is computed in the portfolio's
   `baseCurrency`. A transaction on an asset whose currency differs is
-  rejected with 400 (ADR-004 point 12, `Planned (B1)`; `05-data-model.md`
+  rejected with 400 (ADR-004 point 12, `Implemented`; `05-data-model.md`
   §9.2). Today mixed currencies make `Money.add` throw
   `CurrencyMismatchError`, which surfaces as 500 (`Implemented`, to be
   replaced). Multi-currency is `Deferred`.
@@ -70,9 +70,9 @@ not resolved here.
   `drawdown.ts`, `portfolio-daily-change.ts`). In API responses each
   analytics result carries `status` (`OK`, `INSUFFICIENT_DATA` or
   `UNKNOWN`) and unavailable values are `null`, never `0` (ADR-002 point 10,
-  `Planned (B1)`).
+  `Implemented`).
 - **Day boundaries.** Days are UTC calendar dates everywhere, including the
-  demo and the simulator clock (ADR-004 Deferred detail, `Planned (B1)`).
+  demo and the simulator clock (ADR-004 Deferred detail, `Implemented`).
 - **Counted transactions.** Only transactions with status `COMPLETED` count
   (ADR-004 point 1, amended 2026-10-05, `Implemented` in the read behind the
   daily series, `listCompletedByPortfolioId`).
@@ -349,7 +349,7 @@ Worked example, `to = 2026-03-31`:
 1Y from to = 2028-02-29:  anchor 2027-02-28, from 2027-03-01
 ```
 
-**End of the series** (`Planned (B1)`, ADR-004 point 1). A `to` later than
+**End of the series** (`Implemented`, ADR-004 point 1). A `to` later than
 the last closed UTC day is clamped to that day; an omitted `to` is today and
 is therefore clamped too. The response states the effective end date in the
 field `asOf` (equal to `to` when no clamp applies). Transactions executed
@@ -358,7 +358,7 @@ closes. Test: with the last closed day `2026-03-31`, a request with
 `to = 2026-04-02` returns `asOf = 2026-03-31`, and a `BUY` executed on
 2026-04-01 changes neither `V`, `B` nor `twrPercent`.
 
-**Custom range validation** (`Planned (B1)`, decided 2026-10-05; schema in
+**Custom range validation** (`Implemented`, decided 2026-10-05; schema in
 `07-api-spec.md` §20, T4.1). The performance response fields are `status`,
 `twrPercent`, `pnl` (Money) and `series: [{ date, value, returnPercent }]`
 (ADR-002 point 10):
@@ -372,7 +372,7 @@ closes. Test: with the last closed day `2026-03-31`, a request with
 | `to` without `from` | 400 validation error: a range needs its start. An omitted `to` is today (clamped). |
 | `period` together with `from`/`to` | 400 validation error; with neither, the period is `1M` (ADR-002 point 10). |
 
-`Planned (B1)` (decided 2026-10-05): a valid `from ≤ to` where `from` is
+`Implemented` (decided 2026-10-05): a valid `from ≤ to` where `from` is
 after the last closed day leaves no closed day in the range once `to` is
 clamped (`asOf < from`). The response is 200 with `InsufficientData`
 (`status: "INSUFFICIENT_DATA"`) and `asOf`, not 400: picking today is a normal request, not a client error.
@@ -502,7 +502,7 @@ and `previousPrice` (§18). `previousPrice` is the last closed daily candle
 
 # 12. Current-State Metrics and P/L
 
-**Status:** unrealized `Implemented` (`portfolio-metrics.ts`, `position-metrics.ts`); fees in cost basis `Implemented` (`position-replay.ts`); realized P/L `Implemented` as a pure function (`realized-pnl.ts`), exposure by the API `Planned (B1)`.  
+**Status:** unrealized `Implemented` (`portfolio-metrics.ts`, `position-metrics.ts`); fees in cost basis `Implemented` (`position-replay.ts`); realized P/L `Implemented` as a pure function (`realized-pnl.ts`), exposure by the API `Implemented` (`realizedPnL` of each transaction).  
 **Decisions:** ADR-003 point 4; ADR-004 points 14 and 15.  
 **Requirements:** FR-025, FR-030.
 
@@ -663,8 +663,7 @@ Exposure and liquidity are `Deferred` (`05-data-model.md` §29).
 60.01 is `HIGH`.
 
 Decided thresholds (ADR-004 point 11, amended 2026-10-05), with the
-operators of `portfolio-pulse.ts` (`Implemented` values; boundary tests and
-removal of the placeholder comment `Planned (B1)`):
+operators of `portfolio-pulse.ts` (`Implemented`, boundary tests included):
 
 | Dimension | Rule | Boundary tests |
 | --- | --- | --- |
@@ -676,7 +675,7 @@ removal of the placeholder comment `Planned (B1)`):
 
 # 16. Failure-Mode Review
 
-**Status:** `Planned (B1)` (review of this specification, 2026-10-05)
+**Status:** `Implemented` (review of this specification, 2026-10-05)
 
 The checklist in `docs/README.md` applied to the analytics.
 
