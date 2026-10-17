@@ -65,7 +65,7 @@ type ListBody = DataMetaEnvelope<AssetDto[], PageMeta>;
  * Characterization tests for the assets routes (B0.3 T3). They pin today's
  * HTTP behavior, including known quirks, so the layering refactor is provably
  * behavior-preserving. Do not "fix" an assertion here without recording it in
- * odd/tasks/b0-3-route-tests.md.
+ * odd/tasks/b0/b0-3-route-tests.md.
  *
  * The test DB also holds seeded/shared assets, so every list request is
  * scoped with a unique `search` (symbol prefix) before asserting totals.

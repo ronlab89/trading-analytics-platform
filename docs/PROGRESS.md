@@ -57,8 +57,8 @@ presenters, route-parameter validation and the final error contract.
 **B0.5 and B0.6 are done** (`Implemented`): `@trading/application` holds the
 use cases behind the import-boundary lint rule, and `@trading/persistence-memory`
 has the 16 in-memory repositories, each run against the shared contract suite
-(`odd/tasks/b0-5-application-layer.md`). `packages/config` holds only a `.gitkeep`.
-**B0.7 is done** (`Implemented`, `odd/tasks/b0-7-transaction-rules.md`):
+(`odd/tasks/b0/b0-5-application-layer.md`). `packages/config` holds only a `.gitkeep`.
+**B0.7 is done** (`Implemented`, `odd/tasks/b0/b0-7-transaction-rules.md`):
 - A transaction is validated in date order (FR-018): the asset's history is
   replayed with the new transaction at its place (ties by `executedAt`, then
   creation order), so a backdated `SELL` that would oversell is rejected and the
