@@ -34,6 +34,7 @@ export * from "./calculations/quantity-timeline";
 export * from "./calculations/value-series";
 export * from "./calculations/daily-return";
 export * from "./calculations/period-performance";
+export * from "./calculations/return-drawdown";
 export * from "./calculations/decision-replay";
 export type { PortfolioRepository } from "./repositories/portfolio-repository";
 export type { UserRepository } from "./repositories/user-repository";
