@@ -60,6 +60,7 @@ describe("calculateRangeAttribution", () => {
 
     expect(result.status).toBe("OK");
     expect(result.effectiveFrom).toEqual(day(1));
+    expect(result.baseline).toEqual(day(0));
     expect(
       result.contributions.map((item) => [item.assetId, item.contribution.toString()]),
     ).toEqual([
@@ -103,6 +104,7 @@ describe("calculateRangeAttribution", () => {
     const result = calculateRangeAttribution(timeline, late, entries, "USD");
 
     expect(result.effectiveFrom).toEqual(day(2));
+    expect(result.baseline).toEqual(day(2));
     // A: 72 - 110 - (0 - 45) = 7. B: 15 - 16 - 0 = -1.
     expect(result.contributions.map((item) => item.contribution.toString())).toEqual(["7", "-1"]);
     expect(result.pnl?.toString()).toBe("6");
@@ -119,6 +121,7 @@ describe("calculateRangeAttribution", () => {
     expect(result).toEqual({
       status: "INSUFFICIENT_DATA",
       effectiveFrom: null,
+      baseline: null,
       contributions: [],
       pnl: null,
     });

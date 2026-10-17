@@ -36,6 +36,7 @@ export * from "./calculations/value-series";
 export * from "./calculations/daily-return";
 export * from "./calculations/period-performance";
 export * from "./calculations/range-attribution";
+export * from "./calculations/position-events";
 export * from "./calculations/top-contributors";
 export * from "./calculations/return-drawdown";
 export * from "./calculations/decision-replay";
