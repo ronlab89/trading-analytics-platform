@@ -185,7 +185,7 @@ The user terminates the current session.
 ## FR-004 — Display Portfolio Overview
 
 **Priority:** P0  
-**Status:** API `Implemented` (`GET /api/v1/portfolios/:portfolioId/overview`); period `performance` field `Planned (B1)`; UI `Planned (FE)`  
+**Status:** API `Implemented` (`GET /api/v1/portfolios/:portfolioId/overview`); `performance` field `Implemented`; UI `Planned (FE)`  
 **Decisions:** ADR-004 points 5 and 11; ADR-007 point 14; `16-analytics-spec.md` §11-§15
 
 The dashboard shows the selected portfolio: total value, daily change,
@@ -233,7 +233,7 @@ The user switches between their portfolios.
 ## FR-006 — What Changed
 
 **Priority:** P1  
-**Status:** `Planned (B1)` (API, as a field of the overview response, decided 2026-10-08); UI `Planned (FE)`. Significant value change, unusual volatility and allocation changes are `Deferred`.  
+**Status:** API `Implemented` (`whatChanged` field of the overview response, decided 2026-10-08); alerts, significant value change, unusual volatility and allocation changes `Deferred`; UI `Planned (FE)`.  
 **Decisions:** ADR-010 point 1; ADR-004 point 10
 
 The dashboard reports what changed in the selected portfolio over the
@@ -261,7 +261,7 @@ selected period, derived only from real data.
 ## FR-007 — Portfolio Pulse
 
 **Priority:** P1  
-**Status:** `Implemented` (`portfolio-pulse.ts`, in the overview); portfolio volatility and drawdown inputs, and boundary tests `Planned (B1)`; a standalone `GET .../pulse` endpoint, exposure and liquidity `Deferred` (`05-data-model.md` §29)  
+**Status:** `Implemented` (`portfolio-pulse.ts`, in the overview); portfolio volatility and drawdown inputs `Implemented`; a standalone `GET .../pulse` endpoint, exposure and liquidity `Deferred` (`05-data-model.md` §29)  
 **Decisions:** ADR-004 point 11; `16-analytics-spec.md` §15
 
 A deterministic, explainable classification of the portfolio state. No
@@ -373,7 +373,7 @@ Deleting a portfolio archives it: history is preserved.
 ## FR-012 — Display Positions
 
 **Priority:** P0  
-**Status:** API `Implemented` (`GET .../positions`, overview); fees in `averageEntryPrice` `Planned (B1)`; live `currentPrice` `Planned (B5)`; UI `Planned (FE)`  
+**Status:** API `Implemented` (`GET .../positions`, overview); fees in `averageEntryPrice` `Implemented`; live `currentPrice` `Planned (B5)`; UI `Planned (FE)`  
 **Decisions:** ADR-004 point 15; ADR-007 Deferred detail; `16-analytics-spec.md` §12
 
 Each position exposes asset, quantity, average entry price, current price,
@@ -413,7 +413,7 @@ market value, unrealized P/L and percent, and allocation.
 ## FR-014 — List Transactions
 
 **Priority:** P0  
-**Status:** API `Implemented` (`GET /api/v1/portfolios/:portfolioId/transactions`, paginated); realized P/L per `SELL` `Planned (B1)`; UI `Planned (FE)`  
+**Status:** API `Implemented` (`GET /api/v1/portfolios/:portfolioId/transactions`, paginated); realized P/L per `SELL` `Implemented`; UI `Planned (FE)`  
 **Decisions:** ADR-003 points 1 and 4; ADR-004 point 15
 
 Each transaction shows type, asset, quantity, price, fees, `executedAt` and
@@ -633,7 +633,7 @@ the demo (ADR-001).
 ## FR-025 — Portfolio Performance
 
 **Priority:** P0  
-**Status:** `Planned (B1)`; `1D` `Implemented` (`portfolio-daily-change.ts`)  
+**Status:** `Implemented` (`GET .../analytics/performance`; `1D` in `portfolio-daily-change.ts`)  
 **Decisions:** ADR-004 points 1-6, 14; `16-analytics-spec.md` §2-§8, §11
 
 The system reports, for a period, the time-weighted return (`twrPercent`)
@@ -673,7 +673,7 @@ overview `dailyChange`, not a period of the performance endpoint.
 ## FR-026 — Historical Performance
 
 **Priority:** P1  
-**Status:** series `Planned (B1)`; charts `Planned (FE)`  
+**Status:** series `Implemented` (`series` of the performance response); charts `Planned (FE)`  
 **Decisions:** ADR-004 points 1, 4, 7; `16-analytics-spec.md` §3, §7
 
 The user inspects how performance evolved over a period.
@@ -708,7 +708,7 @@ The user inspects how performance evolved over a period.
 ## FR-028 — Drawdown
 
 **Priority:** P1  
-**Status:** `Planned (B1)` (portfolio level); asset level `Implemented` (`drawdown.ts`)  
+**Status:** `Implemented` (portfolio level in `GET .../analytics/risk`; asset level in `drawdown.ts`)  
 **Decisions:** ADR-004 point 9; `16-analytics-spec.md` §10
 
 ### Acceptance criteria
@@ -725,7 +725,7 @@ The user inspects how performance evolved over a period.
 ## FR-029 — Volatility
 
 **Priority:** P1  
-**Status:** `Planned (B1)` (portfolio level); asset level `Implemented` (`volatility.ts`, to be changed in B1)  
+**Status:** `Implemented` (portfolio level in `GET .../analytics/risk`; asset level in `volatility.ts`)  
 **Decisions:** ADR-004 point 8; `16-analytics-spec.md` §9
 
 ### Acceptance criteria
@@ -743,7 +743,7 @@ The user inspects how performance evolved over a period.
 ## FR-030 — Calculate Performance Contribution
 
 **Priority:** P1  
-**Status:** current-state attribution `Implemented` (`attribution.ts`, `GET .../analytics/attribution`); range attribution `Planned (B1)`; factor breakdown `Deferred` (ADR-004 point 10)  
+**Status:** current-state attribution `Implemented` (`attribution.ts`, `GET .../analytics/attribution`); range attribution `Implemented` (`GET .../analytics/attribution?period=`); factor breakdown `Deferred` (ADR-004 point 10)  
 **Decisions:** ADR-004 point 10; `16-analytics-spec.md` §14
 
 The user sees how much each asset contributed to the period result, in
@@ -765,7 +765,7 @@ money.
 ## FR-031 — Attribution Detail
 
 **Priority:** P1  
-**Status:** money contribution per asset `Planned (B1)` (ADR-004 point 10); breakdown by factor (price movement, position size, fees, realized results) `Deferred` — ADR-004 point 10 decides no decomposition  
+**Status:** money contribution per asset `Implemented` (ADR-004 point 10); breakdown by factor (price movement, position size, fees, realized results) `Deferred` — ADR-004 point 10 decides no decomposition  
 **Decisions:** ADR-004 points 2, 10, 15
 
 The user inspects one asset's contribution over a period.
@@ -1673,7 +1673,7 @@ into a portfolio as a background job.
 ## FR-085 — Analytics Data Boundaries
 
 **Priority:** P0  
-**Status:** `Planned (B1)`  
+**Status:** `Implemented`  
 **Decisions:** ADR-004 points 1, 4, 6, 7; `16-analytics-spec.md` §2, §5, §8
 
 ### Acceptance criteria
@@ -1813,34 +1813,34 @@ This applies equally to the full stack and to the public demo.
 | FR-001 | `Implemented`; `Planned (B2)`, `Planned (FE)` | ADR-005 p4, 8, 10-12 | B2, FE |
 | FR-002 | `Planned (B2)` | ADR-005 p4-6, 9 | B2, FE |
 | FR-003 | `Planned (B2)` | ADR-005 p6-7 | B2, FE |
-| FR-004 | `Implemented`; `Planned (B1)` | ADR-004 p5, 11; `16` §11-15 | B1, FE |
+| FR-004 | `Implemented` | ADR-004 p5, 11; `16` §11-15 | B1, FE |
 | FR-005 | `Planned (FE)` | — | FE |
-| FR-006 | `Planned (B1)`; UI `Planned (FE)` | ADR-010 p1 | B1, FE |
-| FR-007 | `Implemented`; `Planned (B1)` | ADR-004 p11; `16` §15 | B1 |
+| FR-006 | `Implemented`; alerts `Deferred`; UI `Planned (FE)` | ADR-010 p1 | B1, FE |
+| FR-007 | `Implemented` | ADR-004 p11; `16` §15 | B1 |
 | FR-008 | `Implemented` | ADR-005 p12 | FE |
 | FR-009 | `Implemented`; `Planned (B2)` | ADR-004 p12; ADR-005 p2 | B2, FE |
 | FR-010 | `Implemented` | `05` §43 | FE |
 | FR-011 | `Implemented` (archive); read-only `Planned (B0)` | ADR-010 p5 | B0, FE |
-| FR-012 | `Implemented`; `Planned (B1)`, `Planned (B5)` | ADR-004 p15; ADR-007 | B1, B5, FE |
+| FR-012 | `Implemented`; `Planned (B5)` | ADR-004 p15; ADR-007 | B1, B5, FE |
 | FR-013 | `Implemented` | ADR-001 p6 | FE |
-| FR-014 | `Implemented`; `Planned (B1)` | ADR-003 p4; ADR-004 p15 | B1, FE |
+| FR-014 | `Implemented` | ADR-003 p4; ADR-004 p15 | B1, FE |
 | FR-015 | Satisfied by FR-016 and FR-020 | ADR-010 p2 | — |
 | FR-016 | `Implemented` | ADR-003 p1 | FE |
 | FR-017 | `Implemented`; `Planned (B0)`, `Planned (B4)`, `Planned (B5)` | ADR-001; ADR-003; ADR-007 p6; ADR-008 p8, 12 | B0, B4, B5, FE |
-| FR-018 | `Implemented`; `Planned (B0)`, `Planned (B1)` | ADR-003 p6; ADR-004 p2, 12 | B0, B1 |
+| FR-018 | `Implemented`; `Planned (B0)` | ADR-003 p6; ADR-004 p2, 12 | B0, B1 |
 | FR-019 | `Implemented` | — | FE |
 | FR-020 | `Implemented`; `Planned (B7)` | — | B7, FE |
 | FR-021 | `Implemented`; parts `Deferred` | ADR-007 p14 | FE |
 | FR-022 | `Implemented` | `05` §17 | FE |
 | FR-023 | `Implemented` | — | FE |
 | FR-024 | `Planned (B5)` | ADR-007 p3, 5, 12, 13 | B5, FE |
-| FR-025 | `Planned (B1)`; `1D` `Implemented` | ADR-004 p1-6, 14; `16` §2-8 | B1 |
-| FR-026 | `Planned (B1)` | ADR-004 p1, 4, 7; `16` §3, §7 | B1, FE |
+| FR-025 | `Implemented` | ADR-004 p1-6, 14; `16` §2-8 | B1 |
+| FR-026 | `Implemented`; UI `Planned (FE)` | ADR-004 p1, 4, 7; `16` §3, §7 | B1, FE |
 | FR-027 | `Implemented`; sector `Deferred` | ADR-004 p12-13; `16` §13 | — |
-| FR-028 | `Planned (B1)` | ADR-004 p9; `16` §10 | B1 |
-| FR-029 | `Planned (B1)` | ADR-004 p8; `16` §9 | B1 |
-| FR-030 | `Implemented`; `Planned (B1)` | ADR-004 p10; `16` §14 | B1 |
-| FR-031 | `Planned (B1)`; factors `Deferred` | ADR-004 p10 | B1 |
+| FR-028 | `Implemented` | ADR-004 p9; `16` §10 | B1 |
+| FR-029 | `Implemented` | ADR-004 p8; `16` §9 | B1 |
+| FR-030 | `Implemented` | ADR-004 p10; `16` §14 | B1 |
+| FR-031 | `Implemented`; factors `Deferred` | ADR-004 p10 | B1 |
 | FR-032 | `Implemented` | — | FE |
 | FR-033 | `Implemented` | — | FE |
 | FR-034 | `Implemented`; `Planned (B0)` | ADR-002 p9 | B0, FE |
@@ -1894,7 +1894,7 @@ This applies equally to the full stack and to the public demo.
 | FR-082 | `Planned (B4)` | ADR-008 p8 | B4 |
 | FR-083 | `Planned (B2)` | ADR-005 p4-7, 9; ADR-009 p9 | B2, FE |
 | FR-084 | `Implemented`; `Planned (B0)`, `Planned (B2)` | ADR-005 p1-3, 10-12 | B0, B2 |
-| FR-085 | `Planned (B1)` | ADR-004 p1, 4, 6-7; `16` §2, §5, §8 | B1 |
+| FR-085 | `Implemented` | ADR-004 p1, 4, 6-7; `16` §2, §5, §8 | B1 |
 | FR-086 | `Planned (B5)` | ADR-007 p2-3, 11 | B5 |
 | FR-087 | `Implemented`; language validation `Planned (B0)`; UI `Planned (FE)` | ADR-010 p8, `05` §23 | B0, FE |
 
