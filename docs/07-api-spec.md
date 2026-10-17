@@ -430,7 +430,7 @@ import): the same 409 for imports.
 
 # 11. Portfolio Overview
 
-**Status:** `Implemented` (FR-004, `performance` field); the What Changed field `Planned (B1)` (ADR-004, ADR-010 point 1, `16-analytics-spec.md` §11-§15)
+**Status:** `Implemented` (FR-004, `performance` and `whatChanged` fields); alerts in `whatChanged` `Planned` (ADR-004, ADR-010 point 1, `16-analytics-spec.md` §11-§15)
 
 ```text
 GET /api/v1/portfolios/:portfolioId/overview
@@ -449,14 +449,14 @@ recentTransactions   [{ transaction, asset }]
 dailyChange          null when no held asset has a market price
 performance          the result of GET .../analytics/performance for the fixed period 1M (§20)
 pulse
-whatChanged          `Planned (B1)`, below
+whatChanged          what changed over the same 1M period, below
 ```
 
 An empty portfolio returns zeroed totals in `baseCurrency`, empty lists and a
 non-null `dailyChange` and a `performance` with a zero P/L, no `twrPercent` and an
 empty `series`. Errors: 404 `NOT_FOUND`.
 
-**What Changed** (FR-006), `Planned (B1)`: carried as the `whatChanged` field of
+**What Changed** (FR-006), `Implemented`: carried as the `whatChanged` field of
 this overview response, not as its own endpoint (decided 2026-10-08). Its
 content is decided by ADR-010 point 1. It covers the same fixed period `1M`,
 the same `asOf` and the same boundaries as `performance`:
@@ -484,8 +484,9 @@ the same `asOf` and the same boundaries as `performance`:
   opens and closes in the period produces both. The quantity is measured at the
   end of the day, so a purchase and a full sale on the same day produce no event.
 - An empty portfolio or a period with no events returns `null` and `[]`, not an
-  error. With `status` `INSUFFICIENT_DATA` the contributor and the detractor are
-  `null` and no number is invented.
+  error. With `status` `INSUFFICIENT_DATA` (no price on `asOf`) the contributor,
+  the detractor and the events are `null`, `null` and `[]`: there is no baseline
+  to measure from, and no number is invented.
 - Alerts triggered in the period are `Planned`: `lastTriggeredAt` and the alert
   evaluation do not exist yet (§27), so the field is added with them. Significant
   value change, unusual volatility and allocation changes are `Deferred`.
