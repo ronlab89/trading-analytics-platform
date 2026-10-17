@@ -320,7 +320,7 @@ Domain code never imports Prisma; repositories isolate it (§29).
 
 # 28.1 Decimal Precision
 
-**Status:** `Implemented` for money in the domain; analytics in `Decimal` end to end `Planned (B1)` — ADR-004; JSON payload parsing `Planned (B0)` — ADR-002 point 9.
+**Status:** `Implemented` for money in the domain; analytics in `Decimal` end to end `Implemented` — ADR-004; JSON payload parsing `Planned (B0)` — ADR-002 point 9.
 
 ## decimal.js
 
