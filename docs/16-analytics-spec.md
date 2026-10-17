@@ -589,7 +589,7 @@ percentage(group)  = marketValue(group) / Σ marketValue × 100     (0 when the 
 
 # 14. Attribution
 
-**Status:** current-state `Implemented` (`attribution.ts`); range attribution `Planned (B1)`.  
+**Status:** `Implemented`: current state (`attribution.ts`) and range attribution (`range-attribution.ts`).  
 **Decisions:** ADR-004 point 10, Deferred detail (period boundaries).  
 **Requirements:** FR-030, FR-031.
 
@@ -597,7 +597,7 @@ percentage(group)  = marketValue(group) / Σ marketValue × 100     (0 when the 
 `percentageOfTotal = contribution / total unrealized P/L × 100` (`0` when the
 total is `0`). Fees and realized results are not included.
 
-Range attribution (`Planned (B1)`), using the §7 boundaries:
+Range attribution (`Implemented`), using the §7 boundaries:
 
 ```text
 V_a(d) = q(a, d) × c(a, d)
@@ -624,31 +624,30 @@ B: held throughout, no flows,
 P/L = 11 = 16 + (−5)
 ```
 
-Range attribution output (`Planned (B1)`, decided 2026-10-05; ADR-004
+Range attribution output (`Implemented`, decided 2026-10-05; ADR-004
 point 10; schema in `07-api-spec.md` §22, T4.1): each group reports its
 contribution in money only, with no percentage, so `P/L = 0` needs no
 special case. `groupBy` accepts `asset` and `assetType`; a group's
 contribution is the sum of its assets' contributions. Sector stays
 `Deferred` (ADR-004 point 13). Test: in the example above, with A of type
 `STOCK` and B of type `CRYPTO`, `groupBy=assetType` gives `STOCK 16` and
-`CRYPTO −5`; if both are `STOCK`, a single group `STOCK 11`.
+`CRYPTO −5`; if both are `STOCK`, a single group `STOCK 11`. Groups are
+ordered by key, only so the output is deterministic; the tie rule of
+ADR-010 belongs to the What Changed read model (§11).
 
 ---
 
 # 15. Portfolio Pulse
 
-**Status:** `Implemented` (`portfolio-pulse.ts`); real volatility and drawdown inputs `Planned (B1)`.  
+**Status:** `Implemented` (`portfolio-pulse.ts`, fed by the portfolio series in `overview-service.ts`).  
 **Decisions:** ADR-004 point 11.  
 **Requirements:** FR-007.
 
 `Implemented`: performance is classified from `unrealizedPnLPercent`,
-concentration from the largest allocation by asset. Volatility and drawdown
-come from the **largest position's** candles (proxy in
-`apps/api/src/services/overview.service.ts`) and are `UNKNOWN` when absent.
-The code still labels its thresholds as placeholders; the performance,
-concentration and drawdown values are decided as they stand (below).
+concentration from the largest allocation by asset, with the thresholds
+below and boundary tests.
 
-`Planned (B1)`: volatility and drawdown come from the portfolio series (§9,
+`Implemented`: volatility and drawdown come from the portfolio series (§9,
 §10) over a trailing `1Y` window (§8) ending on the last closed day
 (ADR-004 point 11, amended 2026-10-05). With less history the window is
 clamped to `effectiveFrom` (§5) and the minimums apply: `UNKNOWN` when §9
@@ -658,7 +657,7 @@ volatility is `UNKNOWN` and drawdown is known; a first `BUY` 400 days
 before gives an unclamped window that starts at `(to − 1Y) + 1 day`.
 Exposure and liquidity are `Deferred` (`05-data-model.md` §29).
 
-`Planned (B1)`: volatility thresholds apply to the annualized value
+`Implemented`: volatility thresholds apply to the annualized value
 (ADR-004 point 11): `HIGH` when `> 60`, `MODERATE` when `> 20`, otherwise
 `LOW`. Boundary tests: 20 is `LOW`, 20.01 is `MODERATE`, 60 is `MODERATE`,
 60.01 is `HIGH`.

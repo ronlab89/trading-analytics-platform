@@ -269,8 +269,8 @@ needs it. It is mostly pure domain work and depends only on B0.
   to the overview. The Pulse stays a field of the overview; a standalone
   `GET .../pulse` endpoint is `Deferred` (`07-api-spec.md` §21).
 - Pulse uses the real portfolio volatility and drawdown instead of the
-  largest-position proxy, with the thresholds of ADR-004 point 11.
-- Attribution over a range with `from`/`to` (`07-api-spec.md` §22).
+  largest-position proxy, with the thresholds of ADR-004 point 11 (done in B1.5).
+- Attribution over a range with `from`/`to` (`07-api-spec.md` §22) (done in B1.5).
 - The What Changed read model (ADR-010 point 1, FR-006), built in the
   application layer and returned as a field of the overview response, not as
   its own endpoint (decided 2026-10-08; its shape is defined in B1).
@@ -297,7 +297,7 @@ this file):
 | One pure function maps a preset period and `to` to `from`, with tests for month-end, leap-year and `YTD` cases (done in B1.2 as `resolvePeriodWindow`) | ADR-004 |
 | Returns computed in `Decimal` and converted only in the presenter (the domain side is done in B1.2; the presenters are done in B1.3 and B1.4) | ADR-004 |
 | `averageEntryPrice` includes `BUY` fees; `SELL` fees reduce realized P/L (done in B1.1 as the pure function `replayRealizedPnL`; persistence and API exposure follow in later B1 slices) | ADR-004 |
-| Pulse thresholds keep their constants, lose the placeholder comment and get boundary tests | ADR-004 |
+| Pulse thresholds keep their constants, lose the placeholder comment and get boundary tests; the volatility thresholds become the annualized 20 and 60 (done in B1.5) | ADR-004 |
 | Volatility always annualizes with the square root of 365 and needs 20 returns (done in B1.3 as `calculateReturnVolatility`, also used by the asset-level `calculateVolatility`); Pulse volatility thresholds are 20% and 60% | ADR-004 |
 | Day boundaries are UTC calendar dates everywhere | ADR-004 |
 | Ties for the largest contributor or detractor go to the alphabetically first symbol | ADR-010 |

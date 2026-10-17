@@ -963,7 +963,7 @@ range with no closed day returns 200 with `status: "INSUFFICIENT_DATA"` (`16`
 
 # 21. Portfolio Pulse API
 
-**Status:** `Implemented` inside the overview (§11, FR-007); standalone `GET /api/v1/portfolios/:portfolioId/pulse` `Deferred`; portfolio-series inputs and volatility thresholds `Planned (B1)` (ADR-004 point 11; `16-analytics-spec.md` §15)
+**Status:** `Implemented` inside the overview (§11, FR-007); standalone `GET /api/v1/portfolios/:portfolioId/pulse` `Deferred` (ADR-004 point 11; `16-analytics-spec.md` §15)
 
 The Pulse is returned as `pulse` in `GET /api/v1/portfolios/:portfolioId/overview`.
 There is no standalone endpoint. Shape:
@@ -978,24 +978,25 @@ There is no standalone endpoint. Shape:
 ```
 
 Every dimension carries its value and explanation, so the Pulse stays
-explainable. `Implemented`: volatility and drawdown come from the largest
-position's candles, and the volatility thresholds are code placeholders.
-`Planned (B1)`: both come from the portfolio series over a trailing `1Y`
-window, volatility `HIGH` above 60 and `MODERATE` above 20. Exposure, an
+explainable. `Implemented`: volatility and drawdown come from the portfolio
+series over a trailing `1Y` window ending on the last closed day, and are
+`UNKNOWN` with `value: null` when the series has too few returns. Volatility
+is the annualized value: `HIGH` above 60, `MODERATE` above 20. The operators
+are strict, so a value on a threshold stays in the lower class. Exposure, an
 `overall` classification and a separate `explanations` list are `Deferred`.
 
 ---
 
 # 22. Attribution API
 
-**Status:** current-state `Implemented` (FR-030); range attribution `Planned (B1)` (FR-030, FR-031; ADR-004 point 10; `16-analytics-spec.md` §14)
+**Status:** `Implemented` (FR-030): the current state, and the range attribution; the FR-031 factor breakdown `Deferred` (ADR-004 point 10; `16-analytics-spec.md` §14)
 
 ```text
 GET /api/v1/portfolios/:portfolioId/analytics/attribution
 ```
 
-`Implemented`: no query parameters. Each position's contribution to the
-portfolio's unrealized P/L. Response (200):
+Without `period`, `from`, `to` or `groupBy`, the current state: each
+position's contribution to the portfolio's unrealized P/L. Response (200):
 
 ```json
 {
@@ -1016,11 +1017,34 @@ portfolio's unrealized P/L. Response (200):
 
 `percentageOfTotal` is `0` when the total is `0`. Errors: 404 `NOT_FOUND`.
 
-`Planned (B1)`: `period` or `from` / `to` as in §20, with `asOf` and
-`effectiveFrom`, and `groupBy` = `asset` | `assetType`. Each group reports
-its contribution in `Money` only, with no percentage; contributions sum
-exactly to the period P/L. Sector and the FR-031 factor breakdown are
-`Deferred`. Errors: 400 `VALIDATION_ERROR` when `from > to`.
+With any of those parameters, the range attribution: `period` or `from` /
+`to` as in §20 (default `1M`), and `groupBy` = `asset` (default) | `assetType`.
+Each group reports its contribution in `Money` only, with no percentage, and
+the contributions sum exactly to the period P/L. Response (200):
+
+```json
+{
+  "data": {
+    "asOf": "2026-03-31",
+    "effectiveFrom": "2026-03-29",
+    "status": "OK",
+    "groupBy": "assetType",
+    "pnl": { "amount": "24", "currency": "USD" },
+    "groups": [
+      { "key": "CRYPTO", "label": "CRYPTO", "contribution": { "amount": "-6", "currency": "USD" } },
+      { "key": "STOCK", "label": "STOCK", "contribution": { "amount": "30", "currency": "USD" } }
+    ]
+  }
+}
+```
+
+For `groupBy=asset` the `key` is the `assetId` and the `label` the symbol.
+Groups are ordered by `key`. With no price on `asOf`, `status` is
+`INSUFFICIENT_DATA`, `pnl` is `null` and `groups` is empty; an empty portfolio
+is `OK` with a zero `pnl`. Sector and the FR-031 factor breakdown are
+`Deferred`. Errors: 400 `VALIDATION_ERROR` when `from > to`, for `to` without
+`from`, `period` together with `from`/`to`, `1D`, or a `groupBy` other than
+`asset` and `assetType`; 404 `NOT_FOUND`.
 
 ---
 
