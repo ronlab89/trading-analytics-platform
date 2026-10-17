@@ -54,6 +54,8 @@ function build(
     baseCurrency?: string;
     assetCurrency?: string;
     stored?: Transaction[];
+    /** Every COMPLETED transaction of the portfolio, read to replay the realized P/L; defaults to `stored`. */
+    completed?: Transaction[];
     /** The asset's existing transactions, in creation order, read for the chronological check. */
     history?: Transaction[];
     existing?: Position | null;
@@ -67,13 +69,16 @@ function build(
     baseCurrency = "USD",
     assetCurrency = "USD",
     stored = [],
+    completed = stored,
     history = [],
     existing = null,
   } = options;
   const calls: Calls = { upserts: [], deletes: [], statusUpdates: [], reads: [] };
 
+  let created: Transaction | null = null;
   const transactions = {
     listByPortfolioId: () => Promise.resolve({ items: stored, total: stored.length }),
+    listCompletedByPortfolioId: () => Promise.resolve(completed),
     lockPortfolioAsset: () => {
       calls.reads.push("lock");
       return Promise.resolve();
@@ -83,12 +88,14 @@ function build(
       return Promise.resolve(history);
     },
     getById: (id: string) => Promise.resolve(stored.find((t) => t.id === id) ?? null),
-    create: (input: { portfolioId: string; assetId: string }) =>
-      Promise.resolve({ ...transaction("new", input.portfolioId), assetId: input.assetId }),
+    create: (input: Partial<Transaction> & { portfolioId: string; assetId: string }) => {
+      created = { ...transaction("new", input.portfolioId), ...input, id: "new" };
+      return Promise.resolve(created);
+    },
     updateStatus: (id: string, status: TransactionStatus) => {
       if (options.failOnStatus) return Promise.reject(new Error("db down"));
       calls.statusUpdates.push(id);
-      return Promise.resolve({ ...transaction(id, "p1"), status });
+      return Promise.resolve({ ...(created ?? transaction(id, "p1")), id, status });
     },
   };
   const positions = {
@@ -162,6 +169,7 @@ describe("transaction service", () => {
     const { service } = build({ stored: [transaction("t1", "p1")] });
     const page = await service.listTransactions(actor, "p1", {}, { page: 1, pageSize: 10 });
     expect(page.total).toBe(1);
+    expect(page.items[0]?.transaction.id).toBe("t1");
   });
 
   it("does not list transactions of a portfolio the actor does not own", async () => {
@@ -197,6 +205,66 @@ describe("transaction service", () => {
     expect(result.position).toBeNull();
     expect(calls.deletes).toEqual(["p1"]);
     expect(calls.upserts).toHaveLength(0);
+  });
+
+  describe("realized P/L", () => {
+    const done = (
+      id: string,
+      type: TransactionType,
+      quantity: number,
+      price: string,
+      day: string,
+    ) => ({
+      ...entry(id, type, quantity, `${day}T00:00:00Z`),
+      price: Money.of(price, "USD"),
+      status: TransactionStatus.COMPLETED,
+    });
+    const bought = done("b1", TransactionType.BUY, 10, "10", "2026-03-01");
+    const sold = done("s1", TransactionType.SELL, 4, "12", "2026-03-02");
+
+    it("lists each SELL with the P/L it realized and a BUY with none", async () => {
+      const { service } = build({ stored: [bought, sold], completed: [bought, sold] });
+      const page = await service.listTransactions(actor, "p1", {}, { page: 1, pageSize: 10 });
+
+      expect(page.items.map((item) => item.realizedPnL?.toString() ?? null)).toEqual([null, "8"]);
+    });
+
+    it("replays the whole history, not only the page that is shown", async () => {
+      // The page holds the SELL alone; the BUY that sets its cost is on another page.
+      const { service } = build({ stored: [sold], completed: [bought, sold] });
+      const page = await service.listTransactions(actor, "p1", {}, { page: 2, pageSize: 1 });
+
+      expect(page.items[0]?.realizedPnL?.toString()).toBe("8");
+    });
+
+    it("returns the P/L of one SELL", async () => {
+      const { service } = build({ stored: [sold], completed: [bought, sold] });
+      const result = await service.getTransactionById(actor, "p1", "s1");
+
+      expect(result.realizedPnL?.toString()).toBe("8");
+    });
+
+    it("returns the P/L a new SELL realizes, against the average cost at its place in date order", async () => {
+      const { service } = build({ history: [bought] });
+      const result = await service.createTransaction(actor, "p1", {
+        ...buy,
+        type: TransactionType.SELL,
+        quantity: 4,
+        price: Money.of("12", "USD"),
+        fees: Money.of("1", "USD"),
+        executedAt: new Date("2026-03-05T00:00:00Z"),
+      });
+
+      // 4 x (12 - 10) - 1 fee.
+      expect(result.realizedPnL?.toString()).toBe("7");
+    });
+
+    it("returns no P/L for a new BUY", async () => {
+      const { service } = build();
+      const result = await service.createTransaction(actor, "p1", buy);
+
+      expect(result.realizedPnL).toBeNull();
+    });
   });
 
   describe("single currency (ADR-004 point 12)", () => {
@@ -248,7 +316,7 @@ describe("transaction service", () => {
       });
       const page = await service.listTransactions(actor, "p1", {}, { page: 1, pageSize: 10 });
       expect(page.total).toBe(1);
-      expect((await service.getTransactionById(actor, "p1", "t1")).id).toBe("t1");
+      expect((await service.getTransactionById(actor, "p1", "t1")).transaction.id).toBe("t1");
     });
 
     it("keeps answering 404 for a portfolio of another user, archived or not", async () => {

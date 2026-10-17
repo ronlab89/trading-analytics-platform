@@ -43,7 +43,9 @@ export function makeTransactionsController(transactionService: TransactionServic
         { page, pageSize },
       );
       res.json({
-        data: result.items.map(presentTransaction),
+        data: result.items.map(({ transaction, realizedPnL }) =>
+          presentTransaction(transaction, realizedPnL),
+        ),
         meta: buildPaginationMeta(page, pageSize, result.total),
       });
     } catch (error) {
@@ -61,12 +63,12 @@ export function makeTransactionsController(transactionService: TransactionServic
     next: NextFunction,
   ): Promise<void> {
     try {
-      const transaction = await transactionService.getTransactionById(
+      const { transaction, realizedPnL } = await transactionService.getTransactionById(
         actorOf(req),
         req.params.portfolioId as string,
         req.params.transactionId as string,
       );
-      res.json({ data: presentTransaction(transaction) });
+      res.json({ data: presentTransaction(transaction, realizedPnL) });
     } catch (error) {
       next(error);
     }

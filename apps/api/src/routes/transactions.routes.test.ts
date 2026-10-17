@@ -25,6 +25,7 @@ interface TransactionDto {
   id: string;
   status: string;
   quantity: number;
+  realizedPnL: { amount: string; currency: string } | null;
 }
 
 interface CreateTransactionResultDto {
@@ -265,6 +266,58 @@ describe("transactions", () => {
       .query({ pageSize: 50 })
       .set("Authorization", `Bearer ${token}`);
     expect(body<DataMetaEnvelope<TransactionDto[]>>(list).data).toHaveLength(1);
+  });
+
+  it("reports the P/L a SELL realizes, and moves it when a BUY is backdated before it", async () => {
+    const asset = await createTestAsset("RPNL");
+    assetIds.push(asset.id);
+    const post = (type: "BUY" | "SELL", quantity: number, price: string, executedAt: string) =>
+      request(app)
+        .post(`/api/v1/portfolios/${portfolioId}/transactions`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          assetId: asset.id,
+          type,
+          quantity,
+          price: { amount: price, currency: "USD" },
+          executedAt,
+        });
+
+    const bought = await post("BUY", 10, "10", "2026-03-01T00:00:00Z");
+    const sold = await post("SELL", 5, "12", "2026-03-04T00:00:00Z");
+
+    expect(bought.status).toBe(201);
+    expect(
+      body<DataEnvelope<CreateTransactionResultDto>>(bought).data.transaction.realizedPnL,
+    ).toBeNull();
+    expect(sold.status).toBe(201);
+    const saleId = body<DataEnvelope<CreateTransactionResultDto>>(sold).data.transaction.id;
+    // 5 x (12 - 10).
+    expect(
+      body<DataEnvelope<CreateTransactionResultDto>>(sold).data.transaction.realizedPnL,
+    ).toEqual({
+      amount: "10",
+      currency: "USD",
+    });
+
+    // A BUY dated between them raises the average cost to 15 at the sale: 5 x (12 - 15).
+    expect((await post("BUY", 10, "20", "2026-03-02T00:00:00Z")).status).toBe(201);
+
+    const detail = await request(app)
+      .get(`/api/v1/portfolios/${portfolioId}/transactions/${saleId}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(body<DataEnvelope<TransactionDto>>(detail).data.realizedPnL).toEqual({
+      amount: "-15",
+      currency: "USD",
+    });
+
+    const list = await request(app)
+      .get(`/api/v1/portfolios/${portfolioId}/transactions`)
+      .query({ assetId: asset.id, type: "SELL", pageSize: 50 })
+      .set("Authorization", `Bearer ${token}`);
+    expect(
+      body<DataMetaEnvelope<TransactionDto[]>>(list).data.map((item) => item.realizedPnL),
+    ).toEqual([{ amount: "-15", currency: "USD" }]);
   });
 
   it("rejects an asset in another currency than the portfolio with 400 and writes nothing", async () => {
