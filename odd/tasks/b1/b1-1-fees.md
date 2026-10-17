@@ -21,7 +21,7 @@ docs/PROGRESS.md
 ## Tasks
 
 - [x] T1 Reject a `SELL` whose fees exceed its gross proceeds (`fees > quantity × price`) with 400; fees equal to the gross proceeds are accepted. Domain rule plus API test; nothing existing changes.
-- [ ] T2 `BUY` fees enter `averageEntryPrice` in the date-order replay (`ReplayEntry` gains `fees`). Existing expectations of `averageEntryPrice` and unrealized P/L shift and are updated.
+- [x] T2 `BUY` fees enter `averageEntryPrice` in the date-order replay (`ReplayEntry` gains `fees`). Existing expectations of `averageEntryPrice` and unrealized P/L shift and are updated.
 - [ ] T3 Realized P/L from the replay: `SELL` fees reduce it. New pure function, hand-computed tests.
 - [ ] T4 Reconcile `07-api-spec.md`, `05-data-model.md` and `16-analytics-spec.md` with T1 to T3.
 

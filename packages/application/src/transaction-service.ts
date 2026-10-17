@@ -1,7 +1,6 @@
-import { TransactionStatus, replayPosition, validateNewTransaction } from "@trading/domain";
+import { Money, TransactionStatus, replayPosition, validateNewTransaction } from "@trading/domain";
 import type {
   AssetRepository,
-  Money,
   Page,
   PageRequest,
   Position,
@@ -149,6 +148,7 @@ export function createTransactionService(dependencies: TransactionServiceDepende
           type: input.type,
           quantity: input.quantity,
           price: input.price,
+          fees: input.fees ?? Money.zero(input.price.currency),
           executedAt: input.executedAt ?? clock.now(),
         },
       ]);

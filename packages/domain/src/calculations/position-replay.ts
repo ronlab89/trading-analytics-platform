@@ -15,7 +15,7 @@ import { InsufficientPositionQuantityError } from "./position-recalculation";
  */
 
 /** The fields of a transaction the replay needs. */
-export type ReplayEntry = Pick<Transaction, "type" | "quantity" | "price" | "executedAt">;
+export type ReplayEntry = Pick<Transaction, "type" | "quantity" | "price" | "fees" | "executedAt">;
 
 /** The replayed state of an open position. `currentPrice` tracks market data and is not replayed. */
 export interface ReplayedPosition {
@@ -29,8 +29,9 @@ export interface ReplayedPosition {
  * is held at the end.
  *
  * `entries` is in creation order. Entries sharing an `executedAt` keep that
- * order (FR-018). Weighted-average cost: a BUY blends its price into the
- * average, a SELL leaves the average of the remaining units untouched. A SELL
+ * order (FR-018). Weighted-average cost: a BUY blends its price and its fees
+ * into the average (ADR-004 point 15), a SELL leaves the average of the
+ * remaining units untouched. A SELL
  * that empties the position closes it, and the next BUY reopens it with its own
  * price and `executedAt` as `openedAt`.
  *
@@ -48,7 +49,10 @@ export function replayPosition(entries: readonly ReplayEntry[]): ReplayedPositio
       if (position === null) {
         position = {
           quantity: entry.quantity,
-          averageEntryPrice: entry.price,
+          averageEntryPrice: entry.price
+            .multiply(entry.quantity)
+            .add(entry.fees)
+            .divide(entry.quantity),
           openedAt: entry.executedAt,
         };
         continue;
@@ -57,7 +61,8 @@ export function replayPosition(entries: readonly ReplayEntry[]): ReplayedPositio
       const quantity: number = position.quantity + entry.quantity;
       const cost = position.averageEntryPrice
         .multiply(position.quantity)
-        .add(entry.price.multiply(entry.quantity));
+        .add(entry.price.multiply(entry.quantity))
+        .add(entry.fees);
 
       position = {
         quantity,

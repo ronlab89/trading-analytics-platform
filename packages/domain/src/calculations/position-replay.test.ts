@@ -9,12 +9,24 @@ const day1 = new Date("2026-06-01T12:00:00Z");
 const day2 = new Date("2026-06-02T12:00:00Z");
 const day3 = new Date("2026-06-03T12:00:00Z");
 
-function buy(quantity: number, price: string, executedAt: Date): ReplayEntry {
-  return { type: TransactionType.BUY, quantity, price: Money.of(price, "USD"), executedAt };
+function buy(quantity: number, price: string, executedAt: Date, fees = "0"): ReplayEntry {
+  return {
+    type: TransactionType.BUY,
+    quantity,
+    price: Money.of(price, "USD"),
+    fees: Money.of(fees, "USD"),
+    executedAt,
+  };
 }
 
-function sell(quantity: number, executedAt: Date): ReplayEntry {
-  return { type: TransactionType.SELL, quantity, price: Money.of("1", "USD"), executedAt };
+function sell(quantity: number, executedAt: Date, fees = "0"): ReplayEntry {
+  return {
+    type: TransactionType.SELL,
+    quantity,
+    price: Money.of("1", "USD"),
+    fees: Money.of(fees, "USD"),
+    executedAt,
+  };
 }
 
 describe("replayPosition", () => {
@@ -36,6 +48,27 @@ describe("replayPosition", () => {
     expect(result?.quantity).toBe(20);
     expect(result?.averageEntryPrice.equals(Money.of("150", "USD"))).toBe(true);
     expect(result?.openedAt).toEqual(day1);
+  });
+
+  it("should include the BUY fees in the average entry price", () => {
+    // (10 x 10 + 1) / 10 = 10.1 (docs/16-analytics-spec.md, fees in cost basis).
+    const result = replayPosition([buy(10, "10", day1, "1")]);
+
+    expect(result?.averageEntryPrice.equals(Money.of("10.1", "USD"))).toBe(true);
+  });
+
+  it("should blend the fees of several BUYs into the weighted average", () => {
+    // (10 x 100 + 10) + (10 x 200 + 30) = 3040 over 20 units = 152.
+    const result = replayPosition([buy(10, "100", day1, "10"), buy(10, "200", day2, "30")]);
+
+    expect(result?.averageEntryPrice.equals(Money.of("152", "USD"))).toBe(true);
+  });
+
+  it("should not let SELL fees change the average of the remaining units", () => {
+    const result = replayPosition([buy(10, "10", day1, "1"), sell(4, day2, "5")]);
+
+    expect(result?.quantity).toBe(6);
+    expect(result?.averageEntryPrice.equals(Money.of("10.1", "USD"))).toBe(true);
   });
 
   it("should move openedAt back when a BUY is backdated", () => {
