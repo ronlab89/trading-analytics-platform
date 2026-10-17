@@ -273,7 +273,7 @@ needs it. It is mostly pure domain work and depends only on B0.
 - Attribution over a range with `from`/`to` (`07-api-spec.md` §22) (done in B1.5).
 - The What Changed read model (ADR-010 point 1, FR-006), built in the
   application layer and returned as a field of the overview response, not as
-  its own endpoint (decided 2026-10-08; its shape is defined in B1).
+  its own endpoint (decided 2026-10-08; its shape is defined in B1) (done in B1.6).
 
 **Settled by the ADRs** (these were open decisions in the first version of
 this file):

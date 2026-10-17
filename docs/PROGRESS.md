@@ -950,7 +950,12 @@ pipeline (`buildPortfolioSeries`). **B1.5 is done** (`Implemented`,
 the portfolio series over `1Y` with the annualized thresholds 20 and 60, and
 `GET .../analytics/attribution` serves the money-only range attribution with
 `period`, `from`/`to` and `groupBy` (`asset` or `assetType`); without them it
-keeps its current-state shape. Phase 5 itself still has the reconciliation of
+keeps its current-state shape. **B1.6 is done** (`Implemented`,
+`odd/tasks/b1/b1-6-what-changed.md`): the overview carries `whatChanged` for the
+`1M` period, with the largest contributor and detractor of the range attribution
+(ties go to the first symbol) and the positions opened and closed, built from the
+same series as `performance`. Alerts triggered in the period wait for the alert
+evaluation. Phase 5 itself still has the reconciliation of
 `docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in

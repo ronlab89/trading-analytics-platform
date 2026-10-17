@@ -133,12 +133,24 @@ const overview: OverviewSource = {
     ],
   },
   pulse,
+  whatChanged: {
+    asOf: new Date("2026-10-12T00:00:00.000Z"),
+    effectiveFrom: new Date("2026-10-01T00:00:00.000Z"),
+    status: "OK" as const,
+    contributor: { assetId: "a1", symbol: "BTC", contribution: usd("50") },
+    detractor: null,
+    events: [],
+  },
 };
 
 describe("overview presenter", () => {
   it("serializes the overview exactly as before", () => {
-    const { performance: _performance, ...rest } = overview;
-    const { performance: _presented, ...dto } = presentOverview(overview);
+    const { performance: _performance, whatChanged: _whatChanged, ...rest } = overview;
+    const {
+      performance: _presented,
+      whatChanged: _presentedWhatChanged,
+      ...dto
+    } = presentOverview(overview);
     expect(dto).toEqual(JSON.parse(JSON.stringify(rest)));
     expect(overviewResponseSchema.safeParse(presentOverview(overview)).success).toBe(true);
   });
@@ -153,6 +165,21 @@ describe("overview presenter", () => {
       series: [
         { date: "2026-10-12", value: { amount: "1050", currency: "USD" }, returnPercent: 5 },
       ],
+    });
+  });
+
+  it("presents what changed with its own contract", () => {
+    expect(presentOverview(overview).whatChanged).toEqual({
+      asOf: "2026-10-12",
+      effectiveFrom: "2026-10-01",
+      status: "OK",
+      contributor: {
+        assetId: "a1",
+        symbol: "BTC",
+        contribution: { amount: "50", currency: "USD" },
+      },
+      detractor: null,
+      events: [],
     });
   });
 
@@ -177,6 +204,7 @@ describe("overview presenter", () => {
         "pulse",
         "recentTransactions",
         "summary",
+        "whatChanged",
       ].sort(),
     );
   });

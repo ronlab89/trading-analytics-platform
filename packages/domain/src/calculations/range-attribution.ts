@@ -30,6 +30,11 @@ export interface RangeAttribution {
   status: "OK" | "INSUFFICIENT_DATA";
   /** The first day of the measured period after the §5 clamp; `null` without a value. */
   effectiveFrom: Date | null;
+  /**
+   * The day whose close the P/L starts from: the day before `from`, or `effectiveFrom`
+   * when the period is clamped. `null` without a value.
+   */
+  baseline: Date | null;
   /** One per asset with a transaction up to `to`, ordered by `assetId`. */
   contributions: AssetContribution[];
   /** The period P/L: the sum of the contributions. `null` only when `INSUFFICIENT_DATA`. */
@@ -78,13 +83,25 @@ export function calculateRangeAttribution(
   const portfolioValues = buildValueSeries(timeline, candles, currency);
 
   if (portfolioValues.length === 0) {
-    return { status: "OK", effectiveFrom: null, contributions: [], pnl: Money.zero(currency) };
+    return {
+      status: "OK",
+      effectiveFrom: null,
+      baseline: null,
+      contributions: [],
+      pnl: Money.zero(currency),
+    };
   }
 
   const baseline = baselineIndex(portfolioValues);
 
   if (baseline === null) {
-    return { status: "INSUFFICIENT_DATA", effectiveFrom: null, contributions: [], pnl: null };
+    return {
+      status: "INSUFFICIENT_DATA",
+      effectiveFrom: null,
+      baseline: null,
+      contributions: [],
+      pnl: null,
+    };
   }
 
   const last = portfolioValues.length - 1;
@@ -124,6 +141,7 @@ export function calculateRangeAttribution(
   return {
     status: "OK",
     effectiveFrom: portfolioValues[start]?.date ?? null,
+    baseline: portfolioValues[baseline]?.date ?? null,
     contributions,
     pnl: contributions.reduce((sum, item) => sum.add(item.contribution), Money.zero(currency)),
   };

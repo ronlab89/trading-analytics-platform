@@ -230,6 +230,119 @@ describe("overview service", () => {
     expect(pulse.drawdown.value).toBeCloseTo(-15, 5);
   });
 
+  describe("what changed", () => {
+    // The last closed day is 2026-09-19, so the 1M period starts on 2026-08-20.
+    const closes = (entries: [string, number][]) =>
+      entries.map(([date, close]) => ({
+        assetId: "a1",
+        timestamp: new Date(`${date}T00:00:00Z`),
+        close: Money.of(close, "USD"),
+      })) as HistoricalPrice[];
+    const trade = (
+      type: TransactionType,
+      executedAt: string,
+      quantity: number,
+      price: string,
+    ): Transaction => ({
+      ...transaction,
+      id: `t-${type}-${executedAt}`,
+      type,
+      quantity,
+      price: Money.of(price, "USD"),
+      executedAt: new Date(`${executedAt}T00:00:00Z`),
+    });
+
+    it("names the largest contributor of the period and the days it covers", async () => {
+      // Held since 2026-01-01 (2 units); the close goes from 100 to 150: a gain of 100.
+      const { service } = build({
+        candles: closes([
+          ["2026-08-19", 100],
+          ["2026-09-19", 150],
+        ]),
+      });
+      const { whatChanged } = await service.getPortfolioOverview(actor, "p1");
+
+      expect(whatChanged.status).toBe("OK");
+      expect(whatChanged.asOf).toEqual(new Date("2026-09-19T00:00:00Z"));
+      expect(whatChanged.effectiveFrom).toEqual(new Date("2026-08-20T00:00:00Z"));
+      expect(whatChanged.contributor?.symbol).toBe("AAA");
+      expect(whatChanged.contributor?.contribution.toString()).toBe("100");
+      expect(whatChanged.detractor).toBeNull();
+      // Already held on the baseline: it did not open in the period.
+      expect(whatChanged.events).toEqual([]);
+    });
+
+    it("reports a position opened inside the period", async () => {
+      const { service } = build({
+        transactions: [trade(TransactionType.BUY, "2026-09-05", 2, "100")],
+        candles: closes([
+          ["2026-09-05", 100],
+          ["2026-09-19", 150],
+        ]),
+      });
+      const { whatChanged } = await service.getPortfolioOverview(actor, "p1");
+
+      expect(whatChanged.events).toEqual([
+        {
+          type: "POSITION_OPENED",
+          date: new Date("2026-09-05T00:00:00Z"),
+          assetId: "a1",
+          symbol: "AAA",
+        },
+      ]);
+      // 300 at the end, none before, 200 paid: a gain of 100.
+      expect(whatChanged.contributor?.contribution.toString()).toBe("100");
+    });
+
+    it("reports both events of a position closed and its symbol, though it is no longer held", async () => {
+      const { service } = build({
+        positions: [],
+        transactions: [
+          trade(TransactionType.BUY, "2026-08-25", 2, "100"),
+          trade(TransactionType.SELL, "2026-09-10", 2, "110"),
+        ],
+        candles: closes([
+          ["2026-08-25", 100],
+          ["2026-09-10", 110],
+        ]),
+      });
+      const { whatChanged } = await service.getPortfolioOverview(actor, "p1");
+
+      expect(whatChanged.events.map((event) => [event.type, event.symbol])).toEqual([
+        ["POSITION_OPENED", "AAA"],
+        ["POSITION_CLOSED", "AAA"],
+      ]);
+      // Bought 2 at 100 and sold 2 at 110, with nothing left: a gain of 20.
+      expect(whatChanged.contributor?.contribution.toString()).toBe("20");
+    });
+
+    it("has neither contributor nor events, without inventing a number, when the last day has no price", async () => {
+      const { service } = build({ candles: [] });
+      const { whatChanged } = await service.getPortfolioOverview(actor, "p1");
+
+      expect(whatChanged).toMatchObject({
+        status: "INSUFFICIENT_DATA",
+        effectiveFrom: null,
+        contributor: null,
+        detractor: null,
+        events: [],
+      });
+    });
+
+    it("is an empty, OK result for an empty portfolio", async () => {
+      const { service } = build({ positions: [], transactions: [], marketPrices: [] });
+      const { whatChanged } = await service.getPortfolioOverview(actor, "p1");
+
+      expect(whatChanged).toMatchObject({
+        status: "OK",
+        effectiveFrom: null,
+        contributor: null,
+        detractor: null,
+        events: [],
+      });
+    });
+  });
+
   it("raises NotFoundError for a portfolio the actor does not own", async () => {
     const { service } = build({ owned: false });
     await expect(service.getPortfolioOverview(actor, "p1")).rejects.toBeInstanceOf(NotFoundError);

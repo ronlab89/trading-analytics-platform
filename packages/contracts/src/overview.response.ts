@@ -30,6 +30,7 @@ import {
 import { performanceResponseSchema, presentPerformance } from "./performance.response.js";
 import { moneySchema, presentMoney } from "./response-common.schema.js";
 import { presentTransaction, transactionResponseSchema } from "./transaction.response.js";
+import { presentWhatChanged, whatChangedResponseSchema } from "./what-changed.response.js";
 
 /**
  * Response shape for GET /api/v1/portfolios/:portfolioId/overview.
@@ -85,6 +86,7 @@ export const overviewResponseSchema = z.object({
     volatility: pulseDimensionSchema(["LOW", "MODERATE", "HIGH", "UNKNOWN"]),
     drawdown: pulseDimensionSchema(["LOW", "MODERATE", "SEVERE", "UNKNOWN"]),
   }),
+  whatChanged: whatChangedResponseSchema,
 });
 export type OverviewResponse = z.infer<typeof overviewResponseSchema>;
 
@@ -112,6 +114,7 @@ export interface OverviewSource {
   dailyChange: PortfolioDailyChange | null;
   performance: Parameters<typeof presentPerformance>[0];
   pulse: PortfolioPulse;
+  whatChanged: Parameters<typeof presentWhatChanged>[0];
 }
 
 function presentAssetSummary(asset: AssetSummarySource | null) {
@@ -168,5 +171,6 @@ export function presentOverview(overview: OverviewSource): OverviewResponse {
       volatility: presentPulseDimension(overview.pulse.volatility),
       drawdown: presentPulseDimension(overview.pulse.drawdown),
     },
+    whatChanged: presentWhatChanged(overview.whatChanged),
   };
 }
