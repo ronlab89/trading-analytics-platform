@@ -15,11 +15,11 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 Query schema: preset periods and a custom `from`/`to` range (400 when `from > to`); `1D` comes from `MarketPrice`.
-- [ ] T2 Response schema and presenter: returns converted from `Decimal` only here.
-- [ ] T3 Service and `GET /portfolios/:id/analytics/performance`, with API tests.
-- [ ] T4 `performance` field in the overview response, with an integration test.
-- [ ] T5 Reconcile `07-api-spec.md` §20.
+- [x] T1 Query schema: preset periods and a custom `from`/`to` range (400 when `from > to`); `1D` comes from `MarketPrice`. Done in B1.3 as `analyticsPeriodQuerySchema`.
+- [x] T2 Response schema and presenter: returns converted from `Decimal` only here.
+- [x] T3 Service and `GET /portfolios/:id/analytics/performance`, with API tests. Split into T3a (shared `buildPortfolioSeries`, `performance-service.ts`) and T3b (controller, route, API tests).
+- [x] T4 `performance` field in the overview response, with an integration test.
+- [x] T5 Reconcile `07-api-spec.md` §11 and §20, `16-analytics-spec.md`, roadmap and PROGRESS.
 
 ## Done when
 
@@ -28,3 +28,11 @@ Integration tests for the endpoint and the overview field; a period that starts 
 ## Verification
 
 pnpm --filter @trading/application test; pnpm --filter @trading/contracts test; pnpm --filter @trading/api test; pnpm typecheck; pnpm lint.
+
+## Log
+
+- T1 was already done in B1.3: the period query schema is shared by the risk and performance endpoints.
+- A period that starts before the first purchase is not clamped to the purchase: days with nothing held are valued at `0` and count as priced, so `effectiveFrom` is the start of the window and those days appear in the series without a return. The clamp to `effectiveFrom` happens only when a held asset has no price (`16-analytics-spec.md` §5).
+- `buildPortfolioSeries` (shared by risk and performance) and `buildPerformanceResult` (shared by the performance endpoint and the overview) came out of the refactor of `risk-service.ts`; the risk tests passed unchanged.
+- The overview serves `performance` for the fixed period `1M`, identical to `GET .../analytics/performance?period=1M` (pinned by an API test).
+- FR-085 in `02-functional-requirements.md` (table, `Planned (B1)`) is outside this block's edit surfaces; update its status in the docs pass at the end of B1.

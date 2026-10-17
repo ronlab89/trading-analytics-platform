@@ -2,6 +2,8 @@ export * from "./actor.js";
 export * from "./alert-service.js";
 export * from "./analytics-service.js";
 export * from "./risk-service.js";
+export * from "./performance-service.js";
+export type { AnalyticsPeriod } from "./portfolio-series.js";
 export * from "./asset-service.js";
 export * from "./clock.js";
 export * from "./decision-service.js";

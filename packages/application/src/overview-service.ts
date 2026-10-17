@@ -30,6 +30,9 @@ import { buildAllocation, buildAttribution } from "./analytics-service.js";
 import type { AllocationResult, AttributionResult } from "./analytics-service.js";
 import type { AssetService } from "./asset-service.js";
 import type { Clock } from "./clock.js";
+import { buildPerformanceResult } from "./performance-service.js";
+import type { PerformanceResult } from "./performance-service.js";
+import { buildPortfolioSeries } from "./portfolio-series.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
 import type { PortfolioService } from "./portfolio-service.js";
@@ -90,14 +93,19 @@ export interface PortfolioOverview {
    * portfolio still gets a zeroed, non-null result.
    */
   dailyChange: PortfolioDailyChange | null;
+  /** The last month of the portfolio's value, as in `GET .../analytics/performance?period=1M`. */
+  performance: PerformanceResult;
   pulse: PortfolioPulse;
 }
 
 export interface OverviewServiceDependencies {
   positionRepository: Pick<PositionRepository, "listByPortfolioId">;
-  transactionRepository: Pick<TransactionRepository, "listByPortfolioId">;
+  transactionRepository: Pick<
+    TransactionRepository,
+    "listByPortfolioId" | "listCompletedByPortfolioId"
+  >;
   marketPriceRepository: Pick<MarketPriceRepository, "listByAssetIds">;
-  historicalPriceRepository: Pick<HistoricalPriceRepository, "listByAssetId">;
+  historicalPriceRepository: Pick<HistoricalPriceRepository, "listByAssetId" | "listByAssetIds">;
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
   assetService: Pick<AssetService, "getAssetsByIds">;
   /** The only source of "now": nothing here calls `new Date()` (ADR-001 point 8). */
@@ -114,11 +122,8 @@ export interface OverviewServiceDependencies {
  * requests. All figures are derived from the same positions snapshot
  * through the domain calculations (single source of truth, NFR-036).
  *
- * `performance` (FR-025/026, historical performance by period) remains
- * deliberately omitted: it requires reconstructing the portfolio's
- * value over time from Transaction[], a distinct piece of design not
- * yet built (unlike dailyChange/pulse, which only needed MarketPrice/
- * HistoricalPrice data that now exists).
+ * `performance` (FR-025/026) is the same result as the performance
+ * endpoint for the fixed `1M` period (07-api-spec.md §11).
  */
 export function createOverviewService(dependencies: OverviewServiceDependencies) {
   const {
@@ -229,6 +234,9 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
     }
 
     const pulseInputs = await getPulseInputs(positions);
+    const performance = buildPerformanceResult(
+      await buildPortfolioSeries(dependencies, portfolio, { kind: "preset", period: "1M" }),
+    );
 
     return {
       portfolio,
@@ -255,6 +263,7 @@ export function createOverviewService(dependencies: OverviewServiceDependencies)
         asset: toAssetSummary(assetsById.get(transaction.assetId)),
       })),
       dailyChange,
+      performance,
       pulse: calculatePortfolioPulse(portfolio, positions, pulseInputs),
     };
   }

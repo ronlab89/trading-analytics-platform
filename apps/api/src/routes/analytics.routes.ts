@@ -10,8 +10,16 @@ import {
 import { makeAnalyticsController } from "../controllers/analytics.controller.js";
 import { composition } from "../composition.js";
 
-const { getPortfolioAllocationHandler, getPortfolioAttributionHandler, getPortfolioRiskHandler } =
-  makeAnalyticsController(composition.analyticsService, composition.riskService);
+const {
+  getPortfolioAllocationHandler,
+  getPortfolioAttributionHandler,
+  getPortfolioRiskHandler,
+  getPortfolioPerformanceHandler,
+} = makeAnalyticsController(
+  composition.analyticsService,
+  composition.riskService,
+  composition.performanceService,
+);
 
 export const analyticsRouter: ExpressRouter = Router();
 
@@ -36,4 +44,12 @@ analyticsRouter.get(
   validate(portfolioIdParamsSchema, "params"),
   validate(analyticsPeriodQuerySchema, "query"),
   getPortfolioRiskHandler,
+);
+
+analyticsRouter.get(
+  "/api/v1/portfolios/:portfolioId/analytics/performance",
+  authenticate,
+  validate(portfolioIdParamsSchema, "params"),
+  validate(analyticsPeriodQuerySchema, "query"),
+  getPortfolioPerformanceHandler,
 );

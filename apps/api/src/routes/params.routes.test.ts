@@ -33,6 +33,7 @@ const routes: [Method, (id: string) => string, string][] = [
   ["get", (id) => `/api/v1/portfolios/${id}/analytics/allocation`, "portfolioId"],
   ["get", (id) => `/api/v1/portfolios/${id}/analytics/attribution`, "portfolioId"],
   ["get", (id) => `/api/v1/portfolios/${id}/analytics/risk`, "portfolioId"],
+  ["get", (id) => `/api/v1/portfolios/${id}/analytics/performance`, "portfolioId"],
   ["get", (id) => `/api/v1/portfolios/${id}/decisions`, "portfolioId"],
   ["get", (id) => `/api/v1/portfolios/${OK}/decisions/${id}`, "decisionId"],
   ["get", (id) => `/api/v1/portfolios/${id}/transactions`, "portfolioId"],

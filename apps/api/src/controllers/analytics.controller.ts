@@ -1,8 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import { presentAllocation, presentAttribution, presentRisk } from "@trading/contracts";
+import {
+  presentAllocation,
+  presentAttribution,
+  presentPerformance,
+  presentRisk,
+} from "@trading/contracts";
 import type { AnalyticsPeriodQuery, allocationQuerySchema } from "@trading/contracts";
-import type { AnalyticsService, RiskService } from "@trading/application";
+import type { AnalyticsService, PerformanceService, RiskService } from "@trading/application";
 import { actorOf } from "../middleware/authenticate.js";
 
 type AllocationQuery = z.infer<typeof allocationQuerySchema>;
@@ -11,6 +16,7 @@ type AllocationQuery = z.infer<typeof allocationQuerySchema>;
 export function makeAnalyticsController(
   analyticsService: AnalyticsService,
   riskService: RiskService,
+  performanceService: PerformanceService,
 ) {
   /**
    * GET /api/v1/portfolios/:portfolioId/analytics/allocation
@@ -82,5 +88,35 @@ export function makeAnalyticsController(
     }
   }
 
-  return { getPortfolioAllocationHandler, getPortfolioAttributionHandler, getPortfolioRiskHandler };
+  /**
+   * GET /api/v1/portfolios/:portfolioId/analytics/performance
+   * Source: 07-api-spec.md §20 (Performance), FR-025, FR-026.
+   *
+   * Query validated upstream by `validate(analyticsPeriodQuerySchema, "query")`.
+   */
+  async function getPortfolioPerformanceHandler(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    const query = req.validated?.query as AnalyticsPeriodQuery;
+
+    try {
+      const result = await performanceService.getPortfolioPerformance(
+        actorOf(req),
+        req.params.portfolioId as string,
+        query,
+      );
+      res.json({ data: presentPerformance(result) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  return {
+    getPortfolioAllocationHandler,
+    getPortfolioAttributionHandler,
+    getPortfolioRiskHandler,
+    getPortfolioPerformanceHandler,
+  };
 }
