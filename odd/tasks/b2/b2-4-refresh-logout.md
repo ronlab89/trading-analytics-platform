@@ -28,11 +28,11 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 Re-verify the session model from B2.3 and decide the `Secure` cookie on the local stack (serve on `localhost` or make `Secure` environment-dependent).
-- [ ] T2 Application: refresh rotation, family revocation and the grace window, with a concurrent-refresh test and a lost-first-response test.
-- [ ] T3 Application: logout.
-- [ ] T4 Routes, cookie handling and the custom header check; API tests.
-- [ ] T5 Reconcile `07-api-spec.md` §9, `09-security-spec.md`, roadmap and PROGRESS.
+- [x] T1 Re-verify the session model from B2.3 and decide the `Secure` cookie on the local stack: `Secure` stays always on (Chrome and Firefox accept it on `localhost`, Safari needs HTTPS).
+- [x] T2 Refresh rotation, family revocation and the grace window, with a concurrent-refresh test and a lost-first-response test. Built in `apps/api/src/services` (the login already lives there) in five steps: T2a port and in-memory adapter, T2b column, migration and Prisma adapter, T2c grace token cipher (HKDF key from `JWT_SECRET`, AES-256-GCM), T2d `refresh.service.ts`, T2e `clearExpiredSuccessors`.
+- [x] T3 Logout (`logout.service.ts`).
+- [x] T4 Routes, cookie handling and the custom header check; API tests. T4a `require-client-header.ts` (`X-Requested-With: XMLHttpRequest`), T4b controllers, cookie helpers, routes and CORS credentials, T4c `auth.refresh.routes.test.ts`.
+- [x] T5 Reconcile `07-api-spec.md` §9, `09-security-spec.md`, roadmap and PROGRESS.
 
 ## Done when
 
@@ -49,3 +49,6 @@ pnpm --filter @trading/application test; pnpm --filter @trading/api test; pnpm t
 ## Log
 
 - Created from the B2 plan approved by the user on 2026-10-17.
+- 2026-10-18: the user approved deriving the grace window key from `JWT_SECRET` with HKDF and the header `X-Requested-With: XMLHttpRequest`. Edit surfaces were widened with the user's approval to `packages/database/prisma` and `packages/database/src` (second additive migration and Prisma adapter) and to `apps/api/package.json` and `tsconfig.json` (`@trading/persistence-memory` as a dev dependency for the service tests).
+- 2026-10-18: native review of the two docs of T5 was approved with three non-blocking advisories (R2-001 to R2-003); R2-003 was fixed. The code commits of this slice were not reviewed (committed before the hook offered them).
+- Open for B2.5 or B3: the last rotated row of an idle family keeps its successor ciphertext until logout or revocation; `auth.refresh.reuse_detected` and `auth.logout` log lines wait for the B3 logger (the logout service will then return the `userId`); `14-deployment-spec.md` does not list `SESSION_*` yet; the role and 403 rows of `09-security-spec.md` still read `Planned (B2)`.

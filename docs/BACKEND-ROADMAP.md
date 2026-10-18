@@ -367,6 +367,14 @@ point 10).
 | `USER` to `TRADER` enum migration is hand-written (`RENAME VALUE`, `ADD VALUE 'VIEWER'`, updated default) because the generated one fails on existing rows | ADR-005 |
 | The `Secure` cookie on the local production stack: serve on `localhost` and document it, or make `Secure` environment-dependent | ADR-005 |
 
+Settled in B2.4 (`Implemented`): the grace window is 10 seconds and the
+successor token is encrypted with AES-256-GCM under an HKDF key derived from
+`JWT_SECRET`; `Secure` is always set (Chrome and Firefox accept it on
+`localhost`, Safari needs HTTPS); the custom header is
+`X-Requested-With: XMLHttpRequest` and CORS allows credentials for the
+`CORS_ORIGIN` list. Details in `07-api-spec.md` §9 and `09-security-spec.md`
+§7-8.
+
 **Done when:** authorization tests cover allowed role, denied role,
 cross-user access and escalation attempts (`09-security-spec.md` §55);
 logout and refresh behavior is tested for the semantics above; the SDD role
@@ -779,7 +787,7 @@ must exist before starting them:
 |---|---|
 | B0 Application layer, shared contracts and minimal CI | Done (2026-10-16) |
 | B1 Performance and risk analytics | Done (2026-10-17) |
-| B2 Auth and RBAC | In progress (B2.1 roles and matrix, B2.2 permission checks and B2.3 sessions and login done 2026-10-18) |
+| B2 Auth and RBAC | In progress (B2.1 roles and matrix, B2.2 permission checks, B2.3 sessions and login done 2026-10-18; B2.4 refresh and logout done 2026-10-18) |
 | B3 Observability foundation | Not started |
 | B4 Background jobs and idempotency | Not started |
 | B5 Realtime | Not started |

@@ -327,9 +327,11 @@ returns the same successor refresh token (with a freshly signed access token)
 and revokes nothing. This covers two parallel refreshes and a response lost on
 the way. The successor is kept encrypted on the rotated row only for that
 window, and is dropped when the family rotates again after the window ends or
-is revoked. After the
-window, a rotated token is **reuse**: the whole family is revoked and the
-request is rejected (`auth.refresh.reuse_detected` is logged once B3 exists).
+is revoked. The last rotated row of a family that never refreshes again keeps
+it until logout or revocation, and the idle timeout leaves that token unusable
+(`09-security-spec.md` §7). After the window, a rotated token is **reuse**: the
+whole family is revoked and the request is rejected
+(`auth.refresh.reuse_detected` is logged once B3 exists).
 
 Errors: 401 `UNAUTHORIZED` `Invalid refresh token.` for every failure (missing
 cookie, unknown, revoked, idle, past its absolute lifetime, reused, or user no
