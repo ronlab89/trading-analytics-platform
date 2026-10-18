@@ -259,8 +259,8 @@ All frontend responsibilities are `Planned (FE)`. The production static build is
 | Responsibility | Status |
 |---|---|
 | REST API | `Implemented` (`apps/api`, Express 5) |
-| Authentication | `Implemented` as a login and a single access token; refresh and logout `Planned (B2)` (ADR-005) |
-| Authorization | `Planned (B2)`: roles `VIEWER`, `TRADER`, `ADMIN` (ADR-005); the code has `USER` and `ADMIN` (`schema.prisma`, `09-security-spec.md`) |
+| Authentication | `Implemented`: login, a 15-minute access token, and refresh and logout over a server-side session (B2.3, B2.4) (ADR-005) |
+| Authorization | `Implemented`: roles `VIEWER`, `TRADER`, `ADMIN` with a permission matrix in the application layer (B2.1, B2.2) (ADR-005; `schema.prisma`, `09-security-spec.md`) |
 | Application/domain orchestration | Domain `Implemented` (`@trading/domain`); services call repositories directly today, and the application layer is `Planned (B0)` (ADR-001) |
 | PostgreSQL access | `Implemented` (`@trading/database`, Prisma 6) |
 | WebSocket server | `Planned (B5)` (ADR-007) |
@@ -346,6 +346,8 @@ Variables, with the names of `apps/api/src/config/env.ts` and ADR-006 point 8:
 | `CORS_ORIGIN` | Comma-separated allowed browser origins; default `http://localhost:5173` | `Implemented`; validation (only `http(s)://host[:port]`, `*` rejected) `Implemented` (ADR-006 point 13; §33) |
 | `JWT_SECRET` | Token signing secret; at least 32 characters, no default | `Implemented` |
 | `JWT_EXPIRES_IN_SECONDS` | Access token lifetime in seconds; default `900` | `Implemented`; replaces `JWT_EXPIRES_IN` (ADR-006 point 8) |
+| `SESSION_IDLE_SECONDS` | A refresh-token family unused for this long ends; default `604800` (7 days) | `Implemented` (B2.3; enforced by refresh, B2.4) (ADR-005 Deferred detail) |
+| `SESSION_ABSOLUTE_SECONDS` | Absolute lifetime of a refresh-token family and the cookie `Max-Age`; default `2592000` (30 days) | `Implemented` (B2.3) (ADR-005 Deferred detail) |
 | `LOG_LEVEL` | `debug` in development, `info` in production, `silent` in tests | `Planned (B3)` (ADR-009 point 7) |
 | `SLOW_REQUEST_THRESHOLD_MS` | Slow-request `warn` threshold for HTTP requests; default `500` | `Planned (B3)` (ADR-009 point 8) |
 | `APP_MODE` | `real` or `demo`; exposed to the web build as `VITE_APP_MODE` | `Planned (FE)` (ADR-006 point 8); replaces `DEMO_MODE` |
@@ -359,7 +361,7 @@ Configuration, secrets, code and runtime state must remain separate concerns.
 Code vs ADR:
 
 - The original list used `JWT_EXPIRES_IN` and `DEMO_MODE`. Both are replaced by the canonical names of ADR-006 point 8.
-- `env.ts` validates `NODE_ENV`, `PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN_SECONDS` and `CORS_ORIGIN` only. It does not read `APP_MODE`, so the API has no mode switch today; ADR-006 point 8 names `APP_MODE` as the canonical variable for the web build.
+- `env.ts` validates `NODE_ENV`, `PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN_SECONDS`, `SESSION_IDLE_SECONDS`, `SESSION_ABSOLUTE_SECONDS` and `CORS_ORIGIN` only. The key that seals the grace-window successor token is derived from `JWT_SECRET` (HKDF), so it adds no variable (`09-security-spec.md` §7). It does not read `APP_MODE`, so the API has no mode switch today; ADR-006 point 8 names `APP_MODE` as the canonical variable for the web build.
 - This table is the current variable list. Each new variable joins it in the block that adds it.
 
 ---
@@ -740,7 +742,7 @@ It must remain separate from the browser-only/mock Demo Mode infrastructure.
 | Seed workflow | `Implemented`: `pnpm --filter @trading/database db:seed` (`packages/database/prisma/seed.ts`, `src/seed/`); `db:reset` also reseeds through the `prisma.seed` setting |
 | Content | `Implemented`: one demo user and its login credential, 3 portfolios, 7 assets, positions, transactions, decisions, scenarios, alerts, notifications and 30 days of historical prices per asset (`README.md`) |
 | Never automatic | `Implemented`: no startup or migration step runs it (ADR-006 point 5) |
-| Roles | One user with the default role `USER`; `VIEWER`, `TRADER` and `ADMIN` `Planned (B2)` (ADR-005) |
+| Roles | Roles `VIEWER`, `TRADER` and `ADMIN` `Implemented` (B2.1); the default role of a new user is `TRADER` (ADR-005) |
 | Demo Mode data layers | `Deferred` with the demo specifics (`05-data-model.md` §34-37; ADR-010 point 6) |
 
 Code vs ADR:
@@ -1155,7 +1157,7 @@ Code vs ADR:
 
 # 33. CORS
 
-**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); origin validation `Implemented`; credentials `Planned (B2)`; `X-Request-ID` exposure `Planned (B3)`
+**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); origin validation `Implemented`; credentials `Implemented` (B2.4); `X-Request-ID` exposure `Planned (B3)`
 
 CORS must be explicit.
 
@@ -1167,12 +1169,12 @@ Avoid wildcard CORS for authenticated APIs unless there is a specific, justified
 
 | Item | Status |
 |---|---|
-| Explicit origins from `CORS_ORIGIN`, a comma-separated list | `Implemented`: `cors({ origin: env.CORS_ORIGIN })` |
+| Explicit origins from `CORS_ORIGIN`, a comma-separated list | `Implemented`: `cors({ origin: env.CORS_ORIGIN, credentials: true })` |
 | Development origin | `Implemented`: default `http://localhost:5173` |
 | Production origins | `Implemented` through the same variable (local `production`) |
 | No wildcard | `Implemented`: the code never sets `*` (`09-security-spec.md` §24) |
 | Origin validation: only `http(s)://host[:port]` entries, `*` rejected | `Implemented` (ADR-006 point 13) |
-| Credentials for the refresh cookie | `Planned (B2)` (ADR-005 Consequences) |
+| Credentials for the refresh cookie | `Implemented` (B2.4): `credentials: true`, safe because the origins are an explicit list (ADR-005 Consequences) |
 | `X-Request-ID` readable by the browser | `Planned (B3)`: `exposedHeaders` (ADR-009 point 5) |
 | Public demo | No entry needed: it calls no backend (ADR-006 point 7) |
 
@@ -1241,14 +1243,14 @@ Changing the signing secret should be treated as an operational event.
 
 Code vs ADR:
 
-- `09-security-spec.md` §7-8 covers token lifetime and storage. Refresh tokens and sessions are `Planned (B2)` (ADR-005 points 5-6).
+- `09-security-spec.md` §7-8 covers token lifetime and storage. Refresh tokens and sessions are `Implemented` (B2.3, B2.4) (ADR-005 points 5-6).
 - Changing `JWT_SECRET` invalidates every access token still in circulation, at most 15 minutes of them. From B2 the refresh tokens stay valid, because they are opaque values stored hashed in the sessions table and not signed with this secret (ADR-005 point 5). No ADR decides a rotation procedure, such as overlapping secrets. With one local API, restarting with a new secret is the whole procedure.
 
 ---
 
 # 36. RBAC Deployment
 
-**Status:** `Reference` for the principle; backend enforcement `Planned (B0)` and `Planned (B2)`; frontend checks `Planned (FE)`
+**Status:** `Reference` for the principle; backend enforcement `Implemented` (B0, B2.1, B2.2); frontend checks `Planned (FE)`
 
 Authorization is a backend security boundary.
 
@@ -1655,7 +1657,7 @@ Applied to the local full stack and to the demo:
 | Frontend loads | The demo page loads under its subpath. The smoke test of the full stack has no frontend step (ADR-006 point 11, additions of 2026-10-07; §49); whether a frontend container exists stays open (§7; B7) | Demo `Planned (FE)`; full stack: no frontend step |
 | API reachable | `GET /health` answers 200 while the process serves | Route `Implemented`; automated check `Planned (B7)` |
 | Database ready | `GET /health/ready` runs `SELECT 1`; PostgreSQL has its own `pg_isready` healthcheck | `Implemented` |
-| Authentication works | `POST /api/v1/auth/login` and `GET /api/v1/auth/me` exist; refresh and logout do not | Login `Implemented`; refresh and logout `Planned (B2)` (ADR-005) |
+| Authentication works | `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout` and `GET /api/v1/auth/me` exist | `Implemented` (B2.3, B2.4) (ADR-005) |
 | Core API flow works | For example `GET /api/v1/portfolios` with a token. The flow is not chosen (§49) | Routes `Implemented`; automated check `Planned (B7)` |
 | WebSocket connects | No WebSocket server exists | `Planned (B5)` (ADR-007) |
 | Health reports expected state | `status: "ok"` and `checks.database: "ok"` from `GET /health/ready` | `Implemented` |
@@ -2113,7 +2115,7 @@ Rate limiting must not break local development or CI.
 | Authentication | `loginRateLimiter` on `POST /api/v1/auth/login`: 5 attempts per 15 minutes per IP, on top of the general limiter (ADR-005 point 12) | `Implemented` |
 | Every other API route (including expensive analytics) | `generalApiRateLimiter`: 300 requests per 15 minutes per IP, registered after the health routes and before the body parser | `Implemented` |
 | Public endpoints | `GET /health`, `GET /health/ready` and `GET /` are unversioned operational routes. The health routes are registered before the limiter and never return 429; `GET /` falls under the general limiter | `Implemented` |
-| Token refresh | General limiter only; a dedicated limiter is open (`09-security-spec.md` §26) | `Planned (B2)`, open |
+| Token refresh | General limiter only; a dedicated limiter is open (`09-security-spec.md` §26) | `Implemented` (general limiter, B2.4); a dedicated limiter is open |
 | Simulation control | General limiter (`simulation:control`, ADR-007 point 10) | `Planned (B5)` |
 | Realtime messages | 20 inbound messages per second per connection (ADR-007 point 15) | `Planned (B5)` |
 | Resource-intensive operations (CSV import) | No limit beyond the general limiter, the size and row bounds, and the job timeout (ADR-008 points 7 and 10) | `Planned (B4)` |
@@ -2678,7 +2680,7 @@ ADR-006 point 2 hosts no backend, so "public deployment" means two things: publi
 - [x] Stack traces hidden. (`Implemented`: the error handler returns a generic 500 body and logs the error name only, `apps/api/src/middleware/error-handler.ts`)
 - [x] Health output sanitized. (`Implemented`: fixed fields and `ok` or `unavailable`, `apps/api/src/controllers/health.controller.ts`, §50)
 - [x] Metrics restricted if exposed. (Satisfied by absence: no metrics and no `/metrics` endpoint, `Deferred`, ADR-009 point 10)
-- [ ] Admin operations protected. (the `Actor` permission mechanism `Planned (B0)` and the roles of ADR-005 `Planned (B2)`; simulation control `Planned (B5)`; the code carries the role in the token but no route checks it yet)
+- [ ] Admin operations protected. (the `Actor` permission mechanism and the roles of ADR-005 are `Implemented` (B0, B2.1, B2.2); the only admin-only permission, `simulation:control`, has no operation to protect until `Planned (B5)`)
 - [x] Rate limits considered. (`Implemented`, §63)
 - [ ] Resource limits configured. (Partly: body size and pagination `Implemented`; CSV, realtime and job limits `Planned (B4)` and `Planned (B5)`; the 512 MB container limit `Planned (B7)`, §65, NFR-054)
 - [ ] Demo data isolated. (`Planned (FE)`: the demo has no backend and no database, §24, §56)
