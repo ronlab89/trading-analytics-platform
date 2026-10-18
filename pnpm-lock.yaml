@@ -173,6 +173,9 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
+      '@trading/persistence-memory':
+        specifier: workspace:*
+        version: link:../../packages/persistence-memory
       '@types/bcryptjs':
         specifier: ^3.0.0
         version: 3.0.0
