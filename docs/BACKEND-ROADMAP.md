@@ -779,7 +779,7 @@ must exist before starting them:
 |---|---|
 | B0 Application layer, shared contracts and minimal CI | Done (2026-10-16) |
 | B1 Performance and risk analytics | Done (2026-10-17) |
-| B2 Auth and RBAC | In progress (B2.1 roles and matrix, B2.2 permission checks done 2026-10-18) |
+| B2 Auth and RBAC | In progress (B2.1 roles and matrix, B2.2 permission checks and B2.3 sessions and login done 2026-10-18) |
 | B3 Observability foundation | Not started |
 | B4 Background jobs and idempotency | Not started |
 | B5 Realtime | Not started |

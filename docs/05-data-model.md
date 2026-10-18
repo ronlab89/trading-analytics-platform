@@ -75,8 +75,8 @@ Asset
  └── HistoricalPrice       (0..n, daily candles)
 ```
 
-Planned entities (not in the schema): `Session` (§5.3, B2), `Job` (§52, B4),
-`IdempotencyKey` (§53, B4).
+Planned entities (not in the schema): `Job` (§52, B4), `IdempotencyKey`
+(§53, B4).
 
 ---
 
@@ -89,7 +89,7 @@ Planned entities (not in the schema): `Session` (§5.3, B2), `Job` (§52, B4),
 | Primary | User, Portfolio, Asset, Position, Transaction, Decision, DecisionEvent, Scenario | `Implemented` |
 | Supporting | Credential, WatchlistItem, Alert, Notification, UserPreference | `Implemented` |
 | Market | MarketPrice, MarketEvent, HistoricalPrice | `Implemented` |
-| Auth | Session | `Planned (B2)` |
+| Auth | Session | `Implemented` (B2.3) |
 | Jobs and retries | Job, IdempotencyKey | `Planned (B4)` |
 | Derived (never persisted) | PortfolioMetrics, PositionMetrics, AllocationMetrics, PerformanceMetrics, Attribution, DrawdownMetrics, VolatilityMetrics, PortfolioPulse, ScenarioResult | see §24-29, §16 |
 
@@ -154,21 +154,33 @@ Kept separate from `User` so password handling is its own capability
 
 ## 5.3 Session
 
-**Status:** `Planned (B2)` — ADR-005 points 5-6 and Deferred detail.
+**Status:** `Implemented` (B2.3: table, repositories and login creating a
+session); rotation, reuse detection, logout and the grace window `Planned
+(B2.4)` — ADR-005 points 5-6 and Deferred detail. Table `sessions`.
 
-A sessions table holds refresh-token state. Required by the ADR:
+A sessions table holds refresh-token state: the refresh token is stored only
+as a hash and each row is one token of a family.
 
-- the refresh token, stored only as a hash; rotated on every use;
-- a token family, so presenting an already-rotated token revokes the whole
-  family;
-- revocation (logout revokes the session);
-- an idle timeout and an absolute family lifetime (`expiresAt`), matching the
-  cookie `Max-Age`;
-- for the refresh grace window (about 10 seconds), the successor refresh token
-  kept recoverable (encrypted at rest) and cleared when the window ends.
+| Field | Type | Null | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `id` | `String` | no | `cuid()` | PK |
+| `userId` | `String` | no | — | FK to `User`, `onDelete: Cascade`; indexed |
+| `familyId` | `String` | no | — | one family per login; indexed |
+| `tokenHash` | `String` | no | — | SHA-256 hex of the refresh token; unique (`sessions_token_hash_key`) |
+| `createdAt` | `DateTime` | no | `now()` | |
+| `lastUsedAt` | `DateTime` | no | `now()` | the idle timeout is `lastUsedAt` plus `SESSION_IDLE_SECONDS` (default 7 days); not stored |
+| `expiresAt` | `DateTime` | no | — | absolute lifetime, `createdAt` plus `SESSION_ABSOLUTE_SECONDS` (default 30 days); matches the cookie `Max-Age` |
+| `rotatedAt` | `DateTime` | yes | — | set when the token is used to refresh; presenting a rotated token revokes the family |
+| `revokedAt` | `DateTime` | yes | — | set by logout or by reuse detection |
 
-Open detail (B2): exact columns, a unique index on the token hash, and
-purging of expired families.
+`SessionRepository` (`packages/domain`) has `create` and `getByTokenHash`;
+the in-memory and Prisma adapters pass the same contract suite. Login creates
+the first row of a new family (`apps/api/src/services/auth.service.ts`).
+
+Planned (B2.4): rotation, reuse detection, revocation, and for the refresh
+grace window (about 10 seconds) the successor refresh token kept recoverable
+(encrypted at rest) and cleared when the window ends. That adds columns in a
+second migration. Open detail: purging of expired families.
 
 ---
 

@@ -205,7 +205,7 @@ envelope (§5). Propagation to every log line through `AsyncLocalStorage` is
 
 # 9. Authentication
 
-**Status:** `Implemented` for login and current user; refresh, logout and roles `Planned (B2)` (ADR-005)
+**Status:** `Implemented` for login (with its session), current user and roles; refresh and logout `Planned (B2.4)` (ADR-005)
 
 There is no self-registration; users come from the seed (ADR-005 point 10).
 Protected endpoints require `Authorization: Bearer <accessToken>`; every
@@ -219,14 +219,14 @@ draft-7 `RateLimit` and `RateLimit-Policy` headers:
 
 | Endpoint | Status |
 | --- | --- |
-| `POST /api/v1/auth/login` | `Implemented`; ADR-005 response shape `Planned (B2)` |
+| `POST /api/v1/auth/login` | `Implemented`; ADR-005 response shape `Implemented` (B2.3) |
 | `GET /api/v1/auth/me` | `Implemented` |
-| `POST /api/v1/auth/refresh` | `Planned (B2)` |
-| `POST /api/v1/auth/logout` | `Planned (B2)` |
+| `POST /api/v1/auth/refresh` | `Planned (B2.4)` |
+| `POST /api/v1/auth/logout` | `Planned (B2.4)` |
 
 ## Login
 
-**Status:** `Implemented`; response shape change `Planned (B2)`
+**Status:** `Implemented`; ADR-005 response shape and refresh-token cookie `Implemented` (B2.3)
 
 ```text
 POST /api/v1/auth/login
@@ -241,26 +241,40 @@ Request:
 }
 ```
 
-Response today (200). `token` is a JWT carrying `sub` and `role`, valid for
-`JWT_EXPIRES_IN_SECONDS` (default 900, 15 minutes):
+Response (200). `accessToken` is a JWT carrying `sub` and `role`, valid for
+`JWT_EXPIRES_IN_SECONDS` (default 900, 15 minutes), and `expiresAt` is that
+expiry as an ISO timestamp. `role` is `VIEWER`, `TRADER` or `ADMIN`:
 
 ```json
 {
   "data": {
-    "user": { "id": "...", "email": "...", "displayName": "...", "role": "USER" },
-    "session": { "token": "..." }
+    "user": { "id": "...", "email": "...", "displayName": "...", "role": "TRADER" },
+    "session": { "accessToken": "...", "expiresAt": "2026-10-18T12:15:00.000Z" }
   }
 }
 ```
+
+The same response sets the refresh-token cookie:
+
+```text
+Set-Cookie: refresh_token=<opaque>; Max-Age=2592000; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Strict
+```
+
+The refresh token is 256 random bits and never appears in the body. The
+server stores only its SHA-256 hash in a new session family, which lives
+`SESSION_ABSOLUTE_SECONDS` (default 30 days; the cookie `Max-Age` is the same
+value). A failed login sets no cookie and creates no session. Reading the
+cookie belongs to refresh and logout (B2.4).
 
 Errors: 400 `VALIDATION_ERROR` (invalid email or empty password); 401
 `UNAUTHORIZED` `Invalid credentials.` for every credential failure, so
 accounts cannot be enumerated; 429 `RATE_LIMITED`.
 
-`Planned (B2)` (ADR-005 points 1, 5 and 8): the response becomes
+`Implemented` (B2; ADR-005 points 1, 4, 5 and 8): the response is
 `{ user, session: { accessToken, expiresAt } }`, login sets the refresh-token
 cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`), and
-roles become `VIEWER`, `TRADER`, `ADMIN`.
+roles are `VIEWER`, `TRADER`, `ADMIN`. The previous `session.token` field is
+gone; no client consumed it.
 
 ---
 
