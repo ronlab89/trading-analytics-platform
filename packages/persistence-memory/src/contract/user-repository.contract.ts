@@ -40,11 +40,11 @@ export function userRepositoryContract(
       ...overrides,
     });
 
-    it("creates a USER with an id by default", async () => {
+    it("creates a TRADER with an id by default", async () => {
       const data = input();
       const created = await context.repository.create(data);
       expect(created.id).not.toBe("");
-      expect(created).toMatchObject({ ...data, role: UserRole.USER });
+      expect(created).toMatchObject({ ...data, role: UserRole.TRADER });
       expect(created.createdAt).toBeInstanceOf(Date);
       expect(created.updatedAt).toBeInstanceOf(Date);
     });

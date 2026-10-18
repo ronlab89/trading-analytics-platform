@@ -6,9 +6,11 @@
 /**
  * User role.
  * §5 — "Additional roles should only be introduced when required."
+ * ADR-005 point 1: VIEWER, TRADER and ADMIN; TRADER is the default.
  */
 export const UserRole = {
-  USER: "USER",
+  VIEWER: "VIEWER",
+  TRADER: "TRADER",
   ADMIN: "ADMIN",
 } as const;
 
