@@ -29,7 +29,7 @@ describe("request body validation", () => {
   });
 
   it("returns 413 for a body over the configured size limit", async () => {
-    const token = jwt.sign({ sub: "irrelevant-user-id", role: "USER" }, env.JWT_SECRET, {
+    const token = jwt.sign({ sub: "irrelevant-user-id", role: "TRADER" }, env.JWT_SECRET, {
       expiresIn: env.JWT_EXPIRES_IN_SECONDS,
     });
 

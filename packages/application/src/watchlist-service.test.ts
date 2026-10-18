@@ -5,7 +5,7 @@ import { ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createWatchlistService } from "./watchlist-service.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 
 function item(assetId: string, userId = "u1"): WatchlistItem {
   return { id: `w-${assetId}`, userId, assetId, createdAt: new Date("2026-01-01T00:00:00Z") };
@@ -78,7 +78,8 @@ describe("watchlist service", () => {
 
   it("needs watchlist:read to list and watchlist:write to add or remove", async () => {
     const without = (permission: string): RolePermissions => ({
-      USER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     });
 

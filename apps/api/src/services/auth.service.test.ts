@@ -37,7 +37,7 @@ describe("login timing equalization", () => {
   });
 
   it("runs a bcrypt comparison even when the user has no credential", async () => {
-    getByEmail.mockResolvedValue({ id: "u1", email: "a@b.c", displayName: "A", role: "USER" });
+    getByEmail.mockResolvedValue({ id: "u1", email: "a@b.c", displayName: "A", role: "TRADER" });
     getByUserId.mockResolvedValue(null);
     const compare = vi.spyOn(bcrypt, "compare");
 

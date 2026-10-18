@@ -12,19 +12,22 @@ function run(token: string) {
 }
 
 describe("authenticate actor", () => {
-  it.each(["USER", "ADMIN"])("builds the actor from a %s token", (role) => {
+  it.each(["VIEWER", "TRADER", "ADMIN"])("builds the actor from a %s token", (role) => {
     const { req, next } = run(tokenFor("u1", role));
     expect(next).toHaveBeenCalledWith();
     expect(req.actor).toEqual({ userId: "u1", role });
     expect(req.auth).toEqual({ userId: "u1", role });
   });
 
-  it("rejects a token whose role is not a known role with the generic 401", () => {
-    const { req, next } = run(tokenFor("u1", "SUPERUSER"));
-    const error = next.mock.calls[0]?.[0] as AppError;
-    expect(error.statusCode).toBe(401);
-    expect(error.code).toBe("UNAUTHORIZED");
-    expect(error.message).toBe("Authentication required.");
-    expect(req.actor).toBeUndefined();
-  });
+  it.each(["SUPERUSER", "USER"])(
+    "rejects a token whose role is %s, not a known role, with the generic 401",
+    (role) => {
+      const { req, next } = run(tokenFor("u1", role));
+      const error = next.mock.calls[0]?.[0] as AppError;
+      expect(error.statusCode).toBe(401);
+      expect(error.code).toBe("UNAUTHORIZED");
+      expect(error.message).toBe("Authentication required.");
+      expect(req.actor).toBeUndefined();
+    },
+  );
 });

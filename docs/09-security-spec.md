@@ -204,9 +204,10 @@ The JWT is the access token. It carries only what identifies the session:
 - The `role` claim is a hint for the session; `GET /auth/me` and, from B2,
   every refresh read the role from the database (ADR-005 point 9).
 
-Code today: `authenticate` accepts any string as `role`. ADR-005 (Deferred
-detail, B2) requires a token carrying an unknown role, such as an old
-`USER` token after the enum migration, to be rejected with 401 (FR-083).
+`authenticate` rejects with 401 a token whose `role` is not in `UserRole`,
+such as an old `USER` token after the enum migration (ADR-005 Deferred
+detail, FR-083). `authenticate.test.ts` pins `USER` and `SUPERUSER` as
+rejected (B2.1).
 
 > Open detail (B2): `jwt.verify` does not pin the accepted algorithm. B2
 > passes `algorithms: ["HS256"]` explicitly so a future key change cannot
@@ -361,7 +362,7 @@ and check ownership only; no route checks a role.
 
 # 12. RBAC
 
-**Status:** `Planned (B2)` (ADR-005 point 1; FR-084)
+**Status:** `Implemented` (B2.1; ADR-005 point 1; FR-084)
 
 Roles:
 
@@ -375,20 +376,18 @@ Roles:
 user (ADR-005 Context). Roles are sets of permissions; code checks
 permissions, never role names (ADR-005 point 2).
 
-Code today: `UserRole` in `packages/database/prisma/schema.prisma` is
-`USER`, `ADMIN`, with `@default(USER)`. ADR-005 requires `VIEWER`,
-`TRADER`, `ADMIN`, with `USER` migrated to `TRADER` (B2).
-
-> Open detail (B2, ADR-005 Deferred detail): the enum migration is
-> hand-written (`RENAME VALUE 'USER' TO 'TRADER'`, `ADD VALUE 'VIEWER'`),
-> updates the default, and old tokens carrying `role: "USER"` are rejected
-> with 401 (§6).
+`UserRole` in `packages/database/prisma/schema.prisma` is `VIEWER`,
+`TRADER`, `ADMIN`, with `@default(TRADER)`. The enum migration is
+hand-written (`RENAME VALUE 'USER' TO 'TRADER'`, `ADD VALUE 'VIEWER'`,
+updated default) because the generated one fails on existing rows; existing
+`USER` rows became `TRADER`, and old tokens carrying `role: "USER"` are
+rejected with 401 (§6).
 
 ---
 
 # 13. Permission Model
 
-**Status:** `Planned (B2)` (ADR-005 point 2; FR-084); permission checks run in the application layer from B0 (ADR-001)
+**Status:** `Implemented` (matrix, B2.1; ADR-005 point 2; FR-084); permission checks run in the application layer from B0 (ADR-001)
 
 Authorization follows:
 
@@ -432,12 +431,18 @@ Decided (ADR-005 point 13, approved 2026-10-06): a `VIEWER` may update
 its own preferences (`PATCH /api/v1/preferences`) and mark its own
 notifications read; it may not mutate any domain data. `ADMIN` has no
 permission beyond `TRADER` plus `simulation:control` in version 1;
-adding an administrative permission needs a new ADR. Status `Planned
-(B2)`: no permission check exists yet.
+adding an administrative permission needs a new ADR. The matrix lives in
+`packages/application/src/permissions.ts` and `permissions.test.ts` asserts
+every role against every permission (B2.1). `simulation:control` is defined
+but guards no endpoint until B5.
 
-> Open detail (B2): the exact permission names per endpoint are fixed with
-> the B2 authorization tests (§55); renaming a permission does not change
-> this matrix.
+> Names in code: the permissions are named per use case, not per endpoint.
+> `portfolio:write` covers create, update and archive; `notification:write`
+> is "mark read"; `position:read`, `overview:read` and `preference:read` are
+> read permissions the table groups under their resource. `VIEWER` holds
+> every `*:read` plus `preference:write` and `notification:write`; `TRADER`
+> holds everything except `simulation:control`. Renaming a permission does
+> not change this matrix.
 
 ---
 

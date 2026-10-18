@@ -5,7 +5,7 @@ import { createAssetService } from "./asset-service.js";
 import { ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 
 function asset(id: string): Asset {
   return {
@@ -69,7 +69,8 @@ describe("asset service", () => {
 
   it("needs asset:read for every use case", async () => {
     const denied: RolePermissions = {
-      USER: new Set(PERMISSIONS.filter((p) => p !== "asset:read")),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== "asset:read")),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     };
     const { repository, list, getByIds } = fakeRepository([asset("a")]);

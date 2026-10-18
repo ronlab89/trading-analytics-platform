@@ -6,7 +6,7 @@ import type { InMemoryRepositoryOptions } from "./options.js";
  * In-memory implementation of `UserRepository`.
  * Source: docs/06-architecture.md §12-13, docs/12-demo-mode-spec.md §4.
  *
- * Mirrors the Prisma adapter: `role` defaults to USER, `email` is unique and
+ * Mirrors the Prisma adapter: `role` defaults to TRADER, `email` is unique and
  * compared exactly (case-sensitive), `list` follows insertion order, and
  * `update` throws when the row does not exist. Only `displayName` and `role`
  * can change. Credentials live in their own repository and are never part of
@@ -45,7 +45,7 @@ export class InMemoryUserRepository implements UserRepository {
       id: `user_${String(++this.sequence)}`,
       email: input.email,
       displayName: input.displayName,
-      role: input.role ?? UserRole.USER,
+      role: input.role ?? UserRole.TRADER,
       createdAt: timestamp,
       updatedAt: timestamp,
     };

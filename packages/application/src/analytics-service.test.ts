@@ -6,7 +6,7 @@ import { createAnalyticsService } from "./analytics-service.js";
 import { ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 
 const portfolio = { id: "p1", userId: "u1", baseCurrency: "USD" } as Portfolio;
 
@@ -93,7 +93,8 @@ describe("analytics service", () => {
 
   it("needs analytics:read for every use case", async () => {
     const noRead: RolePermissions = {
-      USER: new Set(PERMISSIONS.filter((p) => p !== "analytics:read")),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== "analytics:read")),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     };
     const service = build({ permissions: noRead });

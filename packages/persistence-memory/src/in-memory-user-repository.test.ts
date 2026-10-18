@@ -12,10 +12,10 @@ function build() {
 }
 
 describe("InMemoryUserRepository", () => {
-  it("creates a USER with an id by default", async () => {
+  it("creates a TRADER with an id by default", async () => {
     const created = await build().create(ana);
     expect(created.id).not.toBe("");
-    expect(created).toMatchObject({ ...ana, role: UserRole.USER });
+    expect(created).toMatchObject({ ...ana, role: UserRole.TRADER });
     expect(created.updatedAt).toEqual(created.createdAt);
   });
 

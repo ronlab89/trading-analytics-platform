@@ -21,7 +21,7 @@ interface PortfolioDto {
 }
 
 /** Signs a token the same way auth.service.ts does, bypassing HTTP login. */
-function tokenFor(userId: string, role = "USER"): string {
+function tokenFor(userId: string, role = "TRADER"): string {
   return jwt.sign({ sub: userId, role }, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN_SECONDS,
   });

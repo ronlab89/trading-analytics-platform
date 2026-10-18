@@ -18,7 +18,8 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum UserRole {
-  USER
+  VIEWER
+  TRADER
   ADMIN
 
   @@map("user_role")
@@ -128,7 +129,7 @@ model User {
   id          String   @id @default(cuid())
   email       String   @unique
   displayName String   @map("display_name")
-  role        UserRole @default(USER)
+  role        UserRole @default(TRADER)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

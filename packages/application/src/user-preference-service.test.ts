@@ -5,7 +5,7 @@ import { ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createUserPreferenceService } from "./user-preference-service.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 
 const preference: UserPreference = {
   userId: "u1",
@@ -87,7 +87,8 @@ describe("user preference service", () => {
 
   it("needs preference:read to read and preference:write to update", async () => {
     const without = (permission: string): RolePermissions => ({
-      USER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     });
 
