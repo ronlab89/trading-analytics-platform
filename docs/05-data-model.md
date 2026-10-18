@@ -107,7 +107,7 @@ Derived models are not persisted. Caching is not introduced until measured
 | `id` | `String` | no | `cuid()` | PK |
 | `email` | `String` | no | — | unique (`users_email_key`) |
 | `displayName` | `String` | no | — | |
-| `role` | `UserRole` | no | `USER` | |
+| `role` | `UserRole` | no | `TRADER` | |
 | `createdAt` | `DateTime` | no | `now()` | |
 | `updatedAt` | `DateTime` | no | `@updatedAt` | |
 
@@ -122,19 +122,20 @@ whether login normalizes case is not specified.
 
 ## 5.1 Role
 
-**Status:** `Implemented` (`USER`, `ADMIN`); target set `Planned (B2)`.
+**Status:** `Implemented` (`VIEWER`, `TRADER`, `ADMIN`; B2.1).
 
 | Enum `UserRole` (`user_role`) | Status |
 | --- | --- |
-| `USER` | `Implemented`; renamed to `TRADER` in B2 |
+| `VIEWER` | `Implemented` |
+| `TRADER` | `Implemented`; the former `USER`, and the column default |
 | `ADMIN` | `Implemented` |
-| `VIEWER` | `Planned (B2)` |
-| `TRADER` | `Planned (B2)` |
 
 ADR-005 point 1 replaces the role set with `VIEWER`, `TRADER`, `ADMIN`.
 Per ADR-005 Deferred detail, the migration is hand-written
-(`RENAME VALUE 'USER' TO 'TRADER'`, `ADD VALUE 'VIEWER'`), the column default
-moves off `USER`, and tokens carrying an unknown role are rejected with 401.
+(`20261018120000_replace_user_role_with_trader_viewer`: `RENAME VALUE 'USER'
+TO 'TRADER'`, `ADD VALUE 'VIEWER' BEFORE 'TRADER'`, default `TRADER`), so
+existing `USER` rows become `TRADER`. Tokens carrying an unknown role,
+including an old `USER`, are rejected with 401.
 Code checks permissions, never role names (ADR-005 point 2).
 
 ## 5.2 Credential

@@ -12,9 +12,11 @@
 > B0.6 (in-memory repositories) and B0.7 (transaction rules), with
 > `07-api-spec.md` and `05-data-model.md` aligned with the code.
 > **B1 is done** (2026-10-17, merged into `develop`): performance, risk, range attribution, What Changed, the realized P/L of each
-> `SELL` and the single-currency rule. The next block is B2.
+> `SELL` and the single-currency rule. **B2 is in progress**: B2.1 (roles
+> `VIEWER`, `TRADER`, `ADMIN`, the hand-written enum migration and the real
+> permission matrix) is done on `feat/b2-1-roles` (2026-10-18).
 
-**Last updated:** 2026-10-17 (B1); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
+**Last updated:** 2026-10-18 (B2.1); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
 the work as it was done.
 **Branch:** `docs/sdd-operations`, the source-of-truth work (ADRs 001-010,
@@ -928,7 +930,12 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B2 (auth and RBAC). B0 and B1 are done; B1 was built in seven slices. **B1.1 is done**
+**Next:** B2 (auth and RBAC), in five slices. **B2.1 is done** (`Implemented`,
+`odd/tasks/b2/b2-1-roles.md`): `UserRole` is `VIEWER`, `TRADER`, `ADMIN`; the
+hand-written migration renames `USER` to `TRADER` and was checked against a
+database with existing rows; `permissions.ts` holds the real matrix, tested per
+role and permission; a token with `role: "USER"` is rejected with 401.
+B0 and B1 are done; B1 was built in seven slices. **B1.1 is done**
 (`Implemented`, `odd/tasks/b1/b1-1-fees.md`): a `SELL` whose fees exceed its gross
 proceeds is rejected with 400, `averageEntryPrice` includes `BUY` fees in the
 date-order replay, and `replayRealizedPnL` computes realized P/L net of `SELL`

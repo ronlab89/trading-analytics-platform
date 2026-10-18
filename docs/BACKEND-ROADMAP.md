@@ -59,7 +59,7 @@ rows marked `Implemented` by B0.1):
 | Route-parameter validation | `validate` accepts only `body` and `query` (ADR-002 point 10, B0) |
 | Logout and refresh endpoints | `auth.routes.ts` only has `login` and `me` |
 | Performance, risk and pulse endpoints | `analytics.routes.ts` only has `allocation` and `attribution` |
-| Role enforcement | no `requireRole`; `authenticate` only; `UserRole` is `USER` and `ADMIN` |
+| Role enforcement | no `requireRole`; `authenticate` only; `UserRole` is `VIEWER`, `TRADER` and `ADMIN` with the real permission matrix in the application layer (`Implemented`, B2.1) |
 | Logger | no logger module; `index.ts` uses `console.log`; no logging dependency in `package.json` |
 | Metrics | none, and none planned: `Deferred` (ADR-009 point 10) |
 | Graceful shutdown | `index.ts` is `createApp()` plus `listen()` |
@@ -696,8 +696,9 @@ These were contradictions inside the SDD, found while building. Items 1 to
 3 are settled by ADRs; the documents they touch are aligned as each is
 reconciled (`docs/README.md`). Item 4 is open.
 
-1. **Roles.** Settled by ADR-005 point 1: `VIEWER`, `TRADER`, `ADMIN`. The
-   code still has `USER` and `ADMIN` until B2 migrates it.
+1. **Roles.** Settled by ADR-005 point 1: `VIEWER`, `TRADER`, `ADMIN`.
+   Implemented in B2.1: the enum, the hand-written migration and the
+   permission matrix.
 2. **Cash and transaction types.** Settled by ADR-003: version 1 supports
    `BUY` and `SELL` only, with no cash balance and no `cashValue`;
    `DEPOSIT`, `WITHDRAWAL`, `DIVIDEND` and `FEE` are `Deferred`.
@@ -777,8 +778,8 @@ must exist before starting them:
 | Block | Status |
 |---|---|
 | B0 Application layer, shared contracts and minimal CI | Done (2026-10-16) |
-| B1 Performance and risk analytics | Not started |
-| B2 Auth and RBAC | Not started |
+| B1 Performance and risk analytics | Done (2026-10-17) |
+| B2 Auth and RBAC | In progress (B2.1 roles and matrix done 2026-10-18) |
 | B3 Observability foundation | Not started |
 | B4 Background jobs and idempotency | Not started |
 | B5 Realtime | Not started |

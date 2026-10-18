@@ -34,11 +34,11 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 Domain: `UserRole` becomes `VIEWER`, `TRADER`, `ADMIN`; the default is `TRADER` in the in-memory repository, its contract suite and the Prisma mapper.
-- [ ] T2 Prisma schema and the hand-written migration (`RENAME VALUE`, `ADD VALUE`, new default), tested on a database with existing rows. Its own commit.
-- [ ] T3 The real matrix in `permissions.ts` (plus `simulation:control`), with a test per role and permission.
-- [ ] T4 API tests: `tokenFor` defaults to `TRADER`; a token with `role: "USER"` is 401.
-- [ ] T5 Reconcile `09-security-spec.md` §12-13, `05-data-model.md`, roadmap and PROGRESS.
+- [x] T1 Domain: `UserRole` becomes `VIEWER`, `TRADER`, `ADMIN`; the default is `TRADER` in the in-memory repository and its contract suite. The Prisma mapper needed no edit (it has no default).
+- [x] T2 Prisma schema and the hand-written migration (`RENAME VALUE`, `ADD VALUE ... BEFORE 'TRADER'`, new default), checked on a test database with an existing `USER` row (enum labels and order, default, no drift). Its own commit.
+- [x] T3 The real matrix in `permissions.ts` (plus `simulation:control`), with a test per role and permission (T3a); `USER` to `TRADER` in the 16 service tests of `application` (T3b).
+- [x] T4 API tests: `tokenFor` defaults to `TRADER`; a token with `role: "USER"` is 401. Native review: approved, no findings.
+- [x] T5 Reconcile `09-security-spec.md` §12-13 and §6, `05-data-model.md` §5.1, roadmap and PROGRESS.
 
 ## Done when
 
@@ -56,3 +56,4 @@ pnpm --filter @trading/domain test; pnpm --filter @trading/persistence-memory te
 
 - Created from the B2 plan approved by the user on 2026-10-17: five slices, B2.1 first because everything else depends on the roles.
 - 2026-10-17: the user approved the B2.1 plan above (T1 to T5) and the task files of B2 go in this branch's first commit instead of their own PR. Work resumes the next day with T1.
+- 2026-10-18: T1 to T5 done, each approved first and committed by the user. The migration was verified with a throwaway script (park the new migration, reset the test database, seed a `USER` row, deploy, assert row, enum order, default and no drift). Other packages read the domain from `dist/`, so `pnpm --filter @trading/domain build` is needed before their typecheck. Native review of T4 ran once: the two lenses came back without findings (the first parallel capture of one lens failed on a repository-context race and succeeded on retry). Native review of the docs (T5) also ran: approved, with two readability notes (the stale "Last updated" line in PROGRESS and the B1 row of the roadmap status table), both fixed. Not touched: the decision on whether B2.2 stays a separate slice.
