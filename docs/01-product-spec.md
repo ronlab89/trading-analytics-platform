@@ -84,7 +84,7 @@ infrastructure.
 
 # 3. Product Users
 
-**Status:** `Implemented` (authenticated user, FR-001); roles `Planned (B2)` (ADR-005)
+**Status:** `Implemented` (authenticated user, FR-001); roles `Implemented` (B2.1) (ADR-005)
 
 ## 3.1 Primary User
 
@@ -193,7 +193,7 @@ performance, allocation, analytics and history. See FR-008.
 
 ## 6.1 Portfolio Creation
 
-**Status:** API `Implemented`; permission check `Planned (B2)`; UI `Planned (FE)`
+**Status:** API `Implemented`; permission check `Implemented` (B2.2); UI `Planned (FE)`
 
 Users create a portfolio with its required information. The interface
 handles validation errors, conflicts, loading, success, failure and retry.

@@ -236,7 +236,7 @@ Persistent state lives in PostgreSQL, not in process memory (see NFR-010).
 
 **Priority:** P1  
 **Status:** persistent state in PostgreSQL `Implemented`; refresh sessions
-`Planned (B2)`; in-process realtime and job runner accepted (ADR-007,
+`Implemented` (B2.3, B2.4); in-process realtime and job runner accepted (ADR-007,
 ADR-008)
 
 ### Target
@@ -436,7 +436,7 @@ and client tests with a simulated disconnect.
 
 **Priority:** P0  
 **Status:** password hashing, login rate limit and access-token expiry
-`Implemented`; refresh sessions `Planned (B2)` (ADR-005); log redaction
+`Implemented`; refresh sessions `Implemented` (B2.3, B2.4) (ADR-005); log redaction
 `Planned (B3)` (ADR-009)
 
 ### Target
@@ -468,7 +468,7 @@ tests; B3 redaction unit tests.
 ## NFR-020 — Authorization
 
 **Priority:** P0  
-**Status:** ownership checks `Implemented`; permission matrix `Planned (B2)`
+**Status:** ownership checks `Implemented`; permission matrix `Implemented` (B2.1)
 (ADR-005)
 
 ### Target
@@ -524,8 +524,8 @@ for invalid input; B0 contract tests.
 ## NFR-022 — Sensitive Data Handling
 
 **Priority:** P0  
-**Status:** `Implemented` for errors and health output; token storage
-`Planned (B2)`; log redaction `Planned (B3)`
+**Status:** `Implemented` for errors and health output; server-side token handling
+`Implemented` (B2.3, B2.4), client token storage `Planned (FE)`; log redaction `Planned (B3)`
 
 ### Target
 
@@ -616,7 +616,7 @@ An API test asserting `X-Content-Type-Options: nosniff` and no
 
 **Priority:** P0  
 **Status:** server enforcement `Implemented` (ownership); application-layer
-enforcement `Planned (B0)`/`Planned (B2)` (ADR-001, ADR-005)
+enforcement `Implemented` (B0, B2.1, B2.2) (ADR-001, ADR-005)
 
 ### Target
 
@@ -655,7 +655,7 @@ occurrences; a component test renders `<script>` in a note as text.
 ## NFR-028 — Token Handling
 
 **Priority:** P1  
-**Status:** `Planned (B2)` (server); `Planned (FE)` (client) (ADR-005)
+**Status:** `Implemented` (server, B2.4); `Planned (FE)` (client) (ADR-005)
 
 ### Target
 

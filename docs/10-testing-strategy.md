@@ -193,7 +193,7 @@ Priority areas:
 
 Today `packages/domain/src` holds 28 test files (about 250 cases) next to the code (`*.test.ts`), run by `vitest run` in the `node` environment (`packages/domain/vitest.config.ts`). They need no database and no environment file.
 
-Code vs ADR: services in `apps/api/src/services` call Prisma repositories directly and are exercised only through HTTP (§16). ADR-001 moves them to `@trading/application`, unit-tested with in-memory fake repositories, in B0. Permission rules (ADR-005) are `Planned (B0)`/`Planned (B2)` and have no tests yet. Simulation logic is `Planned (B5)` (§20). Formatting utilities and state transformations belong to the frontend (`Planned (FE)`).
+Code vs ADR: services in `apps/api/src/services` call Prisma repositories directly and are exercised only through HTTP (§16). ADR-001 moves them to `@trading/application`, unit-tested with in-memory fake repositories, in B0. Permission rules (ADR-005) are `Implemented` (B0, B2.1, B2.2) and tested (`permissions.test.ts`, `viewer-role.routes.test.ts`). Simulation logic is `Planned (B5)` (§20). Formatting utilities and state transformations belong to the frontend (`Planned (FE)`).
 
 ---
 
@@ -382,7 +382,7 @@ UI Feedback
 
 # 13. Error State Testing
 
-**Status:** server-side error responses `Implemented` (401, 404, 409, 429 paths in route tests; 403 `Planned (B2)`, no check raises it yet); UI states `Planned (FE)`
+**Status:** server-side error responses `Implemented` (401, 404, 409, 429 paths in route tests; 403 `Implemented` (B2.2), raised by the permission checks of the application layer); UI states `Planned (FE)`
 
 Every major asynchronous operation should have tests for:
 
@@ -489,7 +489,7 @@ Code vs ADR:
 - The "Application Service" step is the current `apps/api/src/services` code. ADR-001 replaces it with the shared application layer in B0; ADR-001 point 7 keeps these HTTP tests as they are.
 - ADR-002 point 6 turns the same tests into contract tests that validate responses against the `@trading/contracts` Zod schemas. Until B0 they assert shape by hand.
 - Route-parameter validation, `VALIDATION_ERROR` for a malformed ID and `404` for an unknown or foreign ID are `Planned (B0)` (ADR-002 point 10); tests are added with them.
-- Authorization tests today check ownership and the roles `USER` and `ADMIN`; permission-based roles are `Planned (B0)` and `Planned (B2)` (ADR-005), with their tests.
+- Authorization tests check ownership and the permission-based roles `VIEWER`, `TRADER` and `ADMIN` (ADR-005): the matrix per role and permission (`permissions.test.ts`) and the `VIEWER` denials at the API (`viewer-role.routes.test.ts`). `Implemented` (B2.1, B2.2).
 - Tests that need a database cannot run without PostgreSQL and `.env.test.local`; the CI service container is `Implemented` (ADR-006 point 10).
 
 ---
@@ -856,7 +856,7 @@ The values a chart plots are computed in `@trading/domain` and the API and are a
 
 # 29. Authentication Testing
 
-**Status:** login and token checks `Implemented`; expired token, refresh and logout `Planned (B2)`; login timing `Implemented`; client lifecycle `Planned (FE)` (ADR-005)
+**Status:** login, token checks, expired token, refresh and logout `Implemented` (B2.3, B2.4); login timing `Implemented`; client lifecycle `Planned (FE)` (ADR-005)
 
 Authentication tests must include:
 
@@ -886,25 +886,25 @@ Authentication tests must include:
 | Wrong password and unknown email return the same generic 401 | `Implemented` (`auth.routes.test.ts`) |
 | Missing and malformed token on `/auth/me` return 401 | `Implemented` (`auth.routes.test.ts`) |
 | Login rate limit (5 per 15 minutes) returns 429 with the error envelope | `Implemented` (`rate-limit.test.ts`, on an isolated limiter: the real limiters are disabled under `NODE_ENV=test`) |
-| Expired token, wrong algorithm, unknown role return 401 | `Planned (B2)` |
+| Expired token, wrong algorithm, unknown role return 401 | `Implemented` (`token.service.test.ts`, `authenticate.test.ts`) |
 | Missing account takes comparable time to a wrong password (dummy hash) | `Implemented` (ADR-005 point 13) |
-| Login response `{ user, session: { accessToken, expiresAt } }` | `Planned (B2)` (ADR-005 point 8) |
-| Refresh rotation, reuse detection, parallel refresh, lost response | `Planned (B2)` (ADR-005 points 5-6 and Deferred detail) |
-| Logout revokes the session and clears the cookie; custom header required | `Planned (B2)` (ADR-005 points 6-7) |
+| Login response `{ user, session: { accessToken, expiresAt } }` | `Implemented` (`auth.routes.test.ts`, B2.3) (ADR-005 point 8) |
+| Refresh rotation, reuse detection, parallel refresh, lost response | `Implemented` (`refresh.service.test.ts`, `auth.refresh.routes.test.ts`, B2.4) (ADR-005 points 5-6 and Deferred detail) |
+| Logout revokes the session and clears the cookie; custom header required | `Implemented` (`logout.service.test.ts`, `require-client-header.test.ts`, `auth.refresh.routes.test.ts`, B2.4) (ADR-005 points 6-7) |
 | Client clears cached data and closes the socket on logout | `Planned (FE)` (`08-realtime-spec.md` §54) |
 
 Code vs ADR:
 
-- Only `POST /api/v1/auth/login` and `GET /api/v1/auth/me` exist. There is no refresh and no logout endpoint, and no server-side session: "session creation" means issuing a 15-minute JWT returned as `token`. Sessions, refresh and logout are `Planned (B2)`; until then the logout flow of §33 cannot run.
-- `jwt.verify` already rejects expired tokens, but no test proves it.
-- After logout the access token stays valid until it expires (at most 15 minutes, ADR-005 point 6). The test asserts that the refresh family is revoked and that the client closes the socket, not that the access token stops working.
+- Login, refresh, logout and `GET /api/v1/auth/me` exist, with a server-side session per refresh-token family (B2.3, B2.4). The API tests drive the cookie and the `X-Requested-With` header through supertest.
+- Time is controlled in two ways: the token and refresh services take an injected `Clock`, so expiry and the 10-second grace window are tested without waiting; the route tests move `Date` only (`vi.useFakeTimers({ toFake: ["Date"] })`), leaving the HTTP stack on real timers.
+- After logout the access token stays valid until it expires (at most 15 minutes, ADR-005 point 6). `auth.refresh.routes.test.ts` asserts exactly that, and that the refresh family is revoked; the client closing the socket is `Planned (FE)`.
 - Registration is out of scope (ADR-005 point 10).
 
 ---
 
 # 30. Authorization Testing
 
-**Status:** ownership `Implemented`; roles and permissions `Planned (B0)` (enforcement point) and `Planned (B2)` (role model) (ADR-005)
+**Status:** ownership, roles and permissions `Implemented` (B0 enforcement point, B2.1 role model, B2.2 API tests) (ADR-005)
 
 Authorization tests must include:
 
@@ -963,10 +963,10 @@ At minimum:
 
 | Item | Status |
 | --- | --- |
-| Authentication bypass, malformed tokens | `Implemented` for missing and malformed tokens; expired token, wrong algorithm and unknown role `Planned (B2)` (§29) |
+| Authentication bypass, malformed tokens | `Implemented` for missing and malformed tokens, expired token, wrong algorithm and unknown role (§29) |
 | Unauthorized resource access | `Implemented` (cross-user 404, §30) |
 | Invalid input | `Implemented` (`validate.test.ts`, route tests); malformed path parameters and unexpected fields `Planned (B0)`; CSV input `Planned (B4)` |
-| Permission escalation | `Planned (B2)` (§30) |
+| Permission escalation | `Implemented` (a `VIEWER` is denied mutations and a forged `ADMIN` token is 401, `viewer-role.routes.test.ts`, B2.2) (§30) |
 | Unauthorized realtime subscription | `Planned (B5)` (§21) |
 | Sensitive error exposure | `Planned (B3)` (generic 500, redaction, ADR-009 points 4, 6 and 13) |
 | Session isolation | `Planned (FE)` (`09-security-spec.md` §10) |
@@ -1001,7 +1001,7 @@ No frontend and no E2E suite exist. Playwright is a working assumption, not a de
 
 # 33. Critical E2E Flows
 
-**Status:** `Planned (FE)`; logout depends on `Planned (B2)`, CSV import on `Planned (B4)`, realtime on `Planned (B5)`
+**Status:** `Planned (FE)`; logout depends on the endpoint, `Implemented` (B2.4), CSV import on `Planned (B4)`, realtime on `Planned (B5)`
 
 The following flows should have E2E coverage:
 
@@ -1639,7 +1639,7 @@ Version 1 sets no coverage threshold and CI has no coverage gate (ADR-006 point 
 | Domain rules, calculations | Domain unit tests (§7) | `Implemented` |
 | Critical application services | Use-case tests with in-memory fakes (ADR-001 point 7) | `Planned (B0)` |
 | Validation, response shape | Contract tests against `@trading/contracts` (ADR-002 point 6, §52) | `Planned (B0)` |
-| Authorization | Cross-user 404 tests and permission tests by role (§30) | ownership `Implemented`; roles `Planned (B2)` |
+| Authorization | Cross-user 404 tests and permission tests by role (§30) | ownership `Implemented`; roles `Implemented` (B2.1, B2.2) |
 
 ---
 
@@ -1821,7 +1821,7 @@ Before the project is considered portfolio-ready, the following must exist:
 
 | Group | Exists today | Still to build |
 | --- | --- | --- |
-| Unit | Domain calculations, `Money`, transaction input rules (`transaction.test.ts`), position rules, request validation middleware (`validate.test.ts`) | Chronological validation and application services `Planned (B0)`; permissions `Planned (B2)`; simulation and realtime event processing `Planned (B5)` |
+| Unit | Domain calculations, `Money`, transaction input rules (`transaction.test.ts`), position rules, request validation middleware (`validate.test.ts`) | Chronological validation and application services `Planned (B0)`; permissions `Implemented` (B2.1); simulation and realtime event processing `Planned (B5)` |
 | Component | Nothing | All items `Planned (FE)` |
 | Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests and route tests for analytics, positions, assets and market `Planned (B0)` (ADR-001 point 8); reworked analytics API `Implemented`; import API `Planned (B4)`; realtime events `Planned (B5)` |
 | E2E | Nothing | All items `Planned (FE)`; CSV import added on 2026-10-06 (§33); reset `Deferred` (ADR-010 point 6), so "logout/reset" means logout |
@@ -2011,7 +2011,7 @@ Testing is considered complete when:
 | Core business rules have unit tests | `Implemented` for the domain; application services `Planned (B0)` |
 | Critical components have interaction tests | `Planned (FE)` |
 | API boundaries have integration tests | `Implemented` for most routes (gaps in §59); contract tests `Planned (B0)` |
-| Authentication and authorization are tested | partial `Implemented` (§29-§30); sessions and roles `Planned (B2)` |
+| Authentication and authorization are tested | `Implemented` (§29-§30); sessions and roles `Implemented` (B2.1 to B2.4) |
 | Realtime behavior is tested | `Planned (B5)` and `Planned (FE)` |
 | Simulation is deterministic | `Planned (B5)` (ADR-007 point 7) |
 | Critical E2E flows pass | `Planned (FE)` (§33) |

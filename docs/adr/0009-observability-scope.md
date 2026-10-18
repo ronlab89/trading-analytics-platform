@@ -92,7 +92,7 @@ of its scope.
 9. **Security events.** `auth.login.succeeded`, `auth.login.failed`,
    `auth.refresh.reuse_detected`, `authz.denied`. (Amended 2026-10-07:)
    - **Logout.** `auth.logout` is added at `info`, with `userId` only.
-     `Planned (B2)`, with the endpoint.
+     The endpoint is `Implemented` (B2.4); the event is `Planned (B3)`, with the logger.
    - **Refresh failures.** A refresh failure other than reuse (an expired,
      unknown or revoked token, or a missing custom header) has no dedicated
      event. It stays an ordinary 401 request log.
