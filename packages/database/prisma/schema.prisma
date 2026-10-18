@@ -176,6 +176,9 @@ model Session {
   rotatedAt  DateTime? @map("rotated_at")
   revokedAt  DateTime? @map("revoked_at")
 
+  // The successor's refresh token, encrypted; only kept during the grace window.
+  successorCiphertext String? @map("successor_ciphertext")
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
