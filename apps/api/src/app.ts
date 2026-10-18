@@ -49,8 +49,10 @@ export function createApp(): Express {
   // Only browsers enforce CORS — this restricts which origins a
   // browser-based frontend is allowed to call this API from. Allowed
   // origin(s) come from CORS_ORIGIN (config/env.ts); update it once
-  // apps/web's real dev/prod origin is known.
-  app.use(cors({ origin: env.CORS_ORIGIN }));
+  // apps/web's real dev/prod origin is known. `credentials` lets the browser
+  // send the refresh cookie to the auth routes; it is safe because the origins
+  // are an explicit list, never a wildcard (config/env.ts).
+  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 
   app.use(requestId);
 
