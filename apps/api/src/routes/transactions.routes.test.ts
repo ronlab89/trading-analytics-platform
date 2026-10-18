@@ -34,7 +34,7 @@ interface CreateTransactionResultDto {
 }
 
 function tokenFor(userId: string): string {
-  return jwt.sign({ sub: userId, role: "USER" }, env.JWT_SECRET, {
+  return jwt.sign({ sub: userId, role: "TRADER" }, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN_SECONDS,
   });
 }
