@@ -20,7 +20,7 @@ odd/tasks/b2/**
 
 - [x] T1 Run the review against the §33 checks and record each result (see "Security review results").
 - [x] T2 Flip the `Planned (B2)` marks across the docs, after checking each against the code.
-- [ ] T3 Close B2 in the roadmap and PROGRESS.
+- [x] T3 Close B2 in the roadmap and PROGRESS.
 
 ## Security review results
 
@@ -58,3 +58,4 @@ pnpm docs:check.
 - Created from the B2 plan approved by the user on 2026-10-17.
 - 2026-10-18: T1 done. The review found no defect; evidence gathered with greps over the routers, the application services and the tests, and recorded above.
 - 2026-10-18: T2 done. Every `Planned (B2)` mark in `docs/` was checked against the code and flipped to `Implemented` with its block reference (B2.1 roles and matrix, B2.2 permission checks and 403, B2.3 sessions and login, B2.4 refresh, logout, client header and CORS credentials). Log events stay `Planned (B3)`. `grep` finds no `Planned (B2)` left in `docs/`; `pnpm docs:check` passes (34 files).
+- 2026-10-18: T3 done. The roadmap status row and `PROGRESS.md` (header, last updated, Next) now say B2 is done and B3 is next.

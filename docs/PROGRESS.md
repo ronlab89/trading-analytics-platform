@@ -12,12 +12,12 @@
 > B0.6 (in-memory repositories) and B0.7 (transaction rules), with
 > `07-api-spec.md` and `05-data-model.md` aligned with the code.
 > **B1 is done** (2026-10-17, merged into `develop`): performance, risk, range attribution, What Changed, the realized P/L of each
-> `SELL` and the single-currency rule. **B2 is in progress**: B2.1 (roles
+> `SELL` and the single-currency rule. **B2 is done** (2026-10-18): B2.1 (roles
 > `VIEWER`, `TRADER`, `ADMIN`, the hand-written enum migration and the real
-> permission matrix), B2.2 (permission checks), B2.3 (sessions and login) and
-> B2.4 (refresh and logout) are done (2026-10-18).
+> permission matrix), B2.2 (permission checks), B2.3 (sessions and login),
+> B2.4 (refresh and logout) and B2.5 (the auth security review and the close).
 
-**Last updated:** 2026-10-18 (B2.4); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
+**Last updated:** 2026-10-18 (B2.5); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
 the work as it was done.
 **Branch:** `docs/sdd-operations`, the source-of-truth work (ADRs 001-010,
@@ -931,7 +931,7 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B2 (auth and RBAC), in five slices. **B2.1 is done** (`Implemented`,
+**Next:** B3 (observability foundation). B2 (auth and RBAC) is done, in five slices. **B2.1 is done** (`Implemented`,
 `odd/tasks/b2/b2-1-roles.md`): `UserRole` is `VIEWER`, `TRADER`, `ADMIN`; the
 hand-written migration renames `USER` to `TRADER` and was checked against a
 database with existing rows; `permissions.ts` holds the real matrix, tested per
@@ -957,7 +957,13 @@ for an unknown token. Both require `X-Requested-With: XMLHttpRequest` (403
 otherwise) and CORS now allows credentials for the `CORS_ORIGIN` list. The
 session repository gained an atomic `rotate`, `revokeFamily` and
 `clearExpiredSuccessors`, with a second additive migration. The `auth.refresh.reuse_detected`
-and `auth.logout` log lines wait for the B3 logger. B2.5 closes B2.
+and `auth.logout` log lines wait for the B3 logger.
+**B2.5 is done** (`odd/tasks/b2/b2-5-close.md`): the auth-focused security review
+found no defect and is recorded in the task file (B7 owns the final pass), and
+every `Planned (B2)` mark in `docs/` is now `Implemented`. Carried to later
+blocks: the two auth log lines (B3), a dedicated refresh rate limiter (open
+detail of `09-security-spec.md` §26) and the successor ciphertext that stays on
+the last rotated row of a family that never refreshes again.
 B0 and B1 are done; B1 was built in seven slices. **B1.1 is done**
 (`Implemented`, `odd/tasks/b1/b1-1-fees.md`): a `SELL` whose fees exceed its gross
 proceeds is rejected with 400, `averageEntryPrice` includes `BUY` fees in the
