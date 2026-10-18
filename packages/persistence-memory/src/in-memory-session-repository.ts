@@ -1,4 +1,9 @@
-import type { CreateSessionInput, Session, SessionRepository } from "@trading/domain";
+import type {
+  CreateSessionInput,
+  RotateSessionInput,
+  Session,
+  SessionRepository,
+} from "@trading/domain";
 import type { InMemoryRepositoryOptions } from "./options.js";
 
 /**
@@ -9,7 +14,8 @@ import type { InMemoryRepositoryOptions } from "./options.js";
  * `lastUsedAt` start at the same instant, a new session is neither rotated
  * nor revoked, and `tokenHash` is unique and kept exactly as received (the
  * caller hashes the refresh token). It cannot check that the user exists,
- * since users live in another repository.
+ * since users live in another repository. Every method runs synchronously
+ * inside its promise, so `rotate` is atomic like the Prisma transaction.
  */
 export class InMemorySessionRepository implements SessionRepository {
   private readonly rows = new Map<string, Session>();
@@ -21,11 +27,64 @@ export class InMemorySessionRepository implements SessionRepository {
   }
 
   create(input: CreateSessionInput): Promise<Session> {
-    if ([...this.rows.values()].some((session) => session.tokenHash === input.tokenHash)) {
+    if (this.hashTaken(input.tokenHash)) {
       return Promise.reject(new Error("A session with this token hash already exists."));
     }
 
-    const timestamp = this.now();
+    return Promise.resolve(this.insert(input, this.now()));
+  }
+
+  rotate(input: RotateSessionInput): Promise<Session | null> {
+    const current = this.rows.get(input.sessionId);
+
+    if (!current || current.rotatedAt || current.revokedAt) {
+      return Promise.resolve(null);
+    }
+
+    if (this.hashTaken(input.successor.tokenHash)) {
+      return Promise.reject(new Error("A session with this token hash already exists."));
+    }
+
+    this.rows.set(current.id, {
+      ...current,
+      rotatedAt: input.rotatedAt,
+      successorCiphertext: input.successorCiphertext,
+    });
+
+    return Promise.resolve(this.insert(input.successor, input.rotatedAt));
+  }
+
+  revokeFamily(familyId: string, revokedAt: Date): Promise<void> {
+    for (const session of this.rows.values()) {
+      if (session.familyId === familyId && !session.revokedAt) {
+        this.rows.set(session.id, { ...session, revokedAt });
+      }
+    }
+
+    return Promise.resolve();
+  }
+
+  clearSuccessorCiphertext(sessionId: string): Promise<void> {
+    const current = this.rows.get(sessionId);
+
+    if (current) {
+      this.rows.set(sessionId, { ...current, successorCiphertext: null });
+    }
+
+    return Promise.resolve();
+  }
+
+  getByTokenHash(tokenHash: string): Promise<Session | null> {
+    const found = [...this.rows.values()].find((session) => session.tokenHash === tokenHash);
+
+    return Promise.resolve(found ?? null);
+  }
+
+  private hashTaken(tokenHash: string): boolean {
+    return [...this.rows.values()].some((session) => session.tokenHash === tokenHash);
+  }
+
+  private insert(input: CreateSessionInput, timestamp: Date): Session {
     const session: Session = {
       id: `session_${String(++this.sequence)}`,
       userId: input.userId,
@@ -36,15 +95,10 @@ export class InMemorySessionRepository implements SessionRepository {
       expiresAt: input.expiresAt,
       rotatedAt: null,
       revokedAt: null,
+      successorCiphertext: null,
     };
     this.rows.set(session.id, session);
 
-    return Promise.resolve(session);
-  }
-
-  getByTokenHash(tokenHash: string): Promise<Session | null> {
-    const found = [...this.rows.values()].find((session) => session.tokenHash === tokenHash);
-
-    return Promise.resolve(found ?? null);
+    return session;
   }
 }
