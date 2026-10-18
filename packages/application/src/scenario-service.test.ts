@@ -6,7 +6,7 @@ import { ConflictError, ForbiddenError, NotFoundError, ValidationFailedError } f
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createScenarioService } from "./scenario-service.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 
 const portfolio = { id: "p1", userId: "u1", baseCurrency: "USD" } as Portfolio;
 
@@ -309,7 +309,8 @@ describe("scenario service archived portfolio guard (ADR-010 point 5)", () => {
 describe("scenario service permissions", () => {
   it("needs scenario:read for reads and scenario:write for writes", async () => {
     const without = (permission: string): RolePermissions => ({
-      USER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     });
 

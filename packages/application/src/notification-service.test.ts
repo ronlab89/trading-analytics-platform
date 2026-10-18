@@ -7,7 +7,7 @@ import { ForbiddenError, NotFoundError } from "./errors.js";
 import { createNotificationService } from "./notification-service.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 const now = new Date("2026-09-20T12:00:00Z");
 
 function notification(id: string, userId: string): Notification {
@@ -87,7 +87,8 @@ describe("notification service", () => {
 
   it("needs notification:read to list and notification:write to mark as read", async () => {
     const without = (permission: string): RolePermissions => ({
-      USER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     });
 

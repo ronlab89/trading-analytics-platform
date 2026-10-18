@@ -7,7 +7,7 @@ import { ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createRiskService } from "./risk-service.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 const portfolio = { id: "p1", userId: "u1", baseCurrency: "USD" } as Portfolio;
 
 // 2026-03-31 is the last closed UTC day.
@@ -180,7 +180,8 @@ describe("risk service", () => {
 
   it("needs analytics:read", async () => {
     const noRead: RolePermissions = {
-      USER: new Set(PERMISSIONS.filter((p) => p !== "analytics:read")),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== "analytics:read")),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     };
 

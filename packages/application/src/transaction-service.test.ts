@@ -20,7 +20,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createTransactionService } from "./transaction-service.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 
 function transaction(id: string, portfolioId: string): Transaction {
   return {
@@ -481,9 +481,10 @@ describe("transaction service", () => {
 
   it("needs transaction:create to create and transaction:read to read", async () => {
     const restricted: RolePermissions = {
-      USER: new Set(
+      TRADER: new Set(
         PERMISSIONS.filter((p) => p !== "transaction:create" && p !== "transaction:read"),
       ),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     };
     const service = createTransactionService({

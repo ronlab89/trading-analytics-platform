@@ -6,8 +6,8 @@ import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createPortfolioService } from "./portfolio-service.js";
 
-const owner: Actor = { userId: "u1", role: "USER" };
-const stranger: Actor = { userId: "u2", role: "USER" };
+const owner: Actor = { userId: "u1", role: "TRADER" };
+const stranger: Actor = { userId: "u2", role: "TRADER" };
 
 function portfolio(overrides: Partial<Portfolio> = {}): Portfolio {
   return {
@@ -173,7 +173,8 @@ describe("portfolio service", () => {
 
   describe("permissions", () => {
     const readOnly: RolePermissions = {
-      USER: new Set(["portfolio:read"]),
+      TRADER: new Set(["portfolio:read"]),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     };
 

@@ -6,7 +6,7 @@ import { ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 import { createPositionService } from "./position-service.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 
 function position(id: string, portfolioId: string): Position {
   return {
@@ -74,7 +74,8 @@ describe("position service", () => {
 
   it("needs position:read for every use case", async () => {
     const noRead: RolePermissions = {
-      USER: new Set(PERMISSIONS.filter((p) => p !== "position:read")),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== "position:read")),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     };
     const service = createPositionService({

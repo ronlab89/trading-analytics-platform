@@ -6,7 +6,7 @@ import { createAlertService } from "./alert-service.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 
 function alert(id: string, userId = "u1"): Alert {
   return {
@@ -196,7 +196,8 @@ describe("alert service", () => {
 
   it("needs alert:read for reads and alert:write for writes", async () => {
     const without = (permission: string): RolePermissions => ({
-      USER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== permission)),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     });
 

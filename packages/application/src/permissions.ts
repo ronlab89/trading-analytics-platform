@@ -7,9 +7,10 @@ import { ForbiddenError } from "./errors.js";
  * Source: ADR-005 points 2 and 3.
  *
  * Code checks permissions, never role names. Roles are sets of
- * permissions. B0.5 builds the mechanism and grants every permission to
- * every current role, so no behavior changes; B2 fills in the real matrix
- * (`09-security-spec.md`).
+ * permissions. The matrix below is the real one (`09-security-spec.md`
+ * §12-13): VIEWER reads own resources and updates its own preferences and
+ * notifications, TRADER has every supported mutation on own resources, and
+ * ADMIN is TRADER plus `simulation:control`.
  */
 export const PERMISSIONS = [
   "alert:read",
@@ -28,6 +29,7 @@ export const PERMISSIONS = [
   "preference:write",
   "scenario:read",
   "scenario:write",
+  "simulation:control",
   "transaction:create",
   "transaction:read",
   "watchlist:read",
@@ -38,8 +40,27 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 export type RolePermissions = Readonly<Record<UserRole, ReadonlySet<Permission>>>;
 
+const VIEWER_PERMISSIONS: readonly Permission[] = [
+  "alert:read",
+  "analytics:read",
+  "asset:read",
+  "decision:read",
+  "market:read",
+  "notification:read",
+  "notification:write",
+  "overview:read",
+  "portfolio:read",
+  "position:read",
+  "preference:read",
+  "preference:write",
+  "scenario:read",
+  "transaction:read",
+  "watchlist:read",
+];
+
 export const ROLE_PERMISSIONS: RolePermissions = {
-  USER: new Set(PERMISSIONS),
+  VIEWER: new Set(VIEWER_PERMISSIONS),
+  TRADER: new Set(PERMISSIONS.filter((permission) => permission !== "simulation:control")),
   ADMIN: new Set(PERMISSIONS),
 };
 

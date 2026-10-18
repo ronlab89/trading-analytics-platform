@@ -13,7 +13,7 @@ import { ForbiddenError, NotFoundError } from "./errors.js";
 import { createMarketService } from "./market-service.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
 
-const actor: Actor = { userId: "u1", role: "USER" };
+const actor: Actor = { userId: "u1", role: "TRADER" };
 const usd = (amount: string): Money => Money.of(amount, "USD");
 
 const asset = { id: "a1" } as Asset;
@@ -117,7 +117,8 @@ describe("market service", () => {
 
   it("needs market:read for every use case", async () => {
     const denied: RolePermissions = {
-      USER: new Set(PERMISSIONS.filter((p) => p !== "market:read")),
+      TRADER: new Set(PERMISSIONS.filter((p) => p !== "market:read")),
+      VIEWER: new Set(PERMISSIONS),
       ADMIN: new Set(PERMISSIONS),
     };
     const { service } = build(denied);
