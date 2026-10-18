@@ -414,8 +414,8 @@ The convention is a guide, not a fixed length: ADR-009 uses two segments (`job.f
 | `http.request.completed` | ADR-009 point 3 (request logs) | `Planned (B3)` |
 | `http.request.failed` (unexpected error), `health.database.unavailable` (readiness failure) | ADR-009 point 6 | `Planned (B3)` |
 | `auth.login.succeeded`, `auth.login.failed`, `authz.denied` | ADR-009 point 9, `09-security-spec.md` §50 | `Planned (B3)`; `authz.denied` on role checks from B2 and on realtime subscriptions from B5 |
-| `auth.refresh.reuse_detected` | ADR-009 point 9, ADR-005 | `Planned (B2)` / `Planned (B3)` |
-| `auth.logout` | ADR-009 point 9 (amended 2026-10-07) | `Planned (B2)`, with the endpoint |
+| `auth.refresh.reuse_detected` | ADR-009 point 9, ADR-005 | Reuse detection `Implemented` (B2.4); the event `Planned (B3)` |
+| `auth.logout` | ADR-009 point 9 (amended 2026-10-07) | Endpoint `Implemented` (B2.4); the event `Planned (B3)` |
 | `app.startup.started`, `app.startup.completed` | ADR-009 point 11 (startup entries added 2026-10-07), mirroring the shutdown pair | `Planned (B3)` |
 | `app.shutdown.started`, `app.shutdown.completed` | ADR-009 point 11, ADR-006 point 12 | `Planned (B3)` |
 | `simulation.started`, `simulation.paused`, `simulation.mode.changed` | ADR-009 point 11, ADR-007 point 15 | `Planned (B5)` |
@@ -568,7 +568,7 @@ Code vs ADR:
 
 - Today no line writes request headers or bodies, and `env.ts` logs the names of invalid keys, never their values (`09-security-spec.md` §49).
 - The unexpected-error line logs the raw error `message`, which is not filtered. B3 redaction applies only to the named fields of the list above; the `message` of an unexpected error is logged unfiltered in v1 because logs go to local stdout (ADR-009 point 4, amended 2026-10-07). Hosting the backend (ADR-006 point 2) reopens this decision (ADR-009 points 4 and 10).
-- Refresh tokens and their cookie do not exist yet (`Planned (B2)`, ADR-005); the redaction list covers them from the start.
+- Refresh tokens and their cookie exist (`Implemented`, B2.3, B2.4; ADR-005), and the successor token sealed for the grace window is a credential too; the redaction list covers all of them from the start.
 - "API keys" and "payment credentials" have no counterpart: the API holds no third-party keys and handles no payments.
 
 ---
@@ -1830,7 +1830,7 @@ Code vs ADR:
 
 # 44. Observability and Security Events
 
-**Status:** `Planned (B3)` (ADR-009 point 9, `09-security-spec.md` §50); refresh reuse event `Planned (B2)` with the refresh endpoint (ADR-005 point 5); `auth.logout` `Planned (B2)` with its endpoint (ADR-009 point 9)
+**Status:** `Planned (B3)` (ADR-009 point 9, `09-security-spec.md` §50); the refresh endpoint and the reuse revocation `Implemented` (B2.4), their events `Planned (B3)` (ADR-005 point 5); the logout endpoint `Implemented` (B2.4), `auth.logout` `Planned (B3)` (ADR-009 point 9)
 
 Security-relevant events should be observable.
 
@@ -1862,8 +1862,8 @@ The list previously used other names. What each became:
 | --- | --- | --- |
 | `auth.login.success` | `auth.login.succeeded` | `Planned (B3)` |
 | `auth.login.failure` | `auth.login.failed`, same fields whatever the cause (`09-security-spec.md` §51) | `Planned (B3)` |
-| `auth.logout` | `auth.logout`, at `info`, with `userId` only (ADR-009 point 9, amended 2026-10-07). `POST /api/v1/auth/logout` is `Planned (B2)` (ADR-005 point 6) | `Planned (B2)`, with the endpoint |
-| `auth.token.refresh.failure` | Only reuse of a rotated refresh token has an event, `auth.refresh.reuse_detected` (ADR-005 point 5); other refresh failures have none (ADR-009 point 9) | `Planned (B2)` / `Planned (B3)` |
+| `auth.logout` | `auth.logout`, at `info`, with `userId` only (ADR-009 point 9, amended 2026-10-07). `POST /api/v1/auth/logout` is `Implemented` (B2.4; its service will return the `userId` once the logger exists) (ADR-005 point 6) | `Planned (B3)` |
+| `auth.token.refresh.failure` | Only reuse of a rotated refresh token has an event, `auth.refresh.reuse_detected` (ADR-005 point 5); other refresh failures have none (ADR-009 point 9); the refresh service answers all of them with one 401 | Reuse event `Planned (B3)` |
 | `auth.authorization.denied` | `authz.denied` | `Planned (B3)`; on role checks from B2, on realtime subscriptions from B5 |
 
 Code vs ADR:
