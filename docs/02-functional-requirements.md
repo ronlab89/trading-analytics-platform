@@ -95,7 +95,7 @@ new decision schedules it.
 ## FR-001 — User Login
 
 **Priority:** P0  
-**Status:** API `Implemented` (`POST /api/v1/auth/login`); login response shape and refresh cookie `Planned (B2)`; UI and demo identity `Planned (FE)`  
+**Status:** API `Implemented` (`POST /api/v1/auth/login`); login response shape and refresh cookie `Implemented` (B2.3); UI and demo identity `Planned (FE)`  
 **Decisions:** ADR-005 points 4, 8, 10, 11, 12
 
 A user that exists in the seed authenticates with email and password. There
@@ -130,7 +130,7 @@ is no self-registration (ADR-005 point 10).
 ## FR-002 — Session Persistence
 
 **Priority:** P0  
-**Status:** `Planned (B2)` (refresh); client flow `Planned (FE)`. Today the session ends when the 15-minute token expires (`Implemented`).  
+**Status:** refresh endpoint `Implemented` (B2.4); client flow `Planned (FE)`. Without the client flow, a session still ends when the 15-minute token expires.  
 **Decisions:** ADR-005 points 4, 5, 6, 9
 
 An authenticated session survives page reloads and access-token expiry
@@ -157,7 +157,7 @@ through the refresh flow of FR-083.
 ## FR-003 — Logout
 
 **Priority:** P0  
-**Status:** `Planned (B2)` (endpoint); UI `Planned (FE)`  
+**Status:** endpoint `Implemented` (B2.4); UI `Planned (FE)`  
 **Decisions:** ADR-005 points 6 and 7
 
 The user terminates the current session.
@@ -307,7 +307,7 @@ external AI service is used.
 ## FR-009 — Create Portfolio
 
 **Priority:** P0  
-**Status:** API `Implemented` (`POST /api/v1/portfolios`); permission check `Planned (B2)`; UI `Planned (FE)`  
+**Status:** API `Implemented` (`POST /api/v1/portfolios`); permission check `Implemented` (B2.1, B2.2); UI `Planned (FE)`  
 **Decisions:** ADR-004 point 12; ADR-005 point 2
 
 ### Acceptance criteria
@@ -1627,7 +1627,7 @@ into a portfolio as a background job.
 ## FR-083 — Session Refresh
 
 **Priority:** P0  
-**Status:** `Planned (B2)`; client flow `Planned (FE)`  
+**Status:** `Implemented` (B2.4); the log events `Planned (B3)`; client flow `Planned (FE)`  
 **Decisions:** ADR-005 points 4-7, 9 and Deferred detail; ADR-009 point 9
 
 ### Acceptance criteria
@@ -1651,7 +1651,7 @@ into a portfolio as a background job.
 ## FR-084 — Roles and Permissions
 
 **Priority:** P0  
-**Status:** ownership checks (404) `Implemented`; permission checks in the application layer `Planned (B0)`; roles `VIEWER`, `TRADER`, `ADMIN` `Planned (B2)`  
+**Status:** ownership checks (404) `Implemented`; permission checks in the application layer `Implemented` (B0, B2.2); roles `VIEWER`, `TRADER`, `ADMIN` `Implemented` (B2.1)  
 **Decisions:** ADR-005 points 1, 2, 3, 10, 11, 12, 13
 
 ### Acceptance criteria
@@ -1810,15 +1810,15 @@ This applies equally to the full stack and to the public demo.
 
 | FR | Status | Decisions / spec | Block |
 | --- | --- | --- | --- |
-| FR-001 | `Implemented`; `Planned (B2)`, `Planned (FE)` | ADR-005 p4, 8, 10-12 | B2, FE |
-| FR-002 | `Planned (B2)` | ADR-005 p4-6, 9 | B2, FE |
-| FR-003 | `Planned (B2)` | ADR-005 p6-7 | B2, FE |
+| FR-001 | `Implemented` (B2.3); `Planned (FE)` | ADR-005 p4, 8, 10-12 | B2, FE |
+| FR-002 | Backend `Implemented` (B2.4); client `Planned (FE)` | ADR-005 p4-6, 9 | B2, FE |
+| FR-003 | Backend `Implemented` (B2.4); client `Planned (FE)` | ADR-005 p6-7 | B2, FE |
 | FR-004 | `Implemented` | ADR-004 p5, 11; `16` §11-15 | B1, FE |
 | FR-005 | `Planned (FE)` | — | FE |
 | FR-006 | `Implemented`; alerts `Deferred`; UI `Planned (FE)` | ADR-010 p1 | B1, FE |
 | FR-007 | `Implemented` | ADR-004 p11; `16` §15 | B1 |
 | FR-008 | `Implemented` | ADR-005 p12 | FE |
-| FR-009 | `Implemented`; `Planned (B2)` | ADR-004 p12; ADR-005 p2 | B2, FE |
+| FR-009 | `Implemented` (permission check, B2.2) | ADR-004 p12; ADR-005 p2 | B2, FE |
 | FR-010 | `Implemented` | `05` §43 | FE |
 | FR-011 | `Implemented` (archive); read-only `Planned (B0)` | ADR-010 p5 | B0, FE |
 | FR-012 | `Implemented`; `Planned (B5)` | ADR-004 p15; ADR-007 | B1, B5, FE |
@@ -1892,8 +1892,8 @@ This applies equally to the full stack and to the public demo.
 | FR-080 | `Planned (B4)` | ADR-008 p1-2, 4, 9-10, 13; ADR-003 p6; ADR-004 p12 | B4, FE |
 | FR-081 | `Planned (B4)` | ADR-008 p3, 5-7, 9, 11; ADR-010 p9 | B4, B5, FE |
 | FR-082 | `Planned (B4)` | ADR-008 p8 | B4 |
-| FR-083 | `Planned (B2)` | ADR-005 p4-7, 9; ADR-009 p9 | B2, FE |
-| FR-084 | `Implemented`; `Planned (B0)`, `Planned (B2)` | ADR-005 p1-3, 10-12 | B0, B2 |
+| FR-083 | Backend `Implemented` (B2.4), its log events `Planned (B3)`; client `Planned (FE)` | ADR-005 p4-7, 9; ADR-009 p9 | B2, FE |
+| FR-084 | `Implemented` (B0, B2.1, B2.2) | ADR-005 p1-3, 10-12 | B0, B2 |
 | FR-085 | `Implemented` | ADR-004 p1, 4, 6-7; `16` §2, §5, §8 | B1 |
 | FR-086 | `Planned (B5)` | ADR-007 p2-3, 11 | B5 |
 | FR-087 | `Implemented`; language validation `Planned (B0)`; UI `Planned (FE)` | ADR-010 p8, `05` §23 | B0, FE |
