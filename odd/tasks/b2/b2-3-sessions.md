@@ -28,11 +28,11 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 Re-verify the current login, the token signing and the `Clock` use.
-- [ ] T2 `Session` entity, repository port, Prisma and in-memory adapters, and the migration, with the contract suite.
-- [ ] T3 Token service: sign and verify the 15-minute JWT, reject unknown roles, with expired-token and wrong-signature tests written with the `Clock`.
-- [ ] T4 Login creates a session and returns the new response shape; contracts and API tests.
-- [ ] T5 Reconcile `05-data-model.md`, `07-api-spec.md` §9, `09-security-spec.md`, roadmap and PROGRESS.
+- [x] T1 Re-verify the current login, the token signing and the `Clock` use. Result: the login signed with `jwt.sign` directly and did not use the `Clock`; there was no `Session` and no response schema; no client consumed `session.token`.
+- [x] T2 `Session` entity, repository port, in-memory and Prisma adapters, the migration and the contract suite. Done as T2a (domain), T2b (in-memory and contract suite) and T2c (Prisma and migration `20261018130000_add_session_table`, own commit).
+- [x] T3 Token service (`apps/api/src/services/token.service.ts`): signs and verifies the 15-minute JWT with the `Clock`, pins HS256, rejects unknown roles; expiry, signature, algorithm and role tests.
+- [x] T4 Done as T4a (shared `accessTokens` instance, `clock.ts`, `authenticate` verifies through the service, `SESSION_*` settings) and T4b (login creates a hashed session, sets the cookie and returns `{ user, session: { accessToken, expiresAt } }`; `loginResponseSchema` in contracts; API tests).
+- [x] T5 Reconcile `05-data-model.md` §5.3, `07-api-spec.md` §9, `09-security-spec.md` §6-8, roadmap and PROGRESS.
 
 ## Done when
 
@@ -49,3 +49,4 @@ pnpm --filter @trading/application test; pnpm --filter @trading/persistence-memo
 ## Log
 
 - Created from the B2 plan approved by the user on 2026-10-17.
+- 2026-10-18: built on the branch of B2.2 (`feat/b2-2-actor-permissions`) at the user's request, so the PR covers B2.2 and B2.3. Decisions: idle timeout 7 days and absolute lifetime 30 days (`SESSION_IDLE_SECONDS`, `SESSION_ABSOLUTE_SECONDS`, both with defaults); the idle timeout is `lastUsedAt` plus the setting, not stored; the table keeps only the columns B2.3 needs (grace-window columns come with B2.4 in a second migration); `systemClock` moved to `apps/api/src/clock.ts` so `authenticate` does not load Prisma. Two things not done on purpose: `.env.example` and `.env.test.example` do not list the two new settings (a deny rule blocks `.env.example`; both have defaults), and `14-deployment-spec.md` still lists only the old variables.

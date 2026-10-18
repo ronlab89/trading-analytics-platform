@@ -24,11 +24,11 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 Re-verify where the application services check ownership and role today.
-- [ ] T2 The `Actor` carries its permissions; a helper checks a permission and throws the existing authorization error.
-- [ ] T3 Apply the checks to the portfolio, transaction, analytics and notification services, with allowed-role, denied-role and cross-user tests.
-- [ ] T4 `VIEWER` self-service rules and escalation-attempt tests.
-- [ ] T5 Reconcile `07-api-spec.md` (403 responses), `09-security-spec.md`, roadmap and PROGRESS.
+- [x] T1 Re-verify where the application services check ownership and role today. Result: all 16 services call `assertPermission(actor, ...)` in every use case, ownership reads as 404, and cross-user tests exist in 6 services and 11 route files.
+- [x] T2 Dropped: the `Actor` and the permission helper already exist (B0.5) and B2.1 filled the matrix.
+- [x] T3 Dropped: the checks are already applied to every service.
+- [x] T4 `VIEWER` route tests (`apps/api/src/routes/viewer-role.routes.test.ts`): 403 on portfolio create, update and archive and on transaction create, 200 on reads, preferences and notifications, 401 for a forged ADMIN token.
+- [x] T5 Reconcile `07-api-spec.md` (403 responses and the role-check statuses), roadmap and PROGRESS. `09-security-spec.md` was already reconciled in B2.1.
 
 ## Done when
 
@@ -45,3 +45,4 @@ pnpm --filter @trading/application test; pnpm --filter @trading/api test; pnpm t
 ## Log
 
 - Created from the B2 plan approved by the user on 2026-10-17.
+- 2026-10-18: B2.1 merged to develop. T1 showed B2.2 mostly done by B0.5 and B2.1, so T2 and T3 were dropped and the slice kept only the VIEWER route tests and the API spec. A first run failed because `exec vitest` skipped `dotenv`; the package `test` script loads `.env.test.local`. `POST /notifications/read-all` answers 204 by design. Not covered by a route test: VIEWER denial on scenarios, watchlist and alerts (the matrix and the service tests cover them).

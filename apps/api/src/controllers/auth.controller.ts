@@ -1,7 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
-import type { loginRequestSchema } from "@trading/contracts";
+import { presentLogin, type loginRequestSchema } from "@trading/contracts";
+import { env } from "../config/env.js";
 import { login, getCurrentUser } from "../services/auth.service.js";
+import { REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH } from "../services/refresh-token.js";
 
 type LoginRequestBody = z.infer<typeof loginRequestSchema>;
 
@@ -15,7 +17,14 @@ export async function loginHandler(req: Request, res: Response, next: NextFuncti
 
   try {
     const result = await login(email, password);
-    res.json({ data: { user: result.user, session: { token: result.token } } });
+    res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      path: REFRESH_COOKIE_PATH,
+      maxAge: env.SESSION_ABSOLUTE_SECONDS * 1000,
+    });
+    res.json({ data: presentLogin(result) });
   } catch (error) {
     next(error);
   }

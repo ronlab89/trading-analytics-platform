@@ -209,20 +209,23 @@ such as an old `USER` token after the enum migration (ADR-005 Deferred
 detail, FR-083). `authenticate.test.ts` pins `USER` and `SUPERUSER` as
 rejected (B2.1).
 
-> Open detail (B2): `jwt.verify` does not pin the accepted algorithm. B2
-> passes `algorithms: ["HS256"]` explicitly so a future key change cannot
-> widen what is accepted.
+The access token is signed and verified by one service
+(`apps/api/src/services/token.service.ts`) that takes its time from the
+injected `Clock`, so expiry is tested without waiting. Verification pins
+`algorithms: ["HS256"]`, so a token with another algorithm, or none, is
+rejected with the same generic 401 (`Implemented`, B2.3). `iat` and `exp` are
+written explicitly from the clock.
 
 ---
 
 # 7. Token Lifetime
 
-**Status:** access token `Implemented` (`JWT_EXPIRES_IN_SECONDS`, default 900); refresh token lifecycle `Planned (B2)` (ADR-005 points 4-6 and Deferred detail; FR-083)
+**Status:** access token `Implemented` (`JWT_EXPIRES_IN_SECONDS`, default 900); refresh token issued and stored hashed at login `Implemented` (B2.3); rotation, reuse detection and logout `Planned (B2.4)` (ADR-005 points 4-6 and Deferred detail; FR-083)
 
 | Token | Lifetime | Status |
 | --- | --- | --- |
 | Access token (JWT) | 15 minutes | `Implemented` |
-| Refresh token | Rotates on every use; idle timeout and absolute family lifetime | `Planned (B2)` |
+| Refresh token | Rotates on every use; idle timeout (7 days) and absolute family lifetime (30 days) | Issued at login `Implemented` (B2.3); rotation `Planned (B2.4)` |
 
 Refresh token rules (ADR-005 point 5):
 
@@ -234,25 +237,28 @@ Refresh token rules (ADR-005 point 5):
 - Role changes take effect at the next refresh, within 15 minutes
   (ADR-005 point 9).
 
-Code today: there is no refresh mechanism, so a session ends when the
-access token expires, and the login response carries no expiry. ADR-005
-point 8 changes the response to
-`{ user, session: { accessToken, expiresAt } }` in B2.
+Code today (B2.3): login returns `{ user, session: { accessToken, expiresAt } }`
+(ADR-005 point 8) and starts a session whose refresh token is 256 random
+bits, stored only as a SHA-256 hash. There is no refresh endpoint yet, so a
+session still ends when the access token expires; refresh and logout arrive
+in B2.4.
 
 > Open detail (B2, ADR-005 Deferred detail): parallel refreshes are handled
 > by a client single-flight refresh plus a grace window of about 10 seconds
 > that returns the same successor pair. The successor refresh token stays
 > recoverable (encrypted at rest) only for that window.
 
-> Open detail (B2, ADR-005 Deferred detail): the idle timeout and absolute
-> family lifetime are stored as `expiresAt` in the sessions table and as the
-> cookie `Max-Age`. The concrete durations are fixed in B2.
+Decided (B2.3, ADR-005 Deferred detail): the absolute family lifetime is
+`expiresAt` in the sessions table and the cookie `Max-Age`
+(`SESSION_ABSOLUTE_SECONDS`, default 30 days). The idle timeout is
+`lastUsedAt` plus `SESSION_IDLE_SECONDS` (default 7 days) and is not stored.
+The idle timeout is enforced by the refresh endpoint (B2.4).
 
 ---
 
 # 8. Token Storage
 
-**Status:** `Planned (B2)` (server cookie); `Planned (FE)` (client memory) (ADR-005 points 4, 5, 7; NFR-028)
+**Status:** server cookie set at login `Implemented` (B2.3); reading it `Planned (B2.4)`; `Planned (FE)` (client memory) (ADR-005 points 4, 5, 7; NFR-028)
 
 | Credential | Where | Rule |
 | --- | --- | --- |
@@ -265,8 +271,9 @@ state-changing routes need no CSRF tokens; the refresh cookie reaches only
 the refresh and logout endpoints, which require a custom request header
 (ADR-005 point 7, §23).
 
-Code today: no cookie is set; the client stores nothing because no client
-consumes the API yet.
+Code today (B2.3): login sets the `refresh_token` cookie with those
+attributes and `Max-Age` equal to the absolute lifetime; no endpoint reads it
+yet (B2.4). The client stores nothing because no client consumes the API yet.
 
 > Open detail (B2, ADR-005 Deferred detail): the local production stack
 > has no HTTPS. The API is served on `localhost`, which browsers treat as

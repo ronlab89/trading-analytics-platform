@@ -7,6 +7,8 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(7001),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters long."),
   JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(900),
+  SESSION_IDLE_SECONDS: z.coerce.number().int().positive().default(604800),
+  SESSION_ABSOLUTE_SECONDS: z.coerce.number().int().positive().default(2592000),
   CORS_ORIGIN: z
     .string()
     .default("http://localhost:5173")

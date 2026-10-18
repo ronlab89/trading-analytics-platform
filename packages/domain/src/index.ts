@@ -1,6 +1,7 @@
 export * from "./entities/enums";
 export * from "./entities/user";
 export * from "./entities/credential";
+export * from "./entities/session";
 export * from "./entities/asset";
 export * from "./entities/portfolio";
 export * from "./entities/transaction";
@@ -43,6 +44,7 @@ export * from "./calculations/decision-replay";
 export type { PortfolioRepository } from "./repositories/portfolio-repository";
 export type { UserRepository } from "./repositories/user-repository";
 export type { CredentialRepository } from "./repositories/credential-repository";
+export type { SessionRepository } from "./repositories/session-repository";
 export type { AssetRepository, AssetListFilter } from "./repositories/asset-repository";
 export type { Page, PageRequest } from "./repositories/pagination";
 export type {

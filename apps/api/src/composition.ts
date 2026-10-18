@@ -33,17 +33,18 @@ import {
   createWatchlistService,
 } from "@trading/application";
 import type { Clock } from "@trading/application";
+import { systemClock } from "./clock.js";
 
 /**
  * Composition root: the one place that builds concrete dependencies and
  * hands them to the use cases.
  * Source: ADR-001 point 4, 06-architecture.md §11.
  *
- * The system clock lives here, and only here, so application and domain
+ * The system clock (`clock.ts`) is wired here, so application and domain
  * code never call `new Date()` (ADR-001 point 8). Each resource moved to
  * `@trading/application` adds its repositories and use cases below.
  */
-export const systemClock: Clock = { now: () => new Date() };
+export { systemClock };
 
 export function buildComposition(clock: Clock) {
   const assetRepository = new PrismaAssetRepository();

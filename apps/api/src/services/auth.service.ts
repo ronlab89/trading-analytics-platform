@@ -1,11 +1,20 @@
+import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { PrismaUserRepository, PrismaCredentialRepository } from "@trading/database";
+import {
+  PrismaUserRepository,
+  PrismaCredentialRepository,
+  PrismaSessionRepository,
+} from "@trading/database";
+import { validateNewSession, type UserRole } from "@trading/domain";
+import { systemClock } from "../clock.js";
 import { AppError } from "../errors/app-error.js";
 import { env } from "../config/env.js";
+import { accessTokens } from "./access-tokens.js";
+import { generateRefreshToken, hashRefreshToken } from "./refresh-token.js";
 
 const userRepository = new PrismaUserRepository();
 const credentialRepository = new PrismaCredentialRepository();
+const sessionRepository = new PrismaSessionRepository();
 
 // Valid cost-10 bcrypt hash of a throwaway string; matches the cost used for real credentials.
 const DUMMY_PASSWORD_HASH = "$2b$10$Le7YhguWSoEFRnQTg4pPseKriO.5s8SiKua23Q6yYD4Rx47z8bqZS";
@@ -18,12 +27,17 @@ export interface AuthenticatedUser {
 }
 
 export interface LoginResult {
-  user: AuthenticatedUser;
-  token: string;
+  user: AuthenticatedUser & { role: UserRole };
+  accessToken: string;
+  /** When the access token expires. */
+  expiresAt: Date;
+  /** The opaque refresh token; only its hash is stored. Sent as a cookie, never in the body. */
+  refreshToken: string;
 }
 
 /**
- * Verifies email/password and issues a signed JWT session.
+ * Verifies email/password, issues a short-lived access token and starts a
+ * session whose refresh token is stored only as a hash (ADR-005 points 4-5).
  *
  * Always throws the same generic "Invalid credentials." error whether the
  * email doesn't exist, has no credential, or the password is wrong — this
@@ -47,9 +61,17 @@ export async function login(email: string, password: string): Promise<LoginResul
     throw new AppError("UNAUTHORIZED", "Invalid credentials.", 401);
   }
 
-  const token = jwt.sign({ sub: user.id, role: user.role }, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN_SECONDS,
-  });
+  const { accessToken, expiresAt } = accessTokens.issue({ userId: user.id, role: user.role });
+
+  const refreshToken = generateRefreshToken();
+  const session = {
+    userId: user.id,
+    familyId: randomUUID(),
+    tokenHash: hashRefreshToken(refreshToken),
+    expiresAt: new Date(systemClock.now().getTime() + env.SESSION_ABSOLUTE_SECONDS * 1000),
+  };
+  validateNewSession(session);
+  await sessionRepository.create(session);
 
   return {
     user: {
@@ -58,7 +80,9 @@ export async function login(email: string, password: string): Promise<LoginResul
       displayName: user.displayName,
       role: user.role,
     },
-    token,
+    accessToken,
+    expiresAt,
+    refreshToken,
   };
 }
 

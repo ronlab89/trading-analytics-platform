@@ -1,9 +1,7 @@
-import jwt from "jsonwebtoken";
 import type { NextFunction, Request, Response } from "express";
 import type { Actor } from "@trading/application";
-import { UserRole } from "@trading/domain";
 import { AppError } from "../errors/app-error.js";
-import { env } from "../config/env.js";
+import { accessTokens } from "../services/access-tokens.js";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -17,24 +15,6 @@ declare global {
       actor?: Actor;
     }
   }
-}
-
-interface AccessTokenPayload {
-  sub: string;
-  role: string;
-}
-
-function isUserRole(role: string): role is UserRole {
-  return (Object.values(UserRole) as string[]).includes(role);
-}
-
-function isAccessTokenPayload(payload: unknown): payload is AccessTokenPayload {
-  return (
-    typeof payload === "object" &&
-    payload !== null &&
-    typeof (payload as Record<string, unknown>).sub === "string" &&
-    typeof (payload as Record<string, unknown>).role === "string"
-  );
 }
 
 /** The authenticated actor of a request that went through `authenticate`. */
@@ -66,15 +46,10 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
   const token = header.slice("Bearer ".length);
 
   try {
-    const payload: unknown = jwt.verify(token, env.JWT_SECRET);
+    const { userId, role } = accessTokens.verify(token);
 
-    if (!isAccessTokenPayload(payload) || !isUserRole(payload.role)) {
-      next(new AppError("UNAUTHORIZED", "Authentication required.", 401));
-      return;
-    }
-
-    req.auth = { userId: payload.sub, role: payload.role };
-    req.actor = { userId: payload.sub, role: payload.role };
+    req.auth = { userId, role };
+    req.actor = { userId, role };
     next();
   } catch {
     next(new AppError("UNAUTHORIZED", "Authentication required.", 401));

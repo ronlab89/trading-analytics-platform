@@ -135,15 +135,17 @@ Codes are stable within `v1`; adding a code is an additive change.
 | --- | --- | --- |
 | `VALIDATION_ERROR` | 400 (413 for an oversized body) | Request validation (body, query and route parameters: a malformed ID is 400, a well-formed unknown or foreign ID is 404), malformed JSON, `Invalid*Error` and `Insufficient*Error` domain errors |
 | `UNAUTHORIZED` | 401 | Missing or invalid Bearer token, invalid credentials |
-| `FORBIDDEN` | 403 | Declared, not raised; role checks `Planned (B2)` (ADR-002 point 10) |
+| `FORBIDDEN` | 403 | The role lacks the permission the use case needs on an own resource, such as a `VIEWER` mutating domain data (`Implemented`, B2; ADR-005 point 2) |
 | `NOT_FOUND` | 404 | Unknown route; missing resource or another user's resource (never 403, ADR-005 point 12) |
 | `CONFLICT` | 409 | Conflicting state changes |
 | `RATE_LIMITED` | 429 | Rate limiters (§9) |
 | `DEPENDENCY_ERROR` | 503 | Database unreachable (Prisma `PrismaClientInitializationError`, P1001, P1002, P1008, P1017); fixed message, no connection details in the body (ADR-002 point 10) |
 | `INTERNAL_ERROR` | 500 | Unexpected errors |
 
-`FORBIDDEN` for a missing permission on an own resource is `Planned (B2)`
-(ADR-005 point 2).
+`FORBIDDEN` for a missing permission on an own resource is `Implemented`
+(B2; ADR-005 point 2). The permission check runs first, then ownership (404
+for another user's resource, never 403), then state conflicts (409). The
+matrix is in `09-security-spec.md` §13.
 
 ---
 
@@ -203,7 +205,7 @@ envelope (§5). Propagation to every log line through `AsyncLocalStorage` is
 
 # 9. Authentication
 
-**Status:** `Implemented` for login and current user; refresh, logout and roles `Planned (B2)` (ADR-005)
+**Status:** `Implemented` for login (with its session), current user and roles; refresh and logout `Planned (B2.4)` (ADR-005)
 
 There is no self-registration; users come from the seed (ADR-005 point 10).
 Protected endpoints require `Authorization: Bearer <accessToken>`; every
@@ -217,14 +219,14 @@ draft-7 `RateLimit` and `RateLimit-Policy` headers:
 
 | Endpoint | Status |
 | --- | --- |
-| `POST /api/v1/auth/login` | `Implemented`; ADR-005 response shape `Planned (B2)` |
+| `POST /api/v1/auth/login` | `Implemented`; ADR-005 response shape `Implemented` (B2.3) |
 | `GET /api/v1/auth/me` | `Implemented` |
-| `POST /api/v1/auth/refresh` | `Planned (B2)` |
-| `POST /api/v1/auth/logout` | `Planned (B2)` |
+| `POST /api/v1/auth/refresh` | `Planned (B2.4)` |
+| `POST /api/v1/auth/logout` | `Planned (B2.4)` |
 
 ## Login
 
-**Status:** `Implemented`; response shape change `Planned (B2)`
+**Status:** `Implemented`; ADR-005 response shape and refresh-token cookie `Implemented` (B2.3)
 
 ```text
 POST /api/v1/auth/login
@@ -239,26 +241,40 @@ Request:
 }
 ```
 
-Response today (200). `token` is a JWT carrying `sub` and `role`, valid for
-`JWT_EXPIRES_IN_SECONDS` (default 900, 15 minutes):
+Response (200). `accessToken` is a JWT carrying `sub` and `role`, valid for
+`JWT_EXPIRES_IN_SECONDS` (default 900, 15 minutes), and `expiresAt` is that
+expiry as an ISO timestamp. `role` is `VIEWER`, `TRADER` or `ADMIN`:
 
 ```json
 {
   "data": {
-    "user": { "id": "...", "email": "...", "displayName": "...", "role": "USER" },
-    "session": { "token": "..." }
+    "user": { "id": "...", "email": "...", "displayName": "...", "role": "TRADER" },
+    "session": { "accessToken": "...", "expiresAt": "2026-10-18T12:15:00.000Z" }
   }
 }
 ```
+
+The same response sets the refresh-token cookie:
+
+```text
+Set-Cookie: refresh_token=<opaque>; Max-Age=2592000; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Strict
+```
+
+The refresh token is 256 random bits and never appears in the body. The
+server stores only its SHA-256 hash in a new session family, which lives
+`SESSION_ABSOLUTE_SECONDS` (default 30 days; the cookie `Max-Age` is the same
+value). A failed login sets no cookie and creates no session. Reading the
+cookie belongs to refresh and logout (B2.4).
 
 Errors: 400 `VALIDATION_ERROR` (invalid email or empty password); 401
 `UNAUTHORIZED` `Invalid credentials.` for every credential failure, so
 accounts cannot be enumerated; 429 `RATE_LIMITED`.
 
-`Planned (B2)` (ADR-005 points 1, 5 and 8): the response becomes
+`Implemented` (B2; ADR-005 points 1, 4, 5 and 8): the response is
 `{ user, session: { accessToken, expiresAt } }`, login sets the refresh-token
 cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`), and
-roles become `VIEWER`, `TRADER`, `ADMIN`.
+roles are `VIEWER`, `TRADER`, `ADMIN`. The previous `session.token` field is
+gone; no client consumed it.
 
 ---
 
@@ -1194,13 +1210,13 @@ decision's asset is missing (data integrity).
 
 # 25. Scenario API
 
-**Status:** `Implemented`; archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
+**Status:** `Implemented`; archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Implemented` (B2; ADR-005)
 
 All endpoints require a Bearer token (§9). The portfolio must be the
 caller's and the scenario must belong to it; otherwise 404 `NOT_FOUND`.
 Payloads are built by presenters from the response schemas of
-`@trading/contracts` (ADR-002). `Planned (B2)` (ADR-005 point 1): `VIEWER` reads
-only; writes need `TRADER` or `ADMIN`.
+`@trading/contracts` (ADR-002). `Implemented` (ADR-005 point 1): `VIEWER` reads
+only; writes need `TRADER` or `ADMIN`, otherwise 403 `FORBIDDEN`.
 
 | Endpoint | Status |
 | --- | --- |
@@ -1372,10 +1388,11 @@ silently).
 
 # 26. Watchlist API
 
-**Status:** `Implemented`; role checks `Planned (B2)` (ADR-005)
+**Status:** `Implemented`; role checks `Implemented` (B2; ADR-005)
 
 All endpoints require a Bearer token (§9) and act on the caller's watchlist.
-Uniqueness is per user. `Planned (B2)`: `VIEWER` cannot add or remove.
+Uniqueness is per user. `Implemented`: `VIEWER` cannot add or remove (403
+`FORBIDDEN`).
 
 | Endpoint | Status |
 | --- | --- |
@@ -1434,11 +1451,12 @@ watchlist (including a repeated removal).
 
 # 27. Alerts API
 
-**Status:** `Implemented` (configuration, FR-053); evaluation `Planned (B5)` (ADR-007 point 9); archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
+**Status:** `Implemented` (configuration, FR-053); evaluation `Planned (B5)` (ADR-007 point 9); archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Implemented` (B2; ADR-005)
 
 All endpoints require a Bearer token (§9) and are scoped to the caller:
 another user's alert is 404 `NOT_FOUND`. Alerts are managed in the Alerts
-tab under Markets (ADR-010 point 9). `Planned (B2)`: `VIEWER` reads only.
+tab under Markets (ADR-010 point 9). `Implemented`: `VIEWER` reads only (403
+`FORBIDDEN` on writes).
 
 | Endpoint | Status |
 | --- | --- |
@@ -1915,7 +1933,7 @@ number today. Display rounding happens only in the client (ADR-010 point 9).
 
 # 45. API Security
 
-**Status:** `Implemented`; permission checks in the application layer `Planned (B0)` (ADR-001, ADR-005)
+**Status:** `Implemented`; permission checks in the application layer `Implemented` (B0 mechanism, B2 matrix; ADR-001, ADR-005)
 
 - Bearer authentication on every `/api/v1` route except auth and health (§9).
 - Role and ownership authorization on the server; client checks are UX only.
