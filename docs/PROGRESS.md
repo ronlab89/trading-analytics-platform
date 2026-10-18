@@ -935,6 +935,11 @@ Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 hand-written migration renames `USER` to `TRADER` and was checked against a
 database with existing rows; `permissions.ts` holds the real matrix, tested per
 role and permission; a token with `role: "USER"` is rejected with 401.
+**B2.2 is done** (`Implemented`, `odd/tasks/b2/b2-2-actor-permissions.md`): the
+re-verification showed that all 16 application services already check a
+permission through the `Actor`, so the slice reduced to API tests of the
+`VIEWER` role (403 on every tested mutation, 200 on preferences and
+notifications, a forged token is 401) and the 403 passages of `07-api-spec.md`.
 B0 and B1 are done; B1 was built in seven slices. **B1.1 is done**
 (`Implemented`, `odd/tasks/b1/b1-1-fees.md`): a `SELL` whose fees exceed its gross
 proceeds is rejected with 400, `averageEntryPrice` includes `BUY` fees in the

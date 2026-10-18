@@ -135,15 +135,17 @@ Codes are stable within `v1`; adding a code is an additive change.
 | --- | --- | --- |
 | `VALIDATION_ERROR` | 400 (413 for an oversized body) | Request validation (body, query and route parameters: a malformed ID is 400, a well-formed unknown or foreign ID is 404), malformed JSON, `Invalid*Error` and `Insufficient*Error` domain errors |
 | `UNAUTHORIZED` | 401 | Missing or invalid Bearer token, invalid credentials |
-| `FORBIDDEN` | 403 | Declared, not raised; role checks `Planned (B2)` (ADR-002 point 10) |
+| `FORBIDDEN` | 403 | The role lacks the permission the use case needs on an own resource, such as a `VIEWER` mutating domain data (`Implemented`, B2; ADR-005 point 2) |
 | `NOT_FOUND` | 404 | Unknown route; missing resource or another user's resource (never 403, ADR-005 point 12) |
 | `CONFLICT` | 409 | Conflicting state changes |
 | `RATE_LIMITED` | 429 | Rate limiters (§9) |
 | `DEPENDENCY_ERROR` | 503 | Database unreachable (Prisma `PrismaClientInitializationError`, P1001, P1002, P1008, P1017); fixed message, no connection details in the body (ADR-002 point 10) |
 | `INTERNAL_ERROR` | 500 | Unexpected errors |
 
-`FORBIDDEN` for a missing permission on an own resource is `Planned (B2)`
-(ADR-005 point 2).
+`FORBIDDEN` for a missing permission on an own resource is `Implemented`
+(B2; ADR-005 point 2). The permission check runs first, then ownership (404
+for another user's resource, never 403), then state conflicts (409). The
+matrix is in `09-security-spec.md` §13.
 
 ---
 
@@ -1194,13 +1196,13 @@ decision's asset is missing (data integrity).
 
 # 25. Scenario API
 
-**Status:** `Implemented`; archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
+**Status:** `Implemented`; archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Implemented` (B2; ADR-005)
 
 All endpoints require a Bearer token (§9). The portfolio must be the
 caller's and the scenario must belong to it; otherwise 404 `NOT_FOUND`.
 Payloads are built by presenters from the response schemas of
-`@trading/contracts` (ADR-002). `Planned (B2)` (ADR-005 point 1): `VIEWER` reads
-only; writes need `TRADER` or `ADMIN`.
+`@trading/contracts` (ADR-002). `Implemented` (ADR-005 point 1): `VIEWER` reads
+only; writes need `TRADER` or `ADMIN`, otherwise 403 `FORBIDDEN`.
 
 | Endpoint | Status |
 | --- | --- |
@@ -1372,10 +1374,11 @@ silently).
 
 # 26. Watchlist API
 
-**Status:** `Implemented`; role checks `Planned (B2)` (ADR-005)
+**Status:** `Implemented`; role checks `Implemented` (B2; ADR-005)
 
 All endpoints require a Bearer token (§9) and act on the caller's watchlist.
-Uniqueness is per user. `Planned (B2)`: `VIEWER` cannot add or remove.
+Uniqueness is per user. `Implemented`: `VIEWER` cannot add or remove (403
+`FORBIDDEN`).
 
 | Endpoint | Status |
 | --- | --- |
@@ -1434,11 +1437,12 @@ watchlist (including a repeated removal).
 
 # 27. Alerts API
 
-**Status:** `Implemented` (configuration, FR-053); evaluation `Planned (B5)` (ADR-007 point 9); archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Planned (B2)` (ADR-005)
+**Status:** `Implemented` (configuration, FR-053); evaluation `Planned (B5)` (ADR-007 point 9); archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Implemented` (B2; ADR-005)
 
 All endpoints require a Bearer token (§9) and are scoped to the caller:
 another user's alert is 404 `NOT_FOUND`. Alerts are managed in the Alerts
-tab under Markets (ADR-010 point 9). `Planned (B2)`: `VIEWER` reads only.
+tab under Markets (ADR-010 point 9). `Implemented`: `VIEWER` reads only (403
+`FORBIDDEN` on writes).
 
 | Endpoint | Status |
 | --- | --- |
@@ -1915,7 +1919,7 @@ number today. Display rounding happens only in the client (ADR-010 point 9).
 
 # 45. API Security
 
-**Status:** `Implemented`; permission checks in the application layer `Planned (B0)` (ADR-001, ADR-005)
+**Status:** `Implemented`; permission checks in the application layer `Implemented` (B0 mechanism, B2 matrix; ADR-001, ADR-005)
 
 - Bearer authentication on every `/api/v1` route except auth and health (§9).
 - Role and ownership authorization on the server; client checks are UX only.
