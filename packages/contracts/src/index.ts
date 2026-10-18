@@ -2,6 +2,7 @@ export * from "./alert.response.js";
 export * from "./alert.schema.js";
 export * from "./analytics.response.js";
 export * from "./analytics.schema.js";
+export * from "./auth.response.js";
 export * from "./risk.response.js";
 export * from "./performance.response.js";
 export * from "./range-attribution.response.js";
