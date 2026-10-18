@@ -51,13 +51,13 @@ export class PrismaSessionRepository implements SessionRepository {
   async revokeFamily(familyId: string, revokedAt: Date): Promise<void> {
     await prisma.session.updateMany({
       where: { familyId, revokedAt: null },
-      data: { revokedAt },
+      data: { revokedAt, successorCiphertext: null },
     });
   }
 
-  async clearSuccessorCiphertext(sessionId: string): Promise<void> {
+  async clearExpiredSuccessors(familyId: string, rotatedBefore: Date): Promise<void> {
     await prisma.session.updateMany({
-      where: { id: sessionId },
+      where: { familyId, rotatedAt: { lt: rotatedBefore }, successorCiphertext: { not: null } },
       data: { successorCiphertext: null },
     });
   }

@@ -57,18 +57,22 @@ export class InMemorySessionRepository implements SessionRepository {
   revokeFamily(familyId: string, revokedAt: Date): Promise<void> {
     for (const session of this.rows.values()) {
       if (session.familyId === familyId && !session.revokedAt) {
-        this.rows.set(session.id, { ...session, revokedAt });
+        this.rows.set(session.id, { ...session, revokedAt, successorCiphertext: null });
       }
     }
 
     return Promise.resolve();
   }
 
-  clearSuccessorCiphertext(sessionId: string): Promise<void> {
-    const current = this.rows.get(sessionId);
-
-    if (current) {
-      this.rows.set(sessionId, { ...current, successorCiphertext: null });
+  clearExpiredSuccessors(familyId: string, rotatedBefore: Date): Promise<void> {
+    for (const session of this.rows.values()) {
+      if (
+        session.familyId === familyId &&
+        session.rotatedAt &&
+        session.rotatedAt.getTime() < rotatedBefore.getTime()
+      ) {
+        this.rows.set(session.id, { ...session, successorCiphertext: null });
+      }
     }
 
     return Promise.resolve();

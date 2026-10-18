@@ -27,9 +27,16 @@ export interface SessionRepository {
    */
   rotate(input: RotateSessionInput): Promise<Session | null>;
 
-  /** Revokes every session of the family not yet revoked; none is deleted. */
+  /**
+   * Revokes every session of the family not yet revoked and drops their
+   * stored successor tokens, since a revoked family has no grace window;
+   * none is deleted.
+   */
   revokeFamily(familyId: string, revokedAt: Date): Promise<void>;
 
-  /** Drops the stored successor token once the grace window has ended. */
-  clearSuccessorCiphertext(sessionId: string): Promise<void>;
+  /**
+   * Drops the stored successor token of every session of the family rotated
+   * before `rotatedBefore`: their grace window has ended.
+   */
+  clearExpiredSuccessors(familyId: string, rotatedBefore: Date): Promise<void>;
 }

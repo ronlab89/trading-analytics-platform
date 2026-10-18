@@ -75,7 +75,6 @@ export function createRefreshService(options: RefreshServiceOptions): RefreshSer
 
     if (!insideWindow) {
       await sessions.revokeFamily(session.familyId, now);
-      await sessions.clearSuccessorCiphertext(session.id);
     }
     return reject();
   }
@@ -117,6 +116,11 @@ export function createRefreshService(options: RefreshServiceOptions): RefreshSer
 
         if (rotated) {
           successorToken = next;
+          // Tokens rotated before the window are past replay: stop keeping their successor.
+          await sessions.clearExpiredSuccessors(
+            session.familyId,
+            new Date(now.getTime() - graceMs),
+          );
         } else {
           // Another refresh rotated this token first: this one is a replay inside the window.
           const winner = await sessions.getByTokenHash(tokenHash);

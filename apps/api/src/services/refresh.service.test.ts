@@ -142,6 +142,30 @@ describe("refresh service", () => {
     ).toBeNull();
   });
 
+  it("stops keeping the successor of a token once the window has ended and the family moves on", async () => {
+    const token = await startSession();
+    const first = await service.refresh(token);
+    advance(11 * 1000);
+
+    await service.refresh(first.refreshToken);
+
+    expect(
+      (await sessions.getByTokenHash(hashRefreshToken(token)))?.successorCiphertext,
+    ).toBeNull();
+  });
+
+  it("keeps the successor of a token still inside the window when the family moves on", async () => {
+    const token = await startSession();
+    const first = await service.refresh(token);
+    advance(5 * 1000);
+
+    await service.refresh(first.refreshToken);
+
+    expect(
+      (await sessions.getByTokenHash(hashRefreshToken(token)))?.successorCiphertext,
+    ).not.toBeNull();
+  });
+
   it("does not touch another family when it revokes one", async () => {
     const token = await startSession("family-1");
     const other = await startSession("family-2");

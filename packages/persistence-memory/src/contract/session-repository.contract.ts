@@ -175,6 +175,20 @@ export function sessionRepositoryContract(
         expect((await context.repository.getByTokenHash("hash-3"))?.revokedAt).toBeNull();
       });
 
+      it("drops the stored successor tokens of the family", async () => {
+        const first = await context.repository.create(input());
+        await context.repository.rotate({
+          sessionId: first.id,
+          rotatedAt: revokedAt,
+          successor: input("hash-2"),
+          successorCiphertext: "cipher-1",
+        });
+
+        await context.repository.revokeFamily("family-1", revokedAt);
+
+        expect((await context.repository.getByTokenHash("hash-1"))?.successorCiphertext).toBeNull();
+      });
+
       it("keeps the first revocation time when the family is revoked twice", async () => {
         await context.repository.create(input());
 
@@ -191,18 +205,22 @@ export function sessionRepositoryContract(
       });
     });
 
-    describe("clearSuccessorCiphertext", () => {
-      it("drops the stored successor token and keeps the rotation", async () => {
-        const first = await context.repository.create(input());
-        const rotatedAt = new Date("2026-10-18T12:00:00.000Z");
-        await context.repository.rotate({
-          sessionId: first.id,
+    describe("clearExpiredSuccessors", () => {
+      const rotatedAt = new Date("2026-10-18T12:00:00.000Z");
+      const later = new Date("2026-10-18T12:00:11.000Z");
+      const rotate = (sessionId: string, successorHash: string, familyId = "family-1") =>
+        context.repository.rotate({
+          sessionId,
           rotatedAt,
-          successor: input("hash-2"),
-          successorCiphertext: "cipher-1",
+          successor: input(successorHash, familyId),
+          successorCiphertext: `cipher-${successorHash}`,
         });
 
-        await context.repository.clearSuccessorCiphertext(first.id);
+      it("drops the stored successor token of a session rotated before the cutoff and keeps the rotation", async () => {
+        const first = await context.repository.create(input());
+        await rotate(first.id, "hash-2");
+
+        await context.repository.clearExpiredSuccessors("family-1", later);
 
         expect(await context.repository.getByTokenHash("hash-1")).toEqual({
           ...first,
@@ -211,10 +229,28 @@ export function sessionRepositoryContract(
         });
       });
 
-      it("resolves without effect for a session that does not exist", async () => {
-        await expect(
-          context.repository.clearSuccessorCiphertext("missing"),
-        ).resolves.toBeUndefined();
+      it("keeps the stored successor token of a session rotated at or after the cutoff", async () => {
+        const first = await context.repository.create(input());
+        await rotate(first.id, "hash-2");
+
+        await context.repository.clearExpiredSuccessors("family-1", rotatedAt);
+
+        expect((await context.repository.getByTokenHash("hash-1"))?.successorCiphertext).toBe(
+          "cipher-hash-2",
+        );
+      });
+
+      it("leaves other families alone", async () => {
+        const first = await context.repository.create(input("hash-1", "family-1"));
+        const other = await context.repository.create(input("hash-3", "family-2"));
+        await rotate(first.id, "hash-2");
+        await rotate(other.id, "hash-4", "family-2");
+
+        await context.repository.clearExpiredSuccessors("family-1", later);
+
+        expect((await context.repository.getByTokenHash("hash-3"))?.successorCiphertext).toBe(
+          "cipher-hash-4",
+        );
       });
     });
   });
