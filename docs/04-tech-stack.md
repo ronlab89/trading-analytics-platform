@@ -248,7 +248,7 @@ ADR-007 and `08-realtime-spec.md`.
 
 # 23. Authentication
 
-**Status:** `Implemented` (login, `GET /auth/me`, Bearer JWT); sessions and refresh `Planned (B2)` — ADR-005 points 4-8.
+**Status:** `Implemented` (login, `GET /auth/me`, Bearer JWT, refresh, logout); sessions and refresh `Implemented` (B2.3, B2.4) — ADR-005 points 4-8.
 
 - `jsonwebtoken` `9.0.3` signs access tokens with `JWT_SECRET` (32+
   characters); lifetime `JWT_EXPIRES_IN_SECONDS`, default `900` (15 minutes).
@@ -260,7 +260,7 @@ ADR-007 and `08-realtime-spec.md`.
 
 # 24. Authorization
 
-**Status:** `Implemented` (ownership checks; another user's resource returns 404); permission checks `Planned (B0)`; roles `Planned (B2)` — ADR-005.
+**Status:** `Implemented` (ownership checks; another user's resource returns 404); permission checks `Implemented` (B0, B2.2); roles `Implemented` (B2.1) — ADR-005.
 
 - Roles are `VIEWER`, `TRADER` and `ADMIN`. The schema's current `USER` role
   migrates to `TRADER`; `ANALYST` is dropped (ADR-005 point 1).
@@ -741,7 +741,7 @@ technology under a port can change without changing product behavior.
 - Vitest covers domain, database and API. `Implemented`
 - Shared contracts and lint-enforced boundaries. `Planned (B0)`
 - CI runs without paid services (free for public repositories). `Implemented`
-- Sessions with refresh tokens and permission-based roles. `Planned (B0)`, `Planned (B2)`
+- Sessions with refresh tokens and permission-based roles. `Implemented` (B0, B2)
 - Structured logging. `Planned (B3)`
 - WebSocket realtime with the shared simulator. `Planned (B5)`
 - Generated OpenAPI. `Planned (B6)`

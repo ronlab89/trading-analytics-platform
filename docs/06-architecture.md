@@ -612,7 +612,7 @@ Repositories and `PrismaUnitOfWork` are the only consumers. Nothing outside
 
 # 36. Authentication Architecture
 
-**Status:** `Implemented` (login, `me`, Bearer JWT); sessions `Planned (B2)`.
+**Status:** `Implemented` (login, `me`, refresh, logout, Bearer JWT); sessions `Implemented` (B2.3, B2.4).
 
 - Passwords hashed with `bcryptjs`; login rate-limited to 5 attempts per 15
   minutes.
@@ -628,7 +628,7 @@ Repositories and `PrismaUnitOfWork` are the only consumers. Nothing outside
 
 # 37. Authorization Architecture
 
-**Status:** `Implemented` (ownership); permissions `Planned (B0)` and roles `Planned (B2)`.
+**Status:** `Implemented` (ownership); permissions `Implemented` (B0, B2.2) and roles `Implemented` (B2.1).
 
 Today services check ownership and return 404 for another user's resource,
 never 403. No route checks roles.
@@ -643,12 +643,12 @@ authenticates and builds the `Actor`.
 
 # 38. Security Boundary
 
-**Status:** `Implemented`; cookie CSRF header `Planned (B2)`; hardening checklist `Planned (B7)`.
+**Status:** `Implemented`; cookie CSRF header `Implemented` (B2.4); hardening checklist `Planned (B7)`.
 
 `x-powered-by` disabled, `helmet`, CORS restricted to `CORS_ORIGIN`, a
 general rate limit (300 requests per 15 minutes) after health routes, a
 100 kB JSON body limit, and fail-fast environment validation. Refresh and
-logout will require a custom request header (ADR-005 point 7). Full rules:
+logout require a custom request header (ADR-005 point 7, B2.4). Full rules:
 `09-security-spec.md`.
 
 ---

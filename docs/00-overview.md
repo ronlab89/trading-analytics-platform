@@ -92,7 +92,7 @@ notifications, all in one coherent product.
 
 The product is not a brokerage or an institutional trading terminal. Users
 come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
-`Planned (B2)`; the schema has `USER` and `ADMIN` today).
+`Implemented`, B2.1).
 
 ---
 
@@ -106,7 +106,7 @@ come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
 | Domain | Status | Decision |
 | --- | --- | --- |
 | Login, `GET /auth/me`, Bearer JWT | `Implemented` | ADR-005 point 12 |
-| Sessions with refresh tokens, roles and permissions | `Planned (B2)`; permission checks `Planned (B0)` | ADR-005 |
+| Sessions with refresh tokens, roles and permissions | `Implemented` (B2.1 to B2.4); permission checks `Implemented` (B0, B2.2) | ADR-005 |
 | Portfolios, assets, positions, transactions (`BUY`, `SELL`) | `Implemented` | ADR-003 |
 | Chronological transaction validation | `Planned (B0)` | ADR-003 point 6 |
 | Market data reads, watchlist, alerts, notifications, preferences | `Implemented` | — |
@@ -394,7 +394,7 @@ measured results and recorded decisions; no placeholder claims.
 | 4 | Validation, error, loading, success, empty and transitional states. | API `Implemented`; UI `Planned (FE)` |
 | 5 | Full stack runs locally. | API and database `Implemented`; containerized run `Planned (B7)` |
 | 6 | Architecture documented. | `Implemented` |
-| 7 | Security implemented and documented. | foundation `Implemented`; sessions `Planned (B2)`; hardening `Planned (B7)` |
+| 7 | Security implemented and documented. | foundation `Implemented`; sessions `Implemented` (B2); hardening `Planned (B7)` |
 | 8 | Relevant automated tests, run in CI. | tests `Implemented`; CI `Implemented` |
 | 9 | Performance measured, not estimated. | slow-request and analytics timing `Planned (B3)` (ADR-009 point 8); UI `Planned (FE)` |
 | 10 | Defensible in a technical interview. | `Implemented` through the ADRs |

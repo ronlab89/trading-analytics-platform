@@ -100,7 +100,7 @@ Derived models are not persisted. Caching is not introduced until measured
 
 # 5. User
 
-**Status:** `Implemented` — table `users`. Role values: `Planned (B2)`.
+**Status:** `Implemented` — table `users`. Role values `VIEWER`, `TRADER`, `ADMIN`: `Implemented` (B2.1).
 
 | Field | Type | Null | Default | Notes |
 | --- | --- | --- | --- | --- |
