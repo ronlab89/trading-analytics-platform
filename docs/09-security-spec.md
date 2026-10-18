@@ -187,7 +187,7 @@ through the same permission checks (ADR-005 point 11, `Planned (FE)`).
 
 # 6. JWT Strategy
 
-**Status:** `Implemented` (`apps/api/src/services/auth.service.ts`, `apps/api/src/middleware/authenticate.ts`); unknown-role rejection `Planned (B2)` (ADR-005 Deferred detail)
+**Status:** `Implemented` (`apps/api/src/services/auth.service.ts`, `apps/api/src/middleware/authenticate.ts`); unknown-role rejection `Implemented` (B2.1, B2.3) (ADR-005 Deferred detail)
 
 The JWT is the access token. It carries only what identifies the session:
 
@@ -377,7 +377,7 @@ The same applies when the demo switches its demo identity or role
 
 # 11. Authorization
 
-**Status:** ownership checks `Implemented` (`apps/api/src/services/`); permission checks `Planned (B0)` mechanism, `Planned (B2)` roles (ADR-005 points 2-3, ADR-001; NFR-020, FR-084)
+**Status:** ownership checks `Implemented` (`apps/api/src/services/`); permission checks and roles `Implemented` (the `Actor` mechanism, B0; the roles and matrix, B2.1; `permissions.ts`) (ADR-005 points 2-3, ADR-001; NFR-020, FR-084)
 
 Authorization determines what an authenticated actor may do. It is decided
 in the application layer: every use case receives an `Actor { userId, role }`
@@ -558,16 +558,16 @@ expiry, malformed payload) with the same 401 `Authentication required.`.
 
 # 17. Authorization Failure
 
-**Status:** 401 and 404 `Implemented`; 403 `Planned (B2)` (ADR-002 point 10, ADR-005 points 2 and 12); socket close codes `Planned (B5)` (ADR-007 point 15)
+**Status:** 401, 403 and 404 `Implemented` (403 in B2.2) (ADR-002 point 10, ADR-005 points 2 and 12); socket close codes `Planned (B5)` (ADR-007 point 15)
 
 | Situation | Response | Status |
 | --- | --- | --- |
 | Not authenticated: missing, invalid or expired token | 401 `UNAUTHORIZED` `Authentication required.` | `Implemented` |
 | Invalid credentials at login | 401 `UNAUTHORIZED` `Invalid credentials.` | `Implemented` |
-| Token carrying an unknown role | 401 `UNAUTHORIZED` | `Planned (B2)` |
+| Token carrying an unknown role | 401 `UNAUTHORIZED` | `Implemented` (B2.1) |
 | Missing, unknown, revoked, idle, expired or reused refresh token | 401 `UNAUTHORIZED` `Invalid refresh token.` | `Implemented` (B2.4) |
 | Refresh or logout without the custom request header | 403 `FORBIDDEN` | `Implemented` (B2.4) |
-| Authenticated, own resource, missing permission | 403 `FORBIDDEN` | `Planned (B2)` |
+| Authenticated, own resource, missing permission | 403 `FORBIDDEN` | `Implemented` (B2.2) |
 | Another user's resource, or a missing one | 404 `NOT_FOUND` | `Implemented` |
 
 `FORBIDDEN` is declared in `AppErrorCode`
@@ -1178,7 +1178,7 @@ the database local only.
 
 # 39. Sensitive Data
 
-**Status:** `Implemented` (`packages/database/prisma/schema.prisma`, `apps/api/src/services/auth.service.ts`; NFR-022); sessions `Planned (B2)` (ADR-005 point 5); job input and idempotency records `Planned (B4)` (ADR-008 points 4 and 8)
+**Status:** `Implemented` (`packages/database/prisma/schema.prisma`, `apps/api/src/services/auth.service.ts`; NFR-022); sessions `Implemented` (B2.3, B2.4) (ADR-005 point 5); job input and idempotency records `Planned (B4)` (ADR-008 points 4 and 8)
 
 The system stores as little sensitive data as its features need. It holds
 no real financial account data (§40).
@@ -1336,9 +1336,9 @@ boundary. Security-critical behavior stays understandable and testable:
 
 | Mechanism | Library | Behavior owned by the project | Tests |
 | --- | --- | --- | --- |
-| JWT verification | `jsonwebtoken` | Payload shape, secret length, rejection rules (§6, §16) | `Implemented` (`auth.routes.test.ts`); expiry and algorithm `Planned (B2)` |
+| JWT verification | `jsonwebtoken` | Payload shape, secret length, rejection rules (§6, §16) | `Implemented` (`auth.routes.test.ts`, `token.service.test.ts`); expiry and algorithm `Implemented` (B2.3) |
 | Password hashing | `bcryptjs` | Generic failure message (§51) | `Implemented` (`auth.routes.test.ts`) |
-| Authorization rules | None | Permission matrix in the application layer (§13) | `Planned (B2)` |
+| Authorization rules | None | Permission matrix in the application layer (§13) | `Implemented` (`permissions.test.ts`, B2.1) |
 | Resource ownership | None | Owner-scoped lookups (§14) | `Implemented` (cross-user route tests) |
 | Input validation | `zod` | Schemas per route and in `@trading/contracts` (§18) | `Implemented` (`validate.test.ts`, route tests) |
 | Rate limiting | `express-rate-limit` | Limits and 429 envelope (§26) | `Implemented` (`rate-limit.test.ts`) |
@@ -1348,7 +1348,7 @@ boundary. Security-critical behavior stays understandable and testable:
 
 # 46. Frontend Security Boundary
 
-**Status:** server enforcement `Implemented` (ownership, `apps/api/src/services/`); application-layer enforcement `Planned (B0)`/`Planned (B2)` (ADR-001, ADR-005 point 3; NFR-026); client `Planned (FE)`
+**Status:** server enforcement `Implemented` (ownership, `apps/api/src/services/`); application-layer enforcement `Implemented` (B0, B2.1, B2.2) (ADR-001, ADR-005 point 3; NFR-026); client `Planned (FE)`
 
 The frontend is untrusted. The API never trusts these values from client
 state or request data:
@@ -1572,7 +1572,7 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 | Wrong password and unknown email return the same 401 | `Implemented` (`auth.routes.test.ts`) |
 | Missing and malformed token return 401 | `Implemented` (`auth.routes.test.ts`) |
 | Login rate limit returns 429 with the error envelope | `Implemented` (`rate-limit.test.ts`) |
-| Expired token, wrong algorithm, unknown role return 401 | `Planned (B2)` |
+| Expired token, wrong algorithm, unknown role return 401 | `Implemented` (`token.service.test.ts`, `authenticate.test.ts`) |
 | Startup fails with a missing or short `JWT_SECRET` | `Planned (B7)` (NFR-019, NFR-023) |
 | Refresh rotation, reuse detection, parallel refresh, lost response | `Implemented` (`refresh.service.test.ts`, `auth.refresh.routes.test.ts`) (ADR-005 Deferred detail) |
 | Logout revokes the family; refresh and logout without the custom header are rejected | `Implemented` (`logout.service.test.ts`, `require-client-header.test.ts`, `auth.refresh.routes.test.ts`) (NFR-028) |
@@ -1584,8 +1584,8 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 | Case | Status |
 | --- | --- |
 | Cross-user access returns 404, never 403, and changes nothing | `Implemented` (`portfolios`, `alerts`, `decisions`, `notifications`, `preferences` route tests) |
-| Allowed role, denied role (403), escalation attempts | `Planned (B2)` (NFR-020) |
-| Every matrix row of §13 | `Planned (B2)` |
+| Allowed role, denied role (403), escalation attempts | `Implemented` (`viewer-role.routes.test.ts`: a `VIEWER` is denied mutations and a forged `ADMIN` token is 401) (NFR-020) |
+| Every matrix row of §13 | `Implemented` (`permissions.test.ts`, one test per role and permission) |
 
 ### Validation
 
@@ -1635,9 +1635,9 @@ Security is complete for version 1 when:
 | # | Criterion | Status |
 | --- | --- | --- |
 | 1 | Every protected route requires a valid Bearer token | `Implemented` |
-| 2 | JWT validation runs server-side with a pinned algorithm and rejects unknown roles | `Implemented`; pinning and roles `Planned (B2)` |
+| 2 | JWT validation runs server-side with a pinned algorithm and rejects unknown roles | `Implemented`; pinning and roles `Implemented` (B2.1, B2.3) |
 | 3 | Refresh tokens rotate, reuse revokes the family, and logout revokes the session | `Implemented` (B2.4) |
-| 4 | Every use case checks permission (§13) and ownership in the application layer | Ownership `Implemented`; permissions `Planned (B0)`/`Planned (B2)` |
+| 4 | Every use case checks permission (§13) and ownership in the application layer | Ownership `Implemented`; permissions `Implemented` (B0, B2.1, B2.2) |
 | 5 | Another user's resource returns 404, never 403 | `Implemented` |
 | 6 | Client state cannot bypass authorization | `Implemented` (server checks); client `Planned (FE)` |
 | 7 | Every body, query and path parameter is validated | Body and query `Implemented`; path `Planned (B0)` |
