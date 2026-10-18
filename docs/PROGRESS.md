@@ -14,9 +14,10 @@
 > **B1 is done** (2026-10-17, merged into `develop`): performance, risk, range attribution, What Changed, the realized P/L of each
 > `SELL` and the single-currency rule. **B2 is in progress**: B2.1 (roles
 > `VIEWER`, `TRADER`, `ADMIN`, the hand-written enum migration and the real
-> permission matrix) is done on `feat/b2-1-roles` (2026-10-18).
+> permission matrix), B2.2 (permission checks), B2.3 (sessions and login) and
+> B2.4 (refresh and logout) are done (2026-10-18).
 
-**Last updated:** 2026-10-18 (B2.1); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
+**Last updated:** 2026-10-18 (B2.4); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
 the work as it was done.
 **Branch:** `docs/sdd-operations`, the source-of-truth work (ADRs 001-010,
@@ -945,7 +946,18 @@ entity, port, in-memory and Prisma repositories and the `sessions` migration;
 an access token service that takes its time from the `Clock` and pins HS256;
 and a login that returns `{ user, session: { accessToken, expiresAt } }`,
 starts a session family whose refresh token is stored only as a SHA-256 hash
-and sets it as an `HttpOnly` cookie. Refresh and logout are B2.4.
+and sets it as an `HttpOnly` cookie.
+**B2.4 is done** (`Implemented`, `odd/tasks/b2/b2-4-refresh-logout.md`):
+`POST /auth/refresh` rotates the cookie token into a successor of the same
+family, with a 10-second grace window that returns the same successor (kept
+AES-256-GCM encrypted under an HKDF key from `JWT_SECRET`) and revokes nothing;
+a rotated token used after the window revokes the whole family. `POST
+/auth/logout` revokes the family and clears the cookie, and answers 204 also
+for an unknown token. Both require `X-Requested-With: XMLHttpRequest` (403
+otherwise) and CORS now allows credentials for the `CORS_ORIGIN` list. The
+session repository gained an atomic `rotate`, `revokeFamily` and
+`clearExpiredSuccessors`, with a second additive migration. The `auth.refresh.reuse_detected`
+and `auth.logout` log lines wait for the B3 logger. B2.5 closes B2.
 B0 and B1 are done; B1 was built in seven slices. **B1.1 is done**
 (`Implemented`, `odd/tasks/b1/b1-1-fees.md`): a `SELL` whose fees exceed its gross
 proceeds is rejected with 400, `averageEntryPrice` includes `BUY` fees in the

@@ -1,4 +1,4 @@
-import type { CreateSessionInput, Session } from "../entities/session";
+import type { CreateSessionInput, RotateSessionInput, Session } from "../entities/session";
 
 /**
  * Session repository contract.
@@ -6,8 +6,7 @@ import type { CreateSessionInput, Session } from "../entities/session";
  *
  * Sessions hold refresh-token state. The token itself is never accepted or
  * returned: callers hash it first and look sessions up by that hash.
- * Rotation, reuse detection and revocation arrive with the refresh and
- * logout endpoints (B2.4).
+ * Time always comes from the caller, so the grace window is testable.
  */
 export interface SessionRepository {
   /**
@@ -19,4 +18,25 @@ export interface SessionRepository {
 
   /** Returns the session whose refresh token hashes to `tokenHash`, or null. */
   getByTokenHash(tokenHash: string): Promise<Session | null>;
+
+  /**
+   * Atomically marks the session rotated and creates its successor, which
+   * is returned. Resolves null, changing nothing, when the session is
+   * already rotated or revoked (or does not exist), so of two concurrent
+   * refreshes only one wins.
+   */
+  rotate(input: RotateSessionInput): Promise<Session | null>;
+
+  /**
+   * Revokes every session of the family not yet revoked and drops their
+   * stored successor tokens, since a revoked family has no grace window;
+   * none is deleted.
+   */
+  revokeFamily(familyId: string, revokedAt: Date): Promise<void>;
+
+  /**
+   * Drops the stored successor token of every session of the family rotated
+   * before `rotatedBefore`: their grace window has ended.
+   */
+  clearExpiredSuccessors(familyId: string, rotatedBefore: Date): Promise<void>;
 }

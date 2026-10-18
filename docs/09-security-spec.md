@@ -149,7 +149,7 @@ realistic risks rather than every enterprise control.
 
 # 5. Authentication
 
-**Status:** login and current user `Implemented` (`apps/api/src/services/auth.service.ts`); refresh and logout `Planned (B2)` (ADR-005 points 5-6; FR-001, FR-002, FR-083)
+**Status:** login, current user, refresh and logout `Implemented` (`apps/api/src/services/auth.service.ts`, `refresh.service.ts`, `logout.service.ts`) (ADR-005 points 5-6; FR-001, FR-002, FR-083)
 
 Authentication verifies the identity of the user. It runs on the backend;
 the frontend never decides whether a user is genuinely authenticated.
@@ -162,7 +162,7 @@ POST /api/v1/auth/login (rate-limited, validated)
 bcrypt comparison against the Credential table
     ↓
 Access token (JWT, 15 minutes)        ← Implemented
-+ refresh token cookie (opaque)       ← Planned (B2)
++ refresh token cookie (opaque)       ← Implemented
     ↓
 Authenticated session
 ```
@@ -176,6 +176,8 @@ Implemented today:
 - Login is limited to 5 attempts per 15 minutes per IP
   (`apps/api/src/middleware/rate-limit.ts`, ADR-005 point 12).
 - `GET /api/v1/auth/me` reads the user from the database on every call.
+- `POST /api/v1/auth/refresh` and `POST /api/v1/auth/logout` rotate and end
+  sessions (§7, §9), behind a custom request header (§8).
 
 There is no self-registration; users come from the seed (ADR-005 point 10).
 The demo uses a controlled demo identity with a role selector that goes
@@ -202,7 +204,8 @@ The JWT is the access token. It carries only what identifies the session:
   or the API refuses to start (`apps/api/src/config/env.ts`, NFR-019).
 - Sensitive information is never stored in the payload.
 - The `role` claim is a hint for the session; `GET /auth/me` and, from B2,
-  every refresh read the role from the database (ADR-005 point 9).
+  every refresh reads the role from the database (ADR-005 point 9,
+  `Implemented`, B2.4).
 
 `authenticate` rejects with 401 a token whose `role` is not in `UserRole`,
 such as an old `USER` token after the enum migration (ADR-005 Deferred
@@ -220,12 +223,12 @@ written explicitly from the clock.
 
 # 7. Token Lifetime
 
-**Status:** access token `Implemented` (`JWT_EXPIRES_IN_SECONDS`, default 900); refresh token issued and stored hashed at login `Implemented` (B2.3); rotation, reuse detection and logout `Planned (B2.4)` (ADR-005 points 4-6 and Deferred detail; FR-083)
+**Status:** access token `Implemented` (`JWT_EXPIRES_IN_SECONDS`, default 900); refresh token issued and stored hashed at login `Implemented` (B2.3); rotation, reuse detection, the grace window and logout `Implemented` (B2.4); the `auth.refresh.reuse_detected` log `Planned (B3)` (ADR-005 points 4-6 and Deferred detail; FR-083)
 
 | Token | Lifetime | Status |
 | --- | --- | --- |
 | Access token (JWT) | 15 minutes | `Implemented` |
-| Refresh token | Rotates on every use; idle timeout (7 days) and absolute family lifetime (30 days) | Issued at login `Implemented` (B2.3); rotation `Planned (B2.4)` |
+| Refresh token | Rotates on every use; idle timeout (7 days) and absolute family lifetime (30 days) | Issued at login `Implemented` (B2.3); rotation `Implemented` (B2.4) |
 
 Refresh token rules (ADR-005 point 5):
 
@@ -233,32 +236,49 @@ Refresh token rules (ADR-005 point 5):
 - `POST /api/v1/auth/refresh` issues a new access token and rotates the
   refresh token.
 - Presenting an already-rotated token revokes the whole token family, and
-  `auth.refresh.reuse_detected` is logged (FR-083, ADR-009 point 9).
+  `auth.refresh.reuse_detected` is logged (FR-083, ADR-009 point 9; the log
+  line is `Planned (B3)`, the revocation is `Implemented`).
 - Role changes take effect at the next refresh, within 15 minutes
   (ADR-005 point 9).
 
-Code today (B2.3): login returns `{ user, session: { accessToken, expiresAt } }`
+Code today (B2.4): login returns `{ user, session: { accessToken, expiresAt } }`
 (ADR-005 point 8) and starts a session whose refresh token is 256 random
-bits, stored only as a SHA-256 hash. There is no refresh endpoint yet, so a
-session still ends when the access token expires; refresh and logout arrive
-in B2.4.
+bits, stored only as a SHA-256 hash. Refresh creates a successor row in the
+same family with the same absolute expiry, and every rejection is the same
+401 `Invalid refresh token.`, so a caller cannot tell an unknown token from a
+revoked, idle or reused one.
 
-> Open detail (B2, ADR-005 Deferred detail): parallel refreshes are handled
-> by a client single-flight refresh plus a grace window of about 10 seconds
-> that returns the same successor pair. The successor refresh token stays
-> recoverable (encrypted at rest) only for that window.
+Decided (B2.4, ADR-005 Deferred detail): parallel refreshes get a grace window
+of 10 seconds in which a just-rotated token returns the same successor pair,
+and revoke nothing. The successor refresh token is kept encrypted on the
+rotated row for that window only:
+
+- AES-256-GCM, with a random IV per value, so a tampered value fails instead of
+  decrypting to garbage.
+- The key is derived with HKDF-SHA256 from `JWT_SECRET` with its own context
+  (`refresh-grace-window`), so it is unrelated to the signing key. One function
+  (`grace-token-cipher.ts`) builds it, so moving to a dedicated secret later
+  changes only that function. Rotating `JWT_SECRET` only invalidates the pairs
+  in flight for those 10 seconds.
+- The ciphertext is cleared when the family rotates again after the window, and
+  on revocation. A last rotated row of a family that never refreshes again
+  keeps it until logout or revocation; the idle timeout leaves that token
+  unusable (follow-up, not required for B2).
+- Outside the window the token is reuse and revokes the family; a rotation is
+  one atomic compare-and-set, so of two concurrent refreshes only one rotates.
 
 Decided (B2.3, ADR-005 Deferred detail): the absolute family lifetime is
 `expiresAt` in the sessions table and the cookie `Max-Age`
 (`SESSION_ABSOLUTE_SECONDS`, default 30 days). The idle timeout is
 `lastUsedAt` plus `SESSION_IDLE_SECONDS` (default 7 days) and is not stored.
-The idle timeout is enforced by the refresh endpoint (B2.4).
+The refresh endpoint enforces both (B2.4); each rotation sets the successor's
+`lastUsedAt`, so the idle timeout slides with use.
 
 ---
 
 # 8. Token Storage
 
-**Status:** server cookie set at login `Implemented` (B2.3); reading it `Planned (B2.4)`; `Planned (FE)` (client memory) (ADR-005 points 4, 5, 7; NFR-028)
+**Status:** server cookie set at login and read by refresh and logout `Implemented` (B2.3, B2.4); `Planned (FE)` (client memory) (ADR-005 points 4, 5, 7; NFR-028)
 
 | Credential | Where | Rule |
 | --- | --- | --- |
@@ -271,28 +291,35 @@ state-changing routes need no CSRF tokens; the refresh cookie reaches only
 the refresh and logout endpoints, which require a custom request header
 (ADR-005 point 7, §23).
 
-Code today (B2.3): login sets the `refresh_token` cookie with those
-attributes and `Max-Age` equal to the absolute lifetime; no endpoint reads it
-yet (B2.4). The client stores nothing because no client consumes the API yet.
+Code today (B2.4): login and refresh set the `refresh_token` cookie with those
+attributes and `Max-Age` equal to the absolute lifetime; refresh reads it and
+logout reads and clears it (clearing repeats the path and flags, or the browser
+keeps the cookie). The client stores nothing because no client consumes the API
+yet.
 
-> Open detail (B2, ADR-005 Deferred detail): the local production stack
-> has no HTTPS. The API is served on `localhost`, which browsers treat as
-> secure, or `Secure` becomes environment-dependent; B2 documents the
-> choice.
+Decided (B2.4, ADR-005 Deferred detail): `Secure` is always set, also locally;
+it does not depend on the environment. The local stack is served on
+`localhost`, which Chrome and Firefox treat as a secure context and so accept
+the cookie over HTTP; Safari does not, and needs HTTPS for local work.
 
-> Open detail (B2): the custom header's name and the CORS configuration
-> with credentials for the web origin (ADR-005 Consequences) are fixed in
-> B2 and recorded in `07-api-spec.md` §9.
+Decided (B2.4, ADR-005 Consequences): refresh and logout require
+`X-Requested-With: XMLHttpRequest`, exact value, else 403 `FORBIDDEN` before
+anything is read or revoked (`require-client-header.ts`). A form or a
+navigation cannot add the header, and another origin can add it only after a
+CORS preflight, which the allowed origins refuse. CORS answers
+`Access-Control-Allow-Credentials: true` for the explicit `CORS_ORIGIN` list
+(wildcards are rejected at startup). Recorded in `07-api-spec.md` §9.
 
 ---
 
 # 9. Logout
 
-**Status:** `Planned (B2)` (endpoint); `Planned (FE)` (client) (ADR-005 points 6-7; FR-003)
+**Status:** endpoint `Implemented` (B2.4); `Planned (FE)` (client); the `auth.logout` log line `Planned (B3)` (ADR-005 points 6-7; FR-003)
 
 `POST /api/v1/auth/logout`, with the required custom header, revokes the
 session's refresh-token family and clears the cookie. A request without
-the header is rejected and the session is not revoked.
+the header is rejected and the session is not revoked. It answers 204 also
+for a missing, unknown or already revoked cookie, so it is safe to repeat.
 
 An access token already issued stays valid until it expires, at most 15
 minutes. This is documented behavior, not a defect (ADR-005 point 6,
@@ -538,7 +565,8 @@ expiry, malformed payload) with the same 401 `Authentication required.`.
 | Not authenticated: missing, invalid or expired token | 401 `UNAUTHORIZED` `Authentication required.` | `Implemented` |
 | Invalid credentials at login | 401 `UNAUTHORIZED` `Invalid credentials.` | `Implemented` |
 | Token carrying an unknown role | 401 `UNAUTHORIZED` | `Planned (B2)` |
-| Missing, revoked or expired refresh token | 401 `UNAUTHORIZED` | `Planned (B2)` |
+| Missing, unknown, revoked, idle, expired or reused refresh token | 401 `UNAUTHORIZED` `Invalid refresh token.` | `Implemented` (B2.4) |
+| Refresh or logout without the custom request header | 403 `FORBIDDEN` | `Implemented` (B2.4) |
 | Authenticated, own resource, missing permission | 403 `FORBIDDEN` | `Planned (B2)` |
 | Another user's resource, or a missing one | 404 `NOT_FOUND` | `Implemented` |
 
@@ -711,7 +739,7 @@ component test that renders `<script>` in a note as text (NFR-027).
 
 # 23. CSRF
 
-**Status:** `Planned (B2)` (ADR-005 point 7; NFR-028); no exposure today (the API sets no cookie)
+**Status:** `Implemented` (B2.4; `require-client-header.ts`) (ADR-005 point 7; NFR-028)
 
 The CSRF exposure follows the token transport (§8):
 
@@ -725,13 +753,13 @@ script that tries to set one triggers a CORS preflight, which the API
 refuses for origins outside `CORS_ORIGIN` (§24). A request without the
 header is rejected, and logout without it revokes nothing (§9).
 
-The header name is an Open detail (B2), §8.
+The header is `X-Requested-With: XMLHttpRequest` (§8).
 
 ---
 
 # 24. CORS
 
-**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`; NFR-025); credentialed CORS for the refresh cookie `Planned (B2)` (ADR-005 Consequences)
+**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`; NFR-025); credentialed CORS for the refresh cookie `Implemented` (B2.4) (ADR-005 Consequences)
 
 - Allowed origins come from `CORS_ORIGIN`, a comma-separated list
   (default `http://localhost:5173`), set per environment (ADR-006
@@ -742,10 +770,11 @@ The header name is an Open detail (B2), §8.
 - The public demo calls no backend (ADR-006 point 7), so its origin needs
   no entry.
 
-Code today: `cors({ origin: env.CORS_ORIGIN })` without `credentials`, so
-browsers send no cookies cross-origin. B2 enables credentials for the web
-origin so the refresh cookie reaches `/api/v1/auth` (Open detail (B2),
-§8).
+Code today (B2.4): `cors({ origin: env.CORS_ORIGIN, credentials: true })`, so
+browsers send the refresh cookie cross-origin from the allowed origins to
+`/api/v1/auth`. This is safe because the origins are an explicit list: a
+wildcard with credentials would be refused by browsers and is rejected at
+startup (§8).
 
 ---
 
@@ -804,11 +833,12 @@ Coverage of the abuse-prone endpoints:
 | Login | Dedicated limiter |
 | Password-related operations | None exist: no self-registration or reset (§52-53, ADR-005 point 10) |
 | Analytics | General limiter |
-| `POST /api/v1/auth/refresh` (`Planned (B2)`) | General limiter |
+| `POST /api/v1/auth/refresh` (`Implemented`, B2.4) | General limiter |
 | Simulation control (`Planned (B5)`, `simulation:control`) | General limiter |
 
 > Open detail (B2): whether `POST /api/v1/auth/refresh` also gets a
-> dedicated limiter. ADR-005 fixes only the login limit.
+> dedicated limiter. ADR-005 fixes only the login limit; B2.4 leaves refresh
+> on the general limiter.
 
 ---
 
@@ -1157,17 +1187,17 @@ no real financial account data (§40).
 | --- | --- | --- | --- |
 | Password | `Credential.passwordHash`, a `bcryptjs` hash in its own table (`05-data-model.md` §5.2) | Never returned or logged (§52) | `Implemented` |
 | Email, display name | `User` (`05-data-model.md` §5) | Returned only to the user themself (`GET /auth/me`); logs carry `userId` only (ADR-009 point 3) | `Implemented`; logs `Planned (B3)` |
-| Refresh token | Sessions table, hash only (`05-data-model.md` §5.3) | Cookie only (§8) | `Planned (B2)` |
-| Successor refresh token | Encrypted at rest for the grace window only, then cleared (ADR-005 Deferred detail) | Never logged | `Planned (B2)` |
+| Refresh token | Sessions table, hash only (`05-data-model.md` §5.3) | Cookie only (§8) | `Implemented` (B2.3) |
+| Successor refresh token | Encrypted at rest for the grace window only, then cleared (ADR-005 Deferred detail) | Never logged | `Implemented` (B2.4) |
 | CSV import input | The `jobs` row, bounded in size (`05-data-model.md` §52) | Owner only (ADR-008 point 9); never logged (ADR-009 Deferred detail) | `Planned (B4)` |
 | Idempotency records | Request hash and stored response per user, 24 hours (ADR-008 point 8) | Replayed only to the same user | `Planned (B4)` |
 | Portfolio and transaction data | Domain tables | Owner only (§14, §15) | `Implemented` |
 
 The demo uses synthetic data only (§42).
 
-> Open detail (B2): the encryption key and algorithm for the successor
-> refresh token, and how the key is provided (§43). ADR-005 requires
-> encryption at rest without fixing either.
+Decided (B2.4): the successor refresh token is encrypted with AES-256-GCM and
+a key derived with HKDF-SHA256 from `JWT_SECRET` under its own context, so no
+new secret has to be provisioned (§7, §43).
 
 ---
 
@@ -1370,7 +1400,7 @@ browser history, server logs or `Referer` headers (NFR-019).
 | --- | --- | --- |
 | Email and password | `POST /api/v1/auth/login` JSON body | `Implemented` |
 | Access token | `Authorization: Bearer` header | `Implemented` |
-| Refresh token | `HttpOnly` cookie (§8) | `Planned (B2)` |
+| Refresh token | `HttpOnly` cookie (§8) | `Implemented` (B2.3, B2.4) |
 | WebSocket token | `AUTHENTICATE` message, never the connection URL (ADR-007 point 2) | `Planned (B5)` |
 
 Path and query parameters carry only resource IDs, filters and pagination.
@@ -1405,7 +1435,7 @@ headers or bodies, but the error `message` is not filtered.
 
 # 50. Auditability
 
-**Status:** `Planned (B3)` (ADR-009 points 3, 9 and 13); refresh reuse event `Planned (B2)` (ADR-005 point 5)
+**Status:** `Planned (B3)` (ADR-009 points 3, 9 and 13); the reuse revocation itself `Implemented` (B2.4), its event `Planned (B3)` (ADR-005 point 5)
 
 Security-relevant actions are traceable through structured security
 events in the operational log (ADR-009 point 9). Version 1 has no separate
@@ -1418,7 +1448,7 @@ audit store; operational logs are not permanent audit storage
 | `auth.login.failed` | Any credential failure, with the same fields whatever the cause (§51) | B3 |
 | `auth.refresh.reuse_detected` | An already-rotated refresh token is presented and its family is revoked (§7) | B2 / B3 |
 | `authz.denied` | A permission check fails, including a refused realtime subscription (§17) | B2 / B5 |
-| `auth.logout` | A logout request revokes the refresh token family; level `info`, carries `userId` only (ADR-009 point 9, amended 2026-10-07) | B2 (`Planned (B2)` with the logout endpoint) |
+| `auth.logout` | A logout request revokes the refresh token family; level `info`, carries `userId` only (ADR-009 point 9, amended 2026-10-07) | B3 (the logout endpoint `Implemented`, B2.4; the log line waits for the logger) |
 
 Each event carries `timestamp`, `event`, `requestId` and `userId` when
 known, and none of the fields of §49.
@@ -1427,8 +1457,9 @@ Not covered in version 1: role changes have no endpoint (roles come from
 the seed, ADR-005 point 10), so there is no role-change event.
 
 Decided (ADR-009 point 9, amended 2026-10-07): logout emits `auth.logout`
-at level `info` with `userId` only; the event exists once the logout
-endpoint does (`Planned (B2)`).
+at level `info` with `userId` only. The logout endpoint exists (B2.4); the
+event is emitted once the logger does (`Planned (B3)`), and the logout service
+will then need to return the `userId`.
 
 > Open detail (B3): whether a cross-user request answered with 404 (§15)
 > emits `authz.denied`. ADR-009 point 9 names the event without listing
@@ -1543,9 +1574,9 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 | Login rate limit returns 429 with the error envelope | `Implemented` (`rate-limit.test.ts`) |
 | Expired token, wrong algorithm, unknown role return 401 | `Planned (B2)` |
 | Startup fails with a missing or short `JWT_SECRET` | `Planned (B7)` (NFR-019, NFR-023) |
-| Refresh rotation, reuse detection, parallel refresh, lost response | `Planned (B2)` (ADR-005 Deferred detail) |
-| Logout revokes the family; refresh and logout without the custom header are rejected | `Planned (B2)` (NFR-028) |
-| Cookie attributes (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path`) | `Planned (B2)` (NFR-028) |
+| Refresh rotation, reuse detection, parallel refresh, lost response | `Implemented` (`refresh.service.test.ts`, `auth.refresh.routes.test.ts`) (ADR-005 Deferred detail) |
+| Logout revokes the family; refresh and logout without the custom header are rejected | `Implemented` (`logout.service.test.ts`, `require-client-header.test.ts`, `auth.refresh.routes.test.ts`) (NFR-028) |
+| Cookie attributes (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path`) | `Implemented` (`auth.routes.test.ts`, `auth.refresh.routes.test.ts`) (NFR-028) |
 | Session isolation after logout and role switch | `Planned (FE)` (§10) |
 
 ### Authorization
@@ -1605,7 +1636,7 @@ Security is complete for version 1 when:
 | --- | --- | --- |
 | 1 | Every protected route requires a valid Bearer token | `Implemented` |
 | 2 | JWT validation runs server-side with a pinned algorithm and rejects unknown roles | `Implemented`; pinning and roles `Planned (B2)` |
-| 3 | Refresh tokens rotate, reuse revokes the family, and logout revokes the session | `Planned (B2)` |
+| 3 | Refresh tokens rotate, reuse revokes the family, and logout revokes the session | `Implemented` (B2.4) |
 | 4 | Every use case checks permission (§13) and ownership in the application layer | Ownership `Implemented`; permissions `Planned (B0)`/`Planned (B2)` |
 | 5 | Another user's resource returns 404, never 403 | `Implemented` |
 | 6 | Client state cannot bypass authorization | `Implemented` (server checks); client `Planned (FE)` |
@@ -1613,7 +1644,7 @@ Security is complete for version 1 when:
 | 8 | Database access stays behind the backend repositories | `Implemented` |
 | 9 | Secrets stay server-side, are validated at startup and are never tracked | `Implemented`; `DATABASE_URL` check `Planned (B7)` |
 | 10 | Errors expose no internals and do not reveal another user's resources | `Implemented` |
-| 11 | CORS allows only `CORS_ORIGIN`, with credentials for the refresh cookie | `Implemented`; credentials `Planned (B2)` |
+| 11 | CORS allows only `CORS_ORIGIN`, with credentials for the refresh cookie | `Implemented`; credentials `Implemented` (B2.4) |
 | 12 | Realtime sockets authenticate by message and channels are authorized | `Planned (B5)` |
 | 13 | Realtime events are validated and ordered by `sequence` | `Planned (B5)`; client `Planned (FE)` |
 | 14 | No credential, token or secret is logged, enforced by tests | `Planned (B3)` |
