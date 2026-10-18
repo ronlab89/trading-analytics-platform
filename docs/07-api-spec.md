@@ -205,7 +205,7 @@ envelope (§5). Propagation to every log line through `AsyncLocalStorage` is
 
 # 9. Authentication
 
-**Status:** `Implemented` for login (with its session), current user and roles; refresh and logout `Planned (B2.4)` (ADR-005)
+**Status:** `Implemented` for login (with its session), current user, roles, refresh and logout (B2.4) (ADR-005)
 
 There is no self-registration; users come from the seed (ADR-005 point 10).
 Protected endpoints require `Authorization: Bearer <accessToken>`; every
@@ -221,8 +221,8 @@ draft-7 `RateLimit` and `RateLimit-Policy` headers:
 | --- | --- |
 | `POST /api/v1/auth/login` | `Implemented`; ADR-005 response shape `Implemented` (B2.3) |
 | `GET /api/v1/auth/me` | `Implemented` |
-| `POST /api/v1/auth/refresh` | `Planned (B2.4)` |
-| `POST /api/v1/auth/logout` | `Planned (B2.4)` |
+| `POST /api/v1/auth/refresh` | `Implemented` (B2.4) |
+| `POST /api/v1/auth/logout` | `Implemented` (B2.4) |
 
 ## Login
 
@@ -263,8 +263,8 @@ Set-Cookie: refresh_token=<opaque>; Max-Age=2592000; Path=/api/v1/auth; HttpOnly
 The refresh token is 256 random bits and never appears in the body. The
 server stores only its SHA-256 hash in a new session family, which lives
 `SESSION_ABSOLUTE_SECONDS` (default 30 days; the cookie `Max-Age` is the same
-value). A failed login sets no cookie and creates no session. Reading the
-cookie belongs to refresh and logout (B2.4).
+value). A failed login sets no cookie and creates no session. Refresh and
+logout read the cookie.
 
 Errors: 400 `VALIDATION_ERROR` (invalid email or empty password); 401
 `UNAUTHORIZED` `Invalid credentials.` for every credential failure, so
@@ -294,29 +294,81 @@ returns `{ "data": { "user": { id, email, displayName, role } } }`. Returns
 
 ## Refresh
 
-**Status:** `Planned (B2)` (ADR-005 points 5-7)
+**Status:** `Implemented` (B2.4) (ADR-005 points 5-7)
 
 ```text
 POST /api/v1/auth/refresh
+X-Requested-With: XMLHttpRequest
+Cookie: refresh_token=<opaque>
 ```
 
-Reads the refresh-token cookie and requires a custom request header (CSRF
-defence). Issues a new access token and rotates the refresh token; reusing a
-rotated token revokes the whole token family.
+No body. The refresh token is read from the cookie, never from the body, and
+the custom header is required (see below). Response (200) has the login shape,
+for the user as stored now (so a role change shows up here, ADR-005 point 9),
+and sets the rotated cookie with the same attributes as login:
+
+```json
+{
+  "data": {
+    "user": { "id": "...", "email": "...", "displayName": "...", "role": "TRADER" },
+    "session": { "accessToken": "...", "expiresAt": "2026-10-18T12:30:00.000Z" }
+  }
+}
+```
+
+Every use of a live token rotates it: the old row is marked rotated and a
+successor in the same family is created, with the same absolute expiry. The
+successor's `lastUsedAt` is the rotation time, so the idle timeout
+(`SESSION_IDLE_SECONDS`, default 7 days) slides with use while the family still
+ends at its absolute lifetime (`SESSION_ABSOLUTE_SECONDS`, default 30 days).
+
+**Grace window.** For 10 seconds after a token is rotated, presenting it again
+returns the same successor refresh token (with a freshly signed access token)
+and revokes nothing. This covers two parallel refreshes and a response lost on
+the way. The successor is kept encrypted on the rotated row only for that
+window, and is dropped when the family rotates again after the window ends or
+is revoked. After the
+window, a rotated token is **reuse**: the whole family is revoked and the
+request is rejected (`auth.refresh.reuse_detected` is logged once B3 exists).
+
+Errors: 401 `UNAUTHORIZED` `Invalid refresh token.` for every failure (missing
+cookie, unknown, revoked, idle, past its absolute lifetime, reused, or user no
+longer exists), so a caller cannot tell them apart; the response also clears
+the cookie. A failure on our side (500) leaves the cookie alone. 403
+`FORBIDDEN` when the custom header is missing; nothing is read or rotated.
 
 ---
 
 ## Logout
 
-**Status:** `Planned (B2)` (ADR-005 points 6-7)
+**Status:** `Implemented` (B2.4) (ADR-005 points 6-7; FR-003)
 
 ```text
 POST /api/v1/auth/logout
+X-Requested-With: XMLHttpRequest
+Cookie: refresh_token=<opaque>
 ```
 
-Requires the custom request header. Revokes the session and clears the
-refresh cookie. An access token already issued stays valid until it expires
-(at most 15 minutes).
+No body. Revokes the whole token family of the cookie's session, so the token
+and every successor stop working, and clears the cookie. Response: 204.
+
+Logout never fails on the token: a missing, unknown or already revoked cookie
+also answers 204 with the cookie cleared, and repeating it changes nothing. An
+access token already issued stays valid until it expires (at most 15 minutes).
+403 `FORBIDDEN` when the custom header is missing; the session is not revoked.
+The `auth.logout` log line (`userId` only) is `Planned (B3)`.
+
+### Custom request header and CORS
+
+Refresh and logout require `X-Requested-With: XMLHttpRequest` (exact value).
+With `SameSite=Strict` on the cookie, this is the CSRF defence of ADR-005 point
+7: a form or a navigation cannot add the header, and a script on another
+origin can only add it after a CORS preflight that the allowed origins refuse.
+
+CORS answers with `credentials: true` for the origins in `CORS_ORIGIN`, an
+explicit list (wildcards are rejected at startup), so the web origin can send
+the cookie. The `Secure` attribute is always set, also locally: Chrome and
+Firefox accept it on `localhost`; Safari does not, and needs HTTPS there.
 
 ---
 
