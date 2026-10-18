@@ -12,6 +12,7 @@ export function toDomainSession(row: PrismaSession): Session {
     expiresAt: row.expiresAt,
     rotatedAt: row.rotatedAt,
     revokedAt: row.revokedAt,
+    successorCiphertext: row.successorCiphertext,
   };
 }
 
