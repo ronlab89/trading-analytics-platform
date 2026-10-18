@@ -12,6 +12,9 @@ vi.mock("@trading/database", () => ({
   PrismaCredentialRepository: class {
     getByUserId = getByUserId;
   },
+  PrismaSessionRepository: class {
+    create = vi.fn();
+  },
 }));
 
 const { login } = await import("./auth.service.js");
