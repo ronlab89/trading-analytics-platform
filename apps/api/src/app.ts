@@ -64,8 +64,10 @@ export function createApp(options: AppOptions = {}): Express {
   // origin(s) come from CORS_ORIGIN (config/env.ts); update it once
   // apps/web's real dev/prod origin is known. `credentials` lets the browser
   // send the refresh cookie to the auth routes; it is safe because the origins
-  // are an explicit list, never a wildcard (config/env.ts).
-  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+  // are an explicit list, never a wildcard (config/env.ts). `exposedHeaders`
+  // lets the browser read X-Request-ID to quote it in a bug report
+  // (ADR-009 point 5).
+  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true, exposedHeaders: ["X-Request-ID"] }));
 
   app.use(requestId);
   app.use(attachLogger(options.logger ?? defaultLogger));
