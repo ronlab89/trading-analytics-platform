@@ -32,6 +32,26 @@ describe("envSchema session lifetimes", () => {
   });
 });
 
+describe("envSchema LOG_LEVEL", () => {
+  it.each([
+    ["development", "debug"],
+    ["test", "silent"],
+    ["production", "info"],
+  ])("defaults to the level of %s when LOG_LEVEL is absent", (nodeEnv, level) => {
+    const result = envSchema.safeParse({ ...base, NODE_ENV: nodeEnv });
+    expect(result.success && result.data.LOG_LEVEL).toBe(level);
+  });
+
+  it("lets LOG_LEVEL override the default of the environment", () => {
+    const result = envSchema.safeParse({ ...base, NODE_ENV: "test", LOG_LEVEL: "info" });
+    expect(result.success && result.data.LOG_LEVEL).toBe("info");
+  });
+
+  it.each(["trace", "verbose", "INFO", ""])("rejects %s as a level", (value) => {
+    expect(envSchema.safeParse({ ...base, LOG_LEVEL: value }).success).toBe(false);
+  });
+});
+
 describe("envSchema CORS_ORIGIN", () => {
   it("defaults to the local web origin", () => {
     const result = parseCors();
