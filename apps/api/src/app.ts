@@ -5,6 +5,7 @@ import cors from "cors";
 import type { Logger } from "@trading/application";
 import { requestId } from "./middleware/request-id.js";
 import { attachLogger } from "./middleware/attach-logger.js";
+import { requestLogger } from "./middleware/request-logger.js";
 import { logger as defaultLogger } from "./logging/logger.js";
 import { generalApiRateLimiter } from "./middleware/rate-limit.js";
 import { errorHandler } from "./middleware/error-handler.js";
@@ -32,6 +33,8 @@ const JSON_BODY_LIMIT = "100kb";
 
 export interface AppOptions {
   logger?: Logger;
+  /** Overrides `SLOW_REQUEST_THRESHOLD_MS`, for tests. */
+  slowRequestThresholdMs?: number;
 }
 
 /**
@@ -66,6 +69,11 @@ export function createApp(options: AppOptions = {}): Express {
 
   app.use(requestId);
   app.use(attachLogger(options.logger ?? defaultLogger));
+  app.use(
+    requestLogger({
+      slowThresholdMs: options.slowRequestThresholdMs ?? env.SLOW_REQUEST_THRESHOLD_MS,
+    }),
+  );
 
   // Health endpoints are registered before the rate limiter on purpose:
   // orchestrators and uptime monitors poll them frequently and must

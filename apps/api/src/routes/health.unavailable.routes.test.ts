@@ -62,14 +62,16 @@ describe("GET /health/ready (database unavailable)", () => {
   it("logs one health.database.unavailable entry at error without secrets", async () => {
     await request(app).get("/health/ready");
 
-    expect(logger.entries).toHaveLength(1);
-    expect(logger.entries[0]).toMatchObject({
+    const unavailable = logger.entries.filter(
+      (entry) => entry.event === "health.database.unavailable",
+    );
+    expect(unavailable).toHaveLength(1);
+    expect(unavailable[0]).toMatchObject({
       level: "error",
-      event: "health.database.unavailable",
       fields: { errorName: "Error" },
     });
-    expect(typeof logger.entries[0]?.fields.requestId).toBe("string");
-    const line = JSON.stringify(logger.entries[0]);
+    expect(typeof unavailable[0]?.fields.requestId).toBe("string");
+    const line = JSON.stringify(logger.entries);
     expect(line).not.toContain("s3cret");
     expect(line).not.toContain("postgres://");
     expect(line).not.toContain("ECONNREFUSED");

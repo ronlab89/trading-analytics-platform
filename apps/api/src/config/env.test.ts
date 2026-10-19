@@ -52,6 +52,22 @@ describe("envSchema LOG_LEVEL", () => {
   });
 });
 
+describe("envSchema SLOW_REQUEST_THRESHOLD_MS", () => {
+  it("defaults to 500 milliseconds", () => {
+    const result = envSchema.safeParse(base);
+    expect(result.success && result.data.SLOW_REQUEST_THRESHOLD_MS).toBe(500);
+  });
+
+  it("reads the threshold from the environment", () => {
+    const result = envSchema.safeParse({ ...base, SLOW_REQUEST_THRESHOLD_MS: "1200" });
+    expect(result.success && result.data.SLOW_REQUEST_THRESHOLD_MS).toBe(1200);
+  });
+
+  it.each(["0", "-1", "1.5", "slow"])("rejects %s as a threshold", (value) => {
+    expect(envSchema.safeParse({ ...base, SLOW_REQUEST_THRESHOLD_MS: value }).success).toBe(false);
+  });
+});
+
 describe("envSchema CORS_ORIGIN", () => {
   it("defaults to the local web origin", () => {
     const result = parseCors();
