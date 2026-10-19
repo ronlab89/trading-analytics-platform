@@ -34,11 +34,7 @@ export interface RequestFailure {
  */
 export function logRequestFailure(req: Request, failure: RequestFailure): void {
   const level = LEVEL_BY_CODE[failure.code];
-  const fields = {
-    requestId: req.requestId,
-    errorCategory: failure.code,
-    status: failure.status,
-  };
+  const fields = { errorCategory: failure.code, status: failure.status };
 
   if (level === "error") {
     const cause = failure.cause;

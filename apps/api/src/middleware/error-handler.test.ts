@@ -9,18 +9,21 @@ import {
   ValidationFailedError,
 } from "@trading/application";
 import { AppError } from "../errors/app-error.js";
+import { runWithRequestContext, withRequestContext } from "../logging/request-context.js";
 import { errorHandler } from "./error-handler.js";
 
 function run(err: unknown) {
   const json = vi.fn((_body: ErrorResponse) => undefined);
   const status = vi.fn((_code: number) => ({ json }));
-  const logger = capturingLogger();
-  const req = { requestId: "req-1", logger } as unknown as Request;
-  errorHandler(err, req, { status } as unknown as Response, vi.fn());
+  const capture = capturingLogger();
+  const req = { requestId: "req-1", logger: withRequestContext(capture) } as unknown as Request;
+  runWithRequestContext({ requestId: "req-1" }, () => {
+    errorHandler(err, req, { status } as unknown as Response, vi.fn());
+  });
   return {
     status: status.mock.calls[0]?.[0],
     body: (json.mock.calls[0] as [ErrorResponse])[0],
-    entries: logger.entries,
+    entries: capture.entries,
   };
 }
 

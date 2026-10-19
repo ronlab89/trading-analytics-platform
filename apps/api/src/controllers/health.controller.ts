@@ -38,7 +38,6 @@ export async function readinessHandler(req: Request, res: Response): Promise<voi
     });
   } catch (error) {
     req.logger.error(LOG_EVENTS.healthDatabaseUnavailable, {
-      requestId: req.requestId,
       errorName: error instanceof Error ? error.name : "UnknownError",
     });
 

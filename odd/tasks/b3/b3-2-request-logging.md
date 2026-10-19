@@ -27,7 +27,7 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 `AsyncLocalStorage` request context fed by the `requestId` middleware, and the logger reading it.
+- [x] T1 `AsyncLocalStorage` request context fed by the `requestId` middleware, and the logger reading it. `logging/request-context.ts` (`runWithRequestContext`, `withRequestContext`); `attachLogger` wraps the logger with it; the explicit `requestId` that B3.1 passed by hand is gone.
 - [ ] T2 `pino-http` with `http.request.completed`, the path without query string and the slow-request `warn`; `SLOW_REQUEST_THRESHOLD_MS` in `env.ts`.
 - [ ] T3 CORS `exposedHeaders` and its test.
 - [ ] T4 Integration tests for correlation and the slow-request level (the threshold read from config, no real sleeps beyond what the `Clock` or a tiny threshold allows).
@@ -48,3 +48,4 @@ pnpm --filter @trading/api test; pnpm typecheck; pnpm lint.
 ## Log
 
 - Created from the B3 plan approved by the user on 2026-10-19.
+- 2026-10-19: T1 done, pending the user's checks. Verified before building: with a throwaway script (not committed) on Express 5 and Node 24.16, the `AsyncLocalStorage` store survives `express.json()` for a valid body, a malformed body (the error handler still sees it) and an `await` in the handler, so no fallback is needed. Design: the logger decorator `withRequestContext` adds `requestId` to every entry written during a request and the context wins over a `requestId` in the fields; outside a request, entries pass through untouched (startup and shutdown). `request-id.ts` runs `next()` inside the context. B3.1's manual `requestId` in `logRequestFailure` and the readiness entry was removed (single source). `error-handler.test.ts` now runs the handler inside a context. New tests: `request-context.test.ts` (6) and `request-id.test.ts` (5, including a POST with body and two concurrent requests).
