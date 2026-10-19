@@ -30,7 +30,7 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 Re-verify the starting point (the 4 `console.*` sites, `env.ts`, the error handler) and add the `Logger` port plus a capturing test logger.
+- [x] T1 Re-verify the starting point (the 4 `console.*` sites, `env.ts`, the error handler) and add the `Logger` port plus a capturing test logger. Port in `packages/application/src/logger.ts` (`Logger`, `LogFields`, `capturingLogger`, `silentLogger`), tests in `logger.test.ts`, exported from `index.ts`.
 - [ ] T2 Add `pino` and `pino-pretty`, the adapter, `LOG_LEVEL` in `env.ts` and the redaction list, with one unit test per redacted case and the event-name convention test.
 - [ ] T3 Replace the `console.*` sites; log by category in the error handler; rename to `http.request.failed`; error handler tests (200, 4xx and 500 paths, no stack in the response).
 - [ ] T4 Reconcile `13-observability-spec.md` and `04-tech-stack.md` for what landed.
@@ -50,3 +50,4 @@ pnpm --filter @trading/application test; pnpm --filter @trading/api test; pnpm t
 ## Log
 
 - Created from the B3 plan approved by the user on 2026-10-19 (the 8 open details of `13-observability-spec.md` approved in one batch).
+- 2026-10-19: T1 done. Findings that shape T2 and T3: (a) the `console.*` sites are `env.ts` (2 lines, kept), `error-handler.ts` (`logRequestFailed`, called for dependency and unexpected errors), `health.controller.ts` (readiness) and `index.ts` (startup line, replaced in B3.4); (b) `DEPENDENCY_ERROR` already maps to 503 (B0), so only its log level is new; (c) handled errors (`AppError`, application errors, body-parser, domain `Invalid*`) are not logged today and must be, by category; (d) the rate limiters answer 429 themselves without reaching the handler, so `RATE_LIMITED` at `warn` is logged in `rate-limit.ts`, not in the handler; (e) the port takes `message` as an optional field and the adapter derives it from `event` (S1).
