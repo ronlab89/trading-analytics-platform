@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
+import { capturingLogger, type CapturingLogger } from "@trading/application";
 import { createApp } from "../app.js";
 import { body } from "../test-utils/api-client.js";
 
@@ -24,15 +25,12 @@ interface UnavailableBody {
  * the real database in health.routes.test.ts.
  */
 describe("GET /health/ready (database unavailable)", () => {
-  const app = createApp();
-  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let logger: CapturingLogger;
+  let app: ReturnType<typeof createApp>;
 
   beforeEach(() => {
-    errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
-  });
-
-  afterEach(() => {
-    errorSpy.mockRestore();
+    logger = capturingLogger();
+    app = createApp({ logger });
   });
 
   it("returns 503 with the exact unavailable body", async () => {
@@ -61,24 +59,17 @@ describe("GET /health/ready (database unavailable)", () => {
     expect(response.body).not.toHaveProperty("error");
   });
 
-  it("logs one JSON line via console.error without secrets", async () => {
+  it("logs one health.database.unavailable entry at error without secrets", async () => {
     await request(app).get("/health/ready");
 
-    expect(errorSpy).toHaveBeenCalledTimes(1);
-    const line = String(errorSpy.mock.calls[0]?.[0]);
-    let parsed: Record<string, unknown> | undefined;
-    try {
-      parsed = JSON.parse(line) as Record<string, unknown>;
-    } catch {
-      parsed = undefined;
-    }
-    expect(parsed).toBeDefined();
-    expect(parsed).toMatchObject({
+    expect(logger.entries).toHaveLength(1);
+    expect(logger.entries[0]).toMatchObject({
       level: "error",
       event: "health.database.unavailable",
-      errorName: "Error",
+      fields: { errorName: "Error" },
     });
-    expect(typeof parsed?.requestId).toBe("string");
+    expect(typeof logger.entries[0]?.fields.requestId).toBe("string");
+    const line = JSON.stringify(logger.entries[0]);
     expect(line).not.toContain("s3cret");
     expect(line).not.toContain("postgres://");
     expect(line).not.toContain("ECONNREFUSED");

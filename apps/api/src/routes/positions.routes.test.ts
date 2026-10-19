@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
+import { capturingLogger } from "@trading/application";
 import { createApp } from "../app.js";
 import { body, type DataEnvelope, type ErrorEnvelope } from "../test-utils/api-client.js";
 import { tokenFor } from "../test-utils/auth.js";
@@ -46,7 +47,8 @@ interface PositionDetailDto {
  * recording it in odd/tasks/b0/b0-3-route-tests.md.
  */
 describe("positions routes", () => {
-  const app = createApp();
+  const logger = capturingLogger();
+  const app = createApp({ logger });
   const userIds: string[] = [];
   const assetIds: string[] = [];
 
@@ -337,8 +339,6 @@ describe("positions routes", () => {
     });
 
     it("returns 500 INTERNAL_ERROR for a zero average entry price, caused by PositionMetricsCalculationError", async () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
-
       const response = await request(app)
         .get(detailUrl(zeroCostPortfolioId, zeroCostPositionId))
         .set(...auth(ownerToken));
@@ -346,11 +346,10 @@ describe("positions routes", () => {
       expect(response.status).toBe(500);
       expect(body<ErrorEnvelope>(response).error.code).toBe("INTERNAL_ERROR");
 
-      const logged = errorSpy.mock.calls
-        .map(([entry]) => (typeof entry === "string" ? entry : ""))
-        .filter((entry) => entry.startsWith("{"))
-        .map((entry) => JSON.parse(entry) as { errorName?: string; event?: string });
-      expect(logged.map((entry) => entry.errorName)).toContain("PositionMetricsCalculationError");
+      const failed = logger.entries.filter((entry) => entry.event === "http.request.failed");
+      expect(failed.map((entry) => entry.fields.errorName)).toContain(
+        "PositionMetricsCalculationError",
+      );
     });
   });
 });
