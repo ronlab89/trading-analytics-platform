@@ -30,7 +30,7 @@ docs/PROGRESS.md
 - [x] T1 `AsyncLocalStorage` request context fed by the `requestId` middleware, and the logger reading it. `logging/request-context.ts` (`runWithRequestContext`, `withRequestContext`); `attachLogger` wraps the logger with it; the explicit `requestId` that B3.1 passed by hand is gone.
 - [x] T2 Request-logger middleware with `http.request.completed`, the path without query string and the slow-request `warn`; `SLOW_REQUEST_THRESHOLD_MS` in `env.ts`. `middleware/request-logger.ts`, wired in `createApp` after `attachLogger` (`AppOptions.slowRequestThresholdMs` overrides the env value for tests).
 - [x] T3 CORS `exposedHeaders` and its test. `app.ts` exposes `X-Request-ID`; `app.cors.test.ts` (2 cases: allowed origin, foreign origin).
-- [ ] T4 Integration tests for correlation and the slow-request level (the threshold read from config, no real sleeps beyond what the `Clock` or a tiny threshold allows).
+- [x] T4 Integration tests for correlation and the slow-request level. `app.logging.test.ts` (4 cases: header id on every entry of a 404, concurrent requests apart, `info` under the threshold, `warn` over it with a negative threshold so nothing sleeps).
 - [ ] T5 Reconcile the docs for what landed.
 
 ## Done when
