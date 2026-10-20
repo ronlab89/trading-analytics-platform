@@ -34,6 +34,7 @@ import {
 } from "@trading/application";
 import type { Clock, Logger } from "@trading/application";
 import { systemClock } from "./clock.js";
+import { env } from "./config/env.js";
 import { LOG_EVENTS } from "./logging/events.js";
 import { logger as defaultLogger } from "./logging/logger.js";
 import { withRequestContext } from "./logging/request-context.js";
@@ -74,17 +75,21 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     portfolioService,
     assetService,
   });
+  // Every service that rebuilds the daily value series times it (ADR-009 point 8).
+  const seriesTiming = { logger, slowThresholdMs: env.SLOW_REQUEST_THRESHOLD_MS };
   const riskService = createRiskService({
     portfolioService,
     transactionRepository,
     historicalPriceRepository,
     clock,
+    ...seriesTiming,
   });
   const performanceService = createPerformanceService({
     portfolioService,
     transactionRepository,
     historicalPriceRepository,
     clock,
+    ...seriesTiming,
   });
   const rangeAttributionService = createRangeAttributionService({
     portfolioService,
@@ -92,6 +97,7 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     transactionRepository,
     historicalPriceRepository,
     clock,
+    ...seriesTiming,
   });
   const transactionService = createTransactionService({
     transactionRepository,
@@ -108,6 +114,7 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     portfolioService,
     assetService,
     clock,
+    ...seriesTiming,
   });
   const decisionService = createDecisionService({
     decisionRepository: new PrismaDecisionRepository(),

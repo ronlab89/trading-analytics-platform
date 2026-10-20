@@ -5,6 +5,7 @@ export * from "./risk-service.js";
 export * from "./performance-service.js";
 export * from "./range-attribution-service.js";
 export type { AnalyticsPeriod } from "./portfolio-series.js";
+export { SERIES_BUILT_EVENT } from "./portfolio-series.js";
 export * from "./asset-service.js";
 export * from "./clock.js";
 export * from "./decision-service.js";

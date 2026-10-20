@@ -32,7 +32,7 @@ import type { AssetService } from "./asset-service.js";
 import type { Clock } from "./clock.js";
 import { buildPerformanceResult } from "./performance-service.js";
 import type { PerformanceResult } from "./performance-service.js";
-import { buildPortfolioSeries } from "./portfolio-series.js";
+import { buildPortfolioSeries, type SeriesTimingOptions } from "./portfolio-series.js";
 import { buildRealizedByTransaction } from "./realized-sales.js";
 import { buildWhatChanged } from "./what-changed.js";
 import type { WhatChanged } from "./what-changed.js";
@@ -97,7 +97,7 @@ export interface PortfolioOverview {
   whatChanged: WhatChanged;
 }
 
-export interface OverviewServiceDependencies {
+export interface OverviewServiceDependencies extends SeriesTimingOptions {
   positionRepository: Pick<PositionRepository, "listByPortfolioId">;
   transactionRepository: Pick<
     TransactionRepository,

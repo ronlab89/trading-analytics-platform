@@ -10,7 +10,7 @@ import type { Clock } from "./clock.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
 import type { PortfolioService } from "./portfolio-service.js";
-import { buildPortfolioSeries } from "./portfolio-series.js";
+import { buildPortfolioSeries, type SeriesTimingOptions } from "./portfolio-series.js";
 import type { AnalyticsPeriod } from "./portfolio-series.js";
 
 export interface RiskResult {
@@ -23,7 +23,7 @@ export interface RiskResult {
   drawdown: ReturnDrawdown;
 }
 
-export interface RiskServiceDependencies {
+export interface RiskServiceDependencies extends SeriesTimingOptions {
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
   transactionRepository: Pick<TransactionRepository, "listCompletedByPortfolioId">;
   historicalPriceRepository: Pick<HistoricalPriceRepository, "listByAssetIds">;

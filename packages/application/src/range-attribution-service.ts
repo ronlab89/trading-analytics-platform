@@ -6,7 +6,7 @@ import type { Clock } from "./clock.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
 import type { PortfolioService } from "./portfolio-service.js";
-import { buildPortfolioSeries } from "./portfolio-series.js";
+import { buildPortfolioSeries, type SeriesTimingOptions } from "./portfolio-series.js";
 import type { AnalyticsPeriod } from "./portfolio-series.js";
 
 export type RangeAttributionGroupBy = "asset" | "assetType";
@@ -32,7 +32,7 @@ export interface RangeAttributionResult {
   groups: RangeAttributionGroup[];
 }
 
-export interface RangeAttributionServiceDependencies {
+export interface RangeAttributionServiceDependencies extends SeriesTimingOptions {
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
   assetService: Pick<AssetService, "getAssetsByIds">;
   transactionRepository: Pick<TransactionRepository, "listCompletedByPortfolioId">;

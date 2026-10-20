@@ -1,3 +1,5 @@
+import { SERIES_BUILT_EVENT } from "@trading/application";
+
 /**
  * Stable dotted event names of the API log (ADR-009 points 3, 6, 9 and 11;
  * 13-observability-spec.md §8). Job, realtime and simulator names are added
@@ -13,6 +15,7 @@ export const LOG_EVENTS = {
   authLogout: "auth.logout",
   authzDenied: "authz.denied",
   scenarioChangesSkipped: "scenario.changes.skipped",
+  analyticsSeriesBuilt: SERIES_BUILT_EVENT,
   appStartupStarted: "app.startup.started",
   appStartupCompleted: "app.startup.completed",
   appShutdownStarted: "app.shutdown.started",
