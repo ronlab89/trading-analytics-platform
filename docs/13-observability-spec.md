@@ -1549,9 +1549,9 @@ Confirm that retries, rollback, reconnect or user-facing recovery work correctly
 Code vs ADR:
 
 - Step 2: the `requestId` is in the `X-Request-ID` response header and in every error body (§9). The example previously showed `req_123`, which fails the `^[a-zA-Z0-9-]{1,64}$` check and would be replaced (§9). Asynchronous work has no operation ID: use the `jobId` or `connectionId` (§10).
-- Step 3: logs are JSON lines on the API's stdout (ADR-009 point 3), filtered by the `requestId` field. Today only the `http.request.failed` and `health.database.unavailable` entries carry it, passed by hand; every line carries it from B3.2.
-- Step 4: there is no application service layer yet; services call Prisma repositories directly until B0 (ADR-001, §4).
-- Step 5: the logged category is `errorCategory` (ADR-009 point 3), and the client sees an `AppErrorCode` (§12.2): validation is `VALIDATION_ERROR`, authentication `UNAUTHORIZED`, authorization `FORBIDDEN`, an unreachable database `DEPENDENCY_ERROR` (`Planned (B0)`), and unexpected failures `INTERNAL_ERROR`. "Domain" and "database" are not separate codes (§12.2).
+- Step 3: logs are JSON lines on the API's stdout (ADR-009 point 3), filtered by the `requestId` field, which every line of the request carries since B3.2 (§66 shows the filter).
+- Step 4: the `stack` of an `error`-level entry reads from the repository up through the application service to the controller; no `source` or `module` field names the layer (ADR-009 point 3, §7).
+- Step 5: the logged category is `errorCategory` (ADR-009 point 3), and the client sees an `AppErrorCode` (§12.2): validation is `VALIDATION_ERROR`, authentication `UNAUTHORIZED`, authorization `FORBIDDEN`, an unreachable database `DEPENDENCY_ERROR` (`Implemented`, B0.4), and unexpected failures `INTERNAL_ERROR`. "Domain" and "database" are not separate codes (§12.2).
 - Step 7: more detailed logging is `LOG_LEVEL=debug`, already the development default (ADR-009 point 7, §38).
 - Step 8: a job is retried only on request (ADR-008 point 6); a realtime client reconnects with backoff and resynchronizes through HTTP (`08-realtime-spec.md` §26-27). "Rollback" means a database transaction that does not commit, such as the atomic apply stage of the CSV import (ADR-008 point 2); deployments are forward-fix only (ADR-006 point 6).
 
@@ -2577,7 +2577,7 @@ The repository should document:
 
 | Item | Version 1 | Status |
 | --- | --- | --- |
-| How to start the application | `pnpm --filter @trading/api dev` runs `tsx watch` (`apps/api/package.json`). `README.md` documents setup, the local database and "Run the API" | Command `Implemented`; not documented |
+| How to start the application | `pnpm --filter @trading/api dev` runs `tsx watch` (`apps/api/package.json`). `README.md` documents setup, the local database and "Run the API" | `Implemented`; the workflow below (B3.5) |
 | Where logs appear | The stdout of the API process (ADR-009 point 3); container output under the Compose `full` profile (ADR-006 point 4, B7) | `Implemented` (B3.1); container output `Planned (B7)` |
 | How to change the log level | `LOG_LEVEL` (ADR-009 point 7, §38) | `Implemented` (B3.1) |
 | How to enable debug mode | `LOG_LEVEL=debug`, already the development default; `ENABLE_DEBUG_LOGGING` is not adopted (ADR-009 point 2). A development realtime debug mode is deferred to the frontend-stage ADR (ADR-009 point 12, §28) | `Implemented` (B3.1); realtime debug mode `Deferred` |
@@ -2585,18 +2585,61 @@ The repository should document:
 | How to inspect metrics | There are none in version 1 | `Deferred` (ADR-009 point 10) |
 | How to simulate failures | Demo failures are `Deferred` (ADR-010 point 6); client test faults are `Planned (FE)` (`08-realtime-spec.md` §43). On the API, stopping PostgreSQL makes readiness return 503 (§57) | Mixed, as listed |
 | How to inspect realtime events | Server connection entries `Planned (B5)`; client diagnostics `Planned (FE)` (§28) | `Planned (B5)` / `Planned (FE)` |
-| How to reproduce common failures | No catalog exists. The debugging workflow of §36 is `Reference` | Not decided |
+| How to reproduce common failures | The troubleshooting table below (B3.5) covers the failures the API logs; the dependency failure was reproduced against an unreachable database. Demo failures stay `Deferred` | `Implemented` (B3.5) |
 
 Code vs ADR:
 
-- Today a developer finds three kinds of `console` lines (§1), the `X-Request-ID` header, the `requestId` in error bodies and the two health routes. `README.md` mentions only the two health routes, and `CONTRIBUTING.md` none of them.
-- Which document carries the written workflow (`README.md` or a page under `docs/`) is an open detail (B3).
+- A developer finds the JSON log on the API's stdout, the `X-Request-ID` header, the `requestId` in error bodies and the two health routes. `README.md` mentions only the two health routes, and `CONTRIBUTING.md` none of them.
+- Decided (B3.5): the written workflow, the log levels and the troubleshooting steps live in this section and in §36, because B3.5 edits `docs/` only. The `README.md` entries stay with T5.2 of `14-deployment-spec.md`.
+
+### Local workflow
+
+1. **Start** the API with `pnpm --filter @trading/api dev`, which reads the root `.env`. In development the output is `pino-pretty` at `debug`.
+2. **Change the level** by setting `LOG_LEVEL` to `debug`, `info`, `warn`, `error` or `silent` in `.env` and restarting. With `NODE_ENV=production` the output is one JSON line per event on stdout, which is what a tool such as `jq` reads. `debug` is the way to turn on more detail; `ENABLE_DEBUG_LOGGING` is not adopted.
+3. **Read a line.** Each line has `timestamp`, `level`, `service`, `environment`, `event`, `message` and the fields of the event (§7). Filter by the dotted `event`, for example `jq -c 'select(.event=="http.request.failed")'`.
+4. **Follow one request.** Copy its `X-Request-ID` from the response header, or the `requestId` of an error body, and filter on it, for example `jq -c 'select(.requestId=="<id>")'`. Every line the request writes carries it.
+5. **Find the slow ones.** A request over `SLOW_REQUEST_THRESHOLD_MS` (default 500) is its own `http.request.completed` entry at `warn`; a slow series reconstruction is `analytics.series.built` at `warn`, and at `debug` below the threshold.
+6. **Check health** with `curl -i http://localhost:7001/health` and `curl -i http://localhost:7001/health/ready`. Readiness is 503 with `checks.database: "unavailable"` when the database is down, and 503 with no `checks` while the process shuts down.
+
+### Log levels
+
+| Level | What the API writes at it |
+| --- | --- |
+| `error` | `http.request.failed` for `INTERNAL_ERROR` and `DEPENDENCY_ERROR`, with `errorName` and the stack; `health.database.unavailable`; `app.shutdown.step_failed` |
+| `warn` | `http.request.failed` for `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN` and `RATE_LIMITED`; `auth.login.failed`, `auth.refresh.reuse_detected`, `authz.denied`; `scenario.changes.skipped`; a slow `http.request.completed` or `analytics.series.built` |
+| `info` | `http.request.failed` for `NOT_FOUND` and `CONFLICT`; `http.request.completed`; `auth.login.succeeded`, `auth.logout`; `app.startup.started`, `app.startup.completed`, `app.shutdown.started`, `app.shutdown.completed` |
+| `debug` | `analytics.series.built` under the threshold |
+
+The level is a filter: `LOG_LEVEL=warn` keeps the `warn` and `error` rows, and `silent` (the default under `NODE_ENV=test`) writes nothing. Passwords, tokens, cookies and the `Authorization` header never appear at any level (§11).
+
+### Troubleshooting
+
+Start from the `requestId` (§36, step 2) and read the lines that carry it.
+
+| Symptom | Read | Meaning |
+| --- | --- | --- |
+| Any failed request | `http.request.failed` | `errorCategory` is the `code` of the response body. The level tells the kind: `error` is unexpected or a dependency, `warn` a refused or invalid request, `info` a missing or conflicting resource |
+| 500 or 503 | The `error` entry | `stack` reads from the repository up to the controller; `errorName` names the failure. A 503 `DEPENDENCY_ERROR` means the database could not be reached |
+| `GET /health/ready` is 503 | `health.database.unavailable` | The database check failed. Start PostgreSQL (`docker compose up -d`) and call it again; there is no recovery entry, readiness just answers 200 again. A 503 with no `checks` is a process that is shutting down |
+| Login 401 | `auth.login.failed` | It has no fields on purpose, so it cannot tell an unknown email from a wrong password |
+| Refresh 401 after a refresh worked | `auth.refresh.reuse_detected` | An already rotated token came back and its family was revoked; `userId` and `familyId` say whose |
+| 403 | `authz.denied` | `role` and `permission` say what was missing |
+| A slow endpoint | `http.request.completed` at `warn`, then `analytics.series.built` | `durationMs` says how long; the series entry says whether the reconstruction was the cost |
+| A scenario shows fewer changes than were saved | `scenario.changes.skipped` | `scenarioId`, `reason` and `index` name the stored entry the read dropped |
+
+To reproduce a database failure, start the API with `DATABASE_URL` pointing at a closed port (for example `postgresql://nobody:nopass@127.0.0.1:1/none`) or stop the PostgreSQL container, and call a route that reads data. B3.5 did this and answered the questions of §75 from the log (`odd/tasks/b3/b3-5-close.md`).
+
+A reproduced line, trimmed:
+
+```json
+{"level":"error","timestamp":"2026-10-20T23:36:23.606Z","service":"trading-api","environment":"production","errorCategory":"DEPENDENCY_ERROR","status":503,"errorName":"PrismaClientInitializationError","stack":"...","requestId":"1b863161-a986-4237-ae93-853ff4f6eda3","event":"http.request.failed"}
+```
 
 ---
 
 # 67. Documentation Requirements
 
-**Status:** `Planned (B3)` for the backend sections; the frontend and demo sections `Planned (FE)` or `Deferred`; the location is an open detail (B3)
+**Status:** `Implemented` (B3.5) for the backend sections, in §66, §36 and §38; the frontend and demo sections `Planned (FE)` or `Deferred`
 
 The repository should contain an observability section in the developer documentation.
 
@@ -2619,7 +2662,7 @@ The documentation should favor practical examples over theoretical descriptions.
 
 Code vs ADR:
 
-- No logging or observability section exists in `README.md` (which has only the health routes) or `CONTRIBUTING.md`, and none documents `LOG_LEVEL` before B3; this specification is the only reference today.
+- `README.md` (which has only the health routes) and `CONTRIBUTING.md` have no observability section. This specification is the reference: logging and correlation in §6-§11, errors in §12, health in §22-§24, performance in §25-§26, the workflow, the levels and the troubleshooting in §66, and the debugging steps in §36.
 - In version 1 the "Metrics" entry has nothing to document (`Deferred`, ADR-009 point 10), "Realtime diagnostics" follows B5 and the frontend stage, and "Demo diagnostics" waits for the demo ADR (ADR-010 point 6).
 - ADR-009 does not list the documentation among its decisions; its "Documents to align" names `13`, `04` and `09` only. The assignment to B3 comes from §74.
 
@@ -2857,9 +2900,9 @@ ADR-009 point 12 splits this checklist because the backend block cannot close ag
 
 - [x] Backend logs are structured. (`Implemented`, B3.1)
 - [x] Log levels are supported. (`Implemented`, B3.1, `LOG_LEVEL`)
-- [ ] Stable event names are used. (B3; job names B4, realtime names B5)
+- [x] Stable event names are used. (`Implemented`, B3.1: the `LOG_EVENTS` registry and `events.test.ts`; job names B4, realtime names B5)
 - [x] Sensitive data is sanitized. (`Implemented`, B3.1; the WebSocket path is re-checked in B5)
-- [ ] Request IDs are propagated. (B3; on responses and error bodies already `Implemented`)
+- [x] Request IDs are propagated. (`Implemented`, B3.2: on responses, error bodies and every log line of the request; `app.logging.test.ts`)
 
 ### Errors
 
@@ -2886,8 +2929,8 @@ ADR-009 point 12 splits this checklist because the backend block cannot close ag
 
 ### Performance
 
-- [ ] Important operations can be timed. (B3: request duration and the analytics series reconstruction)
-- [ ] Slow operations can be diagnosed. (B3: the slow-request `warn`)
+- [x] Important operations can be timed. (`Implemented`, B3.2 and B3.3: request duration and the analytics series reconstruction)
+- [x] Slow operations can be diagnosed. (`Implemented`, B3.2 and B3.3: the slow-request `warn` and the slow series `warn`)
 - [ ] No performance claim is made without measurement. (`Reference`, §51)
 
 ### Realtime
@@ -2907,23 +2950,23 @@ ADR-009 point 12 splits this checklist because the backend block cannot close ag
 
 ### Testing
 
-- [ ] Observability utilities have unit tests. (B3)
-- [ ] Request correlation has integration coverage. (B3)
-- [ ] Error handling has integration coverage. (B3; assignment is an open detail, §59)
-- [ ] Health checks are tested. (B0, ADR-001 point 8, §59)
+- [x] Observability utilities have unit tests. (`Implemented`, B3.1 to B3.4: the redaction, event names, request context, request logger, shutdown and series timing)
+- [x] Request correlation has integration coverage. (`Implemented`, B3.2: `app.logging.test.ts`)
+- [x] Error handling has integration coverage. (`Implemented`, B3.1: `error-handler.test.ts` and the route tests; security events B3.3)
+- [x] Health checks are tested. (`Implemented`: `health.routes.test.ts`, `health.unavailable.routes.test.ts` and, for the shutdown, `health.shutdown.routes.test.ts`)
 - [ ] Critical demo failure scenarios are tested. (`Deferred`)
 
 ### Documentation
 
-- [ ] Local observability workflow is documented. (B3)
-- [ ] Log levels are documented. (B3)
-- [ ] Health endpoints are documented. (`07-api-spec.md` §30 documents them; the developer workflow does not, B3)
+- [x] Local observability workflow is documented. (`Implemented`, B3.5, §66)
+- [x] Log levels are documented. (`Implemented`, B3.5, §6.2, §38 and §66)
+- [x] Health endpoints are documented. (`07-api-spec.md` §30 documents them, including the shutdown 503; the developer workflow in §66 shows the calls)
 - [ ] Demo diagnostics are documented. (FE; `Deferred` with the diagnostics interface, §30)
-- [ ] Troubleshooting workflow is documented. (B3, §36)
+- [x] Troubleshooting workflow is documented. (`Implemented`, B3.5, §36 and §66)
 
 Code vs ADR:
 
-- The checked items are the ones whose behavior exists in `apps/api` today. They are checked because the code does what the item says, not because a test covers them: no test covers the health routes or the error handler (§59). The health route test is part of the B0 set (ADR-001 point 8).
+- The checked items are the ones whose behavior exists in `apps/api` and, since B3, have a test. The B3 items are all checked; the unchecked ones belong to B4, B5, the frontend stage or are `Deferred` (the table at the top of this section).
 - ADR-009 point 12 fixes the split but not the assignment of each item; the tags are derived from the sections above and follow their statuses.
 
 ---
