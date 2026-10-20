@@ -15,11 +15,11 @@ export interface ShutdownOptions {
 
 export interface Shutdown {
   /** Adds a step after the ones already registered; steps run in registration order. */
-  register(step: ShutdownStep): void;
+  register: (step: ShutdownStep) => void;
   /** True from the first instant of `trigger`, so readiness can answer 503 at once. */
-  isShuttingDown(): boolean;
+  isShuttingDown: () => boolean;
   /** Runs the sequence once; a later call returns the same promise. */
-  trigger(signal: string): Promise<void>;
+  trigger: (signal: string) => Promise<void>;
 }
 
 /**
