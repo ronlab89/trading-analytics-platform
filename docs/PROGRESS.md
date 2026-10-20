@@ -804,9 +804,14 @@ The setup steps and the troubleshooting table are in `CONTRIBUTING.md` §9 and
 `.env.example` are Docker Compose variables; `DATABASE_URL` repeats their
 values, so keep them in step.
 
-**Planned, not read by the code yet:** `LOG_LEVEL` (B3, ADR-009 point 7) and
-`APP_MODE` with `VITE_APP_MODE` (ADR-006 point 8, frontend and demo stage).
-Do not add them to `.env` expecting an effect.
+`LOG_LEVEL` (`debug`, `info`, `warn`, `error` or `silent`; default `debug` in
+development, `info` in production, `silent` in tests, ADR-009 point 7) and
+`SLOW_REQUEST_THRESHOLD_MS` (default `500`, ADR-009 point 8) are read by
+`env.ts` since B3.
+
+**Planned, not read by the code yet:** `APP_MODE` with `VITE_APP_MODE`
+(ADR-006 point 8, frontend and demo stage). Do not add them to `.env`
+expecting an effect.
 
 **To set up a fresh clone:** copy both `.example` files, adjust
 Postgres credentials, then:
@@ -931,7 +936,24 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B3 (observability foundation). B2 (auth and RBAC) is done, in five slices. **B2.1 is done** (`Implemented`,
+**Next:** B4 (background jobs and idempotency). **B3 (observability foundation) is done**, in five slices
+(`Implemented`, `odd/tasks/b3/`). **B3.1** is a `Logger` port in `@trading/application` with a `pino`
+adapter in the API, a fixed redaction list, `LOG_LEVEL`, and one `http.request.failed` entry per failed
+request with a level per error code. **B3.2** carries the `requestId` on every log line through
+`AsyncLocalStorage`, writes one `http.request.completed` entry per request (a `warn` above
+`SLOW_REQUEST_THRESHOLD_MS`) and exposes `X-Request-ID` through CORS. **B3.3** logs
+`auth.login.succeeded`, `auth.login.failed`, `auth.refresh.reuse_detected`, `auth.logout` and
+`authz.denied` without any secret, one `scenario.changes.skipped` entry for a stored entry the
+defensive read drops, and `analytics.series.built` with its duration. **B3.4** adds graceful shutdown
+on `SIGTERM` and `SIGINT` (readiness 503, a 10-second drain, Prisma closed, exit code 0 or 1) through
+an ordered registry that B4 and B5 join, and the `app.startup.*` and `app.shutdown.*` entries.
+**B3.5** reproduced a database failure on a running API and answered the acceptance questions
+of `13-observability-spec.md` §75 from its log, flipped every `Planned (B3)` mark and wrote the local
+workflow, the log levels and the troubleshooting steps (`13-observability-spec.md` §66). Carried to
+later blocks: a guard around a logger that throws (advisory R3 of the B3.3 review), the driver
+message of an unexpected error, which names the database host and port, before any hosted log (B7),
+and the missing integration test of the `composition.ts` wiring for the scenario and series logs.
+B2 (auth and RBAC) is done, in five slices. **B2.1 is done** (`Implemented`,
 `odd/tasks/b2/b2-1-roles.md`): `UserRole` is `VIEWER`, `TRADER`, `ADMIN`; the
 hand-written migration renames `USER` to `TRADER` and was checked against a
 database with existing rows; `permissions.ts` holds the real matrix, tested per
@@ -1048,9 +1070,10 @@ unassigned.
   (ADR-010 point 2), so this debt is assets only. Low severity (no injection
   risk, Prisma parameterizes the query; worst case is a slightly wrong
   match), but not yet verified or fixed.
-- **Graceful shutdown** — B3 (ADR-006 point 12). `index.ts` is `createApp()`
-  plus `listen()`; there is no signal handling today. B4 and B5 join the
-  shutdown sequence when the job runner and the realtime connections exist.
+- **Graceful shutdown** — `Implemented` in B3.4 (ADR-006 point 12):
+  `index.ts` wires `lifecycle/shutdown.ts` and `lifecycle/bootstrap.ts`. B4 and
+  B5 join the shutdown sequence when the job runner and the realtime
+  connections exist.
 - **`interval` on `/assets/:assetId/history` only supports `"1d"`.**
   Parked (roadmap section 7). User has explicitly confirmed this is fine for
   now and that weekly/monthly aggregation (a real rollup of existing daily
