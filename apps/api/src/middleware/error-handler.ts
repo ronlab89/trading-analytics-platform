@@ -7,6 +7,7 @@ import {
 } from "@trading/application";
 import type { ErrorDetail, ErrorResponse } from "@trading/contracts";
 import { AppError } from "../errors/app-error.js";
+import { LOG_EVENTS } from "../logging/events.js";
 import { logRequestFailure } from "../logging/request-failure.js";
 
 type ErrorResponseBody = ErrorResponse;
@@ -107,6 +108,23 @@ function mapApplicationError(err: unknown): {
 }
 
 /**
+ * Writes `authz.denied` for a role check that failed (ADR-009 point 9): who,
+ * with which role, missing which permission. A `ForbiddenError` raised
+ * without a permission has nothing to report beyond `http.request.failed`.
+ */
+function logAuthorizationDenied(req: Request, err: unknown): void {
+  if (!(err instanceof ForbiddenError) || !err.permission) {
+    return;
+  }
+  // `req.auth` is typed as present, but only `authenticate` sets it.
+  const auth = req.auth as Request["auth"] | undefined;
+  req.logger.warn(LOG_EVENTS.authzDenied, {
+    ...(auth ? { userId: auth.userId, role: auth.role } : {}),
+    permission: err.permission,
+  });
+}
+
+/**
  * Central error-handling middleware. Must be registered last, after all
  * routes. Normalizes AppErrors, domain invariant errors, and unexpected
  * exceptions into the response shape defined in 07-api-spec.md §5, and
@@ -147,6 +165,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       status: applicationFailure.status,
       message: applicationFailure.message,
     });
+    logAuthorizationDenied(req, err);
     const body: ErrorResponseBody = {
       error: {
         code: applicationFailure.code,

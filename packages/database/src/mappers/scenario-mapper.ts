@@ -11,6 +11,21 @@ function toDomainStatus(status: PrismaScenario["status"]): ScenarioStatus {
 }
 
 /**
+ * What the defensive read of `changes` dropped. Never carries the stored
+ * value, which in a corrupted column can be anything.
+ */
+export interface SkippedChanges {
+  reason: "not_an_array" | "not_an_object" | "invalid_asset_or_percent";
+  /** Position of the dropped entry; absent when the whole column was dropped. */
+  index?: number;
+}
+
+export type OnChangesSkipped = (skipped: SkippedChanges) => void;
+
+/** A `SkippedChanges` tied to the scenario row it came from. */
+export type OnScenarioChangesSkipped = (skipped: SkippedChanges & { scenarioId: string }) => void;
+
+/**
  * Reads the persisted `changes` JSON column into `ScenarioChange[]`.
  *
  * The column is only ever written through this repository (typed
@@ -20,33 +35,46 @@ function toDomainStatus(status: PrismaScenario["status"]): ScenarioStatus {
  * yields no changes, and individual entries that do not have a string
  * `assetId` and a finite numeric `percentChange` are skipped. A read
  * must never fail (or return a half-typed object) because of one bad
- * stored entry.
+ * stored entry. Each drop is reported to `onSkipped`, so corruption can
+ * surface instead of passing as an empty scenario.
  */
-export function toDomainChanges(value: Prisma.JsonValue): ScenarioChange[] {
+export function toDomainChanges(
+  value: Prisma.JsonValue,
+  onSkipped?: OnChangesSkipped,
+): ScenarioChange[] {
   if (!Array.isArray(value)) {
+    onSkipped?.({ reason: "not_an_array" });
     return [];
   }
 
   const changes: ScenarioChange[] = [];
 
-  for (const entry of value) {
+  for (const [index, entry] of value.entries()) {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      onSkipped?.({ reason: "not_an_object", index });
       continue;
     }
 
     const { assetId, percentChange } = entry;
 
-    if (typeof assetId === "string" && typeof percentChange === "number") {
-      if (Number.isFinite(percentChange)) {
-        changes.push({ assetId, percentChange });
-      }
+    if (
+      typeof assetId === "string" &&
+      typeof percentChange === "number" &&
+      Number.isFinite(percentChange)
+    ) {
+      changes.push({ assetId, percentChange });
+    } else {
+      onSkipped?.({ reason: "invalid_asset_or_percent", index });
     }
   }
 
   return changes;
 }
 
-export function toDomainScenario(row: PrismaScenario): Scenario {
+export function toDomainScenario(
+  row: PrismaScenario,
+  onSkipped?: OnScenarioChangesSkipped,
+): Scenario {
   return {
     id: row.id,
     portfolioId: row.portfolioId,
@@ -54,7 +82,13 @@ export function toDomainScenario(row: PrismaScenario): Scenario {
     description: row.description,
     baseSnapshotId: row.baseSnapshotId,
     status: toDomainStatus(row.status),
-    changes: toDomainChanges(row.changes),
+    changes: toDomainChanges(
+      row.changes,
+      onSkipped &&
+        ((skipped) => {
+          onSkipped({ scenarioId: row.id, ...skipped });
+        }),
+    ),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

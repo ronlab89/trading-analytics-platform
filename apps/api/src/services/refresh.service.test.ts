@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { capturingLogger } from "@trading/application";
 import { InMemorySessionRepository } from "@trading/persistence-memory";
 import { UserRole, type User } from "@trading/domain";
 import { createGraceTokenCipher } from "./grace-token-cipher.js";
@@ -24,6 +25,7 @@ describe("refresh service", () => {
   let sessions: InMemorySessionRepository;
   let service: RefreshService;
   let known: User | null;
+  let logger: ReturnType<typeof capturingLogger>;
 
   const clock = { now: () => current };
   const advance = (milliseconds: number) => {
@@ -45,6 +47,7 @@ describe("refresh service", () => {
   beforeEach(() => {
     current = start;
     known = user;
+    logger = capturingLogger();
     sessions = new InMemorySessionRepository({ now: () => current });
     service = createRefreshService({
       sessions,
@@ -53,6 +56,7 @@ describe("refresh service", () => {
       graceCipher: createGraceTokenCipher(secret),
       clock,
       idleSeconds: (7 * DAY) / 1000,
+      logger,
     });
   });
 
@@ -129,6 +133,49 @@ describe("refresh service", () => {
     const successor = await sessions.getByTokenHash(hashRefreshToken(first.refreshToken));
     expect(successor?.revokedAt).toEqual(current);
     await expect(service.refresh(first.refreshToken)).rejects.toMatchObject({ statusCode: 401 });
+  });
+
+  it("logs auth.refresh.reuse_detected at warn with the user and family, and no token", async () => {
+    const token = await startSession();
+    const first = await service.refresh(token);
+    advance(11 * 1000);
+
+    await expect(service.refresh(token)).rejects.toThrow();
+
+    expect(logger.entries).toEqual([
+      {
+        level: "warn",
+        event: "auth.refresh.reuse_detected",
+        fields: { userId: "user-1", familyId: "family-1" },
+      },
+    ]);
+    const logged = JSON.stringify(logger.entries);
+    expect(logged).not.toContain(token);
+    expect(logged).not.toContain(first.refreshToken);
+  });
+
+  it("logs the reuse once: a token of the revoked family is an ordinary rejection afterwards", async () => {
+    const token = await startSession();
+    const first = await service.refresh(token);
+    advance(11 * 1000);
+    await expect(service.refresh(token)).rejects.toThrow();
+
+    await expect(service.refresh(token)).rejects.toThrow();
+    await expect(service.refresh(first.refreshToken)).rejects.toThrow();
+
+    expect(logger.entries).toHaveLength(1);
+  });
+
+  it("logs nothing for a retry inside the grace window or for an unknown or missing token", async () => {
+    const token = await startSession();
+    await service.refresh(token);
+    advance(5 * 1000);
+
+    await service.refresh(token);
+    await expect(service.refresh("unknown")).rejects.toThrow();
+    await expect(service.refresh(undefined)).rejects.toThrow();
+
+    expect(logger.entries).toEqual([]);
   });
 
   it("drops the stored successor token when it detects reuse", async () => {

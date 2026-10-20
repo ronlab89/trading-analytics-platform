@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
 import { presentLogin, type loginRequestSchema } from "@trading/contracts";
 import { AppError } from "../errors/app-error.js";
+import { LOG_EVENTS } from "../logging/events.js";
 import { login, getCurrentUser } from "../services/auth.service.js";
 import { logoutService, refreshService } from "../services/session.service.js";
 import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from "./refresh-cookie.js";
@@ -20,7 +21,13 @@ export async function loginHandler(req: Request, res: Response, next: NextFuncti
     const result = await login(email, password);
     setRefreshCookie(res, result.refreshToken);
     res.json({ data: presentLogin(result) });
+    // After the answer is built, so a failure above never leaves a "succeeded" entry.
+    req.logger.info(LOG_EVENTS.authLoginSucceeded, { userId: result.user.id });
   } catch (error) {
+    // Same entry whatever the cause, so the log cannot tell a missing account from a wrong password.
+    if (error instanceof AppError && error.statusCode === 401) {
+      req.logger.warn(LOG_EVENTS.authLoginFailed);
+    }
     next(error);
   }
 }
@@ -62,9 +69,12 @@ export async function logoutHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    await logoutService.logout(readRefreshCookie(req));
+    const userId = await logoutService.logout(readRefreshCookie(req));
     clearRefreshCookie(res);
     res.status(204).end();
+    if (userId) {
+      req.logger.info(LOG_EVENTS.authLogout, { userId });
+    }
   } catch (error) {
     next(error);
   }

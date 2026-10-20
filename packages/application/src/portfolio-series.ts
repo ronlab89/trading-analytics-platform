@@ -17,6 +17,7 @@ import type {
   TransactionRepository,
 } from "@trading/domain";
 import type { Clock } from "./clock.js";
+import type { Logger } from "./logger.js";
 
 /**
  * The daily value series of a portfolio over one period, shared by the
@@ -31,7 +32,18 @@ const HISTORICAL_PRICE_EPOCH = new Date(0);
 export type AnalyticsPeriod =
   { kind: "preset"; period: PresetPeriod } | { kind: "custom"; from: Date; to?: Date };
 
-export interface PortfolioSeriesDependencies {
+/** The event written for each reconstruction when a logger is injected (ADR-009 point 8). */
+export const SERIES_BUILT_EVENT = "analytics.series.built";
+
+/** Optional timing of the reconstruction, shared by every service that builds a series. */
+export interface SeriesTimingOptions {
+  /** Receives `analytics.series.built`; nothing is timed or logged when omitted. */
+  logger?: Logger;
+  /** A reconstruction slower than this is logged at `warn` instead of `debug`. */
+  slowThresholdMs?: number;
+}
+
+export interface PortfolioSeriesDependencies extends SeriesTimingOptions {
   transactionRepository: Pick<TransactionRepository, "listCompletedByPortfolioId">;
   historicalPriceRepository: Pick<HistoricalPriceRepository, "listByAssetIds">;
   clock: Clock;
@@ -74,6 +86,30 @@ function addUtcDays(date: Date, days: number): Date {
  * `INSUFFICIENT_DATA`. `ALL` without a transaction is an empty portfolio.
  */
 export async function buildPortfolioSeries(
+  dependencies: PortfolioSeriesDependencies,
+  portfolio: Pick<Portfolio, "id" | "baseCurrency">,
+  query: AnalyticsPeriod,
+): Promise<PortfolioSeries> {
+  const { logger, slowThresholdMs, clock } = dependencies;
+
+  if (!logger) {
+    return reconstructSeries(dependencies, portfolio, query);
+  }
+
+  // Timed through the `Clock` port, so a test controls the duration (ADR-009 point 8).
+  const startedAt = clock.now().getTime();
+  const series = await reconstructSeries(dependencies, portfolio, query);
+  const durationMs = clock.now().getTime() - startedAt;
+  const level = slowThresholdMs !== undefined && durationMs > slowThresholdMs ? "warn" : "debug";
+  logger[level](SERIES_BUILT_EVENT, {
+    portfolioId: portfolio.id,
+    durationMs,
+    days: series.values.length,
+  });
+  return series;
+}
+
+async function reconstructSeries(
   dependencies: PortfolioSeriesDependencies,
   portfolio: Pick<Portfolio, "id" | "baseCurrency">,
   query: AnalyticsPeriod,

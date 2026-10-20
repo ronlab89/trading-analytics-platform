@@ -101,6 +101,46 @@ describe("PrismaScenarioRepository (Prisma-only checks)", () => {
     expect(scenario?.changes).toEqual([]);
   });
 
+  it("reports the dropped entries with the scenario id, never the stored value", async () => {
+    const skipped: unknown[] = [];
+    const reporting = new PrismaScenarioRepository({
+      onChangesSkipped: (entry) => skipped.push(entry),
+    });
+    const row = await prisma.scenario.create({
+      data: {
+        portfolioId,
+        name: "Reported Changes",
+        changes: [{ assetId: "asset_001", percentChange: 4 }, { assetId: "leak-me" }, 5],
+      },
+    });
+
+    await reporting.getById(row.id);
+
+    expect(skipped).toEqual([
+      { scenarioId: row.id, reason: "invalid_asset_or_percent", index: 1 },
+      { scenarioId: row.id, reason: "not_an_object", index: 2 },
+    ]);
+    expect(JSON.stringify(skipped)).not.toContain("leak-me");
+  });
+
+  it("reports a non-array stored value once, and well-formed changes not at all", async () => {
+    const skipped: unknown[] = [];
+    const reporting = new PrismaScenarioRepository({
+      onChangesSkipped: (entry) => skipped.push(entry),
+    });
+    const broken = await prisma.scenario.create({
+      data: { portfolioId, name: "Reported Not An Array", changes: { assetId: "asset_001" } },
+    });
+    const sound = await prisma.scenario.create({
+      data: { portfolioId, name: "Sound", changes: [{ assetId: "asset_001", percentChange: 4 }] },
+    });
+
+    await reporting.getById(broken.id);
+    await reporting.getById(sound.id);
+
+    expect(skipped).toEqual([{ scenarioId: broken.id, reason: "not_an_array" }]);
+  });
+
   it("lists scenarios newest first regardless of insertion order", async () => {
     const orderingPortfolio = await prisma.portfolio.create({
       data: { userId, name: "Ordering Portfolio", baseCurrency: "USD" },

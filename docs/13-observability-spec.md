@@ -1832,7 +1832,7 @@ Code vs ADR:
 
 # 44. Observability and Security Events
 
-**Status:** `Planned (B3)` (ADR-009 point 9, `09-security-spec.md` §50); the refresh endpoint and the reuse revocation `Implemented` (B2.4), their events `Planned (B3)` (ADR-005 point 5); the logout endpoint `Implemented` (B2.4), `auth.logout` `Planned (B3)` (ADR-009 point 9)
+**Status:** `Implemented` (B3.3) for login, refresh reuse, logout and role checks; `authz.denied` on realtime subscriptions `Planned (B5)` (ADR-009 point 9, ADR-005 point 5, `09-security-spec.md` §50)
 
 Security-relevant events should be observable.
 
@@ -1862,19 +1862,20 @@ The list previously used other names. What each became:
 
 | Previous name | Version 1 | Status |
 | --- | --- | --- |
-| `auth.login.success` | `auth.login.succeeded` | `Planned (B3)` |
-| `auth.login.failure` | `auth.login.failed`, same fields whatever the cause (`09-security-spec.md` §51) | `Planned (B3)` |
-| `auth.logout` | `auth.logout`, at `info`, with `userId` only (ADR-009 point 9, amended 2026-10-07). `POST /api/v1/auth/logout` is `Implemented` (B2.4; its service will return the `userId` once the logger exists) (ADR-005 point 6) | `Planned (B3)` |
-| `auth.token.refresh.failure` | Only reuse of a rotated refresh token has an event, `auth.refresh.reuse_detected` (ADR-005 point 5); other refresh failures have none (ADR-009 point 9); the refresh service answers all of them with one 401 | Reuse event `Planned (B3)` |
-| `auth.authorization.denied` | `authz.denied` | `Planned (B3)`; on role checks from B2, on realtime subscriptions from B5 |
+| `auth.login.success` | `auth.login.succeeded`, at `info`, with `userId` | `Implemented` (B3.3) |
+| `auth.login.failure` | `auth.login.failed`, at `warn`, no fields whatever the cause (`09-security-spec.md` §51) | `Implemented` (B3.3) |
+| `auth.logout` | `auth.logout`, at `info`, with `userId` only (ADR-009 point 9, amended 2026-10-07); the logout service returns the `userId` (ADR-005 point 6) | `Implemented` (B3.3) |
+| `auth.token.refresh.failure` | Only reuse of a rotated refresh token has an event, `auth.refresh.reuse_detected`, at `warn`, with `userId` and `familyId` (ADR-005 point 5); other refresh failures have none (ADR-009 point 9); the refresh service answers all of them with one 401 | `Implemented` (B3.3) |
+| `auth.authorization.denied` | `authz.denied`, at `warn`, with `userId`, `role` and `permission` | `Implemented` (B3.3) on role checks; `Planned (B5)` on realtime subscriptions |
 
 Code vs ADR:
 
-- No security event is logged today: there is no logger (ADR-009, B3) and no refresh or logout endpoint (ADR-005, B2). Login failures are answered (`09-security-spec.md` §51) but not logged.
-- Each event carries `timestamp`, `event`, `requestId` and `userId` when known (ADR-009 point 3, `09-security-spec.md` §50). Authentication failures log at `warn` (ADR-009 point 6). Passwords, the `Authorization` header, cookies and both tokens are never logged (ADR-009 point 4).
-- `route` comes from the request log. ADR-009 lists no client address or user agent, so "sanitized client context" is an open detail (B3). Whether `auth.login.failed` records the cause (unknown email or wrong password) as a value is also open (B3); the fields stay the same for every cause.
+- The five events are emitted (B3.3): login and logout from the controllers through `req.logger`, refresh reuse from the refresh service through an injected `Logger`, and `authz.denied` from the central error handler on a `ForbiddenError`, which carries the `permission` set by `assertPermission`. The names are in the `LOG_EVENTS` registry of the API.
+- Each event carries `timestamp`, `event` and `requestId` from the logger, plus the fields listed above (ADR-009 point 3, `09-security-spec.md` §50). Authentication failures log at `warn` (ADR-009 point 6). Passwords, the `Authorization` header, cookies, both tokens and the email are never logged (ADR-009 point 4); tests assert it.
+- `route` comes from the request log. The events carry no client address or user agent (ADR-009 lists none), so there is no "sanitized client context". `auth.login.failed` does not record the cause (unknown email or wrong password): it has no fields, the same for every cause.
 - Refresh failures other than reuse (an expired, unknown or revoked token, a missing custom header) have no dedicated event; they are ordinary `401` request logs (ADR-009 point 9, amended 2026-10-07).
-- Logout emits `auth.logout` at `info`, carrying `userId` only (ADR-009 point 9, amended 2026-10-07). `09-security-spec.md` §50, which left the event open, follows the ADR.
+- Logout emits `auth.logout` at `info`, carrying `userId` only, and nothing when the request ended no session (ADR-009 point 9, amended 2026-10-07).
+- A cross-user request answered with 404 emits no `authz.denied`; only a 403 does.
 
 ---
 

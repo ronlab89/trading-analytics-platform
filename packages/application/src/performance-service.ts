@@ -9,7 +9,7 @@ import type { Clock } from "./clock.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import type { RolePermissions } from "./permissions.js";
 import type { PortfolioService } from "./portfolio-service.js";
-import { buildPortfolioSeries } from "./portfolio-series.js";
+import { buildPortfolioSeries, type SeriesTimingOptions } from "./portfolio-series.js";
 import type { AnalyticsPeriod, PortfolioSeries } from "./portfolio-series.js";
 
 /** One day of the period: its value and its return (`null` when it has none). */
@@ -30,7 +30,7 @@ export interface PerformanceResult {
   series: PerformancePoint[];
 }
 
-export interface PerformanceServiceDependencies {
+export interface PerformanceServiceDependencies extends SeriesTimingOptions {
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
   transactionRepository: Pick<TransactionRepository, "listCompletedByPortfolioId">;
   historicalPriceRepository: Pick<HistoricalPriceRepository, "listByAssetIds">;

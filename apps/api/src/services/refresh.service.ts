@@ -5,8 +5,9 @@ import {
   type UserRepository,
   type UserRole,
 } from "@trading/domain";
-import type { Clock } from "@trading/application";
+import { silentLogger, type Clock, type Logger } from "@trading/application";
 import { AppError } from "../errors/app-error.js";
+import { LOG_EVENTS } from "../logging/events.js";
 import type { GraceTokenCipher } from "./grace-token-cipher.js";
 import { generateRefreshToken, hashRefreshToken } from "./refresh-token.js";
 import type { TokenService } from "./token.service.js";
@@ -23,6 +24,8 @@ export interface RefreshServiceOptions {
   /** A session unused for this long is dead, whatever its absolute lifetime. */
   idleSeconds: number;
   graceSeconds?: number;
+  /** Receives `auth.refresh.reuse_detected`; silent when omitted. */
+  logger?: Logger;
 }
 
 export interface RefreshResult {
@@ -51,6 +54,7 @@ export interface RefreshService {
 export function createRefreshService(options: RefreshServiceOptions): RefreshService {
   const { sessions, users, accessTokens, graceCipher, clock, idleSeconds } = options;
   const graceMs = (options.graceSeconds ?? REFRESH_GRACE_SECONDS) * 1000;
+  const logger = options.logger ?? silentLogger;
 
   const reject = (): never => {
     throw new AppError("UNAUTHORIZED", "Invalid refresh token.", 401);
@@ -75,6 +79,10 @@ export function createRefreshService(options: RefreshServiceOptions): RefreshSer
 
     if (!insideWindow) {
       await sessions.revokeFamily(session.familyId, now);
+      logger.warn(LOG_EVENTS.authRefreshReuseDetected, {
+        userId: session.userId,
+        familyId: session.familyId,
+      });
     }
     return reject();
   }

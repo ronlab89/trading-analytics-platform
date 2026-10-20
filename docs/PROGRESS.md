@@ -957,11 +957,11 @@ for an unknown token. Both require `X-Requested-With: XMLHttpRequest` (403
 otherwise) and CORS now allows credentials for the `CORS_ORIGIN` list. The
 session repository gained an atomic `rotate`, `revokeFamily` and
 `clearExpiredSuccessors`, with a second additive migration. The `auth.refresh.reuse_detected`
-and `auth.logout` log lines wait for the B3 logger.
+and `auth.logout` log lines landed in B3.3.
 **B2.5 is done** (`odd/tasks/b2/b2-5-close.md`): the auth-focused security review
 found no defect and is recorded in the task file (B7 owns the final pass), and
 every `Planned (B2)` mark in `docs/` is now `Implemented`. Carried to later
-blocks: the two auth log lines (B3), a dedicated refresh rate limiter (open
+blocks: a dedicated refresh rate limiter (open
 detail of `09-security-spec.md` §26) and the successor ciphertext that stays on
 the last rotated row of a family that never refreshes again.
 B0 and B1 are done; B1 was built in seven slices. **B1.1 is done**
@@ -1122,7 +1122,9 @@ unassigned.
   stored entries are skipped silently (by design, a read must not 500).
   If data integrity ever needs surfacing, log skipped entries (the logger
   arrives in B3). Assigned to B3: one log entry when a stored `changes` entry
-  is skipped (decided 2026-10-08).
+  is skipped (decided 2026-10-08). `Implemented` (B3.3): the mapper reports
+  each skipped entry through an optional callback and the API logs
+  `scenario.changes.skipped` at `warn` with `scenarioId`, `reason` and `index`.
 - **Dev database re-seed:** the scenario seed step changed (creates the
   scenario with its `changes` in one write); run `db:seed` once.
 - **Also parked (roadmap section 7):** `/metrics` (ADR-009 point 10), hosting

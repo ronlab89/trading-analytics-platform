@@ -28,11 +28,11 @@ docs/PROGRESS.md
 ## Tasks
 
 - [x] T1 Verify where login, refresh, logout, `assertPermission`, the `changes` read and the series reconstruction live, and how each reaches the `Logger`. Findings and the approved placement are in the Log.
-- [ ] T2 Login events, with tests on fields and on the absence of secrets.
-- [ ] T3 Refresh reuse and logout events.
-- [ ] T4 `authz.denied`.
-- [ ] T5 The skipped-`changes` entry and the series timing.
-- [ ] T6 Reconcile `09-security-spec.md` §50 and `13-observability-spec.md` §44 for what landed.
+- [x] T2 Login events, with tests on fields and on the absence of secrets. Commits: `c3f436e`, `df23e32` (event ordered after the response).
+- [x] T3 Refresh reuse and logout events. Commits: `df23e32` (logout), `0471d6b` (rotated-token test), `2ac3d89` (reuse).
+- [x] T4 `authz.denied`. Commits: `4c8c114`, `8f4030f` (route test).
+- [x] T5 The skipped-`changes` entry (`0cac7fc`) and the series timing (`9623746`).
+- [x] T6 Reconcile `09-security-spec.md` §50 and `13-observability-spec.md` §44 for what landed. Commit: `8e90c5c`.
 
 ## Done when
 
@@ -57,3 +57,4 @@ pnpm --filter @trading/application test; pnpm --filter @trading/api test; pnpm t
   - Skipped `changes`: `toDomainChanges` in `packages/database/src/mappers/scenario-mapper.ts`, a pure function; `packages/database` is outside this slice's edit surfaces.
   - Series: `buildPortfolioSeries` in `packages/application/src/portfolio-series.ts`, which already receives `clock` in its dependencies.
 - 2026-10-19: the user approved the placement ("Si es lo recomendado si lo apruebo"): login and logout events in `loginHandler` and `logoutHandler` through `req.logger` (the logout service returns the `userId`); refresh reuse through a `logger` option of `createRefreshService`, wired with a context-aware logger in `session.service.ts`; `authz.denied` in the error handler on `ForbiddenError`, with a new `permission` field set by `assertPermission`; the skipped `changes` entry through an optional callback of `toDomainChanges`; the series timing through an optional `logger` in the dependencies of `buildPortfolioSeries`. Edit surfaces widened to `packages/database/src/mappers/**`.
+- 2026-10-20: slice closed. Native review of `df23e32..8e90c5c` (lenses `risk`, `reliability`; assessed high only by the `security` signal in a doc path): approved, authority acknowledged and burned. Advisory, non-blocking (R3): the `analytics.series.built`, refresh reuse and `scenario.changes.skipped` calls run inline, so a logger that throws would fail the request; no test covers it. Left as later work (a guard around the logger). Known untested wiring: `composition.ts` for the scenario callback and the series timing; refresh reuse has no route-level test (`session.service.ts` uses the global logger). Flaky risk: `auth.login-events.test.ts` takes about 4 s of the 5 s limit (bcrypt hashing).

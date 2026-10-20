@@ -12,11 +12,15 @@ import { AppError } from "../errors/app-error.js";
 import { runWithRequestContext, withRequestContext } from "../logging/request-context.js";
 import { errorHandler } from "./error-handler.js";
 
-function run(err: unknown) {
+function run(err: unknown, auth?: { userId: string; role: string }) {
   const json = vi.fn((_body: ErrorResponse) => undefined);
   const status = vi.fn((_code: number) => ({ json }));
   const capture = capturingLogger();
-  const req = { requestId: "req-1", logger: withRequestContext(capture) } as unknown as Request;
+  const req = {
+    requestId: "req-1",
+    logger: withRequestContext(capture),
+    ...(auth ? { auth } : {}),
+  } as unknown as Request;
   runWithRequestContext({ requestId: "req-1" }, () => {
     errorHandler(err, req, { status } as unknown as Response, vi.fn());
   });
@@ -111,6 +115,51 @@ describe("errorHandler application errors", () => {
       requestId: "req-1",
       details,
     });
+  });
+});
+
+describe("errorHandler authz.denied (ADR-009 point 9)", () => {
+  const viewer = { userId: "user-1", role: "VIEWER" };
+
+  it("logs authz.denied at warn with the user, the role and the missing permission", () => {
+    const { status, entries } = run(
+      new ForbiddenError("Missing permission: portfolio:write.", "portfolio:write"),
+      viewer,
+    );
+
+    expect(status).toBe(403);
+    expect(entries.map((entry) => entry.event)).toEqual(["http.request.failed", "authz.denied"]);
+    expect(entries[1]).toEqual({
+      level: "warn",
+      event: "authz.denied",
+      fields: {
+        requestId: "req-1",
+        userId: "user-1",
+        role: "VIEWER",
+        permission: "portfolio:write",
+      },
+    });
+  });
+
+  it("logs nothing extra for a ForbiddenError that names no permission", () => {
+    const { entries } = run(new ForbiddenError("Not yours."), viewer);
+
+    expect(entries.map((entry) => entry.event)).toEqual(["http.request.failed"]);
+  });
+
+  it("still logs the denial when the request carries no authentication", () => {
+    const { entries } = run(new ForbiddenError("Missing permission: alert:write.", "alert:write"));
+
+    expect(entries[1]?.fields).toEqual({ requestId: "req-1", permission: "alert:write" });
+  });
+
+  it("does not log authz.denied for other failures", () => {
+    const { entries } = run(
+      new NotFoundError("The requested resource could not be found."),
+      viewer,
+    );
+
+    expect(entries.map((entry) => entry.event)).toEqual(["http.request.failed"]);
   });
 });
 

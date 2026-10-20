@@ -79,6 +79,6 @@ export function assertPermission(
   matrix: RolePermissions = ROLE_PERMISSIONS,
 ): void {
   if (!hasPermission(actor, permission, matrix)) {
-    throw new ForbiddenError(`Missing permission: ${permission}.`);
+    throw new ForbiddenError(`Missing permission: ${permission}.`, permission);
   }
 }

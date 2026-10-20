@@ -1435,41 +1435,46 @@ headers or bodies, but the error `message` is not filtered.
 
 # 50. Auditability
 
-**Status:** `Planned (B3)` (ADR-009 points 3, 9 and 13); the reuse revocation itself `Implemented` (B2.4), its event `Planned (B3)` (ADR-005 point 5)
+**Status:** `Implemented` (B3.3) for login, refresh reuse, logout and role checks; the refused realtime subscription `Planned (B5)` (ADR-009 points 3, 9 and 13; ADR-005 point 5)
 
 Security-relevant actions are traceable through structured security
 events in the operational log (ADR-009 point 9). Version 1 has no separate
 audit store; operational logs are not permanent audit storage
 (`13-observability-spec.md` §45).
 
-| Event | When | Block |
-| --- | --- | --- |
-| `auth.login.succeeded` | Valid credentials | B3 |
-| `auth.login.failed` | Any credential failure, with the same fields whatever the cause (§51) | B3 |
-| `auth.refresh.reuse_detected` | An already-rotated refresh token is presented and its family is revoked (§7) | B2 / B3 |
-| `authz.denied` | A permission check fails, including a refused realtime subscription (§17) | B2 / B5 |
-| `auth.logout` | A logout request revokes the refresh token family; level `info`, carries `userId` only (ADR-009 point 9, amended 2026-10-07) | B3 (the logout endpoint `Implemented`, B2.4; the log line waits for the logger) |
+| Event | Level | Fields | When | Status |
+| --- | --- | --- | --- | --- |
+| `auth.login.succeeded` | `info` | `userId` | Valid credentials | `Implemented` (B3.3) |
+| `auth.login.failed` | `warn` | none | Any credential failure, with the same fields whatever the cause (§51) | `Implemented` (B3.3) |
+| `auth.refresh.reuse_detected` | `warn` | `userId`, `familyId` | An already-rotated refresh token is presented and its family is revoked (§7) | `Implemented` (B3.3) |
+| `authz.denied` | `warn` | `userId`, `role`, `permission` | A permission check fails with 403 (§17); a refused realtime subscription follows with B5 | `Implemented` (B3.3) for role checks; `Planned (B5)` for realtime |
+| `auth.logout` | `info` | `userId` | A logout request revokes the refresh token family (ADR-009 point 9, amended 2026-10-07); a request that ends no session logs nothing | `Implemented` (B3.3) |
 
-Each event carries `timestamp`, `event`, `requestId` and `userId` when
-known, and none of the fields of §49.
+Each event carries `timestamp`, `event` and `requestId` from the logger, plus
+the fields in the table, and none of the fields of §49. `auth.login.failed`
+has no fields of its own, so it cannot tell an unknown email from a wrong
+password. The tests assert the absence of passwords, tokens, cookies and the
+email in every entry. The login and logout entries are written after the response is sent, so a
+logging failure cannot change the answer.
 
 Not covered in version 1: role changes have no endpoint (roles come from
 the seed, ADR-005 point 10), so there is no role-change event.
 
 Decided (ADR-009 point 9, amended 2026-10-07): logout emits `auth.logout`
-at level `info` with `userId` only. The logout endpoint exists (B2.4); the
-event is emitted once the logger does (`Planned (B3)`), and the logout service
-will then need to return the `userId`.
+at level `info` with `userId` only. `Implemented` (B3.3): the logout service
+returns the `userId` of the session it ended, or nothing when there was no
+token, no session or the session was already revoked, and only then is the
+event skipped. A rotated token still ends the family and logs the event.
 
-> Open detail (B3): whether a cross-user request answered with 404 (§15)
-> emits `authz.denied`. ADR-009 point 9 names the event without listing
-> its triggers.
+Decided (B3.3): `authz.denied` is emitted for a `ForbiddenError` (403) only,
+from the central error handler. A cross-user request answered with 404 (§15)
+emits no `authz.denied`; it stays an ordinary request log.
 
 ---
 
 # 51. Authentication Failure Handling
 
-**Status:** `Implemented` (`apps/api/src/services/auth.service.ts`, `apps/api/src/middleware/rate-limit.ts`; ADR-005 point 12; FR-001, NFR-019); failure event `Planned (B3)` (ADR-009 point 9)
+**Status:** `Implemented` (`apps/api/src/services/auth.service.ts`, `apps/api/src/middleware/rate-limit.ts`; ADR-005 point 12; FR-001, NFR-019); failure event `Implemented` (B3.3, ADR-009 point 9)
 
 Failed logins never reveal whether an account exists:
 
@@ -1483,7 +1488,7 @@ Failed logins never reveal whether an account exists:
 - There is no account lockout. Repeated failures are bounded per IP by the
   login limiter (ADR-005 point 12), so a third party cannot lock a user
   out.
-- Each failure is logged as `auth.login.failed` from B3 (§50).
+- Each 401 failure is logged as `auth.login.failed` at `warn`, without fields (§50).
 - A malformed body (for example an invalid email) returns 400
   `VALIDATION_ERROR` before any lookup, so it reveals nothing about
   accounts.

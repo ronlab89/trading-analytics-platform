@@ -8,7 +8,8 @@ export interface LogoutServiceOptions {
 }
 
 export interface LogoutService {
-  logout(refreshToken: string | undefined): Promise<void>;
+  /** Resolves with the owner of the session it ended, or `undefined` when there was none to end. */
+  logout(refreshToken: string | undefined): Promise<string | undefined>;
 }
 
 /**
@@ -26,14 +27,17 @@ export function createLogoutService(options: LogoutServiceOptions): LogoutServic
   return {
     async logout(refreshToken) {
       if (!refreshToken) {
-        return;
+        return undefined;
       }
 
       const session = await sessions.getByTokenHash(hashRefreshToken(refreshToken));
 
-      if (session) {
-        await sessions.revokeFamily(session.familyId, clock.now());
+      if (!session) {
+        return undefined;
       }
+
+      await sessions.revokeFamily(session.familyId, clock.now());
+      return session.revokedAt ? undefined : session.userId;
     },
   };
 }
