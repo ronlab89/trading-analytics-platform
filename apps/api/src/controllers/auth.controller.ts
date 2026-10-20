@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
 import { presentLogin, type loginRequestSchema } from "@trading/contracts";
 import { AppError } from "../errors/app-error.js";
+import { LOG_EVENTS } from "../logging/events.js";
 import { login, getCurrentUser } from "../services/auth.service.js";
 import { logoutService, refreshService } from "../services/session.service.js";
 import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from "./refresh-cookie.js";
@@ -18,9 +19,14 @@ export async function loginHandler(req: Request, res: Response, next: NextFuncti
 
   try {
     const result = await login(email, password);
+    req.logger.info(LOG_EVENTS.authLoginSucceeded, { userId: result.user.id });
     setRefreshCookie(res, result.refreshToken);
     res.json({ data: presentLogin(result) });
   } catch (error) {
+    // Same entry whatever the cause, so the log cannot tell a missing account from a wrong password.
+    if (error instanceof AppError && error.statusCode === 401) {
+      req.logger.warn(LOG_EVENTS.authLoginFailed);
+    }
     next(error);
   }
 }
