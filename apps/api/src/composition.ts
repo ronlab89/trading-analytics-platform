@@ -32,8 +32,11 @@ import {
   createUserPreferenceService,
   createWatchlistService,
 } from "@trading/application";
-import type { Clock } from "@trading/application";
+import type { Clock, Logger } from "@trading/application";
 import { systemClock } from "./clock.js";
+import { LOG_EVENTS } from "./logging/events.js";
+import { logger as defaultLogger } from "./logging/logger.js";
+import { withRequestContext } from "./logging/request-context.js";
 
 /**
  * Composition root: the one place that builds concrete dependencies and
@@ -46,7 +49,7 @@ import { systemClock } from "./clock.js";
  */
 export { systemClock };
 
-export function buildComposition(clock: Clock) {
+export function buildComposition(clock: Clock, logger: Logger = withRequestContext(defaultLogger)) {
   const assetRepository = new PrismaAssetRepository();
 
   const portfolioService = createPortfolioService({
@@ -113,7 +116,11 @@ export function buildComposition(clock: Clock) {
     portfolioService,
   });
   const scenarioService = createScenarioService({
-    scenarioRepository: new PrismaScenarioRepository(),
+    scenarioRepository: new PrismaScenarioRepository({
+      onChangesSkipped: (skipped) => {
+        logger.warn(LOG_EVENTS.scenarioChangesSkipped, { ...skipped });
+      },
+    }),
     positionRepository,
     portfolioService,
     assetService,

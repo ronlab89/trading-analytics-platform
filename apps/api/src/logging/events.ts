@@ -12,6 +12,7 @@ export const LOG_EVENTS = {
   authRefreshReuseDetected: "auth.refresh.reuse_detected",
   authLogout: "auth.logout",
   authzDenied: "authz.denied",
+  scenarioChangesSkipped: "scenario.changes.skipped",
   appStartupStarted: "app.startup.started",
   appStartupCompleted: "app.startup.completed",
   appShutdownStarted: "app.shutdown.started",

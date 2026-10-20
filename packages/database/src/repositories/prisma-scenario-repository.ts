@@ -9,25 +9,37 @@ import {
   toDomainScenario,
   toPrismaChanges,
   toPrismaCreateInput,
+  type OnScenarioChangesSkipped,
 } from "../mappers/scenario-mapper.js";
 
+export interface PrismaScenarioRepositoryOptions {
+  /** Called for each stored `changes` entry the defensive read drops. */
+  onChangesSkipped?: OnScenarioChangesSkipped;
+}
+
 export class PrismaScenarioRepository implements ScenarioRepository {
+  private readonly onChangesSkipped: OnScenarioChangesSkipped | undefined;
+
+  constructor(options: PrismaScenarioRepositoryOptions = {}) {
+    this.onChangesSkipped = options.onChangesSkipped;
+  }
+
   async listByPortfolioId(portfolioId: string): Promise<Scenario[]> {
     const rows = await prisma.scenario.findMany({
       where: { portfolioId },
       orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     });
-    return rows.map(toDomainScenario);
+    return rows.map((row) => toDomainScenario(row, this.onChangesSkipped));
   }
 
   async getById(id: string): Promise<Scenario | null> {
     const row = await prisma.scenario.findUnique({ where: { id } });
-    return row ? toDomainScenario(row) : null;
+    return row ? toDomainScenario(row, this.onChangesSkipped) : null;
   }
 
   async create(input: CreateScenarioInput): Promise<Scenario> {
     const row = await prisma.scenario.create({ data: toPrismaCreateInput(input) });
-    return toDomainScenario(row);
+    return toDomainScenario(row, this.onChangesSkipped);
   }
 
   async update(
@@ -42,7 +54,7 @@ export class PrismaScenarioRepository implements ScenarioRepository {
         ...(changes !== undefined ? { changes: toPrismaChanges(changes) } : {}),
       },
     });
-    return toDomainScenario(row);
+    return toDomainScenario(row, this.onChangesSkipped);
   }
 
   /**
@@ -54,7 +66,7 @@ export class PrismaScenarioRepository implements ScenarioRepository {
       where: { id },
       data: { changes: toPrismaChanges(changes) },
     });
-    return toDomainScenario(row);
+    return toDomainScenario(row, this.onChangesSkipped);
   }
 
   async delete(id: string): Promise<void> {
