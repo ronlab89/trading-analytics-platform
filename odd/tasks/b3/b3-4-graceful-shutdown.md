@@ -25,7 +25,7 @@ docs/PROGRESS.md
 ## Tasks
 
 - [x] T1 Verify `index.ts`, `app.ts` and the readiness controller, and decide the testable shape (a `createServer`/`shutdown` function that takes the signal source and a drain timeout, so tests do not send real signals). Findings and decisions are in the Log.
-- [ ] T2 The shutdown registry (`lifecycle/shutdown.ts`): ordered steps, idempotent trigger, `app.shutdown.started`/`completed`, tested with fake steps and an injected `exit`.
+- [x] T2 The shutdown registry (`lifecycle/shutdown.ts`): ordered steps, idempotent trigger, `app.shutdown.started`/`completed`, tested with fake steps and an injected `exit`.
 - [ ] T3 Readiness 503 during shutdown (`status: "unavailable"`, no `checks`) through `createApp({ isShuttingDown })`, and its test.
 - [ ] T4 The HTTP drain step with timeout, the Prisma close step, the signal wiring and the startup entries (`lifecycle/bootstrap.ts`, `index.ts`), tested with a real server on port 0, an injected timeout and exit: drain completes (0) and drain expires (1).
 - [ ] T5 Reconcile `13`, `14`, `07` and ADR-006 for what landed.
