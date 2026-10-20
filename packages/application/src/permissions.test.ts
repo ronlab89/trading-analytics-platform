@@ -102,5 +102,17 @@ describe("permissions", () => {
         assertPermission(trader, "transaction:create", matrix);
       }).toThrow("transaction:create");
     });
+
+    it("assertPermission carries the missing permission on the error for the security log", () => {
+      let thrown: unknown;
+      try {
+        assertPermission(trader, "transaction:create", matrix);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(ForbiddenError);
+      expect((thrown as ForbiddenError).permission).toBe("transaction:create");
+    });
   });
 });

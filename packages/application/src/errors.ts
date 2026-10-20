@@ -22,8 +22,19 @@ export class NotFoundError extends ApplicationError {}
 /** The request is valid but conflicts with the current state of a resource. */
 export class ConflictError extends ApplicationError {}
 
-/** The actor is authenticated but lacks the permission for this use case. */
-export class ForbiddenError extends ApplicationError {}
+/**
+ * The actor is authenticated but lacks the permission for this use case.
+ * `permission` names the one that was missing, for the security log; it is
+ * never part of what the client receives beyond the message.
+ */
+export class ForbiddenError extends ApplicationError {
+  constructor(
+    message: string,
+    readonly permission?: string,
+  ) {
+    super(message);
+  }
+}
 
 /** One problem found in a request, tied to the field that caused it. */
 export interface FieldIssue {
