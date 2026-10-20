@@ -36,7 +36,7 @@ It must support:
 Code vs ADR:
 
 - ADR-006 fixes the deployment model: exactly two targets, the local full stack and the public demo (§3). The backend is never hosted, so "production-like" means the local full stack and the "frontend/backend services" are not deployed separately.
-- Where each capability stands: PostgreSQL in Docker, environment configuration, migrations, seeds and health checks `Implemented`; observability `Planned (B3)`; CI `Implemented`; production build and the full-stack containers `Planned (B7)`; WebSocket `Planned (B5)`; the public demo `Planned (FE)`.
+- Where each capability stands: PostgreSQL in Docker, environment configuration, migrations, seeds and health checks `Implemented`; observability `Implemented` (B3); CI `Implemented`; production build and the full-stack containers `Planned (B7)`; WebSocket `Planned (B5)`; the public demo `Planned (FE)`.
 
 ---
 
@@ -266,7 +266,7 @@ All frontend responsibilities are `Planned (FE)`. The production static build is
 | WebSocket server | `Planned (B5)` (ADR-007) |
 | Background operations | `Planned (B4)`: in-process job runner (ADR-008) |
 | Health checks | `Implemented` (`GET /health`, `GET /health/ready`) |
-| Observability | `Planned (B3)` (ADR-009) |
+| Observability | `Implemented` (B3; ADR-009) |
 
 ### PostgreSQL
 
@@ -348,8 +348,8 @@ Variables, with the names of `apps/api/src/config/env.ts` and ADR-006 point 8:
 | `JWT_EXPIRES_IN_SECONDS` | Access token lifetime in seconds; default `900` | `Implemented`; replaces `JWT_EXPIRES_IN` (ADR-006 point 8) |
 | `SESSION_IDLE_SECONDS` | A refresh-token family unused for this long ends; default `604800` (7 days) | `Implemented` (B2.3; enforced by refresh, B2.4) (ADR-005 Deferred detail) |
 | `SESSION_ABSOLUTE_SECONDS` | Absolute lifetime of a refresh-token family and the cookie `Max-Age`; default `2592000` (30 days) | `Implemented` (B2.3) (ADR-005 Deferred detail) |
-| `LOG_LEVEL` | `debug` in development, `info` in production, `silent` in tests | `Planned (B3)` (ADR-009 point 7) |
-| `SLOW_REQUEST_THRESHOLD_MS` | Slow-request `warn` threshold for HTTP requests; default `500` | `Planned (B3)` (ADR-009 point 8) |
+| `LOG_LEVEL` | `debug` in development, `info` in production, `silent` in tests | `Implemented` (B3.1, ADR-009 point 7) |
+| `SLOW_REQUEST_THRESHOLD_MS` | Slow-request `warn` threshold for HTTP requests; default `500` | `Implemented` (B3.2, ADR-009 point 8) |
 | `APP_MODE` | `real` or `demo`; exposed to the web build as `VITE_APP_MODE` | `Planned (FE)` (ADR-006 point 8); replaces `DEMO_MODE` |
 | `VITE_API_BASE_URL`, `VITE_WS_URL` | API and WebSocket base URLs of the real-mode web build; proposed names, build-time values (§14) | `Planned (FE)` (ADR-006 point 8) |
 | `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_PORT` | Read by `docker-compose.yml` only | `Implemented` |
@@ -401,7 +401,7 @@ Code vs ADR:
 
 - No repository document lists these variables outside this table; `README.md` and `CONTRIBUTING.md` are aligned in T5.2.
 - `.env.example` opens with a stale Spanish note ("variables reales se agregan a medida que se implementen") although the API variables already exist, and it lacks `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3) and `APP_MODE` (FE). Fixing the file is a code change and belongs to the block that adds each variable.
-- `.env.test.example` sets `NODE_ENV=test`, which disables rate limiting in the integration suite (`apps/api/src/middleware/rate-limit.ts`). Rate limits in development stay on, and restarting the API clears the counters (ADR-006, Deferred detail; B0). `LOG_LEVEL=silent` in tests is `Planned (B3)` (ADR-009 point 7).
+- `.env.test.example` sets `NODE_ENV=test`, which disables rate limiting in the integration suite (`apps/api/src/middleware/rate-limit.ts`). Rate limits in development stay on, and restarting the API clears the counters (ADR-006, Deferred detail; B0). `LOG_LEVEL=silent` in tests is `Implemented` (B3.1, ADR-009 point 7).
 
 ---
 
@@ -542,7 +542,7 @@ What `apps/api/src/index.ts` does today:
 | Step | Today | Status |
 |---|---|---|
 | Load and validate configuration | Importing `config/env.ts` parses the environment and exits on failure (§12) | `Implemented` |
-| Initialize observability | Not present; two `console` lines and a startup `console.log` | `Planned (B3)` (ADR-009 point 11 adds the startup entry) |
+| Initialize observability | The logger is built when `logging/logger.ts` loads; `app.startup.started` and `app.startup.completed` follow (ADR-009 point 11) | `Implemented` (B3.1, B3.4) |
 | Initialize database | The Prisma client is a shared singleton created when `@trading/database` is imported (`packages/database/src/client.ts`); no explicit connect, so no connection is attempted at startup | `Implemented` as implicit; explicit check `Planned (B7)` (`DATABASE_URL` validation, §12) |
 | Validate dependencies | Not present; readiness runs a `SELECT 1` on each `GET /health/ready` call | `Implemented` as a per-request check only |
 | Apply migrations | Manual (`db:migrate`, `db:test:migrate`); in the `full` profile, a one-shot `migrate` service runs `prisma migrate deploy` before the API container starts | `Planned (B7)` (ADR-006 points 4 and 5) |
@@ -1159,7 +1159,7 @@ Code vs ADR:
 
 # 33. CORS
 
-**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); origin validation `Implemented`; credentials `Implemented` (B2.4); `X-Request-ID` exposure `Planned (B3)`
+**Status:** `Implemented` (`apps/api/src/app.ts`, `apps/api/src/config/env.ts`); origin validation `Implemented`; credentials `Implemented` (B2.4); `X-Request-ID` exposure `Implemented` (B3.2)
 
 CORS must be explicit.
 
@@ -1177,7 +1177,7 @@ Avoid wildcard CORS for authenticated APIs unless there is a specific, justified
 | No wildcard | `Implemented`: the code never sets `*` (`09-security-spec.md` §24) |
 | Origin validation: only `http(s)://host[:port]` entries, `*` rejected | `Implemented` (ADR-006 point 13) |
 | Credentials for the refresh cookie | `Implemented` (B2.4): `credentials: true`, safe because the origins are an explicit list (ADR-005 Consequences) |
-| `X-Request-ID` readable by the browser | `Planned (B3)`: `exposedHeaders` (ADR-009 point 5) |
+| `X-Request-ID` readable by the browser | `Implemented` (B3.2): `exposedHeaders` (ADR-009 point 5) |
 | Public demo | No entry needed: it calls no backend (ADR-006 point 7) |
 
 Code vs ADR:
@@ -1240,7 +1240,7 @@ Changing the signing secret should be treated as an operational event.
 | Never exposed to the frontend | No endpoint returns it and `env.ts` prints keys, not values; the web build carries no secret (§14) | `Implemented` for the API; `Planned (FE)` for the build |
 | Expiration configured | `JWT_EXPIRES_IN_SECONDS`, default 900 (ADR-005 point 4) | `Implemented` |
 | Server-side validation | `authenticate.ts` verifies signature and expiry, and answers one generic 401 | `Implemented` |
-| Safe authentication logging | No authentication entries exist; redaction and the `auth.*` entries come with the `Logger` (ADR-009 points 4 and 11) | `Planned (B3)` |
+| Safe authentication logging | The `auth.*` and `authz.denied` entries carry no password, token, cookie or email, and redaction covers the named fields (ADR-009 points 4 and 9), tested | `Implemented` (B3.1, B3.3) |
 | Secure deployment configuration | Local only (§13); `NODE_ENV=production` adds no rule to the schema (§12) | `Implemented` as the minimum length |
 
 Code vs ADR:
@@ -1707,7 +1707,7 @@ Code vs ADR:
 
 # 50. Health Checks
 
-**Status:** `Implemented` (`apps/api/src/routes/health.ts`, NFR-051); 503 while shutting down `Planned (B3)` (ADR-006 point 12); route test `Planned (B0)` (ADR-001 point 8)
+**Status:** `Implemented` (`apps/api/src/routes/health.ts`, NFR-051); 503 while shutting down `Implemented` (B3.4, ADR-006 point 12); route test `Planned (B0)` (ADR-001 point 8)
 
 The deployment must preserve the health model from `13-observability-spec.md` (§22-23).
 
@@ -1722,7 +1722,7 @@ GET /health/ready
 |---|---|---|
 | `GET /health` (liveness) | Always 200 with `status`, `service` and `timestamp`; no dependency check | `Implemented` |
 | `GET /health/ready` (readiness) | `SELECT 1` against the database on every call; 200 with `checks.database: "ok"`, or 503 with `status: "unavailable"` and `checks.database: "unavailable"` | `Implemented` (`apps/api/src/controllers/health.controller.ts`, `apps/api/src/services/health.service.ts`) |
-| Readiness while shutting down | 503 with `status: "unavailable"` and no `checks` (ADR-006 point 12) | `Planned (B3)` |
+| Readiness while shutting down | 503 with `status: "unavailable"` and no `checks` (ADR-006 point 12) | `Implemented` (B3.4) |
 
 Liveness should answer whether the process is alive.
 
@@ -1732,7 +1732,7 @@ Health responses must never expose credentials or internal secrets. Both bodies 
 
 Code vs ADR:
 
-- Decided (ADR-006 point 12, readiness body; `Planned (B3)`): while the API is shutting down, the 503 body of `GET /health/ready` is `status: "unavailable"` with no `checks`, so the body does not claim that the database failed.
+- Decided (ADR-006 point 12, readiness body; `Implemented`, B3.4): while the API is shutting down, the 503 body of `GET /health/ready` is `status: "unavailable"` with no `checks`, so the body does not claim that the database failed.
 - Readiness checks the database only; the job runner (B4) and the simulator (B5) are not added to it by any ADR (`13-observability-spec.md` §23).
 - No test covers either route today; the health route test is in the B0 set (ADR-001 point 8, ADR-009 point 13).
 
@@ -1776,7 +1776,7 @@ Code vs ADR:
 
 # 52. Startup Diagnostics
 
-**Status:** per item (table below); the startup entries `Planned (B3)` (ADR-009 point 11), their level open
+**Status:** per item (table below); the startup entries `Implemented` (B3.4, ADR-009 point 11), at `info`
 
 Startup should produce safe structured events. The original list named seven examples:
 
@@ -1794,9 +1794,9 @@ The seven names are examples, not decisions. Version 1 decides a startup pair (`
 
 | Moment | Today | Status |
 |---|---|---|
-| Configuration validated | On failure, `[api] invalid environment configuration:` and the messages per variable (never the values), then exit code 1 (`apps/api/src/config/env.ts`). Nothing on success | Failure `Implemented` as plain text; structured entry `Planned (B3)` |
+| Configuration validated | On failure, `[api] invalid environment configuration:` and the messages per variable (never the values), then exit code 1 (`apps/api/src/config/env.ts`). Nothing on success | Failure `Implemented` as plain text, which stays: it is raised before the logger exists |
 | Database connected | No explicit connect (§15); the Prisma client connects on first use | No entry; explicit check `Planned (B7)` |
-| Application initialized | `createApp()` wires middleware and routes; no entry | `Planned (B3)` |
+| Application initialized | `createApp()` wires middleware and routes; no entry; none is decided | Not adopted (ADR-009 point 11) |
 | HTTP ready | `app.startup.completed` with the `port`, written when the server listens | `Implemented` (B3.4) |
 | WebSocket ready | No WebSocket layer | `Planned (B5)` |
 | Service ready | Same as HTTP ready: readiness answers once the server listens (§15) | `Implemented` as implicit |
@@ -1820,9 +1820,9 @@ Deployment must preserve the items below (`13-observability-spec.md`):
 
 | Item | Today | Status |
 |---|---|---|
-| Structured logs | JSON `console` lines for errors only (`request.failed`, `health.database.unavailable`); the `Logger` port with `pino` is not built | `Planned (B3)` (ADR-009 points 1-3) |
-| Request IDs | `X-Request-ID` is assigned or reused and echoed (`apps/api/src/middleware/request-id.ts`) and appears in error bodies. Propagation to every log line and exposure through CORS are not built | Header `Implemented`; propagation and exposure `Planned (B3)` (ADR-009 point 5) |
-| Error diagnostics | The error handler writes one JSON line with `requestId` and `errorName` for unexpected errors | `Implemented` as a `console` line; `http.request.failed` `Planned (B3)` (ADR-009 point 6) |
+| Structured logs | One JSON line per event on stdout through the `Logger` port and the `pino` adapter | `Implemented` (B3.1, ADR-009 points 1-3) |
+| Request IDs | `X-Request-ID` is assigned or reused and echoed (`apps/api/src/middleware/request-id.ts`), appears in error bodies and on every log line of the request, and the browser can read it | `Implemented` (B3.2, ADR-009 point 5) |
+| Error diagnostics | The error handler writes one `http.request.failed` entry per failed request, with `requestId`, `errorCategory` and, for internal and dependency errors, the stack | `Implemented` (B3.1, ADR-009 point 6) |
 | Health checks | §50 | `Implemented` |
 | Metrics where implemented | No metrics and no `/metrics` endpoint | `Deferred` (ADR-009 point 10) |
 | Realtime diagnostics | Connection events | `Planned (B5)` (ADR-009 point 11) |
@@ -2051,7 +2051,7 @@ Persistent file storage should be introduced through an infrastructure adapter i
 | Files the API serves | None. `apps/api/src/app.ts` registers no static, download or `sendFile` route | `Implemented` |
 | CSV import input | The CSV content is stored in the `jobs` row when the job is created, not on disk; resume and retry read the row, never the original request. The stored input is kept while the job can still be retried and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED` (ADR-008 point 4, amended 2026-10-07 and 2026-10-08) | `Planned (B4)` |
 | Size and row limits of an import | Bounded; the values are fixed in B4 (ADR-008 point 10, `09-security-spec.md` §27) | `Planned (B4)`, values set in B4 |
-| Import content in logs | The stored input is never logged (ADR-009, Deferred detail) | `Planned (B3)` |
+| Import content in logs | The stored input is never logged (ADR-009, Deferred detail): the redaction list covers `input` and `*.input` | `Implemented` (B3.1); the import itself `Planned (B4)` |
 | Persistent file storage adapter | Not needed in version 1 | `Deferred` |
 
 Code vs ADR:
@@ -2507,7 +2507,7 @@ Code vs ADR:
 
 # 75. Troubleshooting
 
-**Status:** `Reference`; the developer-facing workflow `Planned (B3)` (`13-observability-spec.md` §36), the README entries pending (T5.2)
+**Status:** `Reference`; the developer-facing workflow `Implemented` (B3.5, `13-observability-spec.md` §36), the README entries pending (T5.2)
 
 Documentation should cover common failures.
 
@@ -2534,7 +2534,7 @@ Check:
 - build output: `pnpm --filter @trading/api start` runs `node dist/index.js`, which does not work until the production build exists (`Planned (B7)`); use `pnpm --filter @trading/api dev` (`tsx watch`) meanwhile
 - migration state: apply migrations with `pnpm --filter @trading/database db:migrate` (development); `db:reset` rebuilds the database from scratch
 - the port: `PORT` (default 7001) may already be in use
-- logs: today a startup line and error lines on stdout; structured startup entries are `Planned (B3)` (§52)
+- logs: one JSON line per event on stdout, including the startup entries (§52, `Implemented`, B3.1, B3.4)
 
 ### Login returns 429
 
@@ -2547,7 +2547,7 @@ The login limiter allows 5 attempts per 15 minutes per IP, and the general limit
 - API base URL: the build-time `VITE_API_BASE_URL` (proposed name, ADR-006 point 8; §14)
 - CORS: the browser origin must appear in `CORS_ORIGIN` (default `http://localhost:5173`); a mismatch is a browser error and not an API error
 - backend health: `GET /health`
-- browser network panel: the `X-Request-ID` header of a failing request identifies it in the API logs; exposing it to browser code through CORS is `Planned (B3)` (ADR-009 point 5)
+- browser network panel: the `X-Request-ID` header of a failing request identifies it in the API logs; browser code can read it, because CORS exposes it (`Implemented`, B3.2, ADR-009 point 5)
 
 ### WebSocket fails
 
@@ -2562,7 +2562,7 @@ The login limiter allows 5 attempts per 15 minutes per IP, and the general limit
 
 Code vs ADR:
 
-- The original four headings are kept and extended with the real commands. The developer-facing troubleshooting document is `13-observability-spec.md` §36, which `Planned (B3)` assigns; `README.md` and `CONTRIBUTING.md` document neither the API start nor these checks, and are aligned in T5.2.
+- The original four headings are kept and extended with the real commands. The developer-facing troubleshooting document is `13-observability-spec.md` §36, which B3.5 wrote; `README.md` and `CONTRIBUTING.md` document neither the API start nor these checks, and are aligned in T5.2.
 - `.env.test.example` points at a test database (`trading_analytics_test`) that must be created by hand (§6); a test run that cannot connect usually means it is missing, or `pnpm --filter @trading/database db:test:migrate` has not run.
 
 ---
@@ -2678,7 +2678,7 @@ ADR-006 point 2 hosts no backend, so "public deployment" means two things: publi
 - [ ] Database credentials protected. (Partly: `.env` is ignored, but the Compose fallback password is a known local value, the port is published on every host interface. The API connects as the data-only role `trading_runtime` (`Implemented`); binding open in B7, §6)
 - [x] CORS restricted. (`Implemented`: `CORS_ORIGIN`, default `http://localhost:5173`, `apps/api/src/app.ts`)
 - [ ] HTTPS enabled. (`Deferred`: the local stack uses plain HTTP and `ws://`; the demo's HTTPS comes from the portfolio host, `Planned (FE)`, §28, §34)
-- [ ] Debug mode disabled. (No debug switch exists. `LOG_LEVEL` defaults to `info` in production, `Planned (B3)`; `ENABLE_DEBUG_LOGGING` is not adopted, §10)
+- [ ] Debug mode disabled. (No debug switch exists. `LOG_LEVEL` defaults to `info` in production (`Implemented`, B3.1); `ENABLE_DEBUG_LOGGING` is not adopted, §10)
 - [x] Stack traces hidden. (`Implemented`: the error handler returns a generic 500 body and logs the error name only, `apps/api/src/middleware/error-handler.ts`)
 - [x] Health output sanitized. (`Implemented`: fixed fields and `ok` or `unavailable`, `apps/api/src/controllers/health.controller.ts`, §50)
 - [x] Metrics restricted if exposed. (Satisfied by absence: no metrics and no `/metrics` endpoint, `Deferred`, ADR-009 point 10)
@@ -2712,14 +2712,14 @@ Each item ends with its status and, where it is not built, the block or stage th
 - [x] Pagination limits enforced. (`Implemented`: `pageSize` at most 100 on the paginated lists, §65)
 - [ ] Realtime history bounded. (`Planned (B5)`: `MarketEvent` retention, ADR-007 point 8; the client window `Planned (FE)`)
 - [ ] Background jobs have timeouts. (`Planned (B4)`: ADR-008 point 7)
-- [ ] Logging volume controlled. (`Planned (B3)`: one JSON line per event at a level set by `LOG_LEVEL`, with `info` in production, ADR-009 points 3 and 7)
+- [x] Logging volume controlled. (`Implemented` (B3.1): one JSON line per event at a level set by `LOG_LEVEL`, with `info` in production, ADR-009 points 3 and 7)
 
 No performance claim should be published without actual measurement.
 
 Code vs ADR:
 
 - The targets that a measurement would check are in `03-non-functional-requirements.md` (NFR-001 onward) and are not repeated here.
-- The slow-request threshold (`SLOW_REQUEST_THRESHOLD_MS`, default 500) is how a slow request becomes visible, `Planned (B3)` (ADR-009 point 8, §10).
+- The slow-request threshold (`SLOW_REQUEST_THRESHOLD_MS`, default 500) is how a slow request becomes visible, `Implemented` (B3.2) (ADR-009 point 8, §10).
 - No benchmark, load test or profile exists in the repository.
 
 ---
@@ -2732,16 +2732,16 @@ Verify:
 
 The backend items close in B3, except where a tag names another block. Frontend and demo items belong to the frontend stage, and metrics are `Deferred` (ADR-009 points 10 and 12; `13-observability-spec.md` §74, which owns the full definition of done). Checked items exist today.
 
-- [ ] startup logs. (`Planned (B3)`: `app.startup.started` and `app.startup.completed`, ADR-009 point 11; their level is open; today one `console.log` line announces the port, §52)
-- [x] request IDs. (`Implemented`: `X-Request-ID` assigned or reused, echoed and present in error bodies, `apps/api/src/middleware/request-id.ts`; propagation to every log line `Planned (B3)`)
-- [x] error logging. (`Implemented` as the `request.failed` line from the error handler; `http.request.failed` `Planned (B3)`, ADR-009 point 6)
+- [x] startup logs. (`Implemented` (B3.4): `app.startup.started` and `app.startup.completed` at `info`, ADR-009 point 11, §52)
+- [x] request IDs. (`Implemented`: `X-Request-ID` assigned or reused, echoed and present in error bodies, `apps/api/src/middleware/request-id.ts`; propagation to every log line `Implemented`, B3.2)
+- [x] error logging. (`Implemented`: the `http.request.failed` entry from the error handler, B3.1, ADR-009 point 6)
 - [x] health endpoint. (`Implemented`, §50)
-- [x] readiness checks. (`Implemented`, §50; 503 with `status: "unavailable"` and no `checks` while shutting down `Planned (B3)`, ADR-006 point 12; the route test `Planned (B0)`, ADR-001 point 8)
+- [x] readiness checks. (`Implemented`, §50; 503 with `status: "unavailable"` and no `checks` while shutting down `Implemented`, B3.4, ADR-006 point 12; the route test `Planned (B0)`, ADR-001 point 8)
 - [x] database health. (`Implemented`: `SELECT 1` through the shared client; a recovery entry is `Deferred` until a poller exists, B7, `13-observability-spec.md` §58)
 - [ ] realtime lifecycle diagnostics. (`Planned (B5)` on the server and `Planned (FE)` on the client; names open, ADR-009 point 11)
 - [ ] background job diagnostics. (`Planned (B4)`: entry names and fields are open)
 - [ ] metrics where implemented. (`Deferred`: none exist, ADR-009 point 10)
-- [ ] safe production log level. (`Planned (B3)`: `LOG_LEVEL` is `info` in production and `silent` in tests, ADR-009 point 7; the variable is not read yet)
+- [x] safe production log level. (`Implemented` (B3.1): `LOG_LEVEL` is `info` in production and `silent` in tests, ADR-009 point 7)
 
 Code vs ADR:
 
@@ -2825,7 +2825,7 @@ The architecture is acceptable when:
 | 9 | `Planned (FE)` | The demo is a static build with no backend and no secrets (ADR-006 point 7); NFR-052 and NFR-067 |
 | 10 | `Implemented` | The workflow of §41 installs from the lockfile; ADR-006 point 10 |
 | 11 | `Planned (B7)` | The `full` profile (ADR-006 point 4, §57); NFR-055 measures it by `docker compose --profile full up` passing the smoke test from a clean checkout |
-| 12 | `Planned (B3)` for logs; health `Implemented` | Request IDs are `Implemented`; structured logs, startup and shutdown entries are B3 (§52, §80) |
+| 12 | `Implemented` (B3) for logs; health `Implemented` | Request IDs, structured logs, startup and shutdown entries are `Implemented` (B3.1 to B3.4, §52, §80) |
 | 13 | `Reference` | Forward-fix only (ADR-006 point 6, §47). "Documented" means that statement; no rollback procedure exists or is promised |
 | 14 | `Implemented` by absence | No hosting provider is named and no vendor-specific code exists in `apps/` or `packages/`; the demo sits under the author's portfolio site (§28, §87) |
 
@@ -2894,9 +2894,9 @@ Each item ends with its status and, where it is not built, the block or stage th
 
 ### Operations
 - [ ] graceful shutdown works. (`Implemented` (B3.4) for the server and the database; jobs `Planned (B4)`; realtime `Planned (B5)`, §16)
-- [ ] startup failures are observable. (Partly: an invalid environment prints a message and exits with code 1 (`Implemented`); the structured startup entries `Planned (B3)`, ADR-009 point 11, §52)
+- [ ] startup failures are observable. (Partly: an invalid environment prints a message and exits with code 1 (`Implemented`); the structured startup entries `Implemented` (B3.4), ADR-009 point 11, §52)
 - [x] deployment verification documented. (`Reference`: §48; the automated check `Planned (B7)`)
-- [ ] troubleshooting documented. (Partly: §75; the developer workflow `Planned (B3)` and the `README.md` entries are pending (T5.2))
+- [ ] troubleshooting documented. (Partly: §75; the developer workflow `Implemented` (B3.5, `13-observability-spec.md` §66) and the `README.md` entries are pending (T5.2))
 
 Code vs ADR:
 
@@ -3045,7 +3045,7 @@ This preserves portability.
 | Database | Repository interfaces in `@trading/domain` with Prisma implementations in `@trading/database`; in-memory implementations for the demo (ADR-001) | Interfaces and Prisma `Implemented`; in-memory `Planned (B0)` |
 | Realtime | `ws` behind a transport port (ADR-007 point 1); the demo has an in-process adapter behind the same client port (point 13) | `Planned (B5)`; demo `Planned (FE)` |
 | File storage | None. The CSV import content is stored in the `jobs` row (ADR-008 point 4), so no file store or adapter exists (§61) | Not applicable; a store `Deferred` |
-| Observability | A `Logger` port with a `pino` adapter (ADR-009 point 1) | `Planned (B3)` |
+| Observability | A `Logger` port with a `pino` adapter (ADR-009 point 1) | `Implemented` (B3.1) |
 | External APIs | None exists or is decided; market data is simulated (ADR-007 point 7, §62) | `Deferred` |
 
 Code vs ADR:
@@ -3111,13 +3111,13 @@ Observability is part of deployment readiness.
 
 | Capability | Version 1 | Status |
 |---|---|---|
-| Startup logs | A plain `console.log` line announces the port; the structured entries are `app.startup.started` and `app.startup.completed` (ADR-009 point 11, §52, `13-observability-spec.md` §8) | `Planned (B3)` |
-| Request correlation | `X-Request-ID` is assigned or reused, echoed and present in error bodies (`apps/api/src/middleware/request-id.ts`); on every log line it is B3 (`13-observability-spec.md` §9) | Response `Implemented`; log lines `Planned (B3)` |
+| Startup logs | The structured entries `app.startup.started` and `app.startup.completed` announce the port (ADR-009 point 11, §52, `13-observability-spec.md` §8) | `Implemented` (B3.4) |
+| Request correlation | `X-Request-ID` is assigned or reused, echoed and present in error bodies (`apps/api/src/middleware/request-id.ts`); and on every log line of the request (`13-observability-spec.md` §9) | `Implemented` (B3.2) |
 | Health | `GET /health` and `GET /health/ready` (§50, `13-observability-spec.md` §22-23); 503 with `status: "unavailable"` while shutting down (ADR-006 point 12) | `Implemented`; shutdown 503 `Implemented` (B3.4) |
 | Metrics | None, and no `/metrics` endpoint (ADR-009 point 10, `13-observability-spec.md` §16) | `Deferred` |
-| Runtime errors | A generic 500 body, detail in the server log only (`apps/api/src/middleware/error-handler.ts`, `13-observability-spec.md` §12) | `Implemented`; the entry name `http.request.failed` `Planned (B3)` |
+| Runtime errors | A generic 500 body, detail in the server log only (`apps/api/src/middleware/error-handler.ts`, `13-observability-spec.md` §12) | `Implemented`; the entry name `http.request.failed` `Implemented` (B3.1) |
 | Shutdown entries (not in the original list) | `app.shutdown.started` and `app.shutdown.completed`, mirroring the startup pair (ADR-006 point 12, ADR-009 point 11) | `Implemented` (B3.4) |
-| Verbosity | `LOG_LEVEL`, with `SLOW_REQUEST_THRESHOLD_MS` for slow requests (ADR-009 points 7 and 8, §10) | `Planned (B3)` |
+| Verbosity | `LOG_LEVEL`, with `SLOW_REQUEST_THRESHOLD_MS` for slow requests (ADR-009 points 7 and 8, §10) | `Implemented` (B3.1, B3.2) |
 
 Code vs ADR:
 
@@ -3220,7 +3220,7 @@ This communicates engineering maturity without unnecessary cloud complexity.
 | 3. Run or inspect migrations | `db:migrate`, `db:test:migrate` or `prisma migrate deploy`; run by the `migrate` service in the `full` profile (§18) | `Implemented`; the `migrate` service `Planned (B7)` |
 | 4. Open health endpoint | `GET /health` and `GET /health/ready` (§50) | `Implemented` |
 | 5. Demonstrate realtime | Server events and the client states and reconnect | `Planned (B5)` and `Planned (FE)` |
-| 6. Trigger an observable operation | `X-Request-ID` on a response is `Implemented`; the log line with `requestId`, duration and result is B3 (`13-observability-spec.md` §65) | Mixed: `Implemented` and `Planned (B3)` |
+| 6. Trigger an observable operation | `X-Request-ID` on a response is `Implemented`; the log line with `requestId`, duration and result is `http.request.completed` (`13-observability-spec.md` §65) | `Implemented` (B3.2) |
 | 7. Show production build | `pnpm build` compiles every package today; running `node dist/index.js` and the image are B7 | Compile `Implemented`; run `Planned (B7)` |
 | 8. Explain how the architecture maps to public deployment | The only public deployment is the demo; the backend is never public (ADR-006 points 1 and 2). The mapping is the two targets of §95 and the adapters of §87 | `Reference` |
 | 9. Demonstrate Demo Mode as an infrastructure substitution | The demo build next to the local full stack, on the same use cases; there is no runtime switch because `APP_MODE` is fixed at build time (`10-testing-strategy.md` §64) | `Planned (FE)` |

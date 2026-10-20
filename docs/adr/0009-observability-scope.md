@@ -8,8 +8,9 @@ approved by the user from the `14-deployment-spec.md` reconciliation; point 5,
 reconnect correlation, approved by the user on 2026-10-08 from the
 `15-implementation-plan.md` reconciliation; point 2, request logs without
 `pino-http`, approved by the user on 2026-10-19 while implementing B3.2)
-**Implemented in:** roadmap block B3 (not yet implemented); `auth.logout`
-lands with its endpoint in B2 and the simulator entries in B5
+**Implemented in:** roadmap block B3 (B3.1 to B3.4, 2026-10-19 to 2026-10-20),
+with `auth.logout` (the endpoint landed in B2, the event in B3.3); the job
+entries in B4 and the realtime and simulator entries in B5
 
 ## Context
 
@@ -71,7 +72,7 @@ of its scope.
    `AsyncLocalStorage` to every log line of a request. Jobs carry `jobId`;
    realtime connections carry `connectionId`. (Amended 2026-10-07: the
    `X-Request-ID` response header is exposed through CORS
-   (`exposedHeaders`). `Planned (B3)`.) (Amended 2026-10-08, approved by the
+   (`exposedHeaders`). `Implemented`, B3.2.) (Amended 2026-10-08, approved by the
    user: reconnect correlation. A client that reconnects opens a new
    connection with a new `connectionId`; the log does not link it to the
    earlier one in v1. Every connection has its own `connectionId`, and
@@ -99,7 +100,7 @@ of its scope.
 9. **Security events.** `auth.login.succeeded`, `auth.login.failed`,
    `auth.refresh.reuse_detected`, `authz.denied`. (Amended 2026-10-07:)
    - **Logout.** `auth.logout` is added at `info`, with `userId` only.
-     The endpoint is `Implemented` (B2.4); the event is `Planned (B3)`, with the logger.
+     The endpoint is `Implemented` (B2.4); the event is `Implemented` (B3.3).
    - **Refresh failures.** A refresh failure other than reuse (an expired,
      unknown or revoked token, or a missing custom header) has no dedicated
      event. It stays an ordinary 401 request log.
@@ -111,11 +112,12 @@ of its scope.
     transitions (ADR-008) and realtime connection events (ADR-007).
     (Amended 2026-10-07:)
     - **Shutdown.** The shutdown logs `app.shutdown.started` and
-      `app.shutdown.completed`. `Planned (B3)`.
+      `app.shutdown.completed`. `Implemented` (B3.4), at `info`; a step that
+      fails also logs `app.shutdown.step_failed` at `error`.
     - **Startup.** (Added 2026-10-07, approved by the user from the
       `14-deployment-spec.md` reconciliation, §52.) The startup logs
       `app.startup.started` and `app.startup.completed`, mirroring the
-      shutdown pair. `Planned (B3)`.
+      shutdown pair. `Implemented` (B3.4), at `info`.
     - **Simulator.** `simulation.started`, `simulation.paused` and
       `simulation.mode.changed`; the names follow the endpoints (ADR-007
       point 15). `Planned (B5)`. There is no `simulation.resumed`, because

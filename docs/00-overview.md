@@ -113,7 +113,7 @@ come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
 | Decisions and replay, scenarios | `Implemented` | — |
 | Overview (dashboard data) | `Implemented` | — |
 | Performance and risk analytics (TWR, P/L, drawdown, volatility, attribution, Pulse) | `Implemented` | ADR-004, `16-analytics-spec.md` |
-| Structured logging | `Planned (B3)` | ADR-009 |
+| Structured logging | `Implemented` (B3.1) | ADR-009 |
 | CSV transaction import (background jobs) and idempotency | `Planned (B4)` | ADR-008 |
 | Realtime prices and events, shared market simulator | `Planned (B5)` | ADR-007 |
 | Generated OpenAPI document | `Planned (B6)` | ADR-002 point 7 |
@@ -396,7 +396,7 @@ measured results and recorded decisions; no placeholder claims.
 | 6 | Architecture documented. | `Implemented` |
 | 7 | Security implemented and documented. | foundation `Implemented`; sessions `Implemented` (B2); hardening `Planned (B7)` |
 | 8 | Relevant automated tests, run in CI. | tests `Implemented`; CI `Implemented` |
-| 9 | Performance measured, not estimated. | slow-request and analytics timing `Planned (B3)` (ADR-009 point 8); UI `Planned (FE)` |
+| 9 | Performance measured, not estimated. | slow-request and analytics timing `Implemented` (B3.2, B3.3) (ADR-009 point 8); UI `Planned (FE)` |
 | 10 | Defensible in a technical interview. | `Implemented` through the ADRs |
 | 11 | Demo online without recurring paid services. | `Planned (FE)` |
 | 12 | Documentation matches the implementation. | `Implemented` (`pnpm docs:check`, same-PR rule) |

@@ -188,7 +188,7 @@ the client can localize it (ADR-010 point 8). Implemented in B0.4
 
 # 8. Request Correlation
 
-**Status:** `Implemented` for the header; log propagation `Planned (B3)` (ADR-009 point 5)
+**Status:** `Implemented` for the header; log propagation `Implemented` (B3.2) (ADR-009 point 5)
 
 Every response carries:
 
@@ -198,8 +198,8 @@ X-Request-ID
 
 A client-supplied value matching `^[a-zA-Z0-9-]{1,64}$` is reused; otherwise
 the API generates a UUID. The same value is the `requestId` of every error
-envelope (§5). Propagation to every log line through `AsyncLocalStorage` is
-`Planned (B3)`.
+envelope (§5). Propagation to every log line goes through `AsyncLocalStorage`
+(`Implemented`, B3.2), and the browser can read the header (`exposedHeaders`).
 
 ---
 
@@ -358,7 +358,7 @@ Logout never fails on the token: a missing, unknown or already revoked cookie
 also answers 204 with the cookie cleared, and repeating it changes nothing. An
 access token already issued stays valid until it expires (at most 15 minutes).
 403 `FORBIDDEN` when the custom header is missing; the session is not revoked.
-The `auth.logout` log line (`userId` only) is `Planned (B3)`.
+The `auth.logout` log line (`userId` only) is `Implemented` (B3.3); a request that ends no session logs nothing.
 
 ### Custom request header and CORS
 

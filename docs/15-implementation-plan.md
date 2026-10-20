@@ -149,7 +149,7 @@ Code vs ADR:
 | 10 Background operations | jobs and idempotency `Planned (B4)` | screens `Planned (FE3)` |
 | 11 Demo Mode | `@trading/market-sim` `Planned (B5)` | `Planned (FE4)` |
 | 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
-| 13 Observability | logger and security events `Planned (B3)`; metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
+| 13 Observability | logger and security events `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
 | 14 Deployment | local full stack `Planned (B7)`; CI `Implemented` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
 | 15 UX, accessibility and performance refinement | B5 (server-side performance measurement after realtime exists, §32) | `Planned (FE5)` |
 | 16 Portfolio case study | none | `Planned (FE6)` |
@@ -399,7 +399,7 @@ start database
 | Request validation of route parameters (ADR-002 point 10) | `Implemented` (B0.4) | none |
 | Consistent error handling (`errors/app-error.ts`, `middleware/error-handler.ts`, envelope `{ error: { code, message, requestId, details? } }`) | `Implemented` | none |
 | Error contract changes: `{ field, code, message }` validation details, `TIMEOUT` removed from `AppErrorCode`, 503 `DEPENDENCY_ERROR` on a database outage (ADR-002 point 10) | `Implemented` (B0.4) | none |
-| Request IDs (`middleware/request-id.ts`, `X-Request-ID`, bounded safe pattern) | `Implemented`; exposing the header through CORS `Planned (B3)` | B3 |
+| Request IDs (`middleware/request-id.ts`, `X-Request-ID`, bounded safe pattern) | `Implemented`; exposing the header through CORS `Implemented` (B3.2) | B3 |
 | API response conventions: `/api/v1` paths and paginated lists with `meta` | `Implemented` | none |
 | `@trading/contracts`: response schemas, presenters and DTO types (ADR-002) | `Planned (B0)` | B0 |
 | Authentication middleware (`middleware/authenticate.ts`) | `Implemented` | none |
@@ -409,9 +409,9 @@ start database
 | One shared `Clock` port (ADR-001 point 8) | `Planned (B0)` | B0 |
 | Route tests for analytics, positions, assets, market and health, written before the layering refactor (ADR-001 point 8) | `Planned (B0)` | B0 |
 | Health endpoints: `GET /health` (liveness) and `GET /health/ready` (readiness, database check), registered before the rate limiter | `Implemented` | none |
-| `GET /health/ready` returns 503 with `status: "unavailable"` and no `checks` while the API shuts down (ADR-006 point 12) | `Planned (B3)` | B3 |
-| Safe structured logging: `Logger` port in `@trading/application`, pino adapter, request logs, security events (ADR-009) | `Planned (B3)`; see Code vs ADR for what exists | B3 |
-| Graceful shutdown on `SIGTERM` and `SIGINT` (ADR-006 point 12) | `Planned (B3)` | B3 |
+| `GET /health/ready` returns 503 with `status: "unavailable"` and no `checks` while the API shuts down (ADR-006 point 12) | `Implemented` (B3.4) | B3 |
+| Safe structured logging: `Logger` port in `@trading/application`, pino adapter, request logs, security events (ADR-009) | `Implemented` (B3.1 to B3.3) | B3 |
+| Graceful shutdown on `SIGTERM` and `SIGINT` (ADR-006 point 12) | `Implemented` (B3.4) | B3 |
 | OpenAPI document generated from the `@trading/contracts` schemas (ADR-002 point 7) | `Planned (B6)` | B6 |
 
 Code vs ADR:
@@ -485,7 +485,7 @@ The API:
 | Access token generation and validation (`jsonwebtoken`, payload `sub` and `role`, `JWT_EXPIRES_IN_SECONDS` default 900, which is the 15 minutes of ADR-005 point 4) | `Implemented` | none |
 | Authentication middleware (`authenticate`: one generic 401 for every failure) | `Implemented` | none |
 | Refresh token in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie with rotation and family revocation, `POST /api/v1/auth/refresh`, `Session` table, custom request header (ADR-005 points 5 to 7) | `Implemented` (B2.3, B2.4) | B2 |
-| `POST /api/v1/auth/logout` (ADR-005 point 6) and the `auth.logout` security event (ADR-009) | Endpoint `Implemented` (B2.4); the event `Planned (B3)` | B2, B3 |
+| `POST /api/v1/auth/logout` (ADR-005 point 6) and the `auth.logout` security event (ADR-009) | Endpoint `Implemented` (B2.4); the event `Implemented` (B3.3) | B2, B3 |
 | Role model: `VIEWER`, `TRADER` and `ADMIN`, with `USER` migrated to `TRADER` (ADR-005 point 1) | `Implemented` (B2.1) | B2 |
 | Permission matrix, `Actor { userId, role }` and enforcement in the application layer (ADR-005 points 2 and 3); the 403 `FORBIDDEN` code | `Actor` and permission mechanism `Implemented` (B0); roles and 403 `Implemented` (B2.1, B2.2) | B0, B2 |
 | `VIEWER` self-service (own preferences and own notifications read) and `ADMIN` limited to `TRADER` plus `simulation:control` (ADR-005 point 13) | `Implemented` (B2.1, B2.2) | B2 |
@@ -564,7 +564,7 @@ Backend authorization check
 | Application shell: icon rail, top bar and status bar (`11-ui-ux-spec.md`) | `Planned (FE0)` | FE0 |
 | English and Spanish (ADR-010 point 8): English initially, Spanish only after the user selects it, localized messages mapped from error codes, locale formatting | `Planned (FE0)` | FE0 |
 | `APP_MODE` and the API and WebSocket base URLs as build-time values (`VITE_APP_MODE`, proposed `VITE_API_BASE_URL` and `VITE_WS_URL`; ADR-006 point 8) | `Planned (FE0)` | FE0 |
-| Browser-console `Logger` adapter (ADR-009 point 1) | `Planned (FE0)`; the `Logger` port is `Planned (B3)` | FE0 |
+| Browser-console `Logger` adapter (ADR-009 point 1) | `Planned (FE0)`; the `Logger` port is `Implemented` (B3.1) | FE0 |
 | Wireframe corrections: `lang="es"` becomes English and `WIREFRAME-PLAN.md` is updated (ADR-010 point 8) | `Planned (FE0)` | FE0 |
 
 Code vs ADR:
@@ -1068,7 +1068,7 @@ The same product/application behavior should remain conceptually shared with the
 | One repository contract suite that runs against the Prisma and the in-memory implementations, extracted from the existing Prisma repository tests (`10` §18, NFR-044) | `Planned (B0)` | B0 |
 | Contract tests against the `@trading/contracts` schemas (ADR-002 point 6) | `Planned (B0)` | B0 |
 | Token tests: expired token and wrong signature return 401, with refresh, logout and role enforcement tests (`10` §29) | `Implemented` (B2.1 to B2.4) | B2 |
-| Redaction and event-name unit tests; an integration test that a request's `requestId` appears in its log entries (ADR-009 point 13) | `Planned (B3)` | B3 |
+| Redaction and event-name unit tests; an integration test that a request's `requestId` appears in its log entries (ADR-009 point 13) | `Implemented` (B3.1, B3.2) | B3 |
 | Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | B1 `Implemented`; B4 to B6 `Planned`, per block | B1 to B6 |
 | Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Implemented`; the CI test database uses the ADR-005 point 13 roles | none |
 | Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the runner and React Testing Library `Deferred` to the frontend-stage ADR | FE5 |
@@ -1156,32 +1156,32 @@ E2E
 
 ## 18. Phase 13 — Observability
 
-**Status:** per item (table below); the backend scope is `Planned (B3)`
+**Status:** per item (table below); the backend scope is `Implemented` (B3)
 
 **Owning blocks:** Backend: B3 (ADR-009 points 1 to 13), with `auth.logout` landing with its endpoint in B2, job entries in B4 and realtime and simulator entries in B5; Frontend: FE0 (browser-console `Logger` adapter), FE4 (demo logging). Decisions: ADR-009, ADR-006 points 11 and 12, ADR-010 point 6.
 
 | Deliverable | Status | Block |
 | --- | --- | --- |
-| `Logger` port in `@trading/application` with a `pino` adapter in the API; `pino-http` for request logs; `pino-pretty` in development only; JSON on stdout, no log files, no rotation (ADR-009 points 1 to 3) | `Planned (B3)`; the port depends on `@trading/application` from B0 | B3 |
-| Log fields and stable dotted event names such as `http.request.completed` (ADR-009 point 3); `LOG_LEVEL` is the only logging variable: `debug` in development, `info` in production, `silent` in tests (point 7) | `Planned (B3)` | B3 |
-| Redaction of passwords, the `Authorization` header, cookies, access tokens and refresh tokens, with tests (ADR-009 point 4 and Deferred detail) | `Planned (B3)` | B3 |
+| `Logger` port in `@trading/application` with a `pino` adapter in the API; request logs by middleware (`pino-http` is not a dependency, ADR-009 point 2); `pino-pretty` in development only; JSON on stdout, no log files, no rotation (ADR-009 points 1 to 3) | `Implemented` (B3.1, B3.2) | B3 |
+| Log fields and stable dotted event names such as `http.request.completed` (ADR-009 point 3); `LOG_LEVEL` is the only logging variable: `debug` in development, `info` in production, `silent` in tests (point 7) | `Implemented` (B3.1) | B3 |
+| Redaction of passwords, the `Authorization` header, cookies, access tokens and refresh tokens, with tests (ADR-009 point 4 and Deferred detail) | `Implemented` (B3.1) | B3 |
 | Request IDs: the `requestId` middleware generates or accepts a safe `X-Request-ID` and sets it on the response (`apps/api/src/middleware/request-id.ts`) | `Implemented` | none |
-| Correlation: `requestId` propagated through `AsyncLocalStorage` to every log line of the request; `X-Request-ID` exposed through CORS (`exposedHeaders`); `jobId` and `connectionId` on job and realtime entries (ADR-009 point 5) | `Planned (B3)`; job and realtime fields with B4 and B5 | B3, B4, B5 |
+| Correlation: `requestId` propagated through `AsyncLocalStorage` to every log line of the request; `X-Request-ID` exposed through CORS (`exposedHeaders`); `jobId` and `connectionId` on job and realtime entries (ADR-009 point 5) | `Implemented` (B3.2); job and realtime fields `Planned (B4)` and `Planned (B5)` | B3, B4, B5 |
 | Error categorization: the error handler returns a coded error body with the `requestId` (`apps/api/src/middleware/error-handler.ts`) | `Implemented` | none |
-| Error logging by category: levels by code, the event name `http.request.failed` (today `request.failed`), `errorCategory` and the stack on internal errors (ADR-009 points 3 and 6); today only unexpected errors are logged | `Planned (B3)` | B3 |
+| Error logging by category: levels by code, the event name `http.request.failed`, `errorCategory` and the stack on internal errors (ADR-009 points 3 and 6); every failed request is logged | `Implemented` (B3.1) | B3 |
 | Health checks and readiness: `GET /health` and `GET /health/ready` (`SELECT 1`), the failure line `health.database.unavailable` | `Implemented`; their route test `Planned (B0)` | B0 |
-| Shutdown behavior of readiness (503 while shutting down) and the `app.startup.*` and `app.shutdown.*` entries (ADR-006 point 12, ADR-009 point 11) | `Planned (B3)` | B3 |
-| Security events `auth.login.succeeded`, `auth.login.failed`, `auth.refresh.reuse_detected`, `authz.denied` and `auth.logout` (ADR-009 point 9) | `Planned (B3)`; the `auth.logout` endpoint and the reuse revocation `Implemented` (B2.4), their events wait for the logger | B3 |
-| Performance measurements: a `warn` entry when a request exceeds `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms), and separate timing of the analytics series reconstruction (ADR-009 point 8); individual database operations are not timed | `Planned (B3)` | B3 |
+| Shutdown behavior of readiness (503 while shutting down) and the `app.startup.*` and `app.shutdown.*` entries (ADR-006 point 12, ADR-009 point 11) | `Implemented` (B3.4) | B3 |
+| Security events `auth.login.succeeded`, `auth.login.failed`, `auth.refresh.reuse_detected`, `authz.denied` and `auth.logout` (ADR-009 point 9) | `Implemented` (B3.3); the `auth.logout` endpoint and the reuse revocation `Implemented` (B2.4) | B3 |
+| Performance measurements: a `warn` entry when a request exceeds `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms), and separate timing of the analytics series reconstruction (ADR-009 point 8); individual database operations are not timed | `Implemented` (B3.2, B3.3) | B3 |
 | Realtime and background-job diagnostics: lifecycle entries for realtime connections (ADR-007) and job transitions (ADR-008); simulator entries `simulation.started`, `simulation.paused`, `simulation.mode.changed` (ADR-009 point 11) | Job entries `Planned (B4)`; realtime and simulator entries `Planned (B5)`; entry names and fields are open details | B4, B5 |
-| Local debugging tools: `LOG_LEVEL=debug` with `pino-pretty` covers local debugging | `Planned (B3)` | B3 |
+| Local debugging tools: `LOG_LEVEL=debug` with `pino-pretty` covers local debugging | `Implemented` (B3.1; workflow documented in B3.5) | B3 |
 | Browser-console `Logger` adapter, so application code logs without knowing where it runs (ADR-009 point 1) | `Planned (FE0)`; demo event names `Deferred` (ADR-010 point 6) | FE0 |
 | Metrics, a `/metrics` endpoint and process metrics | `Deferred` (ADR-009 point 10) | none |
 | Realtime debug mode, diagnostics panel and demo diagnostics interface | `Deferred` to the frontend-stage ADR and the demo ADR (ADR-009 point 12, ADR-010 point 6) | none |
 
 Code vs ADR:
 
-- The API logs with `console` today (`apps/api/src/index.ts`, `apps/api/src/config/env.ts`) and has no logger module or logging dependency. Two lines already carry an `event` field: the unexpected-error line `request.failed` (`level`, `requestId`, `errorName`, `message`) and the readiness failure `health.database.unavailable`. Neither has a `timestamp` or `service` field, and handled errors are not logged. `X-Request-ID` is not exposed by CORS (`apps/api/src/app.ts` sets `cors({ origin })` only).
+- The API logs through the `Logger` port and a `pino` adapter (`apps/api/src/logging/`). Only `apps/api/src/config/env.ts` still prints plain text, on an invalid environment, because it runs before the logger exists. Every failed request logs `http.request.failed`, every request logs `http.request.completed`, and `X-Request-ID` is exposed by CORS.
 - The original task list includes "metrics". ADR-009 point 10 defers it: nothing would consume a metrics endpoint in a local deployment (NFR-070). Hosting the backend later (ADR-006 point 2) reopens this decision.
 - "Realtime diagnostics", "background-job diagnostics" and "performance measurements" are read as log entries in version 1, not as dashboards or panels. Performance measurement means the slow-request entry and the series timing; broader measurement follows the measure-first rule of §3 and is planned in §32.
 - "Local debugging tools" is `LOG_LEVEL` plus `pino-pretty`. `LOG_FORMAT`, `ENABLE_DEBUG_LOGGING` and `ENABLE_DEV_DIAGNOSTICS` are not adopted (ADR-009 point 2).
@@ -1234,12 +1234,12 @@ without requiring a paid external monitoring service.
 | Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | seed guard and `CORS_ORIGIN` validation `Implemented`; `.nvmrc` reused by CI `Implemented`, by the Dockerfile `Planned (B7)` | B7 |
 | Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Planned (B7)` | B7 |
 | Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Planned (B7)` | B7 |
-| Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT` and `JWT_EXPIRES_IN_SECONDS`; it does not read `APP_MODE`, `LOG_LEVEL` or `SLOW_REQUEST_THRESHOLD_MS` and does not validate `DATABASE_URL`; the rest is `Planned (B3)` (logging variables), `Planned (B7)` (`DATABASE_URL`) and `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
+| Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT`, `JWT_EXPIRES_IN_SECONDS`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3.1, B3.2); it does not read `APP_MODE` and does not validate `DATABASE_URL`; the rest is `Planned (B7)` (`DATABASE_URL`) and `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
 | Web build-time values `VITE_APP_MODE` and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) | `Planned (FE0)` | FE0 |
 | Local full stack: a Docker Compose `full` profile with PostgreSQL and the API; the default profile keeps only PostgreSQL; `TZ=UTC` on both containers; the real-mode web app runs on the Vite dev server against the local API (ADR-006 points 4 and 8) | `Planned (B7)` | B7 |
 | Migration deployment: a one-shot `migrate` service in the `full` profile runs `prisma migrate deploy` after PostgreSQL is healthy, and the API starts after it completes (ADR-006 points 4 and 5 and Deferred detail) | `Planned (B7)` | B7 |
 | Health checks: `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` (ADR-006 point 4) | Endpoints `Implemented`; container healthcheck `Planned (B7)` | B7 |
-| Graceful shutdown: on `SIGTERM` or `SIGINT` the server stops accepting connections, readiness returns 503 with `status: "unavailable"` and no `checks`, in-flight requests drain for up to 10 seconds, Prisma closes, and the exit code is 1 only if the drain times out (ADR-006 point 12) | `Planned (B3)` | B3 |
+| Graceful shutdown: on `SIGTERM` or `SIGINT` the server stops accepting connections, readiness returns 503 with `status: "unavailable"` and no `checks`, in-flight requests drain for up to 10 seconds, Prisma closes, and the exit code is 1 only if the drain times out (ADR-006 point 12) | `Implemented` (B3.4) | B3 |
 | Smoke tests: one script that runs after `docker compose --profile full up`, with no frontend step (ADR-006 point 11) | `Planned (B7)` | B7 |
 | Deployment documentation: the documented steps that start and verify the local full stack | `Planned (B7)` | B7 |
 | Public demo build: a static build of `apps/web` in demo mode, no backend calls, no secrets, namespaced browser storage, configurable base path, SPA fallback, and its publication (ADR-006 point 7) | `Planned (FE4)` | FE4 |
@@ -1300,7 +1300,7 @@ A production-like deployment can be started and verified through documented step
 Code vs ADR:
 
 - The phase keeps its scope. What changes is its owner and its input: it runs once, in FE5, against a working frontend, and it uses the targets already approved in `03`. This document sets no new metric (rule 2 of §3). No NFR sets a bundle-size or network-payload target, so those two areas are measured and reported, not judged against a number, until a decision adds one.
-- The server side of performance is not part of this phase. Slow-request logging and the timing of the analytics series reconstruction are `Planned (B3)` (§18), and the server realtime limits are `Planned (B5)`.
+- The server side of performance is not part of this phase. Slow-request logging and the timing of the analytics series reconstruction are `Implemented` (B3.2, B3.3) (§18), and the server realtime limits are `Planned (B5)`.
 - NFR-008 is enough for large datasets in version 1; the memory target stays `Deferred` (`10` §41).
 - "Realtime update frequency" is bounded by NFR-005 and NFR-006 and needs the realtime client of FE3 to exist before it can be measured.
 - The accessibility checks of this phase are the same automated and manual checks listed in `10` §36; component and E2E tests that touch them are listed in §17.
@@ -1508,7 +1508,7 @@ How the original nodes map to the blocks:
 | Background operations | Jobs B4; screens FE3 | `Planned (B4)`, `Planned (FE3)` |
 | Demo | Engine in B5 (with the application layer from B0); demo mode in FE4 | `Planned (B5)`, `Planned (FE4)` |
 | Testing | Spread across the blocks from B0; component, E2E and accessibility checks in FE5 | `Planned (B0)`, `Planned (FE5)` |
-| Observability | Backend B3; browser `Logger` adapter FE0 | `Planned (B3)`, `Planned (FE0)` |
+| Observability | Backend B3; browser `Logger` adapter FE0 | `Implemented` (B3), `Planned (FE0)` |
 | Deployment | Local full stack B7; demo build and publication FE4 | `Planned (B7)`, `Planned (FE4)` |
 | Case Study | FE6 | `Planned (FE6)` |
 
@@ -1653,7 +1653,7 @@ This reduces accidental coupling.
 
 | Resource | Status | Block |
 | --- | --- | --- |
-| Health: `GET /health` and `GET /health/ready` | `Implemented`; route test `Planned (B0)`; readiness 503 while shutting down `Planned (B3)` | B0, B3 |
+| Health: `GET /health` and `GET /health/ready` | `Implemented`; route test `Planned (B0)`; readiness 503 while shutting down `Implemented` (B3.4) | B0, B3 |
 | Auth: login | `Implemented` | none |
 | Auth: refresh and logout | `Implemented` (B2.4) | B2 |
 | Users and session: `GET /auth/me` | `Implemented`; there is no users resource, because registration is out of scope (ADR-005 point 10) | none |
@@ -1934,7 +1934,7 @@ Backend/domain validation protects correctness.
 
 Code vs ADR:
 
-- Logging behavior by category is one rule for the whole API: validation and authentication at `warn`, not found and conflict at `info`, internal errors at `error` with the stack, `FORBIDDEN` and `RATE_LIMITED` at `warn`, `DEPENDENCY_ERROR` at `error` (ADR-009 point 6). It is `Planned (B3)`; today only unexpected errors are logged (§18).
+- Logging behavior by category is one rule for the whole API: validation and authentication at `warn`, not found and conflict at `info`, internal errors at `error` with the stack, `FORBIDDEN` and `RATE_LIMITED` at `warn`, `DEPENDENCY_ERROR` at `error` (ADR-009 point 6). It is `Implemented` (B3.1).
 - User-facing messages are localized on the client from the stable `code`; the API keeps an English `message` for logs (ADR-010 point 8). That mapping is `Planned (FE0)`. Server-side error text is never shown as is.
 - Application code throws transport-free errors (`NotFoundError`, `ConflictError` and similar); the API error handler maps them to the HTTP codes above, and the demo maps them to its own UI states (ADR-001 point 3). Today 11 services throw `AppError` with an HTTP status, which B0 changes.
 - Categories like "Network Failure" and "Realtime Failure" are not API errors, so they have no wire representation beyond the socket protocol above. The demo scripts these failures only when the frontend-stage ADR decides them (ADR-010 point 6).
@@ -2024,7 +2024,7 @@ The UI should react to meaningful state changes rather than infrastructure detai
 | Item | Status | Block |
 | --- | --- | --- |
 | Method: hypothesis, measurement, diagnosis, change, measurement, comparison | `Reference` | none |
-| Server timing: a `warn` entry for a request above `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms) and separate timing of the analytics series reconstruction; no other timing in version 1 (ADR-009 point 8) | `Planned (B3)` | B3 |
+| Server timing: a `warn` entry for a request above `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms) and separate timing of the analytics series reconstruction; no other timing in version 1 (ADR-009 point 8) | `Implemented` (B3.2, B3.3) | B3 |
 | Backend and realtime measurement, taken after realtime exists (decided 2026-10-08); the frontend side is FE5; metrics stay `Deferred` (ADR-009 point 10) | `Planned (B5)` | B5 |
 | Frontend measurement against the approved targets of NFR-001 to NFR-008 | `Planned (FE5)` | FE5 |
 | Realtime update frequency and burst handling (NFR-005, NFR-006) | `Planned (FE5)`, after the realtime client of FE3 exists | FE5 |
@@ -2080,7 +2080,7 @@ unless measured and documented.
 | Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Planned (B7)`; the seed and reset production guard `Implemented` | B7 |
 | Rate limiting | HTTP `Implemented`; realtime limits `Planned (B5)` | B5 |
 | Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Planned (B4)`; WebSocket limits `Planned (B5)` | B4, B5 |
-| Error exposure | `Implemented`; redaction in logs `Planned (B3)` | B3 |
+| Error exposure | `Implemented`; redaction in logs `Implemented` (B3.1) | B3 |
 | File handling | CSV import `Planned (B4)`; no file is accepted today | B4 |
 | Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; audit `Planned (B7)` | B7 |
 | Security headers | `helmet` `Implemented`; header test `Planned (B7)` | B7 |
@@ -2208,11 +2208,11 @@ The demo must remain coherent after each scenario.
 
 | Scenario | Status | Block |
 | --- | --- | --- |
-| Request problem: request ID, structured log, error | `X-Request-ID` and the error body `Implemented`; propagation to every log line and the log of handled errors `Planned (B3)` | B3 |
-| Database problem: health and readiness, dependency error, diagnostic log | Endpoints and the `health.database.unavailable` line `Implemented`; mapping to `DEPENDENCY_ERROR` `Planned (B0)`; shutdown readiness `Planned (B3)` | B0, B3 |
+| Request problem: request ID, structured log, error | `X-Request-ID` and the error body `Implemented`; propagation to every log line and the log of handled errors `Implemented` (B3.1, B3.2) | B3 |
+| Database problem: health and readiness, dependency error, diagnostic log | Endpoints and the `health.database.unavailable` line `Implemented`; mapping to `DEPENDENCY_ERROR` `Implemented` (B0.4); shutdown readiness `Implemented` (B3.4) | B0, B3 |
 | Realtime problem: connection ID, lifecycle event, reconnect | `Planned (B5)` (ADR-009 points 5 and 11) | B5 |
 | Background problem: job ID, progress, failure or timeout | `Planned (B4)` | B4 |
-| Tests that prove the paths: redaction and event-name unit tests, and an integration test that the `requestId` appears in its log entries | `Planned (B3)` | B3 |
+| Tests that prove the paths: redaction and event-name unit tests, and an integration test that the `requestId` appears in its log entries | `Implemented` (B3.1, B3.2) | B3 |
 
 Code vs ADR:
 
@@ -2389,7 +2389,7 @@ Avoid enormous commits containing unrelated systems.
 | Loading states | Frontend only | `Planned (FE1)` |
 | Authorization | Ownership checks now; permissions in B0; roles in B2 | `Implemented` (ownership, B0, B2) |
 | Tests | Mandatory tests named in ADR-001 point 7 and ADR-002 point 6, in the block that builds the behavior; frontend checks in FE5 | `Implemented` for domain, database and API; `Planned (B0)`; `Planned (FE5)` |
-| Observability | B3 for logs, B4 and B5 for their paths | `Planned (B3)` |
+| Observability | B3 for logs, B4 and B5 for their paths | `Implemented` (B3) |
 | Documentation | Updated in the same pull request as the change (`docs/README.md`, maintenance rule); checked by `pnpm docs:check` | `Implemented` |
 
 Code vs ADR:
@@ -2440,7 +2440,7 @@ Omissions must be intentional.
 | Background operations work | `Planned (B4)` (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
 | Demo Mode works | `Planned (FE4)`; needs B0 (in-memory repositories) and B5 (simulation engine) | FE4 |
 | Tests cover primary flows | Domain, database and API route tests `Implemented`; mandatory application and contract tests `Planned (B0)`; component, E2E and accessibility checks `Planned (FE5)`; no coverage percentage is set (ADR-006 point 11) | B0, FE5 |
-| Observability is available | `Planned (B3)`; metrics `Deferred` (ADR-009 point 10) | B3 |
+| Observability is available | `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | B3 |
 | Deployment is reproducible | CI from a clean checkout `Implemented`; production build, `full` profile and smoke test `Planned (B7)`; hosted deployment `Deferred` (ADR-006 point 2) | B7 |
 | Documentation is sufficient | `Planned (FE6)` for the case study; the SDD set is kept aligned by `pnpm docs:check` and the maintenance rule of `docs/README.md` | FE6 |
 
@@ -2739,7 +2739,7 @@ The project should demonstrate engineering judgment by knowing what **not** to b
 | Repository interface | Database replacement; the demo already uses it with in-memory repositories (ADR-001) | Repositories over Prisma `Implemented`; in-memory implementations `Planned (B0)` | B0 |
 | Realtime hub behind its own interface | A shared broker later (ADR-007 deferred detail: the hub is not tied to the transport or to a broker) | `Planned (B5)` | B5 |
 | Job runner behind an interface, state in a `jobs` table | A dedicated worker later (ADR-008 point 4 puts the runner in process today) | `Planned (B4)` | B4 |
-| Infrastructure ports such as `Logger` | An external provider later | `Planned (B3)` | B3 |
+| Infrastructure ports such as `Logger` | An external provider later | `Implemented` (B3.1) | B3 |
 
 Code vs ADR:
 
@@ -2822,7 +2822,7 @@ Optimize observed bottlenecks, not hypothetical ones.
 | Rate limits | HTTP `Implemented`; realtime `Planned (B5)` | B5 |
 | Resource limits | Body limit `Implemented`; CSV and WebSocket limits `Planned (B4)` and `Planned (B5)` | B4, B5 |
 | Secret management | Environment separation `Implemented`; seed and reset production guard `Implemented` | none |
-| Safe errors | `Implemented`; redaction in logs `Planned (B3)` | B3 |
+| Safe errors | `Implemented`; redaction in logs `Implemented` (B3.1) | B3 |
 
 Code vs ADR:
 
@@ -3051,8 +3051,8 @@ domain tests work
 | --- | --- | --- |
 | Express, configuration, API foundation | `Implemented` (`apps/api/src/app.ts`, `config/env.ts`, `middleware/error-handler.ts`); `CORS_ORIGIN` validation `Implemented`; layering `Planned (B0)` | B0 |
 | Repositories | `Implemented` over Prisma; ports behind the application layer `Planned (B0)` (ADR-001) | B0 |
-| Health | `Implemented` (`routes/health.ts`, `controllers/health.controller.ts`); the 503 `unavailable` response while shutting down `Planned (B3)` (ADR-006 point 12) | B3 |
-| Logging | `Planned (B3)` (ADR-009); the API has no structured logger today | B3 |
+| Health | `Implemented` (`routes/health.ts`, `controllers/health.controller.ts`); the 503 `unavailable` response while shutting down `Implemented` (B3.4, ADR-006 point 12) | B3 |
+| Logging | `Implemented` (B3.1 to B3.3, ADR-009) | B3 |
 | Authentication | login, `me`, refresh and logout `Implemented` (B2) (ADR-005) | B2 |
 | RBAC | `Implemented` (B2.1, B2.2) | B2 |
 
@@ -3218,7 +3218,7 @@ public demo works without production infrastructure
 | E2E | tooling `Deferred` to the frontend-stage ADR (same decision; Playwright is named in ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | Accessibility | the scanning tool is chosen in the frontend-stage ADR; checks `Planned (FE5)` | FE5 |
 | Security review | B2 owns the auth-focused review; B7 owns the final pass with the checklist of §33 (decided 2026-10-08) | B2, B7 |
-| Performance measurement | server: slow-request logging at 500 ms `Planned (B3)`, no load test, metrics `Deferred` (ADR-009 points 8 and 10); measurement after realtime exists `Planned (B5)` (decided 2026-10-08); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, B5, FE5 |
+| Performance measurement | server: slow-request logging at 500 ms `Implemented` (B3.2), no load test, metrics `Deferred` (ADR-009 points 8 and 10); measurement after realtime exists `Planned (B5)` (decided 2026-10-08); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, B5, FE5 |
 
 Code vs ADR:
 
@@ -3262,7 +3262,7 @@ primary product and recovery flows are tested
 | Docker | `apps/api/Dockerfile` does not exist; multi-stage non-root image and `full` profile `Planned (B7)` | B7 |
 | Environment configuration | `.env.example` `Implemented`; `CORS_ORIGIN` validation and production guard `Implemented` | none |
 | Deployment | local full stack `Planned (B7)`; hosting, managed database, proxy and public WSS `Deferred` (ADR-006 point 2) | B7 |
-| Health | `Implemented`; healthcheck in the container and shutdown behavior `Planned (B3)`, `Planned (B7)` | B3, B7 |
+| Health | `Implemented`; healthcheck in the container `Planned (B7)`; shutdown behavior `Implemented` (B3.4) | B3, B7 |
 | Smoke tests | one script after `docker compose --profile full up`, no frontend step `Planned (B7)` | B7 |
 | Deployment documentation | `Planned (B7)` | B7 |
 
@@ -3531,7 +3531,7 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 06 Domain model | `Implemented` (`packages/domain`); analytics additions `Implemented` | B1 |
 | 07 Repository layer | `Implemented` (`packages/database`, repository contracts in `packages/domain`); the application layer over it `Planned (B0)` (ADR-001) | B0 |
 | 08 Express/API foundation | `Implemented`; layering over `@trading/application` and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002); OpenAPI `Planned (B6)` | B0, B6 |
-| 09 Observability foundation | `Planned (B3)` (ADR-009) | B3 |
+| 09 Observability foundation | `Implemented` (B3, ADR-009) | B3 |
 | 10 Authentication | login, `me`, refresh and logout `Implemented` (B2) (ADR-005) | B2 |
 | 11 RBAC | `Implemented` (B2.1, B2.2); the permission mechanism `Implemented` (B0) (ADR-005 point 3) | B0, B2 |
 | 12 Frontend shell | `Planned (FE0)`; `apps/web` holds only a wireframe | FE0 |
@@ -3741,7 +3741,7 @@ The portfolio should demonstrate:
 | Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Planned (B4)`; screens `Planned (FE3)` | `Planned (B4)` | B4, FE3 |
 | Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E tooling `Deferred` to the frontend-stage ADR and E2E checks `Planned (FE5)`; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
 | Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Implemented` (B0, B2.2); roles and sessions `Implemented` (B2) (ADR-005); production configuration guard `Implemented` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part (the B2 auth review is recorded in `odd/tasks/b2/b2-5-close.md`); the B7 pass `Planned (B7)` | B0, B2 |
-| Observability | Request IDs and health routes `Implemented`; structured logs, redaction and security events `Planned (B3)` (ADR-009); job and realtime lifecycle events `Planned (B4)`, `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` in part; `Planned (B3)` | B3, B4, B5 |
+| Observability | Request IDs and health routes `Implemented`; structured logs, redaction, security events and the startup and shutdown entries `Implemented` (B3, ADR-009); job and realtime lifecycle events `Planned (B4)`, `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` (B3); B4 and B5 pending | B3, B4, B5 |
 | Deployment | Minimal CI `Implemented` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Implemented`; `Planned (B7)`; `Planned (FE4)` | B7, FE4 |
 | Demo | No paid infrastructure (ADR-007); reset, simulated latency and failure scenarios (ADR-010 point 6); in-process adapters (ADR-001, ADR-007 point 13); see §56 | `Planned (FE4)` | B5, FE4 |
 | Portfolio | Case study, architecture visuals, tradeoffs and walkthrough; measured outcomes only when measured; see §42 and §59 | `Planned (FE6)` | FE6 |

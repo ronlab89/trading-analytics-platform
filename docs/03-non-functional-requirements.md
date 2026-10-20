@@ -437,7 +437,7 @@ and client tests with a simulated disconnect.
 **Priority:** P0  
 **Status:** password hashing, login rate limit and access-token expiry
 `Implemented`; refresh sessions `Implemented` (B2.3, B2.4) (ADR-005); log redaction
-`Planned (B3)` (ADR-009)
+`Implemented` (B3.1, ADR-009)
 
 ### Target
 
@@ -525,7 +525,7 @@ for invalid input; B0 contract tests.
 
 **Priority:** P0  
 **Status:** `Implemented` for errors and health output; server-side token handling
-`Implemented` (B2.3, B2.4), client token storage `Planned (FE)`; log redaction `Planned (B3)`
+`Implemented` (B2.3, B2.4), client token storage `Planned (FE)`; log redaction `Implemented` (B3.1)
 
 ### Target
 
@@ -1052,8 +1052,7 @@ decisions (`docs/adr/`).
 ## NFR-049 — Structured Logging
 
 **Priority:** P1  
-**Status:** `Planned (B3)` (ADR-009); today only the error handler and
-readiness check write ad hoc JSON lines
+**Status:** `Implemented` (B3.1, B3.2, B3.3; ADR-009)
 
 ### Target
 
@@ -1076,7 +1075,7 @@ request's `requestId` appears in its log entries (ADR-009 point 13).
 ## NFR-050 — Error Tracking
 
 **Priority:** P1  
-**Status:** `Planned (B3)` (ADR-009)
+**Status:** `Implemented` (B3.1; ADR-009)
 
 ### Target
 
