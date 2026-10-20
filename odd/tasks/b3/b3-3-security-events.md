@@ -10,6 +10,7 @@ Provisional: the tasks below come from the roadmap and are re-verified against t
 
 packages/application/src/**
 apps/api/src/**
+packages/database/src/mappers/**
 docs/09-security-spec.md
 docs/13-observability-spec.md
 docs/PROGRESS.md
@@ -26,7 +27,7 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 Verify where login, refresh, logout, `assertPermission`, the `changes` read and the series reconstruction live, and how each reaches the `Logger`.
+- [x] T1 Verify where login, refresh, logout, `assertPermission`, the `changes` read and the series reconstruction live, and how each reaches the `Logger`. Findings and the approved placement are in the Log.
 - [ ] T2 Login events, with tests on fields and on the absence of secrets.
 - [ ] T3 Refresh reuse and logout events.
 - [ ] T4 `authz.denied`.
@@ -48,3 +49,11 @@ pnpm --filter @trading/application test; pnpm --filter @trading/api test; pnpm t
 ## Log
 
 - Created from the B3 plan approved by the user on 2026-10-19.
+- 2026-10-19: T1 findings (read-only, no code touched). None of these reach a `Logger` today.
+  - Login: `login()` in `apps/api/src/services/auth.service.ts`, a module function over singleton repositories; the controller `loginHandler` has `req.logger`. Success knows `result.user.id`; failure is one generic `AppError` 401.
+  - Refresh: `createRefreshService` in `services/refresh.service.ts` (options object, injectable). Reuse is the `!insideWindow` branch of `replay()`, where `revokeFamily` runs. Wired in `services/session.service.ts` with `systemClock`.
+  - Logout: `createLogoutService` returns `void`; the `session.userId` is available there (S3 asks it to return it). Wired in `session.service.ts`; the controller is `logoutHandler`.
+  - `authz.denied`: `assertPermission` in `packages/application/src/permissions.ts` is a pure function with no logger, called from 60 sites in 18 services; it throws `ForbiddenError` with the permission only inside the message text.
+  - Skipped `changes`: `toDomainChanges` in `packages/database/src/mappers/scenario-mapper.ts`, a pure function; `packages/database` is outside this slice's edit surfaces.
+  - Series: `buildPortfolioSeries` in `packages/application/src/portfolio-series.ts`, which already receives `clock` in its dependencies.
+- 2026-10-19: the user approved the placement ("Si es lo recomendado si lo apruebo"): login and logout events in `loginHandler` and `logoutHandler` through `req.logger` (the logout service returns the `userId`); refresh reuse through a `logger` option of `createRefreshService`, wired with a context-aware logger in `session.service.ts`; `authz.denied` in the error handler on `ForbiddenError`, with a new `permission` field set by `assertPermission`; the skipped `changes` entry through an optional callback of `toDomainChanges`; the series timing through an optional `logger` in the dependencies of `buildPortfolioSeries`. Edit surfaces widened to `packages/database/src/mappers/**`.
