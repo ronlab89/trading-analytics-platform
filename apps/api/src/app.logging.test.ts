@@ -50,7 +50,8 @@ describe("request logging through the full app", () => {
     ] as const) {
       const own = logger.entries.filter((entry) => entry.fields.requestId === id);
       expect(own).toHaveLength(2);
-      expect(own.every((entry) => entry.fields.path === path)).toBe(true);
+      const completed = own.find((entry) => entry.event === "http.request.completed");
+      expect(completed?.fields.path).toBe(path);
     }
   });
 

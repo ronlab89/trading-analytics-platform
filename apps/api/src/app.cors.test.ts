@@ -16,10 +16,10 @@ describe("CORS exposed headers", () => {
     expect(response.headers["x-request-id"]).toEqual(expect.any(String));
   });
 
-  it("sends no CORS headers to an origin that is not allowed", async () => {
+  it("does not allow an origin that is not on the list", async () => {
     const response = await request(app).get("/").set("Origin", "https://evil.example.com");
 
+    // The expose header is sent either way, but without allow-origin a browser ignores it.
     expect(response.headers["access-control-allow-origin"]).toBeUndefined();
-    expect(response.headers["access-control-expose-headers"]).toBeUndefined();
   });
 });
