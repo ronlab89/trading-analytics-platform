@@ -562,7 +562,7 @@ Code vs ADR:
 
 # 16. Graceful Shutdown
 
-**Status:** HTTP and database steps `Planned (B3)` (ADR-006 point 12); job and realtime steps `Planned (B4)` and `Planned (B5)`; no signal handling exists today
+**Status:** HTTP and database steps `Implemented` (B3.4; ADR-006 point 12); job and realtime steps `Planned (B4)` and `Planned (B5)`
 
 The backend must support graceful shutdown.
 
@@ -596,21 +596,23 @@ Decided (ADR-006 point 12): on `SIGTERM` or `SIGINT`, the API:
 
 | Step of the diagram | Status |
 |---|---|
-| Shutdown signal: `SIGTERM` and `SIGINT` | `Planned (B3)` |
-| Stop accepting new work: server stops accepting connections; readiness 503 | `Planned (B3)` |
+| Shutdown signal: `SIGTERM` and `SIGINT` | `Implemented` (B3.4) |
+| Stop accepting new work: server stops accepting connections; readiness 503 | `Implemented` (B3.4) |
 | Stop new background jobs | `Planned (B4)`: joins the sequence when the job runner exists (ADR-006, Deferred detail) |
 | Handle realtime connections | `Planned (B5)`: joins the sequence when the realtime server exists (ADR-006, Deferred detail); connections close with code `1001`, server going away (ADR-007 point 15) |
-| Finish or cancel active operations: drain in-flight requests, 10 s timeout | `Planned (B3)` |
-| Close database pool: Prisma closed | `Planned (B3)` |
+| Finish or cancel active operations: drain in-flight requests, 10 s timeout | `Implemented` (B3.4) |
+| Close database pool: Prisma closed | `Implemented` (B3.4) |
 | Flush critical diagnostics | No separate step is decided: ADR-009 point 3 writes one JSON line per event to stdout, with no log files and no buffered transport in production |
-| Exit | `Planned (B3)` |
+| Exit | `Implemented` (B3.4) |
 
 Code vs ADR:
 
-- `apps/api/src/index.ts` discards the value `app.listen` returns and registers no signal handler, so a signal ends the process at once and drops in-flight requests. Prisma is never disconnected. The original text said "appropriate signals"; ADR-006 point 12 names `SIGTERM` and `SIGINT`.
-- Decided (ADR-006 point 12, exit code; `Planned (B3)`): if the 10-second drain expires, the remaining connections are closed and the process exits with code 1; otherwise it exits with code 0.
-- Decided (ADR-006 point 12, readiness body; `Planned (B3)`): while the API is shutting down, the 503 body of `GET /health/ready` is `status: "unavailable"` with no `checks` (§50).
-- Open (B3): the log levels of the two shutdown entries (no ADR sets them).
+- `Implemented` (B3.4): `apps/api/src/index.ts` builds the shutdown (`lifecycle/shutdown.ts`), passes its `isShuttingDown` to `createApp`, and `startServer` (`lifecycle/bootstrap.ts`) listens and listens for `SIGTERM` and `SIGINT`. The original text said "appropriate signals"; ADR-006 point 12 names those two.
+- The sequence is an ordered list of steps run one after another in registration order. The HTTP step is registered before the database step, so the server drains first and Prisma closes after. B4 and B5 register their steps on the same shutdown before `startServer`, so they stop first. A step that fails does not stop the others; the process then exits with code 1. A second signal does nothing: the sequence runs once.
+- Decided (ADR-006 point 12, exit code; `Implemented`, B3.4): if the 10-second drain expires, the remaining connections are closed and the process exits with code 1; otherwise it exits with code 0. The 10 seconds is a constant (`DRAIN_TIMEOUT_MS`), not an environment variable. While draining, idle keep-alive connections are closed every 50 ms, because an idle one would hold the server open until the timeout.
+- Decided (ADR-006 point 12, readiness body; `Implemented`, B3.4): while the API is shutting down, the 503 body of `GET /health/ready` is `status: "unavailable"` with no `checks` (§50), and no database query runs. `GET /health` stays 200.
+- Decided (B3.4): the two shutdown entries log at `info`, `app.shutdown.started` with the `signal` and `app.shutdown.completed` with the `exitCode` and, when a step failed, `failedSteps`. A failed step also logs `app.shutdown.step_failed` at `error` with the `step` name and `errorName`; no message, so no secret reaches the log.
+- Not tested with a real signal: the tests emit the signals on an injected source, because on Windows `SIGTERM` ends the process without running handlers. The container is Linux (B7).
 - Decided (ADR-008 point 5): a `PROCESSING` import interrupted by shutdown is marked `FAILED` with reason `INTERRUPTED` on the next startup and stays retryable; §54 repeats it.
 - Open (B5): where the realtime close sits in the sequence (the close code is `1001`, ADR-007 point 15).
 
@@ -962,7 +964,7 @@ Runtime stage
 | Predictable startup: PostgreSQL healthy before `migrate deploy`, and `migrate` completed before the API | `Planned (B7)`: `depends_on` with `condition: service_healthy` on PostgreSQL (ADR-006, Deferred detail); the API has `depends_on: migrate` with `condition: service_completed_successfully` (ADR-006 point 4) |
 | Health checks: PostgreSQL | `Implemented`: `pg_isready` in `docker-compose.yml` |
 | Health checks: API container | `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` `Planned (B7)` (ADR-006 point 4; §51) |
-| Graceful shutdown | `Planned (B3)` (§16; ADR-006 point 12); in the container it needs the direct `node dist/index.js` entrypoint below |
+| Graceful shutdown | `Implemented` (B3.4; §16; ADR-006 point 12); in the container it needs the direct `node dist/index.js` entrypoint below |
 | Reproducibility and minimal runtime dependencies | `Planned (B7)`; the Node version comes from `.nvmrc`, reused by the Dockerfile (ADR-006 point 13; §37); base-image pinning and the dependency split are open |
 | Time zone | `Planned (B7)`: the API and PostgreSQL containers run with `TZ=UTC` (ADR-006 point 4; §60) |
 | `full` Compose profile (PostgreSQL, the one-shot `migrate` service and the API) | `Planned (B7)` (ADR-006 point 4) |
@@ -1795,7 +1797,7 @@ The seven names are examples, not decisions. Version 1 decides a startup pair (`
 | Configuration validated | On failure, `[api] invalid environment configuration:` and the messages per variable (never the values), then exit code 1 (`apps/api/src/config/env.ts`). Nothing on success | Failure `Implemented` as plain text; structured entry `Planned (B3)` |
 | Database connected | No explicit connect (§15); the Prisma client connects on first use | No entry; explicit check `Planned (B7)` |
 | Application initialized | `createApp()` wires middleware and routes; no entry | `Planned (B3)` |
-| HTTP ready | `[api] listening on port <n>` through `console.log` | `Implemented` as plain text; `app.startup.completed` `Planned (B3)` |
+| HTTP ready | `app.startup.completed` with the `port`, written when the server listens | `Implemented` (B3.4) |
 | WebSocket ready | No WebSocket layer | `Planned (B5)` |
 | Service ready | Same as HTTP ready: readiness answers once the server listens (§15) | `Implemented` as implicit |
 
@@ -1803,8 +1805,8 @@ Startup failures must be visible through the observability system. Today they re
 
 Code vs ADR:
 
-- Decided (ADR-009 point 11, amended 2026-10-07; `Planned (B3)`): the startup logs `app.startup.started` and `app.startup.completed`, mirroring the shutdown pair. Per-step entries (database connected, application initialized) are not decided; they add nothing while the API has one dependency and no explicit connect.
-- Open (B3): the log levels of the startup and shutdown entries; no ADR sets them.
+- Decided (ADR-009 point 11, amended 2026-10-07; `Implemented`, B3.4): the startup logs `app.startup.started` (with the configured `port`, before listening) and `app.startup.completed` (with the bound `port`), mirroring the shutdown pair. Per-step entries (database connected, application initialized) are not decided; they add nothing while the API has one dependency and no explicit connect.
+- Decided (B3.4): the startup and shutdown entries log at `info`.
 - Open (B3): whether the invalid-environment failure becomes a structured line. It is raised before the `Logger` exists (ADR-009 point 1), so plain output followed by exit 1 may stay. Recommendation: keep it as it is, since it is safe and visible.
 - The `websocket.ready` entry waits for B5.
 
@@ -1824,7 +1826,7 @@ Deployment must preserve the items below (`13-observability-spec.md`):
 | Health checks | §50 | `Implemented` |
 | Metrics where implemented | No metrics and no `/metrics` endpoint | `Deferred` (ADR-009 point 10) |
 | Realtime diagnostics | Connection events | `Planned (B5)` (ADR-009 point 11) |
-| Startup and shutdown entries | §52 and §16 | `Planned (B3)` |
+| Startup and shutdown entries | §52 and §16 | `Implemented` (B3.4) |
 
 See `13-observability-spec.md`.
 
@@ -1930,7 +1932,7 @@ A production-like local mode should validate:
 | Migrations | `prisma migrate deploy`, run by the one-shot `migrate` service before the API starts (ADR-006 points 4 and 5) | `Planned (B7)` |
 | Health checks | The routes exist (§50); the container healthcheck is `Planned (B7)` (§51) | Routes `Implemented` |
 | Realtime | The local WebSocket server | `Planned (B5)` |
-| Startup and shutdown | Graceful shutdown is `Planned (B3)` (§16); the startup order is `Planned (B7)` (§15) | `Planned (B3)` and `Planned (B7)` |
+| Startup and shutdown | Graceful shutdown is `Implemented` (B3.4, §16); the startup order is `Planned (B7)` (§15) | `Implemented` (B3.4) and `Planned (B7)` |
 | Smoke test and limits | `docker compose --profile full up` from a clean checkout passes the smoke test under a 512 MB limit (NFR-054, NFR-055; §49) | `Planned (B7)` |
 
 Conceptually, following ADR-006 point 4:
@@ -2744,7 +2746,7 @@ The backend items close in B3, except where a tag names another block. Frontend 
 Code vs ADR:
 
 - ADR-009 point 12 limits B3 to the backend, and `13-observability-spec.md` §74 splits its checklist by block. This checklist is the deployment view of the same items; it must not be closed ahead of them.
-- The `app.shutdown.started` and `app.shutdown.completed` entries (ADR-006 point 12) and the `app.startup.started` and `app.startup.completed` entries (ADR-009 point 11) are not in the original list. They are `Planned (B3)`, and the 503 readiness response while shutting down belongs to the same item (§16).
+- The `app.shutdown.started` and `app.shutdown.completed` entries (ADR-006 point 12) and the `app.startup.started` and `app.startup.completed` entries (ADR-009 point 11) are not in the original list. They are `Implemented` (B3.4), and the 503 readiness response while shutting down belongs to the same item (§16).
 - Log shipping, dashboards and alerting are `Deferred` with the hosted backend (§53).
 
 ---
@@ -2818,7 +2820,7 @@ The architecture is acceptable when:
 | 4 | Backend compile `Implemented`; runnable backend `Planned (B7)`; frontend `Planned (FE)` | `pnpm build` compiles every package but the output does not run (ADR-006 point 3); `apps/web` has no `package.json` (§44) |
 | 5 | `Implemented` | `apps/api/src/config/env.ts` and the `.env*` files (§10-§12); `DATABASE_URL` is not validated there (`Planned (B7)`) |
 | 6 | `Implemented` by convention | `.env`, `.env.local` and `.env.*.local` are git-ignored and only `*.example` files are tracked; no scanner exists (§78) |
-| 7 | `Implemented`; shutdown behavior `Planned (B3)` | `GET /health` and `GET /health/ready` (NFR-051, §50); readiness returns 503 while shutting down (ADR-006 point 12) |
+| 7 | `Implemented`; shutdown behavior `Implemented` (B3.4) | `GET /health` and `GET /health/ready` (NFR-051, §50); readiness returns 503 while shutting down (ADR-006 point 12) |
 | 8 | `Planned (B5)` locally; hosted `Deferred` | The supported environment is the local full stack, over `ws://` (§31, §34). Public WSS needs a hosted backend, which ADR-006 point 2 excludes |
 | 9 | `Planned (FE)` | The demo is a static build with no backend and no secrets (ADR-006 point 7); NFR-052 and NFR-067 |
 | 10 | `Implemented` | The workflow of §41 installs from the lockfile; ADR-006 point 10 |
@@ -2891,7 +2893,7 @@ Each item ends with its status and, where it is not built, the block or stage th
 - [ ] private infrastructure not exposed. (`Planned (FE)`: the build calls no backend and holds no secrets, ADR-006 point 7)
 
 ### Operations
-- [ ] graceful shutdown works. (`Planned (B3)` for the server and the database; jobs `Planned (B4)`; realtime `Planned (B5)`, §16)
+- [ ] graceful shutdown works. (`Implemented` (B3.4) for the server and the database; jobs `Planned (B4)`; realtime `Planned (B5)`, §16)
 - [ ] startup failures are observable. (Partly: an invalid environment prints a message and exits with code 1 (`Implemented`); the structured startup entries `Planned (B3)`, ADR-009 point 11, §52)
 - [x] deployment verification documented. (`Reference`: §48; the automated check `Planned (B7)`)
 - [ ] troubleshooting documented. (Partly: §75; the developer workflow `Planned (B3)` and the `README.md` entries are pending (T5.2))
@@ -3111,10 +3113,10 @@ Observability is part of deployment readiness.
 |---|---|---|
 | Startup logs | A plain `console.log` line announces the port; the structured entries are `app.startup.started` and `app.startup.completed` (ADR-009 point 11, §52, `13-observability-spec.md` §8) | `Planned (B3)` |
 | Request correlation | `X-Request-ID` is assigned or reused, echoed and present in error bodies (`apps/api/src/middleware/request-id.ts`); on every log line it is B3 (`13-observability-spec.md` §9) | Response `Implemented`; log lines `Planned (B3)` |
-| Health | `GET /health` and `GET /health/ready` (§50, `13-observability-spec.md` §22-23); 503 with `status: "unavailable"` while shutting down (ADR-006 point 12) | `Implemented`; shutdown 503 `Planned (B3)` |
+| Health | `GET /health` and `GET /health/ready` (§50, `13-observability-spec.md` §22-23); 503 with `status: "unavailable"` while shutting down (ADR-006 point 12) | `Implemented`; shutdown 503 `Implemented` (B3.4) |
 | Metrics | None, and no `/metrics` endpoint (ADR-009 point 10, `13-observability-spec.md` §16) | `Deferred` |
 | Runtime errors | A generic 500 body, detail in the server log only (`apps/api/src/middleware/error-handler.ts`, `13-observability-spec.md` §12) | `Implemented`; the entry name `http.request.failed` `Planned (B3)` |
-| Shutdown entries (not in the original list) | `app.shutdown.started` and `app.shutdown.completed`, mirroring the startup pair (ADR-006 point 12, ADR-009 point 11) | `Planned (B3)` |
+| Shutdown entries (not in the original list) | `app.shutdown.started` and `app.shutdown.completed`, mirroring the startup pair (ADR-006 point 12, ADR-009 point 11) | `Implemented` (B3.4) |
 | Verbosity | `LOG_LEVEL`, with `SLOW_REQUEST_THRESHOLD_MS` for slow requests (ADR-009 points 7 and 8, §10) | `Planned (B3)` |
 
 Code vs ADR:
@@ -3345,7 +3347,7 @@ The deployment strategy demonstrates:
 | CI | One workflow on pushes and pull requests to `develop` and `main`, also running `pnpm docs:check`, no continuous deployment (ADR-006 points 10 and 11) | `Implemented` |
 | Health checks | `GET /health`, `GET /health/ready`, the container healthcheck (§50, §51) | Routes `Implemented`; container `Planned (B7)` |
 | Realtime deployment | A local `ws://` server in the API process, on the API's port and a fixed path (ADR-007 point 1); public WSS is `Deferred` (§31, §34) | `Planned (B5)`; public `Deferred` |
-| Graceful shutdown | `SIGTERM` and `SIGINT`, a 10-second drain, readiness 503, exit code 1 if the drain expires and 0 otherwise (ADR-006 point 12, §16) | `Planned (B3)` |
+| Graceful shutdown | `SIGTERM` and `SIGINT`, a 10-second drain, readiness 503, exit code 1 if the drain expires and 0 otherwise (ADR-006 point 12, §16) | `Implemented` (B3.4) |
 | Production awareness | Forward-fix, no backups claimed, one instance, the explicit exclusions of §84 | `Reference` |
 | Vendor independence | No provider, ports at the infrastructure boundaries (§87) | `Reference` |
 

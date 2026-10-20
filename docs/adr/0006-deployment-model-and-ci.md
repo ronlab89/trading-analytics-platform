@@ -143,9 +143,9 @@ Other facts:
         seed never runs automatically on startup (point 5) and the production
         guard of point 13 is unchanged and untouched by the smoke test.
 12. **Graceful shutdown** (added 2026-10-07, approved by the user, from the
-    `13-observability-spec.md` reconciliation; `Planned (B3)`, with the
+    `13-observability-spec.md` reconciliation; `Implemented` in B3.4, with the
     lifecycle entries of ADR-009 point 11). `14-deployment-spec.md` §16
-    requires it; the API has no signal handling today. On `SIGTERM` or
+    requires it. On `SIGTERM` or
     `SIGINT`:
     - The server stops accepting connections.
     - `GET /health/ready` returns 503 while the API is shutting down.

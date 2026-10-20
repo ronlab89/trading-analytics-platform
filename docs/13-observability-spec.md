@@ -313,7 +313,7 @@ Code vs ADR:
 
 - Every failed request is logged since B3.1: the error handler writes `http.request.failed` for each category, and `rateLimitHandler` writes it for the 429, which never reaches the handler. The level is a `Record<ErrorCode, level>` in `apps/api/src/logging/request-failure.ts`, so a new code cannot ship without one. Only the entries at `error` carry the raw `message`, `errorName` and `stack`; the others carry the message the client received.
 - The levels of `FORBIDDEN`, `RATE_LIMITED` and `DEPENDENCY_ERROR` are decided: `warn`, `warn` and `error` with the stack (ADR-009 point 6, amended 2026-10-07). `Implemented` (B3.1).
-- ADR-009 fixes no level for the startup, shutdown or simulator entries (§23, §56). Open detail (B3, B5).
+- ADR-009 fixes no level for the startup, shutdown or simulator entries (§23, §56). The startup and shutdown entries log at `info` (decided in B3.4); the simulator entries stay an open detail (B5).
 - `TRACE` is not part of the decided levels. `pino` supports it, but no configuration uses it.
 - Some examples above belong to later stages. Retries: the job runner retries only on request (ADR-008 point 6, B4); HTTP client retries are decided in the frontend-stage ADR (ADR-006 point 11). Simulated failures and demo scenarios are demo features (`Planned (FE)`, ADR-010 point 6) and log through the browser-console adapter (ADR-009 point 1). WebSocket events are `Planned (B5)`; their per-event level is an open detail of `08-realtime-spec.md` §58.
 
@@ -415,8 +415,8 @@ The convention is a guide, not a fixed length: ADR-009 uses two segments (`job.f
 | `auth.login.succeeded`, `auth.login.failed`, `authz.denied` | ADR-009 point 9, `09-security-spec.md` §50 | `Planned (B3)`; `authz.denied` on role checks from B2 and on realtime subscriptions from B5 |
 | `auth.refresh.reuse_detected` | ADR-009 point 9, ADR-005 | Reuse detection `Implemented` (B2.4); the event `Planned (B3)` |
 | `auth.logout` | ADR-009 point 9 (amended 2026-10-07) | Endpoint `Implemented` (B2.4); the event `Planned (B3)` |
-| `app.startup.started`, `app.startup.completed` | ADR-009 point 11 (startup entries added 2026-10-07), mirroring the shutdown pair | `Planned (B3)` |
-| `app.shutdown.started`, `app.shutdown.completed` | ADR-009 point 11, ADR-006 point 12 | `Planned (B3)` |
+| `app.startup.started`, `app.startup.completed` | ADR-009 point 11 (startup entries added 2026-10-07), mirroring the shutdown pair | `Implemented` (B3.4) |
+| `app.shutdown.started`, `app.shutdown.completed`, `app.shutdown.step_failed` | ADR-009 point 11, ADR-006 point 12; `step_failed` is a B3.4 addition for a step that fails | `Implemented` (B3.4) |
 | `simulation.started`, `simulation.paused`, `simulation.mode.changed` | ADR-009 point 11, ADR-007 point 15 | `Planned (B5)` |
 | `job.*` (transitions) | ADR-009 point 11, ADR-008 | `Planned (B4)` |
 | `realtime.*` (connect, authenticate, close) | ADR-009 point 11, ADR-007, `08-realtime-spec.md` §58 | `Planned (B5)` |
@@ -1023,7 +1023,7 @@ Code vs ADR:
 
 # 23. Liveness vs Readiness
 
-**Status:** `Implemented` (`apps/api/src/controllers/health.controller.ts`); readiness 503 during graceful shutdown `Planned (B3)` (ADR-006 point 12)
+**Status:** `Implemented` (`apps/api/src/controllers/health.controller.ts`); readiness 503 during graceful shutdown `Implemented` (B3.4, ADR-006 point 12)
 
 Health checks should distinguish between process health and dependency readiness.
 
@@ -1052,7 +1052,7 @@ Responses (`07-api-spec.md` §30):
 | Endpoint | Check | Success | Failure |
 | --- | --- | --- | --- |
 | `GET /health` | None | 200 `{ "status": "ok", "service": "trading-api", "timestamp": "..." }` | None; always 200 while the process answers |
-| `GET /health/ready` | `SELECT 1` against the database | 200 with `"status": "ok"` and `"checks": { "database": "ok" }` | 503 with `"status": "unavailable"` and `"checks": { "database": "unavailable" }`, plus one `health.database.unavailable` log line (§1) |
+| `GET /health/ready` | `SELECT 1` against the database | 200 with `"status": "ok"` and `"checks": { "database": "ok" }` | 503 with `"status": "unavailable"` and `"checks": { "database": "unavailable" }`, plus one `health.database.unavailable` log line (§1); while shutting down, 503 with `"status": "unavailable"` and no `checks`, and no query |
 
 Both bodies carry an ISO 8601 `timestamp`. There is no "degraded" state: the only dependency is the database (NFR-051).
 
@@ -1062,7 +1062,7 @@ Code vs ADR:
 
 - Readiness checks the database only. "Required internal services" have no counterpart yet: the job runner (ADR-008, B4) and the market simulator (ADR-007, B5) run in process, and no ADR adds them to readiness. "Critical configuration" is checked once at startup instead: `apps/api/src/config/env.ts` validates the environment and the process exits on invalid values, so a running process always has valid configuration.
 - The `health.database.unavailable` line logs `errorName` only, never the driver message or connection string (§24).
-- Graceful shutdown is decided (ADR-006 point 12, added 2026-10-07; `14-deployment-spec.md` §16 requires it). `apps/api/src/index.ts` only calls `app.listen` and handles no shutdown signal today. On `SIGTERM` or `SIGINT` the server stops accepting connections, `GET /health/ready` returns 503 while the API is shutting down, in-flight requests drain with a timeout of 10 seconds, and Prisma is closed. The shutdown logs `app.shutdown.started` and `app.shutdown.completed` (ADR-009 point 11). If the 10-second drain expires, the remaining connections are closed and the process exits with code 1; otherwise it exits with 0 (ADR-006 point 12, exit code). The startup likewise logs `app.startup.started` and `app.startup.completed` (ADR-009 point 11, added 2026-10-07). `Planned (B3)`. No decision fixes the level of the startup or shutdown entries; open detail (B3).
+- Graceful shutdown is `Implemented` (B3.4; ADR-006 point 12, added 2026-10-07; `14-deployment-spec.md` §16). On `SIGTERM` or `SIGINT` the server stops accepting connections, `GET /health/ready` returns 503 while the API is shutting down, in-flight requests drain with a timeout of 10 seconds, and Prisma is closed. The shutdown logs `app.shutdown.started` (with the `signal`) and `app.shutdown.completed` (with the `exitCode`, and the `failedSteps` when any) (ADR-009 point 11). If the 10-second drain expires, the remaining connections are closed and the process exits with code 1; otherwise it exits with 0 (ADR-006 point 12, exit code). The startup likewise logs `app.startup.started` and `app.startup.completed` (ADR-009 point 11, added 2026-10-07). All four are at `info` (decided in B3.4; no ADR fixes the level). A failed step logs `app.shutdown.step_failed` at `error` with its name and `errorName`, never the message.
 
 ---
 
@@ -2183,7 +2183,7 @@ The only dependency is PostgreSQL.
 | Errors are logged | Readiness writes one entry, `health.database.unavailable`, with `requestId` and `errorName`; other requests log `http.request.failed` | `Implemented` on the `Logger` port (B3.1, ADR-009 point 6) |
 | Appropriate error responses | A request that fails because the database is unreachable gets 503 `DEPENDENCY_ERROR` | `Implemented` (B0; ADR-002 point 10, `07-api-spec.md`), logged at `error` with the stack (B3.1, ADR-009 point 6) |
 | Recovery is observable | Readiness is checked on every call, so it returns 200 again once the database answers; no entry records the recovery | No recovery entry in v1 (ADR-009 point 11); `Deferred` until a poller exists (B7, §58) |
-| No unnecessary crash | A failed query is handled per request by the error handler; there are no process-level handlers | Startup logging (`app.startup.started`, `app.startup.completed`) and graceful shutdown (ADR-006 point 12) with `app.shutdown.started` and `app.shutdown.completed` `Planned (B3)` (ADR-009 point 11) |
+| No unnecessary crash | A failed query is handled per request by the error handler; there are no handlers for uncaught errors; the only process-level handlers are the `SIGTERM` and `SIGINT` shutdown | Startup logging (`app.startup.started`, `app.startup.completed`) and graceful shutdown (ADR-006 point 12) with `app.shutdown.started` and `app.shutdown.completed` `Implemented` (B3.4, ADR-009 point 11) |
 | Demo dependency failures | Simulated failures are a demo specific | `Deferred` (ADR-010 point 6) |
 
 Code vs ADR: readiness answers 503 while the API is shutting down (ADR-006 point 12, `Planned (B3)`; §23).

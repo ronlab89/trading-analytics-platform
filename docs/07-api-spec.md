@@ -1775,6 +1775,19 @@ Runs `SELECT 1` against the database. Returns 200 with
 The body never exposes connection strings or driver errors; details go to
 the server log (`health.database.unavailable`).
 
+While the process shuts down (`SIGTERM` or `SIGINT`, ADR-006 point 12), it
+answers 503 at once, runs no query, and the body has no `checks`:
+
+```json
+{
+  "status": "unavailable",
+  "service": "trading-api",
+  "timestamp": "..."
+}
+```
+
+`GET /health` stays 200 until the process ends.
+
 ---
 
 # 31. Realtime API
