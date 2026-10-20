@@ -249,7 +249,7 @@ Target (ADR-001):
 6. Unit tests use in-memory fake repositories (§60).
 
 Later additions to the same package: the `Logger` port (ADR-009 point 1,
-`Planned (B3)`), the CSV import use case (ADR-008, `Planned (B4)`) and
+`Implemented`, B3.1), the CSV import use case (ADR-008, `Planned (B4)`) and
 realtime subscription authorization (ADR-007 point 3, `Planned (B5)`).
 
 ---
@@ -501,7 +501,7 @@ application receives typed inputs; domain invariants stay in the domain.
 
 # 29. Error Architecture
 
-**Status:** `Implemented`; transport-free application errors `Planned (B0)`; error logging `Planned (B3)`.
+**Status:** `Implemented`; transport-free application errors `Planned (B0)`; error logging `Implemented` (B3.1).
 
 Current behavior (`apps/api/src/middleware/error-handler.ts`):
 
@@ -655,7 +655,7 @@ logout require a custom request header (ADR-005 point 7, B2.4). Full rules:
 
 # 39. Observability Architecture
 
-**Status:** `Implemented` (request IDs, health, readiness); logging `Planned (B3)`; metrics `Deferred`.
+**Status:** `Implemented` (request IDs, health, readiness); logging `Implemented` (B3.1, B3.2); metrics `Deferred`.
 
 Today: `request-id` middleware, `/health` and `/health/ready`, and
 `console.log` / `console.error` at startup.
@@ -742,7 +742,7 @@ The domain depends on nothing internal.
 
 # 45. Configuration
 
-**Status:** `Implemented`; `LOG_LEVEL` `Planned (B3)`; `APP_MODE` `Planned (FE)` — ADR-006 point 8.
+**Status:** `Implemented`; `LOG_LEVEL` `Implemented` (B3.1); `APP_MODE` `Planned (FE)` — ADR-006 point 8.
 
 `apps/api/src/config/env.ts` validates `NODE_ENV` (`development`, `test`,
 `production`), `PORT` (default `7001`), `JWT_SECRET` (32+ characters),
@@ -849,7 +849,7 @@ Replay is a projection of history; it never mutates stored records.
 
 # 54. Performance Architecture
 
-**Status:** `Implemented` (pagination); slow-request logging `Planned (B3)`; frontend `Deferred`.
+**Status:** `Implemented` (pagination); slow-request logging `Implemented` (B3.2); frontend `Deferred`.
 
 List endpoints paginate through `PageRequest` and `Page<T>`. ADR-009 point 8
 adds a slow-request warning and separate timing of the analytics series

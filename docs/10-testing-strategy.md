@@ -968,7 +968,7 @@ At minimum:
 | Invalid input | `Implemented` (`validate.test.ts`, route tests); malformed path parameters and unexpected fields `Planned (B0)`; CSV input `Planned (B4)` |
 | Permission escalation | `Implemented` (a `VIEWER` is denied mutations and a forged `ADMIN` token is 401, `viewer-role.routes.test.ts`, B2.2) (§30) |
 | Unauthorized realtime subscription | `Planned (B5)` (§21) |
-| Sensitive error exposure | `Planned (B3)` (generic 500, redaction, ADR-009 points 4, 6 and 13) |
+| Sensitive error exposure | `Implemented` (B3.1: generic 500 and redaction tests, ADR-009 points 4, 6 and 13) |
 | Session isolation | `Planned (FE)` (`09-security-spec.md` §10) |
 
 ---
@@ -1225,7 +1225,7 @@ With `prefers-reduced-motion: reduce`, non-essential animations, including realt
 
 # 39. Performance Testing
 
-**Status:** client `Planned (FE)`; server realtime limits `Planned (B5)`; slow-request logging `Planned (B3)`; no performance test exists today
+**Status:** client `Planned (FE)`; server realtime limits `Planned (B5)`; slow-request logging `Implemented` (B3.2); no performance test exists today
 
 Performance testing should focus on known risk areas.
 

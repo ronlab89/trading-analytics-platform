@@ -1627,7 +1627,7 @@ into a portfolio as a background job.
 ## FR-083 — Session Refresh
 
 **Priority:** P0  
-**Status:** `Implemented` (B2.4); the log events `Planned (B3)`; client flow `Planned (FE)`  
+**Status:** `Implemented` (B2.4); the log events `Implemented` (B3.3); client flow `Planned (FE)`  
 **Decisions:** ADR-005 points 4-7, 9 and Deferred detail; ADR-009 point 9
 
 ### Acceptance criteria
@@ -1892,7 +1892,7 @@ This applies equally to the full stack and to the public demo.
 | FR-080 | `Planned (B4)` | ADR-008 p1-2, 4, 9-10, 13; ADR-003 p6; ADR-004 p12 | B4, FE |
 | FR-081 | `Planned (B4)` | ADR-008 p3, 5-7, 9, 11; ADR-010 p9 | B4, B5, FE |
 | FR-082 | `Planned (B4)` | ADR-008 p8 | B4 |
-| FR-083 | Backend `Implemented` (B2.4), its log events `Planned (B3)`; client `Planned (FE)` | ADR-005 p4-7, 9; ADR-009 p9 | B2, FE |
+| FR-083 | Backend `Implemented` (B2.4), its log events `Implemented` (B3.3); client `Planned (FE)` | ADR-005 p4-7, 9; ADR-009 p9 | B2, FE |
 | FR-084 | `Implemented` (B0, B2.1, B2.2) | ADR-005 p1-3, 10-12 | B0, B2 |
 | FR-085 | `Implemented` | ADR-004 p1, 4, 6-7; `16` §2, §5, §8 | B1 |
 | FR-086 | `Planned (B5)` | ADR-007 p2-3, 11 | B5 |

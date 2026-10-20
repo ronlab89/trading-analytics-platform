@@ -593,7 +593,7 @@ keys still use `console`, and the startup line moves to the logger in B3.4.
 
 # 45. Observability
 
-**Status:** request IDs and health endpoints `Implemented`; logging `Planned (B3)` — ADR-009; metrics `Deferred` — ADR-009 point 10.
+**Status:** request IDs and health endpoints `Implemented`; logging `Implemented` (B3.1, B3.2) — ADR-009; metrics `Deferred` — ADR-009 point 10.
 
 Request IDs come from `request-id` middleware; `/health` is liveness and
 `/health/ready` checks the database, and from B3 it answers 503 while the
@@ -747,7 +747,7 @@ technology under a port can change without changing product behavior.
 - Shared contracts and lint-enforced boundaries. `Planned (B0)`
 - CI runs without paid services (free for public repositories). `Implemented`
 - Sessions with refresh tokens and permission-based roles. `Implemented` (B0, B2)
-- Structured logging. `Planned (B3)`
+- Structured logging. `Implemented` (B3)
 - WebSocket realtime with the shared simulator. `Planned (B5)`
 - Generated OpenAPI. `Planned (B6)`
 - Containerized production-like local run. `Planned (B7)`

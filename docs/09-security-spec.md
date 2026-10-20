@@ -223,7 +223,7 @@ written explicitly from the clock.
 
 # 7. Token Lifetime
 
-**Status:** access token `Implemented` (`JWT_EXPIRES_IN_SECONDS`, default 900); refresh token issued and stored hashed at login `Implemented` (B2.3); rotation, reuse detection, the grace window and logout `Implemented` (B2.4); the `auth.refresh.reuse_detected` log `Planned (B3)` (ADR-005 points 4-6 and Deferred detail; FR-083)
+**Status:** access token `Implemented` (`JWT_EXPIRES_IN_SECONDS`, default 900); refresh token issued and stored hashed at login `Implemented` (B2.3); rotation, reuse detection, the grace window and logout `Implemented` (B2.4); the `auth.refresh.reuse_detected` log `Implemented` (B3.3) (ADR-005 points 4-6 and Deferred detail; FR-083)
 
 | Token | Lifetime | Status |
 | --- | --- | --- |
@@ -237,7 +237,7 @@ Refresh token rules (ADR-005 point 5):
   refresh token.
 - Presenting an already-rotated token revokes the whole token family, and
   `auth.refresh.reuse_detected` is logged (FR-083, ADR-009 point 9; the log
-  line is `Planned (B3)`, the revocation is `Implemented`).
+  line is `Implemented` (B3.3), like the revocation).
 - Role changes take effect at the next refresh, within 15 minutes
   (ADR-005 point 9).
 
@@ -314,7 +314,7 @@ CORS preflight, which the allowed origins refuse. CORS answers
 
 # 9. Logout
 
-**Status:** endpoint `Implemented` (B2.4); `Planned (FE)` (client); the `auth.logout` log line `Planned (B3)` (ADR-005 points 6-7; FR-003)
+**Status:** endpoint `Implemented` (B2.4); `Planned (FE)` (client); the `auth.logout` log line `Implemented` (B3.3) (ADR-005 points 6-7; FR-003)
 
 `POST /api/v1/auth/logout`, with the required custom header, revokes the
 session's refresh-token family and clears the cookie. A request without
@@ -867,7 +867,7 @@ Coverage of the abuse-prone endpoints:
 
 # 28. API Error Security
 
-**Status:** `Implemented` (`apps/api/src/middleware/error-handler.ts`, `apps/api/src/controllers/health.controller.ts`, `apps/api/src/config/env.ts`); structured category logging `Planned (B3)` (ADR-009 points 2 and 6)
+**Status:** `Implemented` (`apps/api/src/middleware/error-handler.ts`, `apps/api/src/controllers/health.controller.ts`, `apps/api/src/config/env.ts`); structured category logging `Implemented` (B3.1, ADR-009 points 2 and 6)
 
 Responses never expose stack traces, database or driver errors,
 connection details, filesystem paths, environment variables, secrets,
@@ -924,7 +924,7 @@ for unknown routes and 429, uses one envelope:
 
 # 30. Request IDs
 
-**Status:** header and error envelope `Implemented` (`apps/api/src/middleware/request-id.ts`); log propagation `Planned (B3)` (ADR-009 point 5); realtime `connectionId` `Planned (B5)` (ADR-009 point 5)
+**Status:** header and error envelope `Implemented` (`apps/api/src/middleware/request-id.ts`); log propagation `Implemented` (B3.2, ADR-009 point 5); realtime `connectionId` `Planned (B5)` (ADR-009 point 5)
 
 - Every response carries `X-Request-ID`. The middleware runs before the
   rate limiter and the routes, so 429 and error responses carry it too.
@@ -1140,7 +1140,7 @@ Prisma reads from the environment (`env("DATABASE_URL")`).
 | Returned by the API | Health reports `database: "ok"` or `unavailable`, never a connection string or driver error (§28) | `Implemented` |
 | Embedded in the frontend build | The demo build has no backend and no secrets (ADR-006 point 7) | `Planned (FE)` |
 | Included in mock or seed data | Seed data holds no infrastructure credentials (§42) | `Implemented` |
-| Written to logs | The health log line carries `errorName` only; redaction list (§49) | `Implemented`; redaction `Planned (B3)` |
+| Written to logs | The health log line carries `errorName` only; redaction list (§49) | `Implemented`; redaction `Implemented` (B3.1) |
 
 Code today: `docker-compose.yml` carries development defaults for
 `DATABASE_USER` and `DATABASE_PASSWORD` (`trading_dev_password`), which
@@ -1186,7 +1186,7 @@ no real financial account data (§40).
 | Data | Storage | Exposure rule | Status |
 | --- | --- | --- | --- |
 | Password | `Credential.passwordHash`, a `bcryptjs` hash in its own table (`05-data-model.md` §5.2) | Never returned or logged (§52) | `Implemented` |
-| Email, display name | `User` (`05-data-model.md` §5) | Returned only to the user themself (`GET /auth/me`); logs carry `userId` only (ADR-009 point 3) | `Implemented`; logs `Planned (B3)` |
+| Email, display name | `User` (`05-data-model.md` §5) | Returned only to the user themself (`GET /auth/me`); logs carry `userId` only (ADR-009 point 3) | `Implemented`; logs `Implemented` (B3.1) |
 | Refresh token | Sessions table, hash only (`05-data-model.md` §5.3) | Cookie only (§8) | `Implemented` (B2.3) |
 | Successor refresh token | Encrypted at rest for the grace window only, then cleared (ADR-005 Deferred detail) | Never logged | `Implemented` (B2.4) |
 | CSV import input | The `jobs` row, bounded in size (`05-data-model.md` §52) | Owner only (ADR-008 point 9); never logged (ADR-009 Deferred detail) | `Planned (B4)` |
@@ -1342,7 +1342,7 @@ boundary. Security-critical behavior stays understandable and testable:
 | Resource ownership | None | Owner-scoped lookups (§14) | `Implemented` (cross-user route tests) |
 | Input validation | `zod` | Schemas per route and in `@trading/contracts` (§18) | `Implemented` (`validate.test.ts`, route tests) |
 | Rate limiting | `express-rate-limit` | Limits and 429 envelope (§26) | `Implemented` (`rate-limit.test.ts`) |
-| Log redaction | `pino` | Fixed redaction list (§49) | `Planned (B3)` (ADR-009 point 13) |
+| Log redaction | `pino` | Fixed redaction list (§49) | `Implemented` (B3.1, ADR-009 point 13) |
 
 ---
 
@@ -1411,7 +1411,7 @@ rule (`Planned (FE)`).
 
 # 49. Logging Security
 
-**Status:** today's log lines `Implemented` without secrets (`apps/api/src/middleware/error-handler.ts`, `apps/api/src/controllers/health.controller.ts`, `apps/api/src/config/env.ts`); structured logging and redaction `Planned (B3)` (ADR-009 points 2-4 and 13; NFR-019, NFR-022)
+**Status:** structured logging and redaction `Implemented` (B3.1; `apps/api/src/logging/`, `apps/api/src/middleware/error-handler.ts`, `apps/api/src/controllers/health.controller.ts`, `apps/api/src/config/env.ts`) (ADR-009 points 2-4 and 13; NFR-019, NFR-022)
 
 These are never logged (ADR-009 point 4, Deferred detail):
 
@@ -1426,10 +1426,14 @@ Log lines identify the user by `userId` only, never by email or display
 name (ADR-009 point 3). Redaction is a fixed path list in the `pino`
 adapter and is enforced by unit tests (ADR-009 points 4 and 13).
 
-Code today: logging is `console.*`. The unexpected-error line logs
-`requestId`, `errorName` and the error `message`; the health line logs
-`errorName` only; `env.ts` logs failing keys only. No line writes request
-headers or bodies, but the error `message` is not filtered.
+Code today: the API logs through the `Logger` port and a `pino` adapter
+with a fixed redaction list, tested in `pino-logger.test.ts`. The health
+line logs `errorName` only; `env.ts` logs failing keys only. No line writes
+request headers or bodies. The error `message` of an unexpected error is
+not filtered: a database failure logged the driver message, which names the
+database host and port (no password). That is a connection target in a
+local log; it is reconsidered in B7 before any hosted log (ADR-009
+point 4: redaction is by field name, not by message text).
 
 ---
 
@@ -1513,7 +1517,7 @@ comparable time. `Implemented`.
 | Hashed with `bcryptjs`, cost 10 or higher (NFR-019) | `Implemented` (the seed hash uses cost 10) |
 | Never stored in plaintext | `Implemented` (`Credential.passwordHash` only) |
 | Never returned by the API | `Implemented` (login and `me` return the user without credential fields) |
-| Never logged | `Implemented` (no log line writes the body); redaction test `Planned (B3)` (§49) |
+| Never logged | `Implemented` (no log line writes the body); redaction test `Implemented` (B3.1, §49) |
 
 Version 1 sets no password through the API: there is no registration
 (ADR-005 point 10), password change or reset (§53). The only password is
@@ -1617,9 +1621,9 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 | Case | Status |
 | --- | --- |
 | `helmet` headers present, no `X-Powered-By` | `Planned (B7)` (§25) |
-| Unexpected errors return the generic 500 without internals | `Planned (B3)` (error classification tests) |
+| Unexpected errors return the generic 500 without internals | `Implemented` (B3.1, `error-handler.test.ts`) |
 | Readiness with the database down exposes no driver error | `Planned (B7)` (security checklist) |
-| Redaction of every field in §49 | `Planned (B3)` (ADR-009 point 13) |
+| Redaction of every field in §49 | `Implemented` (B3.1, ADR-009 point 13) |
 | `git ls-files` lists no `.env` file except examples | `Planned (B7)` (NFR-023) |
 | Dependency audit | `Planned (B7)` (NFR-024) |
 | No unsanitized HTML in `apps/web`; no token in browser storage | `Planned (FE)` (NFR-027, NFR-028) |
@@ -1652,8 +1656,8 @@ Security is complete for version 1 when:
 | 11 | CORS allows only `CORS_ORIGIN`, with credentials for the refresh cookie | `Implemented`; credentials `Implemented` (B2.4) |
 | 12 | Realtime sockets authenticate by message and channels are authorized | `Planned (B5)` |
 | 13 | Realtime events are validated and ordered by `sequence` | `Planned (B5)`; client `Planned (FE)` |
-| 14 | No credential, token or secret is logged, enforced by tests | `Planned (B3)` |
-| 15 | Security events of §50 are emitted | `Planned (B3)` |
+| 14 | No credential, token or secret is logged, enforced by tests | `Implemented` (B3.1, B3.3) |
+| 15 | Security events of §50 are emitted | `Implemented` (B3.3); the realtime `authz.denied` `Planned (B5)` |
 | 16 | Session data is cleared on logout and role switch | `Planned (FE)` |
 | 17 | Demo data is synthetic and the demo build contains no secrets | Seed `Implemented`; build `Planned (FE)` |
 | 18 | The dependency audit shows no unrecorded high or critical advisory | `Planned (B7)` |

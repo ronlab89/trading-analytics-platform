@@ -22,7 +22,7 @@ odd/tasks/b3/**
 ## Tasks
 
 - [x] T1 Reproduce one failure locally and answer the §75 questions from the logs; record the result. The reproduction and the answers are in the Log.
-- [ ] T2 Flip the `Planned (B3)` marks after checking each against the code.
+- [x] T2 Flip the `Planned (B3)` marks after checking each against the code. All were flipped except the one of `13-observability-spec.md` §67, which T3 closes with the documentation it describes.
 - [ ] T3 Check the §74 items and write the workflow, levels and troubleshooting docs.
 - [ ] T4 Fix the ADR-009 header, close B3 in the roadmap and PROGRESS.
 
