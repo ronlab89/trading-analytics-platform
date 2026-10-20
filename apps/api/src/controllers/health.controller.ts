@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { LOG_EVENTS } from "../logging/events.js";
 import { checkDatabaseConnection } from "../services/health.service.js";
 
 /**
@@ -36,14 +37,9 @@ export async function readinessHandler(req: Request, res: Response): Promise<voi
       },
     });
   } catch (error) {
-    console.error(
-      JSON.stringify({
-        level: "error",
-        event: "health.database.unavailable",
-        requestId: req.requestId,
-        errorName: error instanceof Error ? error.name : "UnknownError",
-      }),
-    );
+    req.logger.error(LOG_EVENTS.healthDatabaseUnavailable, {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
 
     res.status(503).json({
       status: "unavailable",

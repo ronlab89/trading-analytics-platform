@@ -2,6 +2,7 @@ import rateLimit from "express-rate-limit";
 import type { Request, Response } from "express";
 import type { AppErrorCode } from "../errors/app-error.js";
 import { env } from "../config/env.js";
+import { logRequestFailure } from "../logging/request-failure.js";
 
 interface RateLimitErrorBody {
   error: {
@@ -23,6 +24,7 @@ interface RateLimitErrorBody {
  */
 export function rateLimitHandler(message: string) {
   return (req: Request, res: Response): void => {
+    logRequestFailure(req, { code: "RATE_LIMITED", status: 429, message });
     const body: RateLimitErrorBody = {
       error: {
         code: "RATE_LIMITED",

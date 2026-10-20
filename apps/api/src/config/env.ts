@@ -2,22 +2,38 @@ import { z } from "zod";
 
 const ORIGIN_PATTERN = /^https?:\/\/[A-Za-z0-9.-]+(:\d{1,5})?$/;
 
-export const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().positive().default(7001),
-  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters long."),
-  JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(900),
-  SESSION_IDLE_SECONDS: z.coerce.number().int().positive().default(604800),
-  SESSION_ABSOLUTE_SECONDS: z.coerce.number().int().positive().default(2592000),
-  CORS_ORIGIN: z
-    .string()
-    .default("http://localhost:5173")
-    .transform((value) => value.split(",").map((origin) => origin.trim()))
-    .refine((origins) => origins.every((origin) => ORIGIN_PATTERN.test(origin)), {
-      message:
-        "CORS_ORIGIN must be a comma-separated list of http(s)://host[:port] origins; wildcards are not allowed.",
-    }),
-});
+const LOG_LEVELS = ["debug", "info", "warn", "error", "silent"] as const;
+
+// ADR-009 point 7: the level follows the environment unless LOG_LEVEL says otherwise.
+const DEFAULT_LOG_LEVEL = {
+  development: "debug",
+  test: "silent",
+  production: "info",
+} as const;
+
+export const envSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    LOG_LEVEL: z.enum(LOG_LEVELS).optional(),
+    SLOW_REQUEST_THRESHOLD_MS: z.coerce.number().int().positive().default(500),
+    PORT: z.coerce.number().int().positive().default(7001),
+    JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters long."),
+    JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(900),
+    SESSION_IDLE_SECONDS: z.coerce.number().int().positive().default(604800),
+    SESSION_ABSOLUTE_SECONDS: z.coerce.number().int().positive().default(2592000),
+    CORS_ORIGIN: z
+      .string()
+      .default("http://localhost:5173")
+      .transform((value) => value.split(",").map((origin) => origin.trim()))
+      .refine((origins) => origins.every((origin) => ORIGIN_PATTERN.test(origin)), {
+        message:
+          "CORS_ORIGIN must be a comma-separated list of http(s)://host[:port] origins; wildcards are not allowed.",
+      }),
+  })
+  .transform((values) => ({
+    ...values,
+    LOG_LEVEL: values.LOG_LEVEL ?? DEFAULT_LOG_LEVEL[values.NODE_ENV],
+  }));
 
 export type Env = z.infer<typeof envSchema>;
 

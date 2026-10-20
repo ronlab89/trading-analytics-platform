@@ -6,7 +6,8 @@
 `13-observability-spec.md` reconciliation; point 11 startup entries,
 approved by the user from the `14-deployment-spec.md` reconciliation; point 5,
 reconnect correlation, approved by the user on 2026-10-08 from the
-`15-implementation-plan.md` reconciliation)
+`15-implementation-plan.md` reconciliation; point 2, request logs without
+`pino-http`, approved by the user on 2026-10-19 while implementing B3.2)
 **Implemented in:** roadmap block B3 (not yet implemented); `auth.logout`
 lands with its endpoint in B2 and the simulator entries in B5
 
@@ -35,7 +36,13 @@ of its scope.
    adapter. Application code logs without knowing where it runs (ADR-001).
 2. **Library.** `pino` for structured JSON logs, `pino-http` for request
    logs, `pino-pretty` in development only. (Amended 2026-10-07: the three
-   choices are reconfirmed.)
+   choices are reconfirmed.) (Amended 2026-10-19, approved by the user:
+   request logs are written by a small middleware through the `Logger` port,
+   and `pino-http` is not a dependency. `pino-http` writes to a pino
+   instance directly, so its entries would bypass the port, the request
+   context of point 5 and the capturing logger of point 13. The middleware
+   writes the same `http.request.completed` entry, with `method`, `path`
+   without the query string, `status`, `durationMs` and `userId` once known.)
    - **Source of the packages.** They come from the lockfile. CI adds no
      dependency audit or license step for them in v1 (NFR-070).
    - **Format by environment.** The format follows the environment: JSON on
@@ -140,7 +147,7 @@ of its scope.
 
 **Negative**
 
-- New dependencies (`pino`, `pino-http`, `pino-pretty`).
+- New dependencies (`pino`, `pino-pretty`).
 - Every new feature must define its event names.
 - No quantitative metrics until a consumer exists.
 

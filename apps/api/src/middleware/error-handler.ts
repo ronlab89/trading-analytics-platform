@@ -7,6 +7,7 @@ import {
 } from "@trading/application";
 import type { ErrorDetail, ErrorResponse } from "@trading/contracts";
 import { AppError } from "../errors/app-error.js";
+import { logRequestFailure } from "../logging/request-failure.js";
 
 type ErrorResponseBody = ErrorResponse;
 
@@ -105,18 +106,6 @@ function mapApplicationError(err: unknown): {
   return null;
 }
 
-function logRequestFailed(requestId: string, err: unknown): void {
-  console.error(
-    JSON.stringify({
-      level: "error",
-      event: "request.failed",
-      requestId,
-      errorName: err instanceof Error ? err.name : "UnknownError",
-      message: err instanceof Error ? err.message : String(err),
-    }),
-  );
-}
-
 /**
  * Central error-handling middleware. Must be registered last, after all
  * routes. Normalizes AppErrors, domain invariant errors, and unexpected
@@ -131,6 +120,12 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   const requestId = req.requestId;
 
   if (err instanceof AppError) {
+    logRequestFailure(req, {
+      code: err.code,
+      status: err.statusCode,
+      message: err.message,
+      cause: err,
+    });
     const body: ErrorResponseBody = {
       error: {
         code: err.code,
@@ -147,6 +142,11 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   // knowledge; this is the one place that gives them a status and a code.
   const applicationFailure = mapApplicationError(err);
   if (applicationFailure) {
+    logRequestFailure(req, {
+      code: applicationFailure.code,
+      status: applicationFailure.status,
+      message: applicationFailure.message,
+    });
     const body: ErrorResponseBody = {
       error: {
         code: applicationFailure.code,
@@ -162,14 +162,13 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   // Malformed or oversized request body, rejected by the body parser
   // before any route ran. Client error (400/413), never a 500.
   if (isBodyParserError(err)) {
+    const status = err.status >= 400 && err.status < 500 ? err.status : 400;
+    const message = BODY_PARSER_MESSAGES[err.type] ?? "The request body could not be processed.";
+    logRequestFailure(req, { code: "VALIDATION_ERROR", status, message });
     const body: ErrorResponseBody = {
-      error: {
-        code: "VALIDATION_ERROR",
-        message: BODY_PARSER_MESSAGES[err.type] ?? "The request body could not be processed.",
-        requestId,
-      },
+      error: { code: "VALIDATION_ERROR", message, requestId },
     };
-    res.status(err.status >= 400 && err.status < 500 ? err.status : 400).json(body);
+    res.status(status).json(body);
     return;
   }
 
@@ -177,6 +176,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   // represent malformed input caught at the domain boundary, not
   // unexpected failures — they always normalize to 400 VALIDATION_ERROR.
   if (isDomainValidationError(err)) {
+    logRequestFailure(req, { code: "VALIDATION_ERROR", status: 400, message: err.message });
     const body: ErrorResponseBody = {
       error: {
         code: "VALIDATION_ERROR",
@@ -190,13 +190,10 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
 
   // Database unreachable: 503, fixed message, details only in the log.
   if (isDependencyError(err)) {
-    logRequestFailed(requestId, err);
+    const message = "A required service is temporarily unavailable.";
+    logRequestFailure(req, { code: "DEPENDENCY_ERROR", status: 503, message, cause: err });
     const body: ErrorResponseBody = {
-      error: {
-        code: "DEPENDENCY_ERROR",
-        message: "A required service is temporarily unavailable.",
-        requestId,
-      },
+      error: { code: "DEPENDENCY_ERROR", message, requestId },
     };
     res.status(503).json(body);
     return;
@@ -204,14 +201,11 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
 
   // Unexpected/unclassified error: log full detail server-side only,
   // return a safe generic message to the client.
-  logRequestFailed(requestId, err);
+  const message = "An unexpected error occurred.";
+  logRequestFailure(req, { code: "INTERNAL_ERROR", status: 500, message, cause: err });
 
   const body: ErrorResponseBody = {
-    error: {
-      code: "INTERNAL_ERROR",
-      message: "An unexpected error occurred.",
-      requestId,
-    },
+    error: { code: "INTERNAL_ERROR", message, requestId },
   };
   res.status(500).json(body);
 }

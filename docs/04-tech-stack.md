@@ -537,7 +537,7 @@ cover it); test variables come from the job `env`, not a generated
 
 # 42. Environment Configuration
 
-**Status:** `Implemented`; `LOG_LEVEL` `Planned (B3)` — ADR-009 point 7; `SLOW_REQUEST_THRESHOLD_MS` `Planned (B3)` — ADR-009 point 8; `APP_MODE` `Planned (FE)` — ADR-006 point 8.
+**Status:** `Implemented`; `LOG_LEVEL` `Implemented` (B3.1) — ADR-009 point 7; `SLOW_REQUEST_THRESHOLD_MS` `Implemented` (B3.2) — ADR-009 point 8; `APP_MODE` `Planned (FE)` — ADR-006 point 8.
 
 | Variable | Read by | Rule |
 | --- | --- | --- |
@@ -548,7 +548,7 @@ cover it); test variables come from the job `env`, not a generated
 | `CORS_ORIGIN` | API | comma-separated origins; default `http://localhost:5173` |
 | `DATABASE_URL` | Prisma | PostgreSQL connection string |
 | `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_PORT` | Docker Compose | development defaults |
-| `LOG_LEVEL` | API (B3) | `debug` in development, `info` in production, `silent` in tests |
+| `LOG_LEVEL` | API | `debug`, `info`, `warn`, `error` or `silent`; default follows `NODE_ENV`: `debug` in development, `silent` in test, `info` in production |
 | `SLOW_REQUEST_THRESHOLD_MS` | API (B3) | milliseconds; default `500`; HTTP requests only |
 | `APP_MODE` | web build (FE) | `real` or `demo`, exposed as `VITE_APP_MODE` |
 
@@ -562,28 +562,32 @@ Open detail (FE): the web build's API and WebSocket base URLs.
 
 # 43. Secrets
 
-**Status:** `Implemented` for the API; log redaction `Planned (B3)` — ADR-009 point 4; demo build `Planned (FE)` — ADR-006 point 7.
+**Status:** `Implemented` for the API; log redaction `Implemented` (B3.1) — ADR-009 point 4; demo build `Planned (FE)` — ADR-006 point 7.
 
 - Secrets live only in environment variables; `.env`, `.env.local` and
   `.env.*.local` are git-ignored.
-- B3 redacts passwords, the `Authorization` header, cookies, and access and
-  refresh tokens from logs.
+- The API logger redacts, by field name, passwords, the `Authorization`
+  header, cookies, the response `Set-Cookie` header, access and refresh
+  tokens, a `token` field (the WebSocket authentication message, re-checked
+  in B5) and a job `input` field (the stored CSV).
 - The demo build contains no secrets and calls no backend.
 
 ---
 
 # 44. Logging
 
-**Status:** `Planned (B3)` — ADR-009.
+**Status:** the `Logger` port, the `pino` adapter and error logging `Implemented` (B3.1); request logs, the `requestId` on every line and the slow-request `warn` `Implemented` (B3.2) — ADR-009.
 
-`pino` for one JSON line per event on stdout, `pino-http` for request logs,
-`pino-pretty` in development only, behind a `Logger` port in
-`@trading/application`. The format follows the environment (JSON on stdout;
+`pino` for one JSON line per event on stdout and `pino-pretty` in
+development only, behind a `Logger` port in `@trading/application`. Request
+logs come from a small middleware through that port; `pino-http` is not a
+dependency (ADR-009 point 2, amended 2026-10-19). The format follows the environment (JSON on stdout;
 `pino-pretty` only in development), and `LOG_LEVEL` is the only logging
 variable. Fields: `timestamp`, `level`, `service`, `environment`, `event`,
 `message`, `requestId`, `userId`, `durationMs`, `errorCategory` (the
-`AppErrorCode` value). No log files. Today the API writes plain `console`
-output at startup, on invalid configuration and in the error handler.
+`AppErrorCode` value). No log files. The error handler and the rate limiter
+log through the port; only the startup line and the invalid-configuration
+keys still use `console`, and the startup line moves to the logger in B3.4.
 
 ---
 
@@ -705,7 +709,8 @@ ADR already names is added in that ADR's block.
 | Infrastructure | Docker Compose (PostgreSQL) | — | `Implemented` | §40 |
 | Contracts | `@trading/contracts` (Zod) | — | `Planned (B0)` | ADR-002 |
 | CI | GitHub Actions | — | `Implemented` | ADR-006 point 10 |
-| Logging | pino, pino-http, pino-pretty | — | `Planned (B3)` | ADR-009 point 2 |
+| Logging | pino, pino-pretty | 10.4.0, 13.2.0 | `Implemented` (B3.1) | ADR-009 point 2 |
+| Request logging | In-repo middleware over the `Logger` port; `pino-http` not adopted | — | `Implemented` (B3.2) | ADR-009 point 2 |
 | Realtime | ws | — | `Planned (B5)` | ADR-007 point 1 |
 | Simulation | `@trading/market-sim` | — | `Planned (B5)` | ADR-007 point 7 |
 | API docs | OpenAPI from Zod `toJSONSchema` | — | `Planned (B6)` | ADR-002 point 7 |

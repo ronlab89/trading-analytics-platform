@@ -32,6 +32,42 @@ describe("envSchema session lifetimes", () => {
   });
 });
 
+describe("envSchema LOG_LEVEL", () => {
+  it.each([
+    ["development", "debug"],
+    ["test", "silent"],
+    ["production", "info"],
+  ])("defaults to the level of %s when LOG_LEVEL is absent", (nodeEnv, level) => {
+    const result = envSchema.safeParse({ ...base, NODE_ENV: nodeEnv });
+    expect(result.success && result.data.LOG_LEVEL).toBe(level);
+  });
+
+  it("lets LOG_LEVEL override the default of the environment", () => {
+    const result = envSchema.safeParse({ ...base, NODE_ENV: "test", LOG_LEVEL: "info" });
+    expect(result.success && result.data.LOG_LEVEL).toBe("info");
+  });
+
+  it.each(["trace", "verbose", "INFO", ""])("rejects %s as a level", (value) => {
+    expect(envSchema.safeParse({ ...base, LOG_LEVEL: value }).success).toBe(false);
+  });
+});
+
+describe("envSchema SLOW_REQUEST_THRESHOLD_MS", () => {
+  it("defaults to 500 milliseconds", () => {
+    const result = envSchema.safeParse(base);
+    expect(result.success && result.data.SLOW_REQUEST_THRESHOLD_MS).toBe(500);
+  });
+
+  it("reads the threshold from the environment", () => {
+    const result = envSchema.safeParse({ ...base, SLOW_REQUEST_THRESHOLD_MS: "1200" });
+    expect(result.success && result.data.SLOW_REQUEST_THRESHOLD_MS).toBe(1200);
+  });
+
+  it.each(["0", "-1", "1.5", "slow"])("rejects %s as a threshold", (value) => {
+    expect(envSchema.safeParse({ ...base, SLOW_REQUEST_THRESHOLD_MS: value }).success).toBe(false);
+  });
+});
+
 describe("envSchema CORS_ORIGIN", () => {
   it("defaults to the local web origin", () => {
     const result = parseCors();
