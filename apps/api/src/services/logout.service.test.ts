@@ -97,6 +97,13 @@ describe("logout service", () => {
     await expect(logout.logout(token)).resolves.toBe(user.id);
   });
 
+  it("returns the owner when the token presented was already rotated but its family is alive", async () => {
+    const first = await startSession();
+    await refresh.refresh(first);
+
+    await expect(logout.logout(first)).resolves.toBe(user.id);
+  });
+
   it("can be repeated without error or a new revocation time, and ends nothing the second time", async () => {
     const token = await startSession();
     await logout.logout(token);
