@@ -91,7 +91,13 @@ describe("logout service", () => {
     ).toBeNull();
   });
 
-  it("can be repeated without error or a new revocation time", async () => {
+  it("returns the owner of the session it ended", async () => {
+    const token = await startSession();
+
+    await expect(logout.logout(token)).resolves.toBe(user.id);
+  });
+
+  it("can be repeated without error or a new revocation time, and ends nothing the second time", async () => {
     const token = await startSession();
     await logout.logout(token);
     current = new Date(start.getTime() + 60 * 1000);

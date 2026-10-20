@@ -19,9 +19,10 @@ export async function loginHandler(req: Request, res: Response, next: NextFuncti
 
   try {
     const result = await login(email, password);
-    req.logger.info(LOG_EVENTS.authLoginSucceeded, { userId: result.user.id });
     setRefreshCookie(res, result.refreshToken);
     res.json({ data: presentLogin(result) });
+    // After the answer is built, so a failure above never leaves a "succeeded" entry.
+    req.logger.info(LOG_EVENTS.authLoginSucceeded, { userId: result.user.id });
   } catch (error) {
     // Same entry whatever the cause, so the log cannot tell a missing account from a wrong password.
     if (error instanceof AppError && error.statusCode === 401) {
@@ -68,9 +69,12 @@ export async function logoutHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    await logoutService.logout(readRefreshCookie(req));
+    const userId = await logoutService.logout(readRefreshCookie(req));
     clearRefreshCookie(res);
     res.status(204).end();
+    if (userId) {
+      req.logger.info(LOG_EVENTS.authLogout, { userId });
+    }
   } catch (error) {
     next(error);
   }
