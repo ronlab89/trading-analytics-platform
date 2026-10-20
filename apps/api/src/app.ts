@@ -11,7 +11,7 @@ import { generalApiRateLimiter } from "./middleware/rate-limit.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { AppError } from "./errors/app-error.js";
 import { env } from "./config/env.js";
-import { healthRouter } from "./routes/health.js";
+import { createHealthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { portfoliosRouter } from "./routes/portfolios.routes.js";
 import { positionsRouter } from "./routes/positions.routes.js";
@@ -35,6 +35,8 @@ export interface AppOptions {
   logger?: Logger;
   /** Overrides `SLOW_REQUEST_THRESHOLD_MS`, for tests. */
   slowRequestThresholdMs?: number;
+  /** True once the shutdown has started, so `GET /health/ready` answers 503. */
+  isShuttingDown?: () => boolean;
 }
 
 /**
@@ -81,7 +83,7 @@ export function createApp(options: AppOptions = {}): Express {
   // orchestrators and uptime monitors poll them frequently and must
   // never receive a 429 (14-deployment-spec.md §50-51). They are cheap
   // and expose no user data.
-  app.use(healthRouter);
+  app.use(createHealthRouter(options.isShuttingDown));
 
   app.use(generalApiRateLimiter);
   app.use(express.json({ limit: JSON_BODY_LIMIT }));

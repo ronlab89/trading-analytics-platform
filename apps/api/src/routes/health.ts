@@ -1,9 +1,17 @@
 import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
-import { livenessHandler, readinessHandler } from "../controllers/health.controller.js";
+import { createReadinessHandler, livenessHandler } from "../controllers/health.controller.js";
 
-export const healthRouter: ExpressRouter = Router();
+/**
+ * `isShuttingDown` comes from the shutdown sequence (`lifecycle/shutdown.ts`);
+ * without it the process is never shutting down, as in tests.
+ */
+export function createHealthRouter(isShuttingDown: () => boolean = () => false): ExpressRouter {
+  const router = Router();
 
-healthRouter.get("/health", livenessHandler);
+  router.get("/health", livenessHandler);
 
-healthRouter.get("/health/ready", readinessHandler);
+  router.get("/health/ready", createReadinessHandler(isShuttingDown));
+
+  return router;
+}

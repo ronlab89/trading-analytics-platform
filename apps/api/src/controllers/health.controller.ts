@@ -23,8 +23,27 @@ export function livenessHandler(_req: Request, res: Response): void {
  * Never exposes connection strings, credentials, or raw driver error
  * details in the response body (13-observability-spec.md §24) — only a
  * generic "unhealthy" status. Full detail goes to server-side logs only.
+ *
+ * While the process shuts down it answers 503 at once, with no `checks` and
+ * no database query, so the orchestrator stops sending traffic
+ * (ADR-006 point 12).
  */
-export async function readinessHandler(req: Request, res: Response): Promise<void> {
+export function createReadinessHandler(isShuttingDown: () => boolean) {
+  return async function readinessHandler(req: Request, res: Response): Promise<void> {
+    if (isShuttingDown()) {
+      res.status(503).json({
+        status: "unavailable",
+        service: "trading-api",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    await respondWithDatabaseCheck(req, res);
+  };
+}
+
+async function respondWithDatabaseCheck(req: Request, res: Response): Promise<void> {
   try {
     await checkDatabaseConnection();
 

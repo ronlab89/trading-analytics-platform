@@ -24,11 +24,11 @@ docs/PROGRESS.md
 
 ## Tasks
 
-- [ ] T1 Verify `index.ts`, `app.ts` and the readiness controller, and decide the testable shape (a `createServer`/`shutdown` function that takes the signal source and a drain timeout, so tests do not send real signals).
-- [ ] T2 Startup entries and the shutdown registry.
-- [ ] T3 Readiness 503 during shutdown (`status: "unavailable"`, no `checks`) and its test.
-- [ ] T4 Drain with timeout, Prisma close and exit codes, tested with an injected timeout and exit function: drain completes (0) and drain expires (1).
-- [ ] T5 Reconcile `13`, `14`, `07` and ADR-006 for what landed.
+- [x] T1 Verify `index.ts`, `app.ts` and the readiness controller, and decide the testable shape (a `createServer`/`shutdown` function that takes the signal source and a drain timeout, so tests do not send real signals). Findings and decisions are in the Log.
+- [x] T2 The shutdown registry (`lifecycle/shutdown.ts`): ordered steps, idempotent trigger, `app.shutdown.started`/`completed`, tested with fake steps and an injected `exit`.
+- [x] T3 Readiness 503 during shutdown (`status: "unavailable"`, no `checks`) through `createApp({ isShuttingDown })`, and its test.
+- [x] T4 The HTTP drain step with timeout, the Prisma close step, the signal wiring and the startup entries (`lifecycle/bootstrap.ts`, `index.ts`), tested with a real server on port 0, an injected timeout and exit: drain completes (0) and drain expires (1).
+- [x] T5 Reconcile `13`, `14`, `07` and ADR-006 for what landed.
 
 ## Done when
 
@@ -45,3 +45,12 @@ pnpm --filter @trading/api test; pnpm typecheck; pnpm lint.
 ## Log
 
 - Created from the B3 plan approved by the user on 2026-10-19.
+- 2026-10-20: the user delegated the whole slice: Claude runs T1 to T5 one by one, commits after each, approves its own recommendations on the decisions that come up, and stops only for something delicate; then updates `pr-body.md` and hands over the PR commands.
+- 2026-10-20: T1 findings (read-only). `index.ts` is `createApp()` plus `app.listen` with a `console.log`; it discards the server, handles no signal and never disconnects Prisma. `createApp(options)` is pure and per-call, so the shutdown flag cannot be module state. `healthRouter` is a constant router (`routes/health.ts`) used only by `app.ts`; `readinessHandler` calls `checkDatabaseConnection` and answers 503 with `checks` when the database fails. The shared client is `prisma` from `@trading/database` (`$disconnect` available). No `Dockerfile` exists yet (B7), so S4 only needs `index.ts` to stay the entrypoint.
+- 2026-10-20: decisions (approved by Claude under the delegation, recommended option each time).
+  - Shape: `lifecycle/shutdown.ts` holds `createShutdown({ logger, exit })` with `register(step)`, `isShuttingDown()` and `trigger(signal)`. A step is `{ name, run() }`. Steps run one after another in registration order, so B4 (jobs) and B5 (realtime, `1001`) register theirs before the HTTP step. No priority numbers.
+  - `trigger` is idempotent (a second signal returns the same promise). It flips `isShuttingDown` first, so readiness answers 503 from the first instant, then logs `app.shutdown.started`, runs every step even if one fails (a failed step is logged and makes the exit code 1), logs `app.shutdown.completed` with `exitCode` and calls the injected `exit`.
+  - Drain: the HTTP step calls `server.close()` and waits for it; after `drainTimeoutMs` (10 000, a constant passed in, not a new env variable) it calls `server.closeAllConnections()` and fails the step, which gives exit code 1. The Prisma step runs after it.
+  - Readiness: `createApp({ isShuttingDown })` builds the health router with that function; while it is true, `/health/ready` answers 503 `{ status: "unavailable", service, timestamp }` with no `checks` and runs no database query. Liveness stays 200.
+  - Levels: all four lifecycle entries at `info` (approved default 4, 2026-10-19), with `exitCode` (and `failedSteps` when any) on the completed entry. Startup: `app.startup.started` before `listen`, `app.startup.completed` in the listen callback with `port`.
+  - Tests send no real signals: `bootstrap` takes the signal source, the `exit` function and the drain timeout.

@@ -20,4 +20,5 @@ export const LOG_EVENTS = {
   appStartupCompleted: "app.startup.completed",
   appShutdownStarted: "app.shutdown.started",
   appShutdownCompleted: "app.shutdown.completed",
+  appShutdownStepFailed: "app.shutdown.step_failed",
 } as const;
