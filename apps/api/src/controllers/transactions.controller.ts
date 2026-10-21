@@ -7,15 +7,19 @@ import {
   type createTransactionRequestSchema,
   type listTransactionsQuerySchema,
 } from "@trading/contracts";
-import type { TransactionService } from "@trading/application";
+import type { IdempotencyService, TransactionService } from "@trading/application";
 import { Money } from "@trading/domain";
 import { actorOf } from "../middleware/authenticate.js";
+import { idempotencyOf } from "../middleware/idempotency.js";
 
 type ListTransactionsQuery = z.infer<typeof listTransactionsQuerySchema>;
 type CreateTransactionRequestBody = z.infer<typeof createTransactionRequestSchema>;
 
 /** Transaction HTTP handlers, bound to the transaction use cases they call. */
-export function makeTransactionsController(transactionService: TransactionService) {
+export function makeTransactionsController(
+  transactionService: TransactionService,
+  idempotencyService: Pick<IdempotencyService, "complete">,
+) {
   /**
    * GET /api/v1/portfolios/:portfolioId/transactions
    * Source: 07-api-spec.md §13 (List Transactions), FR-014/015/016.
@@ -91,6 +95,8 @@ export function makeTransactionsController(transactionService: TransactionServic
     const { assetId, type, quantity, price, fees, executedAt } = req.validated
       ?.body as CreateTransactionRequestBody;
 
+    const idempotent = idempotencyOf(res);
+
     try {
       // Money.of validates currency shape/finiteness at construction;
       // any resulting InvalidMoneyError is caught by the same generic
@@ -106,6 +112,20 @@ export function makeTransactionsController(transactionService: TransactionServic
           ...(fees !== undefined ? { fees: Money.of(fees.amount, fees.currency) } : {}),
           ...(executedAt !== undefined ? { executedAt } : {}),
         },
+        // With an `Idempotency-Key`, the response is stored in the same unit of
+        // work as the transaction, so the key and the change commit together.
+        idempotent
+          ? async (created, repositories) => {
+              await idempotencyService.complete(
+                {
+                  ...idempotent,
+                  responseStatus: 201,
+                  responseBody: { data: presentCreateTransactionResult(created) },
+                },
+                repositories.idempotencyKeys,
+              );
+            }
+          : undefined,
       );
       res.status(201).json({ data: presentCreateTransactionResult(result) });
     } catch (error) {

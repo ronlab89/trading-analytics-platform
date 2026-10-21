@@ -24,7 +24,7 @@ odd/tasks/b4/**
 ## Tasks
 
 - [x] T1 Idempotency middleware and service with the reservation, lease and hash, tested in memory.
-- [ ] T2 Wire the key into the transaction creation route.
+- [x] T2 Wire the key into the transaction creation route.
 - [ ] T3 `POST .../imports` with the CSV transport and the key.
 - [ ] T4 `GET`, retry and cancel routes.
 - [ ] T5 Route tests for permissions, ownership and 409s.

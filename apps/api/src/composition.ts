@@ -3,6 +3,7 @@ import {
   PrismaAssetRepository,
   PrismaDecisionEventRepository,
   PrismaDecisionRepository,
+  PrismaIdempotencyKeyRepository,
   PrismaHistoricalPriceRepository,
   PrismaMarketPriceRepository,
   PrismaNotificationRepository,
@@ -19,6 +20,7 @@ import {
   createAnalyticsService,
   createAssetService,
   createDecisionService,
+  createIdempotencyService,
   createMarketService,
   createNotificationService,
   createOverviewService,
@@ -150,6 +152,11 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     portfolioService,
   });
 
+  const idempotencyService = createIdempotencyService({
+    idempotencyKeyRepository: new PrismaIdempotencyKeyRepository(),
+    clock,
+  });
+
   return {
     clock,
     portfolioService,
@@ -168,6 +175,7 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     watchlistService,
     alertService,
     userPreferenceService,
+    idempotencyService,
   };
 }
 
