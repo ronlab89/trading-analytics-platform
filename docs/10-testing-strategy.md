@@ -376,7 +376,7 @@ UI Feedback
 
 "Server validation errors" are shaped by the API contract: `VALIDATION_ERROR` with `{ field, message }` details (ADR-002 point 10, `07-api-spec.md`). The backend half of this list (invalid formats, boundaries, required fields) is already tested through `validate.test.ts` and the route tests.
 
-"Duplicate submissions" on the server side relates to idempotency, which exists only for CSV import (ADR-008, `Planned (B4)`).
+"Duplicate submissions" on the server side relates to idempotency, which exists on transaction and import creation (ADR-008 point 8, `Implemented` (B4.4)).
 
 ---
 
@@ -428,7 +428,7 @@ Examples:
 - stale data behavior remains intentional;
 - loading state clears after success or failure.
 
-The only backend-driven progress is the CSV import job (`progress` in ADR-008, `Planned (B4)`), whose polling and realtime updates are tested with the job.
+The only backend-driven progress is the CSV import job (`progress` in ADR-008, `Implemented` (B4.3)), whose polling and realtime updates are tested with the job.
 
 ---
 
@@ -702,7 +702,7 @@ Further cases: a `4002` close refreshes the token and then reconnects (`08-realt
 
 # 24. Background Process Testing
 
-**Status:** job runner `Planned (B4)`; job events `Planned (B5)`; demo jobs `Planned (FE)` (ADR-008)
+**Status:** job runner `Implemented` (B4.2); job events `Planned (B5)`; demo jobs `Planned (FE)` (ADR-008)
 
 Background processes should be tested through state transitions.
 
@@ -740,7 +740,7 @@ The exact states must follow the realtime and functional requirements.
 
 Tests in B4 also cover: retry or cancel in a state that does not allow it returns 409 `CONFLICT` and changes nothing (ADR-008 point 6); creating an import on an archived portfolio returns 409 (ADR-010 point 5); `COMPLETED` creates a `SUCCESS` notification, `FAILED` and `TIMED_OUT` an `ERROR` one, `CANCELLED` none; every transition is a compare-and-set (ADR-008 Deferred detail). In B5, only `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED` and `JOB_FAILED` are emitted on `jobs:{jobId}`; `CANCELLED` and `TIMED_OUT` emit no event (ADR-007 point 15).
 
-`Idempotency-Key` on transaction and import creation is tested independently of jobs (ADR-008 point 8, `Planned (B4)`): same key and request return the stored response; same key with another request returns 409.
+`Idempotency-Key` on transaction and import creation is tested independently of jobs (ADR-008 point 8, `Implemented` (B4.1, B4.4)): same key and request return the stored response; same key with another request returns 409.
 
 Code vs ADR: the previous diagrams used `Running`, a `Progress` state and a `Timeout → Recovery` path. ADR-008 has no recovery state: `TIMED_OUT` is final until a retry returns the job to `QUEUED`.
 
@@ -748,7 +748,7 @@ Code vs ADR: the previous diagrams used `Running`, a `Progress` state and a `Tim
 
 # 25. Progress Testing
 
-**Status:** `Planned (B4)`; progress display `Planned (FE)` (ADR-008 points 2-3)
+**Status:** `Implemented` (B4.3, B4.4); progress display `Planned (FE)` (ADR-008 points 2-3)
 
 Progress values must be validated.
 
@@ -771,13 +771,13 @@ The system must prevent:
 - impossible state transitions;
 - completion before required work is finished.
 
-Progress is `{ processed, total }`, not a percentage (`08-realtime-spec.md` §20); the UI may derive one. The rules above become: `0 ≤ processed ≤ total`, `processed` never decreases within an attempt, and `JOB_PROGRESS_UPDATED` is emitted only while `PROCESSING`. A job reaches `COMPLETED` only inside the apply transaction (ADR-008 point 5), so completion cannot precede the work. ADR-008 point 2 reports progress during validation; whether the apply stage also reports progress is an Open detail (B4).
+Progress is `{ processed, total }`, not a percentage (`08-realtime-spec.md` §20); the UI may derive one. The rules above become: `0 ≤ processed ≤ total`, `processed` never decreases within an attempt, and `JOB_PROGRESS_UPDATED` is emitted only while `PROCESSING`. A job reaches `COMPLETED` only inside the apply transaction (ADR-008 point 5), so completion cannot precede the work. ADR-008 point 2 reports progress during validation; in B4 only the validation stage reports progress; the apply stage is one unit of work and reports none.
 
 ---
 
 # 26. Notification Testing
 
-**Status:** read state, ownership and persistence `Implemented`; creation from alerts `Planned (B5)` and from jobs `Planned (B4)`; realtime delivery `Planned (B5)`; client `Planned (FE)`
+**Status:** read state, ownership and persistence `Implemented`; creation from alerts `Planned (B5)` and from jobs `Implemented` (B4.3); realtime delivery `Planned (B5)`; client `Planned (FE)`
 
 Notifications should be tested for:
 
@@ -796,7 +796,7 @@ Notifications should be tested for:
 | Persistence (repository create with and without metadata) | `Implemented` (`prisma-notification-repository.test.ts`) |
 | Ordering | Gap: the repository orders by `createdAt` descending, but no test asserts it |
 | Creation by a triggered alert (`WARNING`) | `Planned (B5)` (ADR-007 point 9) |
-| Creation by an import job (`SUCCESS`, `ERROR`; none for `CANCELLED`) | `Planned (B4)` (ADR-008 point 6) |
+| Creation by an import job (`SUCCESS`, `ERROR`; none for `CANCELLED`) | `Implemented` (B4.3) (ADR-008 point 6) |
 | Duplicate prevention: edge-triggered alerts, no notification per tick, no re-fire after restart | `Planned (B5)` (ADR-007 point 9 and Deferred detail) |
 | Realtime delivery: `NOTIFICATION_CREATED` and `ALERT_TRIGGERED` on `notifications` | `Planned (B5)` (ADR-007 point 15) |
 
@@ -965,7 +965,7 @@ At minimum:
 | --- | --- |
 | Authentication bypass, malformed tokens | `Implemented` for missing and malformed tokens, expired token, wrong algorithm and unknown role (§29) |
 | Unauthorized resource access | `Implemented` (cross-user 404, §30) |
-| Invalid input | `Implemented` (`validate.test.ts`, route tests); malformed path parameters and unexpected fields `Planned (B0)`; CSV input `Planned (B4)` |
+| Invalid input | `Implemented` (`validate.test.ts`, route tests); malformed path parameters and unexpected fields `Planned (B0)`; CSV input `Implemented` (B4.3) |
 | Permission escalation | `Implemented` (a `VIEWER` is denied mutations and a forged `ADMIN` token is 401, `viewer-role.routes.test.ts`, B2.2) (§30) |
 | Unauthorized realtime subscription | `Planned (B5)` (§21) |
 | Sensitive error exposure | `Implemented` (B3.1: generic 500 and redaction tests, ADR-009 points 4, 6 and 13) |
@@ -1001,7 +1001,7 @@ No frontend and no E2E suite exist. Playwright is a working assumption, not a de
 
 # 33. Critical E2E Flows
 
-**Status:** `Planned (FE)`; logout depends on the endpoint, `Implemented` (B2.4), CSV import on `Planned (B4)`, realtime on `Planned (B5)`
+**Status:** `Planned (FE)`; logout depends on the endpoint, `Implemented` (B2.4), CSV import on `Implemented` (B4.4), realtime on `Planned (B5)`
 
 The following flows should have E2E coverage:
 
@@ -1095,7 +1095,7 @@ Notes against the ADRs:
 - **Transaction:** creation is synchronous (ADR-008 point 12): the updated position is visible as soon as the request returns, with no job. A `SELL` above the held quantity, or an earlier date that would make history negative, fails validation (ADR-003 point 6). Any mutation on an archived portfolio returns 409 (ADR-010 point 5).
 - **Realtime:** the market update arrives as `MARKET_PRICE_UPDATED` and the client recomputes values (ADR-007 point 6).
 - **Failure recovery:** realtime failure shows the stale-data indicator, not an error page (`08-realtime-spec.md` §57).
-- **CSV transaction import** (added 2026-10-06, approved by the user; `Planned (FE)`, server side `Planned (B4)`): CSV import is a P1 feature (ADR-008 point 1), so it is a critical flow. The test uploads a file through `POST /api/v1/portfolios/:portfolioId/imports`, follows progress `{ processed, total }` (§25), and asserts the final state: `COMPLETED` with the rows applied, or `FAILED` with a per-row report and nothing written (ADR-008 point 2). Repeating the upload with the same `Idempotency-Key` returns the stored response and creates no second job (point 8). Retry is offered only where ADR-008 point 6 allows it; a `VALIDATION_FAILED` job is not retryable and the user uploads a corrected file.
+- **CSV transaction import** (added 2026-10-06, approved by the user; `Planned (FE)`, server side `Implemented` (B4)): CSV import is a P1 feature (ADR-008 point 1), so it is a critical flow. The test uploads a file through `POST /api/v1/portfolios/:portfolioId/imports`, follows progress `{ processed, total }` (§25), and asserts the final state: `COMPLETED` with the rows applied, or `FAILED` with a per-row report and nothing written (ADR-008 point 2). Repeating the upload with the same `Idempotency-Key` returns the stored response and creates no second job (point 8). Retry is offered only where ADR-008 point 6 allows it; a `VALIDATION_FAILED` job is not retryable and the user uploads a corrected file.
 
 ---
 
@@ -1732,7 +1732,7 @@ Required properties:
 | Dependency injection at infrastructure boundaries | API services create Prisma repositories at module level (for example `new PrismaPortfolioRepository()`) | Factories receive dependencies; composition root in `apps/api/src/composition.ts` (ADR-001 points 2 and 4), `Planned (B0)` |
 | Deterministic simulation | No simulator | `@trading/market-sim`, `Planned (B5)` (ADR-007 point 7) |
 | Isolated domain logic | Pure calculations, no database (NFR-042) | `Implemented`; gap: `validateNewTransaction` reads the system clock, moved to the `Clock` port in B0 (§49) |
-| Explicit state transitions | None | Jobs `Planned (B4)` (ADR-008 point 3); simulator lifecycle `RUNNING <-> HALTED` `Planned (B5)` (ADR-007 point 16); realtime client states `Planned (FE)` |
+| Explicit state transitions | None | Jobs `Implemented` (B4) (ADR-008 point 3); simulator lifecycle `RUNNING <-> HALTED` `Planned (B5)` (ADR-007 point 16); realtime client states `Planned (FE)` |
 | Typed contracts | Hand-written DTOs | `@trading/contracts`, `Planned (B0)` (ADR-002) |
 | Replaceable repositories | Repository interfaces in `@trading/domain` with Prisma implementations | Interfaces `Implemented`; in-memory implementations `Planned (B0)` (NFR-044) |
 | Controllable clocks | None | Shared `Clock` port `Planned (B0)` (ADR-001 point 8); simulator on that port `Planned (B5)` (§49) |
@@ -1767,9 +1767,9 @@ Required properties:
 
 How the columns map to the code and blocks:
 
-- **Unit.** Domain calculations, validation and entity rules are `Implemented` (§7-§9). Application-service unit tests (authorization, portfolios, transactions, notifications) are `Planned (B0)` (ADR-001 point 7); analytics `Implemented`; background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
+- **Unit.** Domain calculations, validation and entity rules are `Implemented` (§7-§9). Application-service unit tests (authorization, portfolios, transactions, notifications) are `Planned (B0)` (ADR-001 point 7); analytics `Implemented`; background jobs `Implemented` (B4); realtime and simulation `Planned (B5)`.
 - **Component** and **E2E.** `Planned (FE)` for every row; tools `Deferred` to the frontend-stage ADR (ADR-006 point 11).
-- **Integration.** Authentication, authorization, portfolios, transactions and notifications are `Implemented` (§16, §26, §29-§30). `analytics.routes.ts`, `positions.routes.ts`, `assets.routes.ts` and `market.routes.ts` have no route test file yet (the overview is exercised once, in `transactions.routes.test.ts`). Their HTTP integration tests are `Planned (B0)`, added before the layering refactor as its safety net (ADR-001 point 8); the reworked analytics endpoints are then tested in B1 (ADR-004). Background jobs `Planned (B4)`; realtime and simulation `Planned (B5)`.
+- **Integration.** Authentication, authorization, portfolios, transactions and notifications are `Implemented` (§16, §26, §29-§30). `analytics.routes.ts`, `positions.routes.ts`, `assets.routes.ts` and `market.routes.ts` have no route test file yet (the overview is exercised once, in `transactions.routes.test.ts`). Their HTTP integration tests are `Planned (B0)`, added before the layering refactor as its safety net (ADR-001 point 8); the reworked analytics endpoints are then tested in B1 (ADR-004). Background jobs `Implemented` (B4); realtime and simulation `Planned (B5)`.
 - **Background jobs** means the CSV import (ADR-008), whose E2E flow is in §33. **Tables** follow ADR-010 points 4 and 9 (§27). **Performance** targets are those of §39-§41; no server load test is planned.
 
 ---
@@ -1823,7 +1823,7 @@ Before the project is considered portfolio-ready, the following must exist:
 | --- | --- | --- |
 | Unit | Domain calculations, `Money`, transaction input rules (`transaction.test.ts`), position rules, request validation middleware (`validate.test.ts`) | Chronological validation and application services `Planned (B0)`; permissions `Implemented` (B2.1); simulation and realtime event processing `Planned (B5)` |
 | Component | Nothing | All items `Planned (FE)` |
-| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests and route tests for analytics, positions, assets and market `Planned (B0)` (ADR-001 point 8); reworked analytics API `Implemented`; import API `Planned (B4)`; realtime events `Planned (B5)` |
+| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests and route tests for analytics, positions, assets and market `Planned (B0)` (ADR-001 point 8); reworked analytics API `Implemented`; import API `Implemented` (B4.4); realtime events `Planned (B5)` |
 | E2E | Nothing | All items `Planned (FE)`; CSV import added on 2026-10-06 (§33); reset `Deferred` (ADR-010 point 6), so "logout/reset" means logout |
 
 ---
