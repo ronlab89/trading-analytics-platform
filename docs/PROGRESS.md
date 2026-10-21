@@ -936,7 +936,18 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** B4 (background jobs and idempotency). **B3 (observability foundation) is done**, in five slices
+**Next:** B5 (realtime and market simulation). **B4 (background jobs and idempotency) is done**, in five slices
+(`Implemented`, `odd/tasks/b4/`). **B4.1** adds the `Job` and `IdempotencyKey` tables, their repositories and the
+unit-of-work wiring. **B4.2** adds the job service, the in-process runner (one job at a time, every transition a
+compare-and-set, timeout per attempt, startup recovery of interrupted jobs, a graceful stop joined to the shutdown
+registry) and the `job.*` log events. **B4.3** adds the CSV import: a parser behind a tokenizer port, the validate and
+apply stages (apply in one unit of work that also sets `COMPLETED`) and the notification for the owner. **B4.4** adds
+`POST /api/v1/portfolios/:portfolioId/imports` (raw `text/csv`, 1 MB, 5000 rows), `GET /api/v1/jobs/:jobId`, retry,
+cancel and the optional `Idempotency-Key` on transaction and import creation. **B4.5** flipped every `Planned (B4)`
+mark, recorded what B4 built in ADR-008 and wrote how to follow an import in the log
+(`13-observability-spec.md` §75). Carried to later blocks: the Prisma and DB-backed route tests of B4 need the test
+database and had not been run when the block closed (the user runs `pnpm --filter @trading/database db:test:migrate` and
+the database and API tests); and no single test drives a CSV import end to end through the runner against PostgreSQL. **B3 (observability foundation) is done**, in five slices
 (`Implemented`, `odd/tasks/b3/`). **B3.1** is a `Logger` port in `@trading/application` with a `pino`
 adapter in the API, a fixed redaction list, `LOG_LEVEL`, and one `http.request.failed` entry per failed
 request with a level per error code. **B3.2** carries the `requestId` on every log line through
