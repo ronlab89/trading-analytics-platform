@@ -26,7 +26,7 @@ odd/tasks/b4/**
 ## Tasks
 
 - [x] T1 `JobService`: create, get, cancel and retry (`transaction:create` for writes, `transaction:read` for get, ownership on the job), state rules from the domain, tested with a compare-and-set fake repository.
-- [ ] T2 Runner loop, stages, progress and the timeout, tested with fake timers.
+- [x] T2 Runner loop, stages, progress and the timeout, tested with fake timers. `JobHandler` (`validate`, `apply`) is the seam B4.3 fills; the apply completes the job through `context.complete` inside its own unit of work.
 - [ ] T3 Startup recovery and the shutdown step.
 - [ ] T4 Job lifecycle log events and the `LOG_EVENTS` registry.
 
