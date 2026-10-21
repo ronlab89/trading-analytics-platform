@@ -264,7 +264,7 @@ All frontend responsibilities are `Planned (FE)`. The production static build is
 | Application/domain orchestration | Domain `Implemented` (`@trading/domain`); services call repositories directly today, and the application layer is `Planned (B0)` (ADR-001) |
 | PostgreSQL access | `Implemented` (`@trading/database`, Prisma 6) |
 | WebSocket server | `Planned (B5)` (ADR-007) |
-| Background operations | `Planned (B4)`: in-process job runner (ADR-008) |
+| Background operations | `Implemented` (B4.2): in-process job runner (ADR-008) |
 | Health checks | `Implemented` (`GET /health`, `GET /health/ready`) |
 | Observability | `Implemented` (B3; ADR-009) |
 
@@ -548,7 +548,7 @@ What `apps/api/src/index.ts` does today:
 | Apply migrations | Manual (`db:migrate`, `db:test:migrate`); in the `full` profile, a one-shot `migrate` service runs `prisma migrate deploy` before the API container starts | `Planned (B7)` (ADR-006 points 4 and 5) |
 | Initialize application services | `createApp()` wires middleware, routes and services | `Implemented` |
 | Initialize HTTP server | `app.listen(env.PORT)`, then `[api] listening on port <n>` | `Implemented` |
-| Resume background jobs | `PROCESSING` jobs fail as `INTERRUPTED`, and `QUEUED` jobs resume | `Planned (B4)` (ADR-008 point 5) |
+| Resume background jobs | `PROCESSING` jobs fail as `INTERRUPTED`, and `QUEUED` jobs resume | `Implemented` (B4.2) (ADR-008 point 5) |
 | Initialize WebSocket layer | Not present | `Planned (B5)` (ADR-007) |
 | Expose readiness | `GET /health/ready` answers as soon as the server listens | `Implemented` |
 
@@ -562,7 +562,7 @@ Code vs ADR:
 
 # 16. Graceful Shutdown
 
-**Status:** HTTP and database steps `Implemented` (B3.4; ADR-006 point 12); job and realtime steps `Planned (B4)` and `Planned (B5)`
+**Status:** HTTP and database steps `Implemented` (B3.4; ADR-006 point 12); job step `Implemented` (B4.2), realtime step `Planned (B5)`
 
 The backend must support graceful shutdown.
 
@@ -598,7 +598,7 @@ Decided (ADR-006 point 12): on `SIGTERM` or `SIGINT`, the API:
 |---|---|
 | Shutdown signal: `SIGTERM` and `SIGINT` | `Implemented` (B3.4) |
 | Stop accepting new work: server stops accepting connections; readiness 503 | `Implemented` (B3.4) |
-| Stop new background jobs | `Planned (B4)`: joins the sequence when the job runner exists (ADR-006, Deferred detail) |
+| Stop new background jobs | `Implemented` (B4.2): the `jobs` step runs before the HTTP step (ADR-006, Deferred detail) |
 | Handle realtime connections | `Planned (B5)`: joins the sequence when the realtime server exists (ADR-006, Deferred detail); connections close with code `1001`, server going away (ADR-007 point 15) |
 | Finish or cancel active operations: drain in-flight requests, 10 s timeout | `Implemented` (B3.4) |
 | Close database pool: Prisma closed | `Implemented` (B3.4) |
@@ -1841,7 +1841,7 @@ Code vs ADR:
 
 # 54. Background Jobs
 
-**Status:** `Planned (B4)` (ADR-008 point 4); the shutdown step `Planned (B4)` (ADR-006, Deferred detail)
+**Status:** `Implemented` (B4.2) (ADR-008 point 4); the shutdown step `Implemented` (B4.2) (ADR-006, Deferred detail)
 
 Background jobs run in the API process, as ADR-008 point 4 decides: an in-process runner backed by a `jobs` table in PostgreSQL, with no separate worker process and no external queue. No job code exists yet.
 
@@ -1849,11 +1849,11 @@ Deployment must account for the following:
 
 | Concern | Decision | Status |
 |---|---|---|
-| Graceful shutdown | Stopping new jobs joins the shutdown sequence when the runner exists (ADR-006, Deferred detail). A validation still running at shutdown is left for the next startup: it is marked `FAILED` with reason `INTERRUPTED` on the next startup and is retryable (ADR-008 point 5) | `Planned (B4)` |
-| Duplicate execution | Every transition is a compare-and-set on status, with a persisted `stage` and `attempt`; startup resume and enqueue cannot both take a job (ADR-008, Deferred detail). `Idempotency-Key` protects repeated requests (ADR-008 point 8) | `Planned (B4)` |
-| Cancellation | Allowed while `QUEUED` or during validation, never during apply (ADR-008 point 6) | `Planned (B4)` |
-| Timeouts | Each job type has a timeout applying while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7) | `Planned (B4)` |
-| Process restarts | On startup, `PROCESSING` jobs become `FAILED` with reason `INTERRUPTED` and `QUEUED` jobs resume (ADR-008 point 5) | `Planned (B4)` |
+| Graceful shutdown | Stopping new jobs joins the shutdown sequence when the runner exists (ADR-006, Deferred detail). A validation still running at shutdown is left for the next startup: it is marked `FAILED` with reason `INTERRUPTED` on the next startup and is retryable (ADR-008 point 5) | `Implemented` (B4.2) |
+| Duplicate execution | Every transition is a compare-and-set on status, with a persisted `stage` and `attempt`; startup resume and enqueue cannot both take a job (ADR-008, Deferred detail). `Idempotency-Key` protects repeated requests (ADR-008 point 8) | `Implemented` (B4.2) |
+| Cancellation | Allowed while `QUEUED` or during validation, never during apply (ADR-008 point 6) | `Implemented` (B4.2) |
+| Timeouts | Each job type has a timeout applying while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7) | `Implemented` (B4.2) |
+| Process restarts | On startup, `PROCESSING` jobs become `FAILED` with reason `INTERRUPTED` and `QUEUED` jobs resume (ADR-008 point 5) | `Implemented` (B4.2) |
 
 A future worker architecture may be:
 
@@ -1870,7 +1870,7 @@ A separate worker is not required initially unless justified. ADR-008 point 4 de
 Code vs ADR:
 
 - The `Job` and `IdempotencyKey` tables are specified in `05-data-model.md` §52-53 but are not in `schema.prisma`; the runner and the startup step do not exist either.
-- Decided (ADR-008 point 5; `Planned (B4)`): a validation running at shutdown is left for the next startup (§16). A job left in `PROCESSING` becomes `FAILED` with reason `INTERRUPTED` on the next startup and is retryable, so no job stays stuck silently; the 10-second drain (§16) is too short for a long import.
+- Decided (ADR-008 point 5; `Implemented`, B4.2): a validation running at shutdown is left for the next startup (§16). A job left in `PROCESSING` becomes `FAILED` with reason `INTERRUPTED` on the next startup and is retryable, so no job stays stuck silently; the 10-second drain (§16) is too short for a long import.
 - The local stack runs one API container (§7), so two runners resuming the same jobs do not occur; running several instances is not decided.
 
 ---
@@ -2029,7 +2029,7 @@ Code vs ADR:
 
 # 61. File Handling
 
-**Status:** `Reference` for the principle; the CSV import input `Planned (B4)`
+**Status:** `Reference` for the principle; the CSV import input `Implemented` (B4.1, B4.3)
 
 If files are generated or delivered:
 
@@ -2049,17 +2049,17 @@ Persistent file storage should be introduced through an infrastructure adapter i
 |---|---|---|
 | Files the system generates or delivers | None. No functional requirement asks for an export or a download, and no code writes a file | `Reference`: there is nothing to generate, deliver or clean up |
 | Files the API serves | None. `apps/api/src/app.ts` registers no static, download or `sendFile` route | `Implemented` |
-| CSV import input | The CSV content is stored in the `jobs` row when the job is created, not on disk; resume and retry read the row, never the original request. The stored input is kept while the job can still be retried and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED` (ADR-008 point 4, amended 2026-10-07 and 2026-10-08) | `Planned (B4)` |
-| Size and row limits of an import | Bounded; the values are fixed in B4 (ADR-008 point 10, `09-security-spec.md` §27) | `Planned (B4)`, values set in B4 |
-| Import content in logs | The stored input is never logged (ADR-009, Deferred detail): the redaction list covers `input` and `*.input` | `Implemented` (B3.1); the import itself `Planned (B4)` |
+| CSV import input | The CSV content is stored in the `jobs` row when the job is created, not on disk; resume and retry read the row, never the original request. The stored input is kept while the job can still be retried and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED` (ADR-008 point 4, amended 2026-10-07 and 2026-10-08) | `Implemented` (B4.1, B4.2) |
+| Size and row limits of an import | Bounded: 1 MB and 5000 rows (ADR-008 point 10, `09-security-spec.md` §27) | `Implemented` (B4.3) |
+| Import content in logs | The stored input is never logged (ADR-009, Deferred detail): the redaction list covers `input` and `*.input` | `Implemented` (B3.1); the import itself `Implemented` (B4.3) |
 | Persistent file storage adapter | Not needed in version 1 | `Deferred` |
 
 Code vs ADR:
 
 - The generate, deliver and cleanup flow is the original text. In version 1 it has nothing to apply to: an import is parsed, validated and stored in the database, and no file survives the request.
 - The API container of the `full` profile writes no file of its own: ADR-009 point 3 sends logs to stdout, with no log files (`Planned (B7)`). The PostgreSQL data lives in the named volume `trading-analytics-postgres-data`, which is the durable store (`docker-compose.yml`).
-- `Planned (B4)`, set in B4 (ADR-008, Deferred detail): how the CSV reaches `POST /api/v1/portfolios/:portfolioId/imports`. `07-api-spec.md` §14 fixes neither multipart nor a JSON body, and the global JSON limit is 100 kB (`JSON_BODY_LIMIT` in `app.ts`), so a larger file would be rejected with 413. The transport and a route-specific body limit are set in B4 with the input limits of ADR-008 point 10; the global limit is not raised.
-- Decided (ADR-008 point 4, amended 2026-10-07; `Planned (B4)`): the stored input is kept while the job can still be retried (`TIMED_OUT`, `CANCELLED`, and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`), and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED`, which are not retryable (ADR-008 point 6, amended 2026-10-08).
+- Decided and `Implemented` (B4.4) (ADR-008, Deferred detail): how the CSV reaches `POST /api/v1/portfolios/:portfolioId/imports`. `07-api-spec.md` §14 fixes neither multipart nor a JSON body, and the global JSON limit is 100 kB (`JSON_BODY_LIMIT` in `app.ts`), so a larger file would be rejected with 413. The CSV is the raw `text/csv` body, read by a route-level `express.text` with a 1 MB limit (ADR-008 point 10); the global limit is not raised.
+- Decided (ADR-008 point 4, amended 2026-10-07; `Implemented`, B4.2): the stored input is kept while the job can still be retried (`TIMED_OUT`, `CANCELLED`, and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`), and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED`, which are not retryable (ADR-008 point 6, amended 2026-10-08).
 
 ---
 
@@ -2120,7 +2120,7 @@ Rate limiting must not break local development or CI.
 | Token refresh | General limiter only; a dedicated limiter is open (`09-security-spec.md` §26) | `Implemented` (general limiter, B2.4); a dedicated limiter is open |
 | Simulation control | General limiter (`simulation:control`, ADR-007 point 10) | `Planned (B5)` |
 | Realtime messages | 20 inbound messages per second per connection (ADR-007 point 15) | `Planned (B5)` |
-| Resource-intensive operations (CSV import) | No limit beyond the general limiter, the size and row bounds, and the job timeout (ADR-008 points 7 and 10) | `Planned (B4)` |
+| Resource-intensive operations (CSV import) | No limit beyond the general limiter, the size and row bounds, and the job timeout (ADR-008 points 7 and 10) | `Implemented` (B4.3) |
 
 Code vs ADR:
 
@@ -2187,10 +2187,10 @@ These limits protect both local and public deployments.
 | Limit | Today or decided | Status |
 |---|---|---|
 | Request body size | 100 kB (`JSON_BODY_LIMIT`); over it returns 413 `VALIDATION_ERROR` (`apps/api/src/app.ts`, `apps/api/src/middleware/error-handler.ts`) | `Implemented` |
-| Upload size | CSV size and row count, values fixed in B4 (ADR-008 point 10) | `Planned (B4)` |
+| Upload size | 1 MB and 5000 rows (ADR-008 point 10) | `Implemented` (B4.3) |
 | Pagination size | `pageSize` 1 to 100, default 20 (`apps/api/src/schemas/pagination.schema.ts`); batch `assetIds` 1 to 50; at most 5 scenarios compared (`scenario.schema.ts`) | `Implemented` |
 | Analytics query scope | Periods are enumerated and a custom range is validated (ADR-004). No maximum range or portfolio size is decided | `Deferred` |
-| Background job duration | A timeout per job type while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7); values fixed in B4 | `Planned (B4)` |
+| Background job duration | A timeout per job type while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7); 5 minutes per attempt | `Implemented` (B4.2) |
 | Realtime limits | 50 subscriptions, 20 inbound messages per second and a 1 MB outbound buffer per connection; 5 connections per user (ADR-007 point 15, ADR-005 point 13) | `Planned (B5)` |
 | Realtime history | `MarketEvent` retention is bounded, the limit fixed in B5 (ADR-007 point 8); the client keeps no event history (`08-realtime-spec.md` §51) | `Planned (B5)`; client `Planned (FE)` |
 | Demo history | No bound is decided (§24) | `Deferred` |
@@ -2266,8 +2266,8 @@ The topology above is not a target. ADR-006 points 1 and 2 decide one local API 
 | Rate-limit counters | In memory, per process (`rate-limit.ts`) | Each instance counts apart, so the effective limit multiplies; the client IP is also hidden behind a proxy (§63) | `Implemented` |
 | Market simulator and tick sequence | Runs inside the API process, with in-memory sequences (ADR-007 point 7 and Deferred detail) | Each instance would run its own simulator and emit conflicting prices | `Planned (B5)` |
 | WebSocket connections and the per-user cap of 5 | In memory, per process (ADR-005 point 13) | The cap would count per instance | `Planned (B5)` |
-| Job runner | In process, backed by the `jobs` table; transitions are compare-and-set (ADR-008 point 4, Deferred detail) | The compare-and-set limits duplicate execution; startup resume by two instances is not designed | `Planned (B4)` |
-| Idempotency keys and database state | PostgreSQL (ADR-008 point 8) | Shared by every instance | `Planned (B4)` |
+| Job runner | In process, backed by the `jobs` table; transitions are compare-and-set (ADR-008 point 4, Deferred detail) | The compare-and-set limits duplicate execution; startup resume by two instances is not designed | `Implemented` (B4.2) |
+| Idempotency keys and database state | PostgreSQL (ADR-008 point 8) | Shared by every instance | `Implemented` (B4.1, B4.4) |
 
 Code vs ADR:
 
@@ -2684,7 +2684,7 @@ ADR-006 point 2 hosts no backend, so "public deployment" means two things: publi
 - [x] Metrics restricted if exposed. (Satisfied by absence: no metrics and no `/metrics` endpoint, `Deferred`, ADR-009 point 10)
 - [ ] Admin operations protected. (the `Actor` permission mechanism and the roles of ADR-005 are `Implemented` (B0, B2.1, B2.2); the only admin-only permission, `simulation:control`, has no operation to protect until `Planned (B5)`)
 - [x] Rate limits considered. (`Implemented`, §63)
-- [ ] Resource limits configured. (Partly: body size and pagination `Implemented`; CSV, realtime and job limits `Planned (B4)` and `Planned (B5)`; the 512 MB container limit `Planned (B7)`, §65, NFR-054)
+- [ ] Resource limits configured. (Partly: body size and pagination `Implemented`; CSV and job limits `Implemented` (B4), realtime limits `Planned (B5)`; the 512 MB container limit `Planned (B7)`, §65, NFR-054)
 - [ ] Demo data isolated. (`Planned (FE)`: the demo has no backend and no database, §24, §56)
 - [ ] Dependencies reviewed. (Lockfile and review `Implemented`; the manual `pnpm audit --prod --audit-level=high` step `Planned (B7)`, §58)
 
@@ -2711,7 +2711,7 @@ Each item ends with its status and, where it is not built, the block or stage th
 - [x] Required indexes exist. (`Implemented`: `@@index` and `@@unique` declarations in `packages/database/prisma/schema.prisma`; whether they cover every query is not reviewed, `05-data-model.md`)
 - [x] Pagination limits enforced. (`Implemented`: `pageSize` at most 100 on the paginated lists, §65)
 - [ ] Realtime history bounded. (`Planned (B5)`: `MarketEvent` retention, ADR-007 point 8; the client window `Planned (FE)`)
-- [ ] Background jobs have timeouts. (`Planned (B4)`: ADR-008 point 7)
+- [ ] Background jobs have timeouts. (`Implemented` (B4.2): ADR-008 point 7)
 - [x] Logging volume controlled. (`Implemented` (B3.1): one JSON line per event at a level set by `LOG_LEVEL`, with `info` in production, ADR-009 points 3 and 7)
 
 No performance claim should be published without actual measurement.
@@ -2739,7 +2739,7 @@ The backend items close in B3, except where a tag names another block. Frontend 
 - [x] readiness checks. (`Implemented`, §50; 503 with `status: "unavailable"` and no `checks` while shutting down `Implemented`, B3.4, ADR-006 point 12; the route test `Planned (B0)`, ADR-001 point 8)
 - [x] database health. (`Implemented`: `SELECT 1` through the shared client; a recovery entry is `Deferred` until a poller exists, B7, `13-observability-spec.md` §58)
 - [ ] realtime lifecycle diagnostics. (`Planned (B5)` on the server and `Planned (FE)` on the client; names open, ADR-009 point 11)
-- [ ] background job diagnostics. (`Planned (B4)`: entry names and fields are open)
+- [ ] background job diagnostics. (`Implemented` (B4.2): see `13-observability-spec.md` §58)
 - [ ] metrics where implemented. (`Deferred`: none exist, ADR-009 point 10)
 - [x] safe production log level. (`Implemented` (B3.1): `LOG_LEVEL` is `info` in production and `silent` in tests, ADR-009 point 7)
 
@@ -2893,7 +2893,7 @@ Each item ends with its status and, where it is not built, the block or stage th
 - [ ] private infrastructure not exposed. (`Planned (FE)`: the build calls no backend and holds no secrets, ADR-006 point 7)
 
 ### Operations
-- [ ] graceful shutdown works. (`Implemented` (B3.4) for the server and the database; jobs `Planned (B4)`; realtime `Planned (B5)`, §16)
+- [ ] graceful shutdown works. (`Implemented` (B3.4) for the server and the database; jobs `Implemented` (B4.2); realtime `Planned (B5)`, §16)
 - [ ] startup failures are observable. (Partly: an invalid environment prints a message and exits with code 1 (`Implemented`); the structured startup entries `Implemented` (B3.4), ADR-009 point 11, §52)
 - [x] deployment verification documented. (`Reference`: §48; the automated check `Planned (B7)`)
 - [ ] troubleshooting documented. (Partly: §75; the developer workflow `Implemented` (B3.5, `13-observability-spec.md` §66) and the `README.md` entries are pending (T5.2))
