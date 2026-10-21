@@ -80,7 +80,7 @@ How each question is answered in version 1:
 | --- | --- | --- |
 | 2.1 What happened? | Structured JSON log events (§6-8) | `Implemented` (B3.1) for the logger and the error entries; request entries `Implemented` (B3.2) |
 | 2.2 Where did it happen? | `requestId` on responses and error bodies | `Implemented` |
-| | `requestId` on every log line of a request; `jobId`, `connectionId` (§9-10) | `requestId` `Implemented` (B3.2); `jobId` `Planned (B4)`, `connectionId` `Planned (B5)` (ADR-009 point 5) |
+| | `requestId` on every log line of a request; `jobId`, `connectionId` (§9-10) | `requestId` `Implemented` (B3.2); `jobId` `Implemented` (B4.2), `connectionId` `Planned (B5)` (ADR-009 point 5) |
 | 2.3 Why did it happen? | Central error handler with safe responses (§12) | `Implemented` |
 | | Logging by error category, with the stack for internal errors | `Implemented` (B3.1) (ADR-009 point 6) |
 | 2.4 Is the system healthy? | `GET /health` and `GET /health/ready` | `Implemented` |
@@ -171,7 +171,7 @@ Code vs ADR:
 - The abstraction is the `Logger` interface in `@trading/application` (ADR-009 point 1). The API supplies a `pino` adapter and the demo a browser-console adapter, so application code logs without knowing where it runs. `@trading/application` itself does not exist yet; it is created in B0 (ADR-001 point 1), and the port is added in B3.
 - `@trading/domain` has no logging today and no ADR gives it a logger: it returns values or throws errors, and the application layer decides what to log (ADR-001).
 - The "Application/Domain" box assumes application services. Today services in `apps/api/src/services` call Prisma repositories directly (ADR-001 moves them in B0).
-- The "Background jobs" box is the in-process job runner of ADR-008 (`Planned (B4)`). The "WebSocket" box is the realtime server of ADR-007 (`Planned (B5)`).
+- The "Background jobs" box is the in-process job runner of ADR-008 (`Implemented` (B4.2)). The "WebSocket" box is the realtime server of ADR-007 (`Planned (B5)`).
 - "External / Mock infra" has no server-side counterpart: the API calls no external service. Mock infrastructure is the demo (`Planned (FE)`, ADR-010 point 6).
 - The "Metrics" branch is `Deferred` (ADR-009 point 10). Version 1 has logs and health checks only.
 
@@ -321,7 +321,7 @@ Code vs ADR:
 
 # 7. Structured Log Schema
 
-**Status:** `Implemented` (B3.1, B3.2) for the fields of the API; `jobId` `Planned (B4)` and `connectionId` `Planned (B5)` (ADR-009 points 3 and 5)
+**Status:** `Implemented` (B3.1, B3.2) for the fields of the API; `jobId` `Implemented` (B4.2) and `connectionId` `Planned (B5)` (ADR-009 points 3 and 5)
 
 A common base schema should be used whenever possible.
 
@@ -418,7 +418,7 @@ The convention is a guide, not a fixed length: ADR-009 uses two segments (`job.f
 | `app.startup.started`, `app.startup.completed` | ADR-009 point 11 (startup entries added 2026-10-07), mirroring the shutdown pair | `Implemented` (B3.4) |
 | `app.shutdown.started`, `app.shutdown.completed`, `app.shutdown.step_failed` | ADR-009 point 11, ADR-006 point 12; `step_failed` is a B3.4 addition for a step that fails | `Implemented` (B3.4) |
 | `simulation.started`, `simulation.paused`, `simulation.mode.changed` | ADR-009 point 11, ADR-007 point 15 | `Planned (B5)` |
-| `job.*` (transitions) | ADR-009 point 11, ADR-008 | `Planned (B4)` |
+| `job.*` (transitions) | ADR-009 point 11, ADR-008 | `Implemented` (B4.2) |
 | `realtime.*` (connect, authenticate, close) | ADR-009 point 11, ADR-007, `08-realtime-spec.md` §58 | `Planned (B5)` |
 | `demo.*` | ADR-010 point 6 | `Planned (FE)` |
 | `portfolio.*`, `position.*`, `transaction.*`, `analytics.*` | none yet | Illustrative; defined with each feature |
@@ -428,7 +428,7 @@ Code vs ADR:
 - ADR-009 point 9 names the login events `auth.login.succeeded` and `auth.login.failed`, not `success` and `failure`; the list above uses the ADR names.
 - Since B3.1 the unexpected-error line is `http.request.failed` (it was `request.failed`) and the readiness line keeps `health.database.unavailable` (ADR-009 point 6, amended 2026-10-07). `http.request.completed` is the request log (ADR-009 point 3), `Implemented` in B3.2; a slower request than the threshold is the same event raised to `warn`. The ADR does not say what the handled categories are called; they use the same `http.request.failed`, told apart by `errorCategory` and the level.
 - The simulator names follow the endpoints (ADR-007 point 15). There is no `simulation.resumed` (`start` from `HALTED` is the resume) and no `simulation.stopped` (real mode has no stop); `simulation.error` is deferred until simulator errors are defined (ADR-009 point 11, Deferred detail; §56).
-- Job transition names other than `job.failed` are not fixed by ADR-009. The job states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3), so `job.progress` and `job.started` above are working names until B4.
+- Job transition names other than `job.failed` are not fixed by ADR-009. The job states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3), so B4.2 fixed them as built: `job.queued`, `job.started`, `job.completed`, `job.failed`, `job.cancelled`, `job.timed_out` and `job.notification_failed`; `job.progress` is not logged (progress is a field, not a state).
 - Realtime log names are not final: `08-realtime-spec.md` §58 leaves them open for B5, aligned with this section. `realtime.event.received` describes a client-side event; server-side per-event logging and its level are part of the same open detail. Realtime event types on the wire (`MARKET_PRICE_UPDATED` and the others in `08-realtime-spec.md` §15) are a different namespace from log event names.
 - Demo events depend on the frontend-stage demo ADR (ADR-010 point 6).
 
@@ -486,7 +486,7 @@ Code vs ADR:
 
 # 10. Operation Correlation
 
-**Status:** `jobId` `Planned (B4)` and `connectionId` `Planned (B5)`, both on the B3 logger (ADR-009 point 5); a generic `operationId` `Deferred`
+**Status:** `jobId` `Implemented` (B4.2) and `connectionId` `Planned (B5)`, both on the B3 logger (ADR-009 point 5); a generic `operationId` `Deferred`
 
 A request ID is not always sufficient.
 
@@ -514,7 +514,7 @@ Code vs ADR: ADR-009 point 5 does not introduce a generic `operationId`. It uses
 
 | Work | Identifier | Status |
 | --- | --- | --- |
-| Background job (CSV import) | `jobId` (ADR-008) | `Planned (B4)` |
+| Background job (CSV import) | `jobId` (ADR-008) | `Implemented` (B4.2) |
 | Realtime connection | `connectionId` (ADR-007) | `Planned (B5)` |
 | HTTP request | `requestId` (§9) | `Implemented`; in log lines `Implemented` (B3.2) |
 
@@ -811,7 +811,7 @@ Version 1 answers the same questions with log events and health checks:
 | Request behavior, errors, duration | `http.request.completed` with `durationMs`; error logs by category; slow-request `warn` (§6-8) | `Implemented` (B3.1 and B3.2) (ADR-009 points 2, 6 and 8) |
 | Database health | `GET /health/ready` (§22-23) | `Implemented` |
 | Realtime behavior | Connection lifecycle log events (§8) | `Planned (B5)` (ADR-009 point 11) |
-| Background jobs | Job transition log events (§8) | `Planned (B4)` (ADR-009 point 11) |
+| Background jobs | Job transition log events (§8) | `Implemented` (B4.2) (ADR-009 point 11) |
 | Demo simulations | Browser-console adapter (ADR-009 point 1) | `Planned (FE)` |
 | Performance | §25-27 | Per section |
 
@@ -922,7 +922,7 @@ Code vs ADR:
 
 # 20. Background Job Metrics
 
-**Status:** `Deferred` (ADR-009 point 10); job transition logging `Planned (B4)` (ADR-009 point 11)
+**Status:** `Deferred` (ADR-009 point 10); job transition logging `Implemented` (B4.2) (ADR-009 point 11)
 
 Background processing should expose lifecycle measurements.
 
@@ -953,7 +953,7 @@ The demo mode defined in `12-demo-mode-spec.md` should use the same conceptual l
 Code vs ADR:
 
 - The job states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3). "Started" is the move to `PROCESSING`. Progress is a field (`processed`, `total`), not a state, so "progressed" is not a lifecycle step.
-- A failed job carries a reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or `PORTFOLIO_ARCHIVED` (ADR-008 points 5-6), and a retried job increments `attempt`. Job transition log entries carry the `jobId` (ADR-009 point 5); which of these fields they include is an open detail (B4).
+- A failed job carries a reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or `PORTFOLIO_ARCHIVED` (ADR-008 points 5-6), and a retried job increments `attempt`. Job transition log entries carry the `jobId` (ADR-009 point 5); they also carry `userId`, `type` and `attempt`, and `stage` and `reason` where they apply.
 - The demo runs the same use case in process, with simulated progress and injectable failures (ADR-008 point 13); its specifics wait for the frontend-stage demo ADR (ADR-010 point 6).
 
 ---
@@ -1112,7 +1112,7 @@ In version 1 a measurement is a log entry with `durationMs` (ADR-009 point 3), n
 | API request duration | `durationMs` on `http.request.completed`; `warn` above a configurable threshold, `SLOW_REQUEST_THRESHOLD_MS`, default 500 ms | `Implemented` (B3.2) (ADR-009 points 2-3 and 8) |
 | Analytics calculation | The reconstruction of the analytics series (ADR-004) is timed separately: `analytics.series.built` | `Implemented` (B3.3) (ADR-009 point 8) |
 | Database operation duration | None; individual database operations are not timed in v1 (ADR-009 point 8) | `Deferred` (§21) |
-| Background job duration | Job transition log entries (ADR-009 point 11); whether they carry a duration is an open detail | `Planned (B4)` |
+| Background job duration | Job transition log entries (ADR-009 point 11); they carry no duration | `Deferred` |
 | Realtime event processing duration | None in ADR-007 or ADR-009 | Not decided; open detail of `08-realtime-spec.md` §58 (B5) |
 | Frontend route, load, table and chart timing | §27 | `Planned (FE)` |
 
@@ -1340,7 +1340,7 @@ The tooling is decided: `pino` JSON lines on the API's stdout, `pino-pretty` in 
 | Request IDs in logs | `requestId` on every log line of a request (ADR-009 point 5) | `Implemented` (B3.2) |
 | Error events | Category logging (ADR-009 point 6) | `Implemented` (B3.1) as `http.request.failed` entries, level by category |
 | Realtime events | Connection lifecycle entries (§28) | `Planned (B5)` |
-| Background jobs | Job transition entries (§20) | `Planned (B4)` |
+| Background jobs | Job transition entries (§20) | `Implemented` (B4.2) |
 | Demo simulations | Browser-console adapter (§29), not the API logs | `Planned (FE)` |
 | Health: API, Database | `GET /health`, `GET /health/ready` (§22-23) | `Implemented` |
 | Development diagnostics | Browser console, network panel, application diagnostics (§39-40) | `Planned (FE)` |
@@ -1474,8 +1474,8 @@ This allows future distributed tracing to be introduced without changing domain 
 | Concept | Version 1 counterpart | Status |
 | --- | --- | --- |
 | Request ID | `requestId` (§9) | `Implemented`; in every log line `Implemented` (B3.2) |
-| Operation ID | `jobId`, `connectionId`; no generic `operationId` (§10) | `Planned (B4)`, `Planned (B5)`; `operationId` `Deferred` |
-| Parent/child relationships | None decided. Whether a job's log entries also carry the `requestId` of the request that created it is an open detail (B4) | Not decided |
+| Operation ID | `jobId`, `connectionId`; no generic `operationId` (§10) | `Implemented` (B4.2), `Planned (B5)`; `operationId` `Deferred` |
+| Parent/child relationships | None decided. Whether a job's log entries also carry the `requestId` of the request that created it is decided in B4.2: the entries written while a request is served (`job.queued`, `job.cancelled`) carry its `requestId`, and the runner's entries do not | `Implemented` (B4.2) |
 | Duration | `durationMs` (ADR-009 point 3, §26) | `Implemented` (B3.2, B3.3) |
 | Service/module boundaries | `service` is adopted; `source` and `module` are not adopted in v1 (ADR-009 point 3, §7) | `service` `Implemented` (B3.1); `source`, `module` not adopted |
 
@@ -1651,7 +1651,7 @@ Code vs ADR: a development diagnostic mode or diagnostics panel is deferred to t
 | API timings | §27 | `Planned (FE)` |
 | Realtime connection status | Always visible in the status bar, not development-only (FR-046, `08-realtime-spec.md` §28) | `Planned (FE)` |
 | Active subscriptions | Realtime client diagnostics (`08-realtime-spec.md` §58) | `Planned (FE)` |
-| Background job state | The CSV import job's HTTP status and job events (ADR-008 points 9 and 11) | `Planned (B4)` / `Planned (FE)` |
+| Background job state | The CSV import job's HTTP status and job events (ADR-008 points 9 and 11) | `Implemented` (B4) / `Planned (FE)` |
 | Demo simulation and failure injection state | Demo specifics (ADR-010 point 6, §30) | `Deferred` |
 | Cache/query diagnostics | The server-state library is not chosen (§42) | `Deferred` |
 
@@ -1758,7 +1758,7 @@ Code vs ADR:
 
 # 43. Observability and Background Tasks
 
-**Status:** `Planned (B4)` on the B3 `Logger` port (ADR-009 points 5 and 11, ADR-008); no job code exists today
+**Status:** `Implemented` (B4.2) on the B3 `Logger` port (ADR-009 points 5 and 11, ADR-008)
 
 Background operations must emit lifecycle events. The only job in version 1 is the CSV transaction import (ADR-008 point 1). Each log entry names the ADR-008 transition it records; the dotted names are working names until B4 (§8), except `job.failed`, which ADR-009 point 3 uses as an example.
 
@@ -1811,22 +1811,22 @@ These events correlate through `jobId` (ADR-009 point 5), not a generic `operati
 
 | Transition | ADR-008 | Log entry | Realtime event |
 | --- | --- | --- | --- |
-| Created as `QUEUED` | points 3-4 | Name open (B4) | None |
-| `QUEUED` -> `PROCESSING` | point 3 | `job.started` (working name) | None |
-| Progress update | point 3 (`processed`, `total`) | `job.progress` (working name; level open, B4) | `JOB_PROGRESS_UPDATED` |
-| -> `COMPLETED` | point 5 | `job.completed` (working name) | `JOB_COMPLETED` |
+| Created as `QUEUED` | points 3-4 | `job.queued` | None |
+| `QUEUED` -> `PROCESSING` | point 3 | `job.started` | None |
+| Progress update | point 3 (`processed`, `total`) | Not logged in B4 (progress is a field, not a state) | `JOB_PROGRESS_UPDATED` |
+| -> `COMPLETED` | point 5 | `job.completed` | `JOB_COMPLETED` |
 | -> `FAILED` | points 2, 5-6 | `job.failed` | `JOB_FAILED` |
-| -> `CANCELLED` | point 6 | `job.cancelled` (working name) | None (ADR-007 point 15) |
-| -> `TIMED_OUT` | point 7 | `job.timed_out` (working name) | None (ADR-007 point 15) |
-| Retry: back to `QUEUED`, `attempt` + 1 | point 6 | Name open (B4) | None |
-| Startup: `PROCESSING` -> `FAILED` (`INTERRUPTED`); `QUEUED` resumed | point 5 | Name open (B4); part of startup logging (ADR-009 point 11) | `JOB_FAILED` |
+| -> `CANCELLED` | point 6 | `job.cancelled` | None (ADR-007 point 15) |
+| -> `TIMED_OUT` | point 7 | `job.timed_out` | None (ADR-007 point 15) |
+| Retry: back to `QUEUED`, `attempt` + 1 | point 6 | `job.queued` with the new `attempt` | None |
+| Startup: `PROCESSING` -> `FAILED` (`INTERRUPTED`); `QUEUED` resumed | point 5 | `job.failed` with reason `INTERRUPTED`; part of startup logging (ADR-009 point 11) | `JOB_FAILED` |
 
 Code vs ADR:
 
 - The six states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED` and `TIMED_OUT` (ADR-008 point 3). There is no `started` or `progress` state; the log names above describe transitions, and realtime event types (`JOB_*`) are a separate namespace (§8).
-- A `FAILED` entry carries its reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or `PORTFOLIO_ARCHIVED` (ADR-008 points 5-6). Which other fields (`attempt`, `stage`, `userId`) each entry includes is an open detail (B4, §20).
+- A `FAILED` entry carries its reason: `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or `PORTFOLIO_ARCHIVED` (ADR-008 points 5-6). Every entry carries `jobId`, `userId`, `type` and `attempt`; `job.failed`, `job.timed_out` and `job.cancelled` add the `stage`, and `job.failed` the `reason`.
 - The job input (the stored CSV content) is never logged (ADR-009 Deferred detail).
-- Under ADR-009 point 6, a job failure is not an HTTP error, so its level is not fixed there. Open detail (B4).
+- Under ADR-009 point 6, a job failure is not an HTTP error, so its level is not fixed there. B4 logs `job.failed`, `job.timed_out` and `job.notification_failed` at `warn`, and `job.queued`, `job.started`, `job.completed` and `job.cancelled` at `info`. The diagrams above show the transitions; `job.progress` in them is not written.
 
 ---
 
@@ -2223,8 +2223,8 @@ ADR-009 point 11 lists the lifecycle events of version 1: startup, graceful shut
 | `database.recovered` | Readiness is stateless: each `GET /health/ready` runs `SELECT 1` (`apps/api/src/services/health.service.ts`) and nothing remembers the previous answer. A recovery entry needs that memory, which is a poller: there is no entry in v1 (ADR-009 point 11 and Deferred detail) | `Deferred` (B7); reconsidered when the API healthcheck exists |
 | `dependency.recovered` | PostgreSQL is the only dependency (§57), so this name would repeat `database.recovered` | Not adopted in v1 (ADR-009 point 11) |
 | `realtime.reconnected` | For the server a reconnect is a new connection with a new `connectionId` (ADR-009 point 5), logged as a connection event (ADR-009 point 11); it is not linked to the earlier connection in v1 (decided 2026-10-08, ADR-009 point 5), so entries are correlated by `userId`. The client exposes its reconnect attempts through its diagnostics (`08-realtime-spec.md` §58) | Server entry `Planned (B5)`; client diagnostics `Planned (FE)`; the name is not decided (`08-realtime-spec.md` §58) |
-| `job.retry` | A retry sends the job back to `QUEUED` with `attempt` + 1, on request through `POST /api/v1/jobs/:jobId/retry` (ADR-008 points 6 and 9); no automatic retry is decided. It is a job transition, so ADR-009 point 11 covers it | Entry `Planned (B4)`; working name (§43) |
-| Startup recovery of jobs (not in the list) | `PROCESSING` -> `FAILED` (`INTERRUPTED`) and `QUEUED` resumed on startup (ADR-008 point 5) | `Planned (B4)`; name open (§43) |
+| `job.retry` | A retry sends the job back to `QUEUED` with `attempt` + 1, on request through `POST /api/v1/jobs/:jobId/retry` (ADR-008 points 6 and 9); no automatic retry is decided. It is a job transition, so ADR-009 point 11 covers it | Entry `job.queued` with the new `attempt` (`Implemented`, B4.2) |
+| Startup recovery of jobs (not in the list) | `PROCESSING` -> `FAILED` (`INTERRUPTED`) and `QUEUED` resumed on startup (ADR-008 point 5) | `Implemented` (B4.2) as `job.failed` with reason `INTERRUPTED` |
 | `demo.failure.recovered` | Simulated failures are a demo specific | `Deferred` (ADR-010 point 6) |
 
 Code vs ADR:
@@ -2549,7 +2549,7 @@ What each step is in version 1:
 | 2. Open developer diagnostics | A diagnostic mode is deferred to the frontend-stage ADR (ADR-009 point 12, §39). Until then the request lifecycle is read in the API's stdout | Mode `Deferred`; stdout `Implemented` (B3.2) |
 | 3. Perform an operation | `requestId` on every response and error body is `Implemented`. `durationMs` and `result` come from `http.request.completed`, `Implemented` (B3.2). A generic `operation` field is not an ADR-009 field (§7, §10) | `Implemented` (B3.2) |
 | 4. Inject a failure | A controlled demo failure is a demo specific | `Deferred` (ADR-010 point 6) |
-| 5. Inspect recovery | The demo failure is `Deferred`. A real retry-and-recovery chain exists for a CSV import job: `FAILED`, retry, `COMPLETED` (§58) | Demo `Deferred`; job chain `Planned (B4)` |
+| 5. Inspect recovery | The demo failure is `Deferred`. A real retry-and-recovery chain exists for a CSV import job: `FAILED`, retry, `COMPLETED` (§58) | Demo `Deferred`; job chain `Implemented` (B4.2) |
 | 6. Demonstrate realtime | Server events `Planned (B5)`; client states and reconnect `Planned (FE)` (§28) | `Planned (B5)` / `Planned (FE)` |
 | 7. Show health | `GET /health` and `GET /health/ready` (§22-23) answer in the real API (`Implemented`). The public demo is a static build with no backend (ADR-006 points 1 and 7), so it has no health endpoint | API `Implemented`; demo build has none |
 
@@ -2999,17 +2999,62 @@ How each question is answered in version 1:
 | 3. Which application layer failed? | The stack trace of internal errors (ADR-009 point 6). A layer or module field (`source`, `module`) is not adopted in v1 (ADR-009 point 3, §7) | `Implemented` (B3.1); layer field not adopted |
 | 4. What type of error occurred? | The `code` of the error body, and `errorCategory` on the log entry, which carries the same `AppErrorCode` value; `errorName` appears only on the unexpected-error line (ADR-009 point 3, §7) | Body `Implemented`; log `Implemented` (B3.1) |
 | 5. Was the failure expected or unexpected? | The level by category: `warn` for validation, authentication, `FORBIDDEN` and `RATE_LIMITED`, `info` for not-found and conflict, `error` with a stack for internal errors and `DEPENDENCY_ERROR` (ADR-009 point 6). Every failed request is logged since B3.1 | `Implemented` (B3.1) |
-| 6. Was a retry attempted? | Job retry and its `attempt` (ADR-008 point 6); client reconnect attempts (`08-realtime-spec.md` §58); the HTTP client retry policy waits for the frontend-stage ADR (ADR-006 point 11) | `Planned (B4)` / `Planned (FE)` |
-| 7. Did the system recover? | Job entries sharing a `jobId` (§58). There is no database recovery entry in v1 (ADR-009 point 11); the name of the realtime reconnect entry is not decided (§58) | Jobs `Planned (B4)`; database recovery entry `Deferred` (B7); reconnect name not decided |
+| 6. Was a retry attempted? | Job retry and its `attempt` (ADR-008 point 6); client reconnect attempts (`08-realtime-spec.md` §58); the HTTP client retry policy waits for the frontend-stage ADR (ADR-006 point 11) | `Implemented` (B4.2) / `Planned (FE)` |
+| 7. Did the system recover? | Job entries sharing a `jobId` (§58). There is no database recovery entry in v1 (ADR-009 point 11); the name of the realtime reconnect entry is not decided (§58) | Jobs `Implemented` (B4.2); database recovery entry `Deferred` (B7); reconnect name not decided |
 | 8. What was the approximate operation duration? | `durationMs` on `http.request.completed`; the series reconstruction is timed separately (ADR-009 point 8) | Requests `Implemented` (B3.2); series reconstruction `Implemented` (B3.3) |
 | 9. Was a dependency involved? | PostgreSQL is the only dependency. Readiness reports it; a request that fails because of it returns 503 `DEPENDENCY_ERROR` (ADR-002 point 10) | Readiness `Implemented`; 503 `Implemented` (B0); log classification `Implemented` (B3.1) |
 | 10. Can the same failure be reproduced locally? | The project is local only (ADR-006), the database can be reseeded (`README.md`), the simulator is seeded (ADR-007 point 7, `Planned (B5)`), and PostgreSQL can be stopped. Scripted demo failures are `Deferred` (ADR-010 point 6) | Local reproduction `Implemented`; scripted failures `Deferred` |
 
 Code vs ADR:
 
-- B3.5 reproduced one failure (the API against an unreachable database) and answered 1, 2, 3, 4, 5 and 8 from the log, with 9 and 10 from readiness and the local setup: the request entry names the operation, the `requestId` links the response, the body and every entry, the stack reads repository, service, controller, `errorCategory` and `errorName` give the type, the level tells expected from unexpected, and `durationMs` gives the duration. Questions 6 and 7 wait for jobs (B4) and the realtime reconnect (B5).
+- B3.5 reproduced one failure (the API against an unreachable database) and answered 1, 2, 3, 4, 5 and 8 from the log, with 9 and 10 from readiness and the local setup: the request entry names the operation, the `requestId` links the response, the body and every entry, the stack reads repository, service, controller, `errorCategory` and `errorName` give the type, the level tells expected from unexpected, and `durationMs` gives the duration. Questions 6 and 7 are answered for jobs in B4 (next subsection) and wait for the realtime reconnect (B5).
 - Question 5: ADR-009 point 6 (amended 2026-10-07) assigns `FORBIDDEN` and `RATE_LIMITED` to `warn` and `DEPENDENCY_ERROR` to `error` with the stack (§6.2).
 - Question 7: for the database the chain stays incomplete in v1 by decision (§58).
+
+## Following an import job in the log (B4)
+
+**Status:** `Implemented` (B4.2, B4.3). The lines below are the events and fields the code writes (`packages/application/src/job-events.ts`, `job-service.ts`, `job-runner.ts`) and that their tests assert; the values are illustrative. They were not captured from a live run against PostgreSQL.
+
+Every entry is one JSON line with `event` and the fields `jobId`, `userId`, `type` and `attempt`. To follow one job, filter the log by its `jobId` (the `id` returned by `POST .../imports`). In development the logger pretty-prints; with any other `NODE_ENV` each entry is one JSON line like these:
+
+Success (rows applied, the job is `COMPLETED` in the same unit of work as the rows):
+
+```text
+{"level":"info","event":"job.queued","jobId":"j1","userId":"u1","type":"CSV_IMPORT","attempt":1,"requestId":"..."}
+{"level":"info","event":"job.started","jobId":"j1","userId":"u1","type":"CSV_IMPORT","attempt":1}
+{"level":"info","event":"job.completed","jobId":"j1","userId":"u1","type":"CSV_IMPORT","attempt":1}
+```
+
+Validation failure (nothing written; the per-row report is in `GET /api/v1/jobs/:jobId`, never in the log):
+
+```text
+{"level":"info","event":"job.queued","jobId":"j2",...,"attempt":1,"requestId":"..."}
+{"level":"info","event":"job.started","jobId":"j2",...,"attempt":1}
+{"level":"warn","event":"job.failed","jobId":"j2",...,"attempt":1,"reason":"VALIDATION_FAILED","stage":"VALIDATING"}
+```
+
+Cancel while queued or validating (a cancel during the apply stage is a 409 and writes nothing):
+
+```text
+{"level":"info","event":"job.queued","jobId":"j3",...,"attempt":1,"requestId":"..."}
+{"level":"info","event":"job.cancelled","jobId":"j3",...,"attempt":1,"stage":"QUEUED","requestId":"..."}
+```
+
+Retry after an interruption (the chain of question 7: `FAILED`, retry, `COMPLETED`):
+
+```text
+{"level":"warn","event":"job.failed","jobId":"j4",...,"attempt":1,"reason":"INTERRUPTED","stage":"APPLYING"}
+{"level":"info","event":"job.queued","jobId":"j4",...,"attempt":2,"requestId":"..."}
+{"level":"info","event":"job.started","jobId":"j4",...,"attempt":2}
+{"level":"info","event":"job.completed","jobId":"j4",...,"attempt":2}
+```
+
+Reading rules:
+
+- `requestId` appears on the entries written while an HTTP request is served (`job.queued` on creation and on retry, `job.cancelled`); the entries the runner writes (`job.started`, `job.completed`, `job.failed`, `job.timed_out`) have none. The `jobId` is the link between the two sides.
+- A timeout is `job.timed_out` at `warn` with the `stage` it hit; a job that ends `FAILED`, `TIMED_OUT` or `COMPLETED` also creates a notification, and when that write fails the job keeps its state and `job.notification_failed` (`warn`) is logged.
+- On startup, a job left `PROCESSING` appears as `job.failed` with `reason: "INTERRUPTED"` before any `job.started`; the `QUEUED` jobs then start.
+- The CSV content and the rows are never logged.
 
 ---
 
