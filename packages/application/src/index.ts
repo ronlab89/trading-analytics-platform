@@ -9,6 +9,7 @@ export { SERIES_BUILT_EVENT } from "./portfolio-series.js";
 export * from "./asset-service.js";
 export * from "./clock.js";
 export * from "./csv-import.js";
+export * from "./csv-import-handler.js";
 export * from "./decision-service.js";
 export * from "./errors.js";
 export * from "./job-events.js";

@@ -25,8 +25,8 @@ odd/tasks/b4/**
 ## Tasks
 
 - [x] T1 Add the parser dependency and the CSV row parser with its column contract. `parseImportCsv` (application) takes an injected `CsvTokenizer`, because application may import only `@trading/domain` (ADR-001 point 1); `csv-parse` lives in `apps/api/src/import/csv-tokenizer.ts`.
-- [ ] T2 Validation stage with the per-row report and progress.
-- [ ] T3 Apply stage inside the `UnitOfWork`, with the conditional completion and the three failure paths.
+- [x] T2 Validation stage with the per-row report and progress. `createCsvImportHandler().validate`: report in tiers (format, then row rules against assets/currency/transaction rules, then the chronological check only when the earlier tiers are clean); progress every 100 rows.
+- [x] T3 Apply stage inside the `UnitOfWork`, with the conditional completion and the three failure paths. `apply` reads the portfolio status first thing inside the unit (through the portfolio repository: the unit carries no portfolio repository), locks assets in id order, writes rows in date order, replays positions, and completes the job through `context.complete`.
 - [ ] T4 Notifications for finished jobs.
 
 ## Done when
