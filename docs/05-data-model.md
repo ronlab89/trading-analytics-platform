@@ -75,8 +75,8 @@ Asset
  └── HistoricalPrice       (0..n, daily candles)
 ```
 
-Planned entities (not in the schema): `Job` (§52, B4), `IdempotencyKey`
-(§53, B4).
+Entities stored since B4.1 (the behavior around them lands in B4.2 to B4.4): `Job` (§52), `IdempotencyKey`
+(§53).
 
 ---
 
@@ -90,7 +90,7 @@ Planned entities (not in the schema): `Job` (§52, B4), `IdempotencyKey`
 | Supporting | Credential, WatchlistItem, Alert, Notification, UserPreference | `Implemented` |
 | Market | MarketPrice, MarketEvent, HistoricalPrice | `Implemented` |
 | Auth | Session | `Implemented` (B2.3) |
-| Jobs and retries | Job, IdempotencyKey | `Planned (B4)` |
+| Jobs and retries | Job, IdempotencyKey | `Implemented` (B4.1, storage) |
 | Derived (never persisted) | PortfolioMetrics, PositionMetrics, AllocationMetrics, PerformanceMetrics, Attribution, DrawdownMetrics, VolatilityMetrics, PortfolioPulse, ScenarioResult | see §24-29, §16 |
 
 Derived models are not persisted. Caching is not introduced until measured
@@ -1100,7 +1100,8 @@ What could have happened differently?
 
 # 52. Job
 
-**Status:** `Planned (B4)` — ADR-008.
+**Status:** `Implemented` (B4.1, the table and the repository); the runner and
+the transitions are `Planned (B4)` (B4.2) — ADR-008.
 
 A `jobs` table backs the in-process runner (ADR-008 point 4). Required by the
 ADR:
@@ -1123,14 +1124,38 @@ database transaction, conditionally on the expected status (points 2 and 5);
 on startup `PROCESSING` jobs become `FAILED` with `INTERRUPTED` and `QUEUED`
 jobs resume (point 5).
 
-Open detail (B4): exact columns and indexes, and a persisted row ordinal for
-imported transactions (§9.2 Open detail).
+Columns (B4.1, table `jobs`, domain `Job` in `packages/domain`):
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | text, primary key | `cuid` |
+| `user_id`, `portfolio_id` | text, foreign keys | `ON DELETE CASCADE` |
+| `type` | enum `job_type` | `CSV_IMPORT` |
+| `status` | enum `job_status` | default `QUEUED` |
+| `stage` | enum `job_stage` | `QUEUED`, `VALIDATING`, `APPLYING`; a finished job keeps the stage it ended in |
+| `attempt` | integer | starts at 1 |
+| `processed`, `total` | integer | start at 0 |
+| `failure_reason` | enum `job_failure_reason`, nullable | the five reasons |
+| `report` | jsonb, nullable | list of `{ row, message }` |
+| `input` | text, nullable | the CSV; cleared per the table above |
+| `queued_at`, `deadline_at` | timestamp | per attempt; a retry sets both again |
+| `created_at`, `updated_at`, `finished_at` | timestamp | `updated_at` comes from the caller's clock |
+
+Indexes: `user_id`, `portfolio_id` and `(status, queued_at)` for the startup
+scan. Every change after creation goes through `JobRepository.transition`, a
+compare-and-set on `status`, `stage` and `attempt` (one conditional `UPDATE`);
+it returns null when no row matched. `TransactionalRepositories.jobs` lets the
+apply stage set `COMPLETED` in the same unit of work as the imported rows.
+
+Open detail (B4.3): a persisted row ordinal for imported transactions (§9.2
+Open detail).
 
 ---
 
 # 53. Idempotency Key
 
-**Status:** `Planned (B4)` — ADR-008 point 8 and Deferred detail.
+**Status:** `Implemented` (B4.1, the table and the repository); the middleware
+and the routes are `Planned (B4)` (B4.4) — ADR-008 point 8 and Deferred detail.
 
 An `idempotency_keys` table, independent of jobs. Required by the ADR:
 
@@ -1144,6 +1169,27 @@ An `idempotency_keys` table, independent of jobs. Required by the ADR:
   treated as absent.
 
 Used by `POST /portfolios/:id/transactions` and import creation.
+
+Columns (B4.1, table `idempotency_keys`, domain `IdempotencyRecord`):
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | text, primary key | `cuid` |
+| `user_id` | text, foreign key | `ON DELETE CASCADE`; unique together with `key` |
+| `key` | text | at most 255 characters (`validateIdempotencyReservation`) |
+| `request_hash` | text | computed by the caller |
+| `status` | enum `idempotency_status` | `RESERVED` or `COMPLETED` |
+| `response_status`, `response_body` | integer, jsonb; nullable | set by `complete` |
+| `lease_expires_at`, `expires_at` | timestamp | lease of a reservation; 24-hour expiry |
+
+`reserve(input, now)` inserts under the unique constraint and answers
+`reserved`, `replay` (completed, same hash), `in_flight` (live reservation) or
+`mismatch` (different hash). A reservation past its lease and a record past its
+expiry count as absent and are replaced. `reserve` runs outside a unit of work
+(a failed insert aborts a Postgres transaction); `complete`, which stores the
+response, runs inside the one that commits the mutation
+(`TransactionalRepositories.idempotencyKeys`). `release` drops a reservation
+whose request ended in a 5xx, and `purgeExpired` deletes the expired rows.
 
 ---
 

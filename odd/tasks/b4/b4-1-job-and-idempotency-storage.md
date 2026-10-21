@@ -25,11 +25,11 @@ odd/tasks/b4/**
 
 ## Tasks
 
-- [ ] T1 Domain: `Job` types, the state and reason enums, the allowed-transition table and its unit tests.
-- [ ] T2 Domain: `JobRepository` and `IdempotencyKeyRepository` ports; extend `TransactionalRepositories`.
-- [ ] T3 In-memory repositories and their contract suites.
-- [ ] T4 Prisma schema, migration and Prisma repositories with the same contract suites.
-- [ ] T5 `05-data-model.md` (`Job`, `IdempotencyKey`).
+- [x] T1 Domain: `Job` types, the state and reason enums, the allowed-transition table and its unit tests.
+- [x] T2 Domain: `JobRepository` and `IdempotencyKeyRepository` ports; extend `TransactionalRepositories`.
+- [x] T3 In-memory repositories and their contract suites.
+- [x] T4 Prisma schema, migration and Prisma repositories with the same contract suites.
+- [x] T5 `05-data-model.md` (`Job`, `IdempotencyKey`).
 
 ## Done when
 
@@ -44,3 +44,6 @@ Item 1 (a migration adds two tables; no existing data changes) and item 3 (the `
 pnpm typecheck, pnpm lint, pnpm test, pnpm docs:check.
 
 ## Log
+
+- 2026-10-21: the user delegated the whole of B4 (same terms as B3.4 and B3.5): Claude runs each slice and task one by one, commits after each, approves its own recommendations, and hands over only the push and `gh pr create`. Plan decisions taken: `csv-parse`, raw `text/csv` body, 1 MB and 5,000 rows, a 60-second lease, a 5-minute timeout per attempt, `TransactionalRepositories` carries `jobs` and `idempotencyKeys`.
+- 2026-10-21: B4.1 done. Domain `Job` (states, stage, failure reasons, transition rules `isJobTransitionAllowed`/`canRetryJob`/`canCancelJob`) and `IdempotencyRecord`; ports `JobRepository` (create, getById, listByStatuses, transition as compare-and-set) and `IdempotencyKeyRepository` (reserve, complete, release, purgeExpired). In-memory and Prisma implementations pass the same contract suites; the Prisma `transition` uses `update` with the expected status, stage and attempt in its `where` (P2025 means no match). `reserve` must run outside a unit of work. Migration `20261021120000_add_job_and_idempotency_key_tables` is hand-written from `prisma migrate diff` (the local dev database was behind, so the diff held unrelated B2 changes that were left out). The Prisma integration tests and the migration against the test database were not run by Claude (reading `.env.test.local` was denied): the user runs `pnpm --filter @trading/database db:test:migrate` and `pnpm --filter @trading/database test`.
