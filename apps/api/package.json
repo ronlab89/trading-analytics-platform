@@ -20,6 +20,7 @@
     "@trading/domain": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
+    "csv-parse": "^7.0.3",
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
