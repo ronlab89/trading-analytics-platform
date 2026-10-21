@@ -2,6 +2,8 @@ export * from "./entities/enums";
 export * from "./entities/user";
 export * from "./entities/credential";
 export * from "./entities/session";
+export * from "./entities/job";
+export * from "./entities/idempotency-key";
 export * from "./entities/asset";
 export * from "./entities/portfolio";
 export * from "./entities/transaction";
@@ -45,6 +47,8 @@ export type { PortfolioRepository } from "./repositories/portfolio-repository";
 export type { UserRepository } from "./repositories/user-repository";
 export type { CredentialRepository } from "./repositories/credential-repository";
 export type { SessionRepository } from "./repositories/session-repository";
+export type { JobRepository } from "./repositories/job-repository";
+export type { IdempotencyKeyRepository } from "./repositories/idempotency-key-repository";
 export type { AssetRepository, AssetListFilter } from "./repositories/asset-repository";
 export type { Page, PageRequest } from "./repositories/pagination";
 export type {
