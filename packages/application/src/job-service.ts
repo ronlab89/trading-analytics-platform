@@ -1,5 +1,11 @@
 import { JobStage, JobStatus, canCancelJob, canRetryJob, validateNewJob } from "@trading/domain";
-import type { Job, JobRepository, JobType } from "@trading/domain";
+import type {
+  Job,
+  JobRepository,
+  JobType,
+  TransactionalRepositories,
+  UnitOfWork,
+} from "@trading/domain";
 import type { Actor } from "./actor.js";
 import type { Clock } from "./clock.js";
 import { ConflictError, NotFoundError } from "./errors.js";
@@ -17,6 +23,8 @@ export const DEFAULT_JOB_TIMEOUT_MS = 5 * 60 * 1000;
 export interface JobServiceDependencies {
   jobRepository: Pick<JobRepository, "create" | "getById" | "transition">;
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
+  /** Needed only to create a job together with something else (`withinUnit`). */
+  unitOfWork?: UnitOfWork;
   /** Source of "now" for `queuedAt`, `deadlineAt` and `finishedAt` (ADR-001 point 8). */
   clock: Clock;
   /** Writes the job lifecycle events; defaults to a logger that drops them. */
@@ -48,6 +56,7 @@ export function createJobService(dependencies: JobServiceDependencies) {
     jobRepository,
     portfolioService,
     clock,
+    unitOfWork,
     logger = silentLogger,
     timeoutMs = { CSV_IMPORT: DEFAULT_JOB_TIMEOUT_MS },
     permissions = ROLE_PERMISSIONS,
@@ -67,11 +76,16 @@ export function createJobService(dependencies: JobServiceDependencies) {
   /**
    * Queues a job on an owned, writable portfolio. Its deadline is the timeout
    * of its type counted from now.
+   *
+   * `withinUnit`, when given, runs inside the same unit of work that creates
+   * the job, so something that must commit with it (the stored response of an
+   * `Idempotency-Key`) does, or rolls back with it. It needs a `unitOfWork`.
    */
   async function createJob(
     actor: Actor,
     portfolioId: string,
     request: CreateJobRequest,
+    withinUnit?: (job: Job, repositories: TransactionalRepositories) => Promise<void>,
   ): Promise<Job> {
     assertPermission(actor, "transaction:create", permissions);
     const portfolio = await portfolioService.getPortfolioById(actor, portfolioId);
@@ -89,7 +103,23 @@ export function createJobService(dependencies: JobServiceDependencies) {
 
     validateNewJob(input);
 
-    const created = await jobRepository.create(input);
+    let created: Job;
+
+    if (withinUnit) {
+      if (!unitOfWork) {
+        throw new Error("createJob needs a unitOfWork to run withinUnit.");
+      }
+
+      created = await unitOfWork.run(async (repositories) => {
+        const job = await repositories.jobs.create(input);
+        await withinUnit(job, repositories);
+
+        return job;
+      });
+    } else {
+      created = await jobRepository.create(input);
+    }
+
     logger.info(JOB_EVENTS.queued, jobLogFields(created));
 
     return created;

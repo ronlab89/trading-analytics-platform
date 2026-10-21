@@ -4,6 +4,7 @@ import {
   PrismaDecisionEventRepository,
   PrismaDecisionRepository,
   PrismaIdempotencyKeyRepository,
+  PrismaJobRepository,
   PrismaHistoricalPriceRepository,
   PrismaMarketPriceRepository,
   PrismaNotificationRepository,
@@ -19,8 +20,12 @@ import {
   createAlertService,
   createAnalyticsService,
   createAssetService,
+  createCsvImportHandler,
   createDecisionService,
   createIdempotencyService,
+  createJobNotifier,
+  createJobRunner,
+  createJobService,
   createMarketService,
   createNotificationService,
   createOverviewService,
@@ -37,6 +42,7 @@ import {
 import type { Clock, Logger } from "@trading/application";
 import { systemClock } from "./clock.js";
 import { env } from "./config/env.js";
+import { tokenizeCsv } from "./import/csv-tokenizer.js";
 import { LOG_EVENTS } from "./logging/events.js";
 import { logger as defaultLogger } from "./logging/logger.js";
 import { withRequestContext } from "./logging/request-context.js";
@@ -55,9 +61,8 @@ export { systemClock };
 export function buildComposition(clock: Clock, logger: Logger = withRequestContext(defaultLogger)) {
   const assetRepository = new PrismaAssetRepository();
 
-  const portfolioService = createPortfolioService({
-    portfolioRepository: new PrismaPortfolioRepository(),
-  });
+  const portfolioRepository = new PrismaPortfolioRepository();
+  const portfolioService = createPortfolioService({ portfolioRepository });
   const assetService = createAssetService({ assetRepository });
 
   const marketPriceRepository = new PrismaMarketPriceRepository();
@@ -157,6 +162,34 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     clock,
   });
 
+  const unitOfWork = new PrismaUnitOfWork();
+  const jobRepository = new PrismaJobRepository();
+  const jobService = createJobService({
+    jobRepository,
+    portfolioService,
+    unitOfWork,
+    clock,
+    logger,
+  });
+  // The runner is built here but started by `index.ts`, so tests that load the
+  // composition never poll the database.
+  const jobRunner = createJobRunner({
+    jobRepository,
+    handlers: {
+      CSV_IMPORT: createCsvImportHandler({
+        tokenize: tokenizeCsv,
+        portfolioRepository,
+        assetRepository,
+        transactionRepository,
+        unitOfWork,
+        clock,
+      }),
+    },
+    clock,
+    logger,
+    notifier: createJobNotifier({ notificationRepository: new PrismaNotificationRepository() }),
+  });
+
   return {
     clock,
     portfolioService,
@@ -176,6 +209,8 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     alertService,
     userPreferenceService,
     idempotencyService,
+    jobService,
+    jobRunner,
   };
 }
 

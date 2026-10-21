@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   InvalidJobError,
   JobFailureReason,
@@ -6,7 +6,14 @@ import {
   JobStatus,
   PortfolioStatus,
 } from "@trading/domain";
-import type { CreateJobInput, Job, Portfolio, TransitionJobInput } from "@trading/domain";
+import type {
+  CreateJobInput,
+  Job,
+  JobRepository,
+  Portfolio,
+  TransactionalRepositories,
+  TransitionJobInput,
+} from "@trading/domain";
 import type { Actor } from "./actor.js";
 import { fixedClock } from "./clock.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
@@ -46,29 +53,34 @@ function build(options: { stored?: Job; portfolioStatus?: PortfolioStatus; logge
   const transitions: TransitionJobInput[] = [];
   const created: CreateJobInput[] = [];
 
+  const jobRepository: Pick<JobRepository, "create" | "getById" | "transition"> = {
+    create: (input) => {
+      created.push(input);
+      stored = job({ ...input, status: JobStatus.QUEUED, stage: JobStage.QUEUED });
+      return Promise.resolve(stored);
+    },
+    getById: (id) => Promise.resolve(stored?.id === id ? stored : null),
+    transition: (input) => {
+      transitions.push(input);
+      const { expected, patch, updatedAt } = input;
+
+      if (
+        stored?.status !== expected.status ||
+        stored.stage !== expected.stage ||
+        stored.attempt !== expected.attempt
+      ) {
+        return Promise.resolve(null);
+      }
+
+      stored = { ...stored, ...patch, updatedAt };
+      return Promise.resolve(stored);
+    },
+  };
+
   const service = createJobService({
-    jobRepository: {
-      create: (input) => {
-        created.push(input);
-        stored = job({ ...input, status: JobStatus.QUEUED, stage: JobStage.QUEUED });
-        return Promise.resolve(stored);
-      },
-      getById: (id) => Promise.resolve(stored?.id === id ? stored : null),
-      transition: (input) => {
-        transitions.push(input);
-        const { expected, patch, updatedAt } = input;
-
-        if (
-          stored?.status !== expected.status ||
-          stored.stage !== expected.stage ||
-          stored.attempt !== expected.attempt
-        ) {
-          return Promise.resolve(null);
-        }
-
-        stored = { ...stored, ...patch, updatedAt };
-        return Promise.resolve(stored);
-      },
+    jobRepository,
+    unitOfWork: {
+      run: (work) => work({ jobs: jobRepository } as unknown as TransactionalRepositories),
     },
     portfolioService: {
       getPortfolioById: (_actor, portfolioId) =>
@@ -114,6 +126,34 @@ describe("job service: create", () => {
         deadlineAt: new Date(now.getTime() + DEFAULT_JOB_TIMEOUT_MS),
       },
     ]);
+  });
+
+  it("runs the withinUnit hook in the unit that creates the job, with the created job", async () => {
+    const { service } = build();
+    const withinUnit = vi.fn((_job: Job, _repositories: TransactionalRepositories) =>
+      Promise.resolve(),
+    );
+
+    const result = await service.createJob(
+      actor,
+      "p1",
+      { type: "CSV_IMPORT", input: "a,b" },
+      withinUnit,
+    );
+
+    expect(withinUnit).toHaveBeenCalledTimes(1);
+    expect(withinUnit.mock.calls[0]?.[0]).toBe(result);
+    expect(withinUnit.mock.calls[0]?.[1]).toHaveProperty("jobs");
+  });
+
+  it("fails the creation when the withinUnit hook fails, so the unit can roll back", async () => {
+    const { service } = build();
+
+    await expect(
+      service.createJob(actor, "p1", { type: "CSV_IMPORT", input: "a,b" }, () =>
+        Promise.reject(new Error("db down")),
+      ),
+    ).rejects.toThrow("db down");
   });
 
   it("rejects an empty input without creating anything", async () => {
