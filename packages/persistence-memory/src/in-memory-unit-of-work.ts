@@ -1,10 +1,14 @@
 import type { TransactionalRepositories, UnitOfWork } from "@trading/domain";
+import type { InMemoryIdempotencyKeyRepository } from "./in-memory-idempotency-key-repository.js";
+import type { InMemoryJobRepository } from "./in-memory-job-repository.js";
 import type { InMemoryPositionRepository } from "./in-memory-position-repository.js";
 import type { InMemoryTransactionRepository } from "./in-memory-transaction-repository.js";
 
 export interface InMemoryUnitOfWorkRepositories {
   readonly transactions: InMemoryTransactionRepository;
   readonly positions: InMemoryPositionRepository;
+  readonly jobs: InMemoryJobRepository;
+  readonly idempotencyKeys: InMemoryIdempotencyKeyRepository;
 }
 
 /**
@@ -33,15 +37,19 @@ export class InMemoryUnitOfWork implements UnitOfWork {
   private async execute<T>(
     work: (repositories: TransactionalRepositories) => Promise<T>,
   ): Promise<T> {
-    const { transactions, positions } = this.repositories;
+    const { transactions, positions, jobs, idempotencyKeys } = this.repositories;
     const transactionsSnapshot = transactions.snapshot();
     const positionsSnapshot = positions.snapshot();
+    const jobsSnapshot = jobs.snapshot();
+    const idempotencyKeysSnapshot = idempotencyKeys.snapshot();
 
     try {
-      return await work({ transactions, positions });
+      return await work({ transactions, positions, jobs, idempotencyKeys });
     } catch (error) {
       transactions.restore(transactionsSnapshot);
       positions.restore(positionsSnapshot);
+      jobs.restore(jobsSnapshot);
+      idempotencyKeys.restore(idempotencyKeysSnapshot);
       throw error;
     }
   }

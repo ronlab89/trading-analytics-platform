@@ -12,6 +12,8 @@ export * from "./in-memory-credential-repository.js";
 export * from "./in-memory-decision-event-repository.js";
 export * from "./in-memory-decision-repository.js";
 export * from "./in-memory-historical-price-repository.js";
+export * from "./in-memory-idempotency-key-repository.js";
+export * from "./in-memory-job-repository.js";
 export * from "./in-memory-market-event-repository.js";
 export * from "./in-memory-market-price-repository.js";
 export * from "./in-memory-notification-repository.js";

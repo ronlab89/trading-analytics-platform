@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Money, TransactionType } from "@trading/domain";
+import { InMemoryIdempotencyKeyRepository } from "./in-memory-idempotency-key-repository.js";
+import { InMemoryJobRepository } from "./in-memory-job-repository.js";
 import { InMemoryPositionRepository } from "./in-memory-position-repository.js";
 import { InMemoryTransactionRepository } from "./in-memory-transaction-repository.js";
 import { InMemoryUnitOfWork } from "./in-memory-unit-of-work.js";
@@ -24,9 +26,29 @@ const positionInput = {
 function build() {
   const transactions = new InMemoryTransactionRepository();
   const positions = new InMemoryPositionRepository();
-  const unitOfWork = new InMemoryUnitOfWork({ transactions, positions });
-  return { transactions, positions, unitOfWork };
+  const jobs = new InMemoryJobRepository();
+  const idempotencyKeys = new InMemoryIdempotencyKeyRepository();
+  const unitOfWork = new InMemoryUnitOfWork({ transactions, positions, jobs, idempotencyKeys });
+  return { transactions, positions, jobs, idempotencyKeys, unitOfWork };
 }
+
+const jobInput = {
+  userId: "u1",
+  portfolioId: "p1",
+  type: "CSV_IMPORT" as const,
+  input: "date,type\n",
+  queuedAt: new Date("2026-10-21T10:00:00.000Z"),
+  deadlineAt: new Date("2026-10-21T10:05:00.000Z"),
+};
+
+const reservation = {
+  userId: "u1",
+  key: "key-1",
+  requestHash: "hash-1",
+  leaseExpiresAt: new Date("2026-10-21T10:01:00.000Z"),
+  expiresAt: new Date("2026-10-22T10:00:00.000Z"),
+};
+const reservedAt = new Date("2026-10-21T10:00:00.000Z");
 
 function deferred() {
   let release: () => void = () => undefined;
@@ -65,6 +87,58 @@ describe("InMemoryUnitOfWork", () => {
 
     expect(await transactions.getById(createdId)).toBeNull();
     expect(await positions.listByPortfolioId("p1")).toEqual([]);
+  });
+
+  it("rolls back a job transition and an idempotency completion made in a failed unit", async () => {
+    const { jobs, idempotencyKeys, unitOfWork } = build();
+    const job = await jobs.create(jobInput);
+    await idempotencyKeys.reserve(reservation, reservedAt);
+
+    await expect(
+      unitOfWork.run(async (repositories) => {
+        await repositories.jobs.transition({
+          id: job.id,
+          expected: { status: "QUEUED", stage: "QUEUED", attempt: 1 },
+          patch: { status: "COMPLETED" },
+          updatedAt: reservedAt,
+        });
+        await repositories.idempotencyKeys.complete({
+          userId: "u1",
+          key: "key-1",
+          responseStatus: 201,
+          responseBody: {},
+        });
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+
+    expect((await jobs.getById(job.id))?.status).toBe("QUEUED");
+    const again = await idempotencyKeys.reserve(reservation, reservedAt);
+    expect(again.outcome).toBe("in_flight");
+  });
+
+  it("keeps a job transition and an idempotency completion made in a committed unit", async () => {
+    const { jobs, idempotencyKeys, unitOfWork } = build();
+    const job = await jobs.create(jobInput);
+    await idempotencyKeys.reserve(reservation, reservedAt);
+
+    await unitOfWork.run(async (repositories) => {
+      await repositories.jobs.transition({
+        id: job.id,
+        expected: { status: "QUEUED", stage: "QUEUED", attempt: 1 },
+        patch: { status: "COMPLETED" },
+        updatedAt: reservedAt,
+      });
+      await repositories.idempotencyKeys.complete({
+        userId: "u1",
+        key: "key-1",
+        responseStatus: 201,
+        responseBody: {},
+      });
+    });
+
+    expect((await jobs.getById(job.id))?.status).toBe("COMPLETED");
+    expect((await idempotencyKeys.reserve(reservation, reservedAt)).outcome).toBe("replay");
   });
 
   it("does not let a failed unit erase the writes of a unit that ran at the same time", async () => {
