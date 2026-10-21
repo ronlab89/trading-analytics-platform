@@ -12,6 +12,7 @@ export * from "./csv-import.js";
 export * from "./csv-import-handler.js";
 export * from "./decision-service.js";
 export * from "./errors.js";
+export * from "./idempotency-service.js";
 export * from "./job-events.js";
 export * from "./job-notifier.js";
 export * from "./job-runner.js";
