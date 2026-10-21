@@ -2,6 +2,7 @@ import { JobFailureReason, JobStage, JobStatus } from "@trading/domain";
 import type { Job, JobExpectation, JobRepository, JobRowError, JobType } from "@trading/domain";
 import type { Clock } from "./clock.js";
 import { JOB_EVENTS, jobLogFields } from "./job-events.js";
+import type { JobNotifier } from "./job-notifier.js";
 import { silentLogger } from "./logger.js";
 import type { Logger } from "./logger.js";
 
@@ -80,6 +81,8 @@ export interface JobRunnerDependencies {
   clock: Clock;
   /** Writes the job lifecycle events; defaults to a logger that drops them. */
   logger?: Logger;
+  /** Tells the owner how a job ended; without one, nobody is notified. */
+  notifier?: JobNotifier;
   pollIntervalMs?: number;
   shutdownGraceMs?: number;
 }
@@ -102,6 +105,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     handlers,
     clock,
     logger = silentLogger,
+    notifier,
     pollIntervalMs = DEFAULT_JOB_POLL_INTERVAL_MS,
     shutdownGraceMs = DEFAULT_JOB_SHUTDOWN_GRACE_MS,
   } = dependencies;
@@ -125,6 +129,15 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     attempt: job.attempt,
   });
 
+  /** Notifies the owner of a finished job. A notification that fails never fails the job. */
+  async function announce(finished: Job): Promise<void> {
+    try {
+      await notifier?.jobFinished(finished);
+    } catch {
+      logger.warn(JOB_EVENTS.notificationFailed, jobLogFields(finished));
+    }
+  }
+
   /** Moves a job past its deadline, `QUEUED` or validating, to `TIMED_OUT`. */
   async function timeOut(job: Job): Promise<void> {
     const now = clock.now();
@@ -138,6 +151,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
 
     if (timedOut) {
       logger.warn(JOB_EVENTS.timedOut, jobLogFields(job, { stage: job.stage }));
+      await announce(timedOut);
     }
   }
 
@@ -225,6 +239,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
 
     if (failed) {
       logger.warn(JOB_EVENTS.failed, jobLogFields(job, { reason, stage: job.stage }));
+      await announce(failed);
     }
   }
 
@@ -247,6 +262,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     try {
       await handler.apply(job, context);
       logger.info(JOB_EVENTS.completed, jobLogFields(job));
+      await announce({ ...job, status: JobStatus.COMPLETED, failureReason: null });
     } catch (error) {
       if (error instanceof JobSupersededError) {
         return;

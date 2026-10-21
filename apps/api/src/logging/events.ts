@@ -27,4 +27,5 @@ export const LOG_EVENTS = {
   jobFailed: JOB_EVENTS.failed,
   jobCancelled: JOB_EVENTS.cancelled,
   jobTimedOut: JOB_EVENTS.timedOut,
+  jobNotificationFailed: JOB_EVENTS.notificationFailed,
 } as const;

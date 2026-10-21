@@ -27,7 +27,7 @@ odd/tasks/b4/**
 - [x] T1 Add the parser dependency and the CSV row parser with its column contract. `parseImportCsv` (application) takes an injected `CsvTokenizer`, because application may import only `@trading/domain` (ADR-001 point 1); `csv-parse` lives in `apps/api/src/import/csv-tokenizer.ts`.
 - [x] T2 Validation stage with the per-row report and progress. `createCsvImportHandler().validate`: report in tiers (format, then row rules against assets/currency/transaction rules, then the chronological check only when the earlier tiers are clean); progress every 100 rows.
 - [x] T3 Apply stage inside the `UnitOfWork`, with the conditional completion and the three failure paths. `apply` reads the portfolio status first thing inside the unit (through the portfolio repository: the unit carries no portfolio repository), locks assets in id order, writes rows in date order, replays positions, and completes the job through `context.complete`.
-- [ ] T4 Notifications for finished jobs.
+- [x] T4 Notifications for finished jobs. `createJobNotifier` (SUCCESS for COMPLETED, ERROR for FAILED and TIMED_OUT, none for CANCELLED); the runner calls it after each winning transition, and a notification that fails is logged as `job.notification_failed` and never fails the job.
 
 ## Done when
 
@@ -42,3 +42,6 @@ Item 1 (writes many transactions and positions at once) and item 5 (a new depend
 pnpm typecheck, pnpm lint, pnpm test.
 
 ## Log
+
+- 2026-10-21: the user asked for B4.3 complete with the same terms as B4.2. Decisions taken: `csv-parse` lives in `apps/api` and `application` takes an injected `CsvTokenizer`, because the lint rule (ADR-001 point 1) lets `application` import only `@trading/domain`; `row` is the editor line (header is row 1, row 0 is the file); the validation reports in tiers and runs the chronological check only when the format and row tiers are clean; the archived-portfolio check reads the portfolio through its repository first thing inside the unit of work (the unit carries no portfolio repository, and adding one would change `TransactionalRepositories` again), so it has the same small window as `createTransaction`; the notification messages are fixed English texts per failure reason.
+- 2026-10-21: wiring the runner, the CSV handler, the notifier and the jobs shutdown step into `apps/api/src/index.ts` and `composition.ts` moves to B4.4 T3 (the imports route is its first caller). No independent verifier ran (risk items 1 and 5) because of the no-subagents rule. The Prisma-backed paths were not run here (no test database).

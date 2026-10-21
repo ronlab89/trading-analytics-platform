@@ -831,3 +831,134 @@ describe("job runner: log events", () => {
     await runner.stop();
   });
 });
+
+describe("job runner: notifications", () => {
+  function buildNotified(
+    initial: Job[],
+    makeHandler: (r: Pick<JobRepository, "transition">) => JobHandler,
+    notifier: { jobFinished: (job: Job) => Promise<void> },
+  ) {
+    const logger = capturingLogger();
+    const { repository, get } = fakeRepository(initial);
+    const runner = createJobRunner({
+      jobRepository: repository,
+      handlers: { CSV_IMPORT: makeHandler(repository) },
+      clock,
+      logger,
+      notifier,
+      pollIntervalMs: 1000,
+    });
+
+    return { runner, logger, get, repository };
+  }
+
+  it("notifies the owner once with the finished job when it completes", async () => {
+    const jobFinished = vi.fn((_job: Job) => Promise.resolve());
+    const { runner } = buildNotified([queuedJob("j1")], okHandler, { jobFinished });
+
+    runner.start();
+    await settle();
+
+    expect(jobFinished).toHaveBeenCalledTimes(1);
+    expect(jobFinished.mock.calls[0]?.[0]).toMatchObject({
+      id: "j1",
+      status: JobStatus.COMPLETED,
+      total: 3,
+    });
+    await runner.stop();
+  });
+
+  it("notifies once when the rows are invalid, with the failure reason", async () => {
+    const jobFinished = vi.fn((_job: Job) => Promise.resolve());
+    const { runner } = buildNotified(
+      [queuedJob("j1")],
+      () => ({
+        validate: () => Promise.resolve({ total: 1, errors: [{ row: 1, message: "bad" }] }),
+        apply: () => Promise.resolve(),
+      }),
+      { jobFinished },
+    );
+
+    runner.start();
+    await settle();
+
+    expect(jobFinished).toHaveBeenCalledTimes(1);
+    expect(jobFinished.mock.calls[0]?.[0]).toMatchObject({
+      status: JobStatus.FAILED,
+      failureReason: JobFailureReason.VALIDATION_FAILED,
+    });
+    await runner.stop();
+  });
+
+  it("notifies when a job times out and when startup recovery interrupts one", async () => {
+    const jobFinished = vi.fn((_job: Job) => Promise.resolve());
+    const { runner } = buildNotified(
+      [
+        queuedJob("old", { queuedAt: new Date(START.getTime() - 2 * FIVE_MINUTES) }),
+        queuedJob("stuck", {
+          status: JobStatus.PROCESSING,
+          stage: JobStage.VALIDATING,
+          queuedAt: new Date(START.getTime() - 1000),
+        }),
+      ],
+      okHandler,
+      { jobFinished },
+    );
+
+    runner.start();
+    await settle();
+
+    expect(jobFinished.mock.calls.map(([finished]) => [finished.id, finished.status])).toEqual([
+      ["stuck", JobStatus.FAILED],
+      ["old", JobStatus.TIMED_OUT],
+    ]);
+    await runner.stop();
+  });
+
+  it("does not notify for a job that lost the race to a cancel", async () => {
+    const jobFinished = vi.fn((_job: Job) => Promise.resolve());
+    const gate = deferred();
+    const { runner, repository } = buildNotified(
+      [queuedJob("j1")],
+      () => ({
+        validate: async () => {
+          await gate.promise;
+          return { total: 1, errors: [] };
+        },
+        apply: () => Promise.resolve(),
+      }),
+      { jobFinished },
+    );
+
+    runner.start();
+    await settle();
+    await repository.transition({
+      id: "j1",
+      expected: { status: JobStatus.PROCESSING, stage: JobStage.VALIDATING, attempt: 1 },
+      patch: { status: JobStatus.CANCELLED, finishedAt: new Date() },
+      updatedAt: new Date(),
+    });
+    gate.resolve();
+    await settle();
+
+    expect(jobFinished).not.toHaveBeenCalled();
+    await runner.stop();
+  });
+
+  it("keeps the job finished and logs a warning when the notification fails", async () => {
+    const { runner, logger, get } = buildNotified([queuedJob("j1")], okHandler, {
+      jobFinished: () => Promise.reject(new Error("db down")),
+    });
+
+    runner.start();
+    await settle();
+
+    expect(get("j1").status).toBe(JobStatus.COMPLETED);
+    expect(logger.entries.at(-1)).toMatchObject({
+      level: "warn",
+      event: "job.notification_failed",
+      fields: { jobId: "j1" },
+    });
+    await runner.stop();
+  });
+});
