@@ -2739,7 +2739,7 @@ The backend items close in B3, except where a tag names another block. Frontend 
 - [x] readiness checks. (`Implemented`, §50; 503 with `status: "unavailable"` and no `checks` while shutting down `Implemented`, B3.4, ADR-006 point 12; the route test `Planned (B0)`, ADR-001 point 8)
 - [x] database health. (`Implemented`: `SELECT 1` through the shared client; a recovery entry is `Deferred` until a poller exists, B7, `13-observability-spec.md` §58)
 - [ ] realtime lifecycle diagnostics. (`Planned (B5)` on the server and `Planned (FE)` on the client; names open, ADR-009 point 11)
-- [ ] background job diagnostics. (`Implemented` (B4.2): see `13-observability-spec.md` §58)
+- [ ] background job diagnostics. (`Implemented` (B4.2): see `13-observability-spec.md` §75)
 - [ ] metrics where implemented. (`Deferred`: none exist, ADR-009 point 10)
 - [x] safe production log level. (`Implemented` (B3.1): `LOG_LEVEL` is `info` in production and `silent` in tests, ADR-009 point 7)
 
