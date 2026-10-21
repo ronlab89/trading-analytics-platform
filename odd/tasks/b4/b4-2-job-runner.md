@@ -25,7 +25,7 @@ odd/tasks/b4/**
 
 ## Tasks
 
-- [ ] T1 `JobService`: create, cancel and retry with permission-free state rules, tested with a fake job type.
+- [x] T1 `JobService`: create, get, cancel and retry (`transaction:create` for writes, `transaction:read` for get, ownership on the job), state rules from the domain, tested with a compare-and-set fake repository.
 - [ ] T2 Runner loop, stages, progress and the timeout, tested with fake timers.
 - [ ] T3 Startup recovery and the shutdown step.
 - [ ] T4 Job lifecycle log events and the `LOG_EVENTS` registry.
