@@ -480,3 +480,197 @@ describe("job runner: cancellation", () => {
     await runner.stop();
   });
 });
+
+describe("job runner: startup recovery", () => {
+  const processing = (id: string, stage: Job["stage"]) =>
+    queuedJob(id, { status: JobStatus.PROCESSING, stage, processed: 2, total: 5 });
+
+  it.each([JobStage.VALIDATING, JobStage.APPLYING])(
+    "fails a job left processing in %s as interrupted and keeps its input",
+    async (stage) => {
+      const { runner, handler, get } = build([processing("j1", stage)], okHandler);
+
+      runner.start();
+      await settle();
+
+      expect(get("j1")).toMatchObject({
+        status: JobStatus.FAILED,
+        failureReason: JobFailureReason.INTERRUPTED,
+        input: "a,b",
+        finishedAt: START,
+      });
+      expect(handler.validate).not.toHaveBeenCalled();
+      await runner.stop();
+    },
+  );
+
+  it("resumes a queued job after recovering the interrupted one", async () => {
+    const { runner, handler, get } = build(
+      [processing("stuck", JobStage.VALIDATING), queuedJob("waiting")],
+      okHandler,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(get("stuck").failureReason).toBe(JobFailureReason.INTERRUPTED);
+    expect(get("waiting").status).toBe(JobStatus.COMPLETED);
+    expect(handler.validate).toHaveBeenCalledTimes(1);
+    await runner.stop();
+  });
+
+  it("times out a queued job that is past its deadline when the process starts", async () => {
+    const { runner, handler, get } = build(
+      [queuedJob("old", { queuedAt: new Date(START.getTime() - 3 * FIVE_MINUTES) })],
+      okHandler,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(get("old").status).toBe(JobStatus.TIMED_OUT);
+    expect(handler.validate).not.toHaveBeenCalled();
+    await runner.stop();
+  });
+
+  it("runs a resumed job once when an enqueue races the startup resume", async () => {
+    const { runner, handler } = build([queuedJob("j1")], okHandler);
+
+    runner.start();
+    runner.notifyQueued();
+    await settle();
+    runner.notifyQueued();
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(handler.validate).toHaveBeenCalledTimes(1);
+    await runner.stop();
+  });
+
+  it("repeats a failed recovery on the next poll and claims nothing before it succeeds", async () => {
+    const { repository, get } = fakeRepository([
+      queuedJob("waiting"),
+      queuedJob("stuck", { status: JobStatus.PROCESSING, stage: JobStage.VALIDATING }),
+    ]);
+    const handler = okHandler(repository);
+    let failures = 1;
+    const runner = createJobRunner({
+      jobRepository: {
+        ...repository,
+        listByStatuses: (statuses) => {
+          if (statuses.includes(JobStatus.PROCESSING) && failures-- > 0) {
+            return Promise.reject(new Error("db down"));
+          }
+          return repository.listByStatuses(statuses);
+        },
+      },
+      handlers: { CSV_IMPORT: handler },
+      clock,
+      pollIntervalMs: 1000,
+    });
+
+    runner.start();
+    await settle();
+    expect(handler.validate).not.toHaveBeenCalled();
+    expect(get("stuck").status).toBe(JobStatus.PROCESSING);
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(get("stuck").failureReason).toBe(JobFailureReason.INTERRUPTED);
+    expect(get("waiting").status).toBe(JobStatus.COMPLETED);
+    await runner.stop();
+  });
+});
+
+describe("job runner: shutdown", () => {
+  it("waits for the job in flight when it settles within the grace period", async () => {
+    const gate = deferred();
+    const { runner, get } = build([queuedJob("j1")], (repository) => ({
+      validate: async () => {
+        await gate.promise;
+        return { total: 1, errors: [] };
+      },
+      apply: async (_job, context) => {
+        await context.complete(repository);
+      },
+    }));
+    runner.start();
+    await settle();
+
+    const stopping = runner.stop();
+    gate.resolve();
+    await vi.advanceTimersByTimeAsync(100);
+    await stopping;
+
+    expect(get("j1").status).toBe(JobStatus.COMPLETED);
+  });
+
+  it("marks a job that is still validating after the grace period as interrupted", async () => {
+    const gate = deferred();
+    let reported: boolean | null = null;
+    const { runner, handler, get } = build([queuedJob("j1")], () => ({
+      validate: async (_job, report) => {
+        await gate.promise;
+        reported = await report(1, 1);
+        return { total: 1, errors: [] };
+      },
+      apply: vi.fn(() => Promise.resolve()),
+    }));
+    runner.start();
+    await settle();
+
+    const stopping = runner.stop();
+    await vi.advanceTimersByTimeAsync(5000);
+    await stopping;
+
+    expect(get("j1")).toMatchObject({
+      status: JobStatus.FAILED,
+      failureReason: JobFailureReason.INTERRUPTED,
+      input: "a,b",
+    });
+
+    gate.resolve();
+    await settle();
+
+    expect(reported).toBe(false);
+    expect(handler.apply).not.toHaveBeenCalled();
+  });
+
+  it("marks an apply that outlasts the grace period interrupted and keeps a late completion from overwriting it", async () => {
+    const gate = deferred();
+    let completed: boolean | null = null;
+    const { runner, get } = build([queuedJob("j1")], (repository) => ({
+      validate: () => Promise.resolve({ total: 1, errors: [] }),
+      apply: async (_job, context) => {
+        await gate.promise;
+        completed = await context.complete(repository);
+        if (!completed) {
+          throw new JobSupersededError();
+        }
+      },
+    }));
+    runner.start();
+    await settle();
+
+    const stopping = runner.stop();
+    await vi.advanceTimersByTimeAsync(5000);
+    await stopping;
+    expect(get("j1").failureReason).toBe(JobFailureReason.INTERRUPTED);
+
+    gate.resolve();
+    await settle();
+
+    expect(completed).toBe(false);
+    expect(get("j1")).toMatchObject({
+      status: JobStatus.FAILED,
+      failureReason: JobFailureReason.INTERRUPTED,
+    });
+  });
+
+  it("resolves at once when nothing is running", async () => {
+    const { runner } = build([], okHandler);
+    runner.start();
+    await settle();
+
+    await expect(runner.stop()).resolves.toBeUndefined();
+  });
+});

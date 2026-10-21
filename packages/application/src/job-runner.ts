@@ -5,6 +5,9 @@ import type { Clock } from "./clock.js";
 /** A background pass that fails is retried by the next poll; there is no caller to tell. */
 const ignore = (): void => undefined;
 
+/** How long a shutdown waits for the job in flight before it marks the job interrupted. */
+export const DEFAULT_JOB_SHUTDOWN_GRACE_MS = 5000;
+
 /** How often the runner looks for queued work and for queued jobs past their deadline. */
 export const DEFAULT_JOB_POLL_INTERVAL_MS = 1000;
 
@@ -73,6 +76,7 @@ export interface JobRunnerDependencies {
   handlers: Readonly<Record<JobType, JobHandler>>;
   clock: Clock;
   pollIntervalMs?: number;
+  shutdownGraceMs?: number;
 }
 
 /**
@@ -93,12 +97,17 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     handlers,
     clock,
     pollIntervalMs = DEFAULT_JOB_POLL_INTERVAL_MS,
+    shutdownGraceMs = DEFAULT_JOB_SHUTDOWN_GRACE_MS,
   } = dependencies;
 
   let timer: ReturnType<typeof setInterval> | null = null;
   let stopped = true;
   let pumping: Promise<void> | null = null;
   let pumpAgain = false;
+  // The job this process is running right now, as the row last wrote it.
+  let inFlight: Job | null = null;
+  let recovered = false;
+  let recovering: Promise<void> | null = null;
 
   // Read through functions: both flags change from other calls while a pass awaits.
   const isStopped = (): boolean => stopped;
@@ -122,8 +131,41 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     });
   }
 
+  /**
+   * Startup recovery (ADR-008 point 5). A job left `PROCESSING` has written
+   * nothing, because the apply completes it in the transaction that writes the
+   * rows: it becomes `FAILED` with `INTERRUPTED`, retryable. `QUEUED` jobs need
+   * nothing here: the first pass resumes them, and times out those past their
+   * deadline.
+   */
+  async function recover(): Promise<void> {
+    const processing = await jobRepository.listByStatuses([JobStatus.PROCESSING]);
+
+    for (const job of processing) {
+      await fail(job, JobFailureReason.INTERRUPTED);
+    }
+  }
+
+  /** Runs the recovery before the first claim; a failed attempt is repeated by the next pass. */
+  async function ensureRecovered(): Promise<void> {
+    if (recovered) {
+      return;
+    }
+
+    recovering ??= recover()
+      .then(() => {
+        recovered = true;
+      })
+      .finally(() => {
+        recovering = null;
+      });
+
+    await recovering;
+  }
+
   /** Times out every queued job whose deadline passed; safe to run alongside a job. */
   async function sweepExpired(): Promise<void> {
+    await ensureRecovered();
     const queued = await jobRepository.listByStatuses([JobStatus.QUEUED]);
     const now = clock.now();
 
@@ -205,6 +247,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
   async function run(claimed: Job): Promise<void> {
     const handler = handlers[claimed.type];
     const validating = expectationOf(claimed);
+    inFlight = claimed;
 
     // The timeout is per attempt: it counts from `queuedAt`, so `deadlineAt` is
     // already fixed. The transition expects the validating stage, so it can no
@@ -269,15 +312,18 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
       }
 
       clearTimeout(deadlineTimer);
+      inFlight = applying;
       await apply(applying, handler);
     } finally {
       clearTimeout(deadlineTimer);
+      inFlight = null;
     }
   }
 
   /** Runs queued jobs one after another until none can be claimed. */
   async function drain(): Promise<void> {
     while (!isStopped()) {
+      await ensureRecovered();
       const queued = await jobRepository.listByStatuses([JobStatus.QUEUED]);
       const now = clock.now();
       let claimed: Job | null = null;
@@ -340,7 +386,12 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     pump().catch(ignore);
   }
 
-  /** Stops taking jobs and waits for the one in flight to settle. */
+  /**
+   * Stops taking jobs and gives the one in flight `shutdownGraceMs` to settle.
+   * If it does not, the job is marked `FAILED` with `INTERRUPTED` (retryable),
+   * so none is left `PROCESSING` silently. A still-running apply then finds its
+   * conditional completion matching no row and rolls back (ADR-008 point 5).
+   */
   async function stop(): Promise<void> {
     stopped = true;
 
@@ -349,7 +400,27 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
       timer = null;
     }
 
-    await pumping;
+    if (!pumping) {
+      return;
+    }
+
+    let graceTimer: ReturnType<typeof setTimeout> | undefined;
+    const grace = new Promise<"timeout">((resolve) => {
+      graceTimer = setTimeout(() => {
+        resolve("timeout");
+      }, shutdownGraceMs);
+    });
+    const settled = pumping.then(
+      () => "settled" as const,
+      () => "settled" as const,
+    );
+
+    const outcome = await Promise.race([settled, grace]);
+    clearTimeout(graceTimer);
+
+    if (outcome === "timeout" && inFlight) {
+      await fail(inFlight, JobFailureReason.INTERRUPTED);
+    }
   }
 
   /** A job was queued: run it without waiting for the next poll. */
