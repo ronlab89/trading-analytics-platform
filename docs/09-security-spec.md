@@ -586,7 +586,7 @@ Open detail (B5) owned by `08-realtime-spec.md` §9.
 
 # 18. Input Validation
 
-**Status:** body, query, headers and environment `Implemented` (`apps/api/src/middleware/validate.ts`, `apps/api/src/schemas/`, `apps/api/src/config/env.ts`); route parameters `Planned (B0)` (ADR-002 point 10, NFR-021); schemas in `@trading/contracts` `Planned (B0)` (ADR-002 points 1-2); WebSocket messages `Planned (B5)` (ADR-007 points 4 and 15); CSV files `Planned (B4)` (ADR-008 point 10)
+**Status:** body, query, headers and environment `Implemented` (`apps/api/src/middleware/validate.ts`, `apps/api/src/schemas/`, `apps/api/src/config/env.ts`); route parameters `Planned (B0)` (ADR-002 point 10, NFR-021); schemas in `@trading/contracts` `Planned (B0)` (ADR-002 points 1-2); WebSocket messages `Planned (B5)` (ADR-007 points 4 and 15); CSV files `Implemented` (B4.3, B4.4) (ADR-008 point 10)
 
 All external input is validated before it reaches a service (NFR-021).
 
@@ -599,7 +599,7 @@ All external input is validated before it reaches a service (NFR-021).
 | Headers | `Authorization` parsed by `authenticate` (§16); `X-Request-ID` checked against an allowlist (§30) | `Implemented` |
 | Environment variables | Zod schema at startup; invalid configuration stops the process | `Implemented` |
 | WebSocket messages | Zod schemas for `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE` (§33) | `Planned (B5)` |
-| CSV import files | Bounded file size and row count; every row validated | `Planned (B4)` |
+| CSV import files | Bounded file size and row count; every row validated | `Implemented` (B4.3) |
 
 Code today: request schemas live in `apps/api/src/schemas/`. ADR-002
 moves them to `@trading/contracts` in B0, so the API, the demo adapter and
@@ -706,7 +706,7 @@ Rules:
   a tagged-template `$queryRaw` or `$executeRaw`. `$queryRawUnsafe` and
   `$executeRawUnsafe` are never called with interpolated input.
 - Imported CSV fields are data: they are validated per row and stored
-  through the same repositories (ADR-008 point 10, `Planned (B4)`).
+  through the same repositories (ADR-008 point 10, `Implemented` (B4.3)).
 
 Code today: `prisma-asset-repository.ts` passes the search term to
 `contains` unescaped. Prisma still parameterizes the query, so there is
@@ -844,7 +844,7 @@ Coverage of the abuse-prone endpoints:
 
 # 27. Request Size Limits
 
-**Status:** JSON body, pagination and list parameters `Implemented` (`apps/api/src/app.ts`, `apps/api/src/schemas/`, `apps/api/src/middleware/error-handler.ts`); CSV limits `Planned (B4)` (ADR-008 point 10); realtime limits `Planned (B5)` (ADR-007 point 15)
+**Status:** JSON body, pagination and list parameters `Implemented` (`apps/api/src/app.ts`, `apps/api/src/schemas/`, `apps/api/src/middleware/error-handler.ts`); CSV limits `Implemented` (B4.3, B4.4) (ADR-008 point 10); realtime limits `Planned (B5)` (ADR-007 point 15)
 
 | Input | Limit | Over the limit | Status |
 | --- | --- | --- | --- |
@@ -854,7 +854,7 @@ Coverage of the abuse-prone endpoints:
 | `assetIds` batch | 1-50 ids (`market.schema.ts`, `07-api-spec.md` §19) | 400 `VALIDATION_ERROR` | `Implemented` |
 | Text filters | For example `search` ≤ 100 characters (`asset.schema.ts`) | 400 `VALIDATION_ERROR` | `Implemented` |
 | Query string | No explicit limit; Node.js caps the request line and headers | 431 from Node.js | Runtime default |
-| CSV import | File size and row count, values fixed in B4 | Job rejected | `Planned (B4)` |
+| CSV import | 1 MB and 5000 rows (ADR-008 point 10) | Job rejected | `Implemented` (B4.3, B4.4) |
 | Realtime | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer (§35) | `4008` close | `Planned (B5)` |
 
 > Decided (ADR-007, Deferred detail, amended 2026-10-08; `Planned (B5)`):
@@ -1178,7 +1178,7 @@ the database local only.
 
 # 39. Sensitive Data
 
-**Status:** `Implemented` (`packages/database/prisma/schema.prisma`, `apps/api/src/services/auth.service.ts`; NFR-022); sessions `Implemented` (B2.3, B2.4) (ADR-005 point 5); job input and idempotency records `Planned (B4)` (ADR-008 points 4 and 8)
+**Status:** `Implemented` (`packages/database/prisma/schema.prisma`, `apps/api/src/services/auth.service.ts`; NFR-022); sessions `Implemented` (B2.3, B2.4) (ADR-005 point 5); job input and idempotency records `Implemented` (B4) (ADR-008 points 4 and 8)
 
 The system stores as little sensitive data as its features need. It holds
 no real financial account data (§40).
@@ -1189,8 +1189,8 @@ no real financial account data (§40).
 | Email, display name | `User` (`05-data-model.md` §5) | Returned only to the user themself (`GET /auth/me`); logs carry `userId` only (ADR-009 point 3) | `Implemented`; logs `Implemented` (B3.1) |
 | Refresh token | Sessions table, hash only (`05-data-model.md` §5.3) | Cookie only (§8) | `Implemented` (B2.3) |
 | Successor refresh token | Encrypted at rest for the grace window only, then cleared (ADR-005 Deferred detail) | Never logged | `Implemented` (B2.4) |
-| CSV import input | The `jobs` row, bounded in size (`05-data-model.md` §52) | Owner only (ADR-008 point 9); never logged (ADR-009 Deferred detail) | `Planned (B4)` |
-| Idempotency records | Request hash and stored response per user, 24 hours (ADR-008 point 8) | Replayed only to the same user | `Planned (B4)` |
+| CSV import input | The `jobs` row, bounded in size (`05-data-model.md` §52) | Owner only (ADR-008 point 9); never logged (ADR-009 Deferred detail) | `Implemented` (B4.1) |
+| Idempotency records | Request hash and stored response per user, 24 hours (ADR-008 point 8) | Replayed only to the same user | `Implemented` (B4.1, B4.4) |
 | Portfolio and transaction data | Domain tables | Owner only (§14, §15) | `Implemented` |
 
 The demo uses synthetic data only (§42).
@@ -1605,7 +1605,7 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 | Malformed JSON body returns 400 | `Implemented` (`validate.test.ts`) |
 | Malformed path parameters | `Planned (B0)` (§18) |
 | Unexpected fields | `Planned (B0)` (see the Open detail below) |
-| CSV size, row count and per-row validation | `Planned (B4)` (ADR-008 point 10) |
+| CSV size, row count and per-row validation | `Implemented` (B4.3, B4.4) (ADR-008 point 10) |
 
 ### Realtime
 

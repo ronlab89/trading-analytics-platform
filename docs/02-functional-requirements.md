@@ -463,7 +463,7 @@ no acceptance criteria of its own.
 ## FR-017 — Create Transaction
 
 **Priority:** P0  
-**Status:** `Implemented` (synchronous, atomic through `UnitOfWork`); position isolation under concurrency `Planned (B0)`; `Idempotency-Key` `Planned (B4)`; `PORTFOLIO_UPDATED` event `Planned (B5)`; UI `Planned (FE)`  
+**Status:** `Implemented` (synchronous, atomic through `UnitOfWork`); position isolation under concurrency `Planned (B0)`; `Idempotency-Key` `Implemented` (B4.4); `PORTFOLIO_UPDATED` event `Planned (B5)`; UI `Planned (FE)`  
 **Decisions:** ADR-001 Deferred detail; ADR-003 points 1, 2, 6; ADR-007 point 6; ADR-008 points 8 and 12
 
 A `BUY` or `SELL` is validated (FR-018), persisted, and its position is
@@ -1431,7 +1431,7 @@ without manual browser-storage manipulation.
 ## FR-074 — Atomic Business Operations
 
 **Priority:** P0  
-**Status:** `Implemented` for transaction creation; CSV import apply `Planned (B4)`; in-memory `UnitOfWork` `Planned (B0)`  
+**Status:** `Implemented` for transaction creation; CSV import apply `Implemented` (B4.3); in-memory `UnitOfWork` `Planned (B0)`  
 **Decisions:** ADR-001 Deferred detail; ADR-008 points 2 and 5
 
 ### Acceptance criteria
@@ -1451,7 +1451,7 @@ without manual browser-storage manipulation.
 ## FR-075 — Retry Failed Operation
 
 **Priority:** P1  
-**Status:** `Idempotency-Key` and job retry `Planned (B4)`; UI `Planned (FE)`  
+**Status:** `Idempotency-Key` and job retry `Implemented` (B4.2, B4.4); UI `Planned (FE)`  
 **Decisions:** ADR-008 points 6 and 8
 
 ### Acceptance criteria
@@ -1534,7 +1534,7 @@ These requirements cover behavior an ADR decides and no earlier FR covered.
 ## FR-080 — CSV Transaction Import
 
 **Priority:** P1  
-**Status:** `Planned (B4)`; UI and demo `Planned (FE)`  
+**Status:** `Implemented` (B4.3, B4.4); UI and demo `Planned (FE)`  
 **Decisions:** ADR-008 points 1, 2, 4, 9, 10, 13 and Deferred detail; ADR-003 point 6; ADR-004 point 12
 
 A `TRADER` imports historical `BUY` and `SELL` transactions from a CSV file
@@ -1567,7 +1567,7 @@ into a portfolio as a background job.
 ## FR-081 — Import Job Lifecycle
 
 **Priority:** P1  
-**Status:** `Planned (B4)`; `jobs:{jobId}` events `Planned (B5)`; UI `Planned (FE)`  
+**Status:** `Implemented` (B4.2, B4.4); `jobs:{jobId}` events `Planned (B5)`; UI `Planned (FE)`  
 **Decisions:** ADR-008 points 3, 5, 6, 7, 9, 11 and Deferred detail; ADR-010 point 9
 
 ### Acceptance criteria
@@ -1605,7 +1605,7 @@ into a portfolio as a background job.
 ## FR-082 — Idempotent Mutations
 
 **Priority:** P1  
-**Status:** `Planned (B4)`  
+**Status:** `Implemented` (B4.4)  
 **Decisions:** ADR-008 point 8 and Deferred detail
 
 ### Acceptance criteria
@@ -1826,7 +1826,7 @@ This applies equally to the full stack and to the public demo.
 | FR-014 | `Implemented` | ADR-003 p4; ADR-004 p15 | B1, FE |
 | FR-015 | Satisfied by FR-016 and FR-020 | ADR-010 p2 | — |
 | FR-016 | `Implemented` | ADR-003 p1 | FE |
-| FR-017 | `Implemented`; `Planned (B0)`, `Planned (B4)`, `Planned (B5)` | ADR-001; ADR-003; ADR-007 p6; ADR-008 p8, 12 | B0, B4, B5, FE |
+| FR-017 | `Implemented`; `Planned (B0)`, `Planned (B5)` | ADR-001; ADR-003; ADR-007 p6; ADR-008 p8, 12 | B0, B4, B5, FE |
 | FR-018 | `Implemented`; `Planned (B0)` | ADR-003 p6; ADR-004 p2, 12 | B0, B1 |
 | FR-019 | `Implemented` | — | FE |
 | FR-020 | `Implemented`; `Planned (B7)` | — | B7, FE |
@@ -1883,15 +1883,15 @@ This applies equally to the full stack and to the public demo.
 | FR-071 | `Planned (FE)`; other failures `Deferred` | ADR-008 p13, ADR-010 p6 | FE |
 | FR-072 | `Deferred` | ADR-010 p6 | FE |
 | FR-073 | `Implemented`; `Planned (B0)` | ADR-003 p6; `05` §8, §32 | B0, FE |
-| FR-074 | `Implemented`; `Planned (B0)`, `Planned (B4)` | ADR-001; ADR-008 p2, 5 | B0, B4 |
-| FR-075 | `Planned (B4)` | ADR-008 p6, 8 | B4, FE |
+| FR-074 | `Implemented`; `Planned (B0)` | ADR-001; ADR-008 p2, 5 | B0, B4 |
+| FR-075 | `Implemented` | ADR-008 p6, 8 | B4, FE |
 | FR-076 | `Planned (FE)` | — | FE |
 | FR-077 | `Planned (FE)`; `Planned (B5)` | ADR-007 p6 | B5, FE |
 | FR-078 | `Planned (FE)` | — | FE |
 | FR-079 | `Planned (FE)` | — | FE |
-| FR-080 | `Planned (B4)` | ADR-008 p1-2, 4, 9-10, 13; ADR-003 p6; ADR-004 p12 | B4, FE |
-| FR-081 | `Planned (B4)` | ADR-008 p3, 5-7, 9, 11; ADR-010 p9 | B4, B5, FE |
-| FR-082 | `Planned (B4)` | ADR-008 p8 | B4 |
+| FR-080 | `Implemented` | ADR-008 p1-2, 4, 9-10, 13; ADR-003 p6; ADR-004 p12 | B4, FE |
+| FR-081 | `Implemented` | ADR-008 p3, 5-7, 9, 11; ADR-010 p9 | B4, B5, FE |
+| FR-082 | `Implemented` | ADR-008 p8 | B4 |
 | FR-083 | Backend `Implemented` (B2.4), its log events `Implemented` (B3.3); client `Planned (FE)` | ADR-005 p4-7, 9; ADR-009 p9 | B2, FE |
 | FR-084 | `Implemented` (B0, B2.1, B2.2) | ADR-005 p1-3, 10-12 | B0, B2 |
 | FR-085 | `Implemented` | ADR-004 p1, 4, 6-7; `16` §2, §5, §8 | B1 |

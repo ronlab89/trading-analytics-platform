@@ -331,7 +331,7 @@ type (ADR-003 point 1).
 | Same-`executedAt` tiebreak: `executedAt`, then creation order (row order for an import) (ADR-003 Deferred detail) | `Planned (B0)` |
 | Asset currency equals portfolio `baseCurrency`, else 400 (ADR-004 point 12) | `Implemented` (`transaction-service.ts`, B1.7) |
 | `SELL` with `fees > quantity × price` rejected with 400, so outflows are never negative; fees equal to the gross proceeds are accepted (ADR-004 point 2, amended 2026-10-05) | `Implemented` (`packages/domain/src/entities/transaction.ts`) |
-| `Idempotency-Key` on `POST /portfolios/:id/transactions` (ADR-008 point 8) | `Planned (B4)`, see §53 |
+| `Idempotency-Key` on `POST /portfolios/:id/transactions` (ADR-008 point 8) | `Implemented` (B4.4), see §53 |
 
 Open detail (B0): the creation-order tiebreak has no persisted column.
 `createdAt` has millisecond precision and rows written in one unit of work
@@ -1013,8 +1013,8 @@ overwrites a newer value. See §12, §18 and §19 for open details.
 | Transaction and its position change | One database transaction (unit of work) | `Implemented` |
 | Duplicate watchlist entry | Unique `(userId, assetId)` | `Implemented` |
 | Two transactions on one position at once | See §8 Open detail | `Planned (B0)` |
-| Duplicate `POST` with the same `Idempotency-Key` | Reservation under a unique constraint (§53) | `Planned (B4)` |
-| Job status transitions (resume, cancel, apply) | Compare-and-set on status (§52) | `Planned (B4)` |
+| Duplicate `POST` with the same `Idempotency-Key` | Reservation under a unique constraint (§53) | `Implemented` (B4.1, B4.4) |
+| Job status transitions (resume, cancel, apply) | Compare-and-set on status (§52) | `Implemented` (B4.2) |
 | Duplicate market tick | Unique `(assetId, sequence)` (§19) | `Planned (B5)` |
 | Demo in-memory unit of work interleaving | ADR-001 Deferred detail | `Planned (B0)` |
 
@@ -1101,7 +1101,7 @@ What could have happened differently?
 # 52. Job
 
 **Status:** `Implemented` (B4.1, the table and the repository); the runner and
-the transitions are `Planned (B4)` (B4.2) — ADR-008.
+the transitions are `Implemented` (B4.2) — ADR-008.
 
 A `jobs` table backs the in-process runner (ADR-008 point 4). Required by the
 ADR:
@@ -1155,7 +1155,7 @@ Open detail).
 # 53. Idempotency Key
 
 **Status:** `Implemented` (B4.1, the table and the repository); the middleware
-and the routes are `Planned (B4)` (B4.4) — ADR-008 point 8 and Deferred detail.
+and the routes are `Implemented` (B4.4) — ADR-008 point 8 and Deferred detail.
 
 An `idempotency_keys` table, independent of jobs. Required by the ADR:
 
