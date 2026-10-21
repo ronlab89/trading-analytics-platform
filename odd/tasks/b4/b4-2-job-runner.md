@@ -28,7 +28,7 @@ odd/tasks/b4/**
 - [x] T1 `JobService`: create, get, cancel and retry (`transaction:create` for writes, `transaction:read` for get, ownership on the job), state rules from the domain, tested with a compare-and-set fake repository.
 - [x] T2 Runner loop, stages, progress and the timeout, tested with fake timers. `JobHandler` (`validate`, `apply`) is the seam B4.3 fills; the apply completes the job through `context.complete` inside its own unit of work.
 - [x] T3 Startup recovery and the shutdown step. Recovery runs inside `start()` before the first claim (`PROCESSING` becomes `FAILED`/`INTERRUPTED`, `QUEUED` resumes, one past its deadline times out); `stop()` gives the job in flight a 5 s grace and then marks it interrupted. `createJobsShutdownStep` is in `apps/api/src/lifecycle/jobs-step.ts`; registering it and starting the runner in `index.ts` waits for the CSV handler in B4.3.
-- [ ] T4 Job lifecycle log events and the `LOG_EVENTS` registry.
+- [x] T4 Job lifecycle log events and the `LOG_EVENTS` registry. The names live in `JOB_EVENTS` (application), `LOG_EVENTS` references them; a retry logs `job.queued` with the new `attempt`; progress is not logged.
 
 ## Done when
 

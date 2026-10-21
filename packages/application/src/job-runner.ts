@@ -1,6 +1,9 @@
 import { JobFailureReason, JobStage, JobStatus } from "@trading/domain";
 import type { Job, JobExpectation, JobRepository, JobRowError, JobType } from "@trading/domain";
 import type { Clock } from "./clock.js";
+import { JOB_EVENTS, jobLogFields } from "./job-events.js";
+import { silentLogger } from "./logger.js";
+import type { Logger } from "./logger.js";
 
 /** A background pass that fails is retried by the next poll; there is no caller to tell. */
 const ignore = (): void => undefined;
@@ -75,6 +78,8 @@ export interface JobRunnerDependencies {
   jobRepository: Pick<JobRepository, "listByStatuses" | "transition">;
   handlers: Readonly<Record<JobType, JobHandler>>;
   clock: Clock;
+  /** Writes the job lifecycle events; defaults to a logger that drops them. */
+  logger?: Logger;
   pollIntervalMs?: number;
   shutdownGraceMs?: number;
 }
@@ -96,6 +101,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     jobRepository,
     handlers,
     clock,
+    logger = silentLogger,
     pollIntervalMs = DEFAULT_JOB_POLL_INTERVAL_MS,
     shutdownGraceMs = DEFAULT_JOB_SHUTDOWN_GRACE_MS,
   } = dependencies;
@@ -119,16 +125,20 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     attempt: job.attempt,
   });
 
-  /** Moves a job `QUEUED` past its deadline to `TIMED_OUT`. */
-  async function timeOutQueued(job: Job): Promise<void> {
+  /** Moves a job past its deadline, `QUEUED` or validating, to `TIMED_OUT`. */
+  async function timeOut(job: Job): Promise<void> {
     const now = clock.now();
 
-    await jobRepository.transition({
+    const timedOut = await jobRepository.transition({
       id: job.id,
       expected: expectationOf(job),
       patch: { status: JobStatus.TIMED_OUT, finishedAt: now },
       updatedAt: now,
     });
+
+    if (timedOut) {
+      logger.warn(JOB_EVENTS.timedOut, jobLogFields(job, { stage: job.stage }));
+    }
   }
 
   /**
@@ -171,21 +181,25 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
 
     for (const job of queued) {
       if (now.getTime() >= job.deadlineAt.getTime()) {
-        await timeOutQueued(job);
+        await timeOut(job);
       }
     }
   }
 
   /** Claims the job for this run, or resolves null when something else got there first. */
-  function claim(job: Job): Promise<Job | null> {
-    const now = clock.now();
-
-    return jobRepository.transition({
+  async function claim(job: Job): Promise<Job | null> {
+    const claimed = await jobRepository.transition({
       id: job.id,
       expected: expectationOf(job),
       patch: { status: JobStatus.PROCESSING, stage: JobStage.VALIDATING },
-      updatedAt: now,
+      updatedAt: clock.now(),
     });
+
+    if (claimed) {
+      logger.info(JOB_EVENTS.started, jobLogFields(claimed));
+    }
+
+    return claimed;
   }
 
   async function fail(
@@ -195,7 +209,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
   ): Promise<void> {
     const now = clock.now();
 
-    await jobRepository.transition({
+    const failed = await jobRepository.transition({
       id: job.id,
       expected: expectationOf(job),
       patch: {
@@ -208,6 +222,10 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
       },
       updatedAt: now,
     });
+
+    if (failed) {
+      logger.warn(JOB_EVENTS.failed, jobLogFields(job, { reason, stage: job.stage }));
+    }
   }
 
   /** Applies a claimed job: the second stage, one unit of work that also completes it. */
@@ -228,6 +246,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
 
     try {
       await handler.apply(job, context);
+      logger.info(JOB_EVENTS.completed, jobLogFields(job));
     } catch (error) {
       if (error instanceof JobSupersededError) {
         return;
@@ -254,16 +273,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     // longer match once the apply starts.
     const deadlineTimer = setTimeout(
       () => {
-        const now = clock.now();
-
-        jobRepository
-          .transition({
-            id: claimed.id,
-            expected: validating,
-            patch: { status: JobStatus.TIMED_OUT, finishedAt: now },
-            updatedAt: now,
-          })
-          .catch(ignore);
+        timeOut(claimed).catch(ignore);
       },
       Math.max(0, claimed.deadlineAt.getTime() - clock.now().getTime()),
     );
@@ -334,7 +344,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
 
       for (const job of queued) {
         if (now.getTime() >= job.deadlineAt.getTime()) {
-          await timeOutQueued(job);
+          await timeOut(job);
           continue;
         }
 

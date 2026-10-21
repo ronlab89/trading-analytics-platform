@@ -10,6 +10,8 @@ import type { CreateJobInput, Job, Portfolio, TransitionJobInput } from "@tradin
 import type { Actor } from "./actor.js";
 import { fixedClock } from "./clock.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
+import { capturingLogger } from "./logger.js";
+import type { Logger } from "./logger.js";
 import { createJobService, DEFAULT_JOB_TIMEOUT_MS } from "./job-service.js";
 
 const actor: Actor = { userId: "u1", role: "TRADER" };
@@ -39,7 +41,7 @@ function job(overrides: Partial<Job> = {}): Job {
 }
 
 /** A repository with the real compare-and-set rule: a mismatch changes nothing. */
-function build(options: { stored?: Job; portfolioStatus?: PortfolioStatus } = {}) {
+function build(options: { stored?: Job; portfolioStatus?: PortfolioStatus; logger?: Logger } = {}) {
   let stored: Job | null = options.stored ?? null;
   const transitions: TransitionJobInput[] = [];
   const created: CreateJobInput[] = [];
@@ -78,6 +80,7 @@ function build(options: { stored?: Job; portfolioStatus?: PortfolioStatus } = {}
           : Promise.reject(new NotFoundError("The requested portfolio could not be found.")),
     },
     clock: fixedClock(now),
+    ...(options.logger ? { logger: options.logger } : {}),
   });
 
   return {
@@ -317,5 +320,68 @@ describe("job service: retry", () => {
     await expect(service.retryJob({ userId: "u1", role: "VIEWER" }, "j1")).rejects.toBeInstanceOf(
       ForbiddenError,
     );
+  });
+});
+
+describe("job service: log events", () => {
+  it("logs job.queued with the jobId when a job is created", async () => {
+    const logger = capturingLogger();
+    const { service } = build({ logger });
+
+    const created = await service.createJob(actor, "p1", { type: "CSV_IMPORT", input: "a,b" });
+
+    expect(logger.entries).toEqual([
+      {
+        level: "info",
+        event: "job.queued",
+        fields: { jobId: created.id, userId: "u1", type: "CSV_IMPORT", attempt: 1 },
+      },
+    ]);
+  });
+
+  it("logs job.cancelled with the stage it was cancelled in", async () => {
+    const logger = capturingLogger();
+    const { service } = build({ stored: job(), logger });
+
+    await service.cancelJob(actor, "j1");
+
+    expect(logger.entries).toEqual([
+      {
+        level: "info",
+        event: "job.cancelled",
+        fields: { jobId: "j1", userId: "u1", type: "CSV_IMPORT", attempt: 1, stage: "QUEUED" },
+      },
+    ]);
+  });
+
+  it("logs job.queued with the next attempt when a job is retried", async () => {
+    const logger = capturingLogger();
+    const { service } = build({
+      stored: job({ status: JobStatus.TIMED_OUT, stage: JobStage.VALIDATING }),
+      logger,
+    });
+
+    await service.retryJob(actor, "j1");
+
+    expect(logger.entries).toEqual([
+      {
+        level: "info",
+        event: "job.queued",
+        fields: { jobId: "j1", userId: "u1", type: "CSV_IMPORT", attempt: 2 },
+      },
+    ]);
+  });
+
+  it("logs nothing when the request is refused", async () => {
+    const logger = capturingLogger();
+    const { service } = build({
+      stored: job({ status: JobStatus.COMPLETED, stage: JobStage.APPLYING }),
+      logger,
+    });
+
+    await service.cancelJob(actor, "j1").catch(() => undefined);
+    await service.retryJob(actor, "j1").catch(() => undefined);
+
+    expect(logger.entries).toEqual([]);
   });
 });

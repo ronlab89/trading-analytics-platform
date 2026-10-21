@@ -3,6 +3,9 @@ import type { Job, JobRepository, JobType } from "@trading/domain";
 import type { Actor } from "./actor.js";
 import type { Clock } from "./clock.js";
 import { ConflictError, NotFoundError } from "./errors.js";
+import { JOB_EVENTS, jobLogFields } from "./job-events.js";
+import { silentLogger } from "./logger.js";
+import type { Logger } from "./logger.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import { assertPortfolioWritable } from "./portfolio-guard.js";
 import type { RolePermissions } from "./permissions.js";
@@ -16,6 +19,8 @@ export interface JobServiceDependencies {
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
   /** Source of "now" for `queuedAt`, `deadlineAt` and `finishedAt` (ADR-001 point 8). */
   clock: Clock;
+  /** Writes the job lifecycle events; defaults to a logger that drops them. */
+  logger?: Logger;
   /** Timeout per attempt for each job type, in milliseconds. */
   timeoutMs?: Readonly<Record<JobType, number>>;
   /** Role matrix; defaults to the application matrix. Tests inject a restricted one. */
@@ -43,6 +48,7 @@ export function createJobService(dependencies: JobServiceDependencies) {
     jobRepository,
     portfolioService,
     clock,
+    logger = silentLogger,
     timeoutMs = { CSV_IMPORT: DEFAULT_JOB_TIMEOUT_MS },
     permissions = ROLE_PERMISSIONS,
   } = dependencies;
@@ -83,7 +89,10 @@ export function createJobService(dependencies: JobServiceDependencies) {
 
     validateNewJob(input);
 
-    return jobRepository.create(input);
+    const created = await jobRepository.create(input);
+    logger.info(JOB_EVENTS.queued, jobLogFields(created));
+
+    return created;
   }
 
   /** Returns one job of the actor. */
@@ -113,6 +122,8 @@ export function createJobService(dependencies: JobServiceDependencies) {
     if (!cancelled) {
       throw new ConflictError("The job can no longer be cancelled.");
     }
+
+    logger.info(JOB_EVENTS.cancelled, jobLogFields(cancelled, { stage: job.stage }));
 
     return cancelled;
   }
@@ -151,6 +162,8 @@ export function createJobService(dependencies: JobServiceDependencies) {
     if (!queued) {
       throw new ConflictError("The job cannot be retried.");
     }
+
+    logger.info(JOB_EVENTS.queued, jobLogFields(queued));
 
     return queued;
   }

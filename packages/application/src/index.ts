@@ -10,6 +10,7 @@ export * from "./asset-service.js";
 export * from "./clock.js";
 export * from "./decision-service.js";
 export * from "./errors.js";
+export * from "./job-events.js";
 export * from "./job-runner.js";
 export * from "./job-service.js";
 export * from "./logger.js";

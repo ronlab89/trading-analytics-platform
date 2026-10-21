@@ -8,6 +8,7 @@ import {
   createJobRunner,
 } from "./job-runner.js";
 import type { JobHandler } from "./job-runner.js";
+import { capturingLogger } from "./logger.js";
 
 const START = new Date("2026-03-01T12:00:00Z");
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -672,5 +673,161 @@ describe("job runner: shutdown", () => {
     await settle();
 
     await expect(runner.stop()).resolves.toBeUndefined();
+  });
+});
+
+describe("job runner: log events", () => {
+  function buildLogged(
+    initial: Job[],
+    makeHandler: (r: Pick<JobRepository, "transition">) => JobHandler,
+  ) {
+    const logger = capturingLogger();
+    const { repository, get } = fakeRepository(initial);
+    const runner = createJobRunner({
+      jobRepository: repository,
+      handlers: { CSV_IMPORT: makeHandler(repository) },
+      clock,
+      logger,
+      pollIntervalMs: 1000,
+    });
+    const events = () => logger.entries.map((entry) => entry.event);
+
+    return { runner, logger, repository, get, events };
+  }
+
+  it("logs job.started and job.completed for a job that runs, both with the jobId", async () => {
+    const { runner, logger, events } = buildLogged([queuedJob("j1")], okHandler);
+
+    runner.start();
+    await settle();
+
+    expect(events()).toEqual(["job.started", "job.completed"]);
+    expect(logger.entries.every((entry) => entry.fields.jobId === "j1")).toBe(true);
+    expect(logger.entries[0]?.fields).toMatchObject({
+      userId: "u1",
+      type: "CSV_IMPORT",
+      attempt: 1,
+    });
+    await runner.stop();
+  });
+
+  it("logs job.failed with the reason when the rows are invalid", async () => {
+    const { runner, logger, events } = buildLogged([queuedJob("j1")], () => ({
+      validate: () => Promise.resolve({ total: 1, errors: [{ row: 1, message: "bad" }] }),
+      apply: () => Promise.resolve(),
+    }));
+
+    runner.start();
+    await settle();
+
+    expect(events()).toEqual(["job.started", "job.failed"]);
+    expect(logger.entries[1]).toMatchObject({
+      level: "warn",
+      fields: {
+        jobId: "j1",
+        reason: JobFailureReason.VALIDATION_FAILED,
+        stage: JobStage.VALIDATING,
+      },
+    });
+    await runner.stop();
+  });
+
+  it("logs job.failed with APPLY_ERROR when the apply breaks", async () => {
+    const { runner, logger } = buildLogged([queuedJob("j1")], () => ({
+      validate: () => Promise.resolve({ total: 1, errors: [] }),
+      apply: () => Promise.reject(new Error("db down")),
+    }));
+
+    runner.start();
+    await settle();
+
+    expect(logger.entries.at(-1)).toMatchObject({
+      event: "job.failed",
+      fields: { reason: JobFailureReason.APPLY_ERROR, stage: JobStage.APPLYING },
+    });
+    await runner.stop();
+  });
+
+  it("logs job.timed_out for a queued job past its deadline", async () => {
+    const { runner, logger } = buildLogged(
+      [queuedJob("old", { queuedAt: new Date(START.getTime() - 2 * FIVE_MINUTES) })],
+      okHandler,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(logger.entries).toHaveLength(1);
+    expect(logger.entries[0]).toMatchObject({
+      level: "warn",
+      event: "job.timed_out",
+      fields: { jobId: "old", stage: JobStage.QUEUED },
+    });
+    await runner.stop();
+  });
+
+  it("logs job.timed_out in the validating stage when validation outlasts the deadline", async () => {
+    const gate = deferred();
+    const { runner, logger } = buildLogged([queuedJob("j1")], () => ({
+      validate: async () => {
+        await gate.promise;
+        return { total: 1, errors: [] };
+      },
+      apply: () => Promise.resolve(),
+    }));
+
+    runner.start();
+    await vi.advanceTimersByTimeAsync(FIVE_MINUTES + 1);
+
+    expect(logger.entries.at(-1)).toMatchObject({
+      event: "job.timed_out",
+      fields: { jobId: "j1", stage: JobStage.VALIDATING },
+    });
+
+    gate.resolve();
+    await settle();
+    await runner.stop();
+  });
+
+  it("logs job.failed with INTERRUPTED for a job recovered on startup", async () => {
+    const { runner, logger } = buildLogged(
+      [queuedJob("stuck", { status: JobStatus.PROCESSING, stage: JobStage.APPLYING })],
+      okHandler,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(logger.entries).toHaveLength(1);
+    expect(logger.entries[0]).toMatchObject({
+      event: "job.failed",
+      fields: { jobId: "stuck", reason: JobFailureReason.INTERRUPTED },
+    });
+    await runner.stop();
+  });
+
+  it("logs no outcome for a job that lost the race to a cancel", async () => {
+    const gate = deferred();
+    const { runner, repository, events } = buildLogged([queuedJob("j1")], () => ({
+      validate: async () => {
+        await gate.promise;
+        return { total: 1, errors: [] };
+      },
+      apply: () => Promise.resolve(),
+    }));
+
+    runner.start();
+    await settle();
+    await repository.transition({
+      id: "j1",
+      expected: { status: JobStatus.PROCESSING, stage: JobStage.VALIDATING, attempt: 1 },
+      patch: { status: JobStatus.CANCELLED, finishedAt: new Date() },
+      updatedAt: new Date(),
+    });
+    gate.resolve();
+    await settle();
+
+    expect(events()).toEqual(["job.started"]);
+    await runner.stop();
   });
 });
