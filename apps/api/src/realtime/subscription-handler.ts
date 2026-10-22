@@ -15,6 +15,11 @@ export interface SubscriptionHandlerOptions {
 
 export interface SubscriptionHandler {
   handleMessage: RealtimeMessageHandler;
+  /**
+   * Re-authorizes every subscription of a connection that re-authenticated and
+   * drops, with a `FORBIDDEN_CHANNEL` error each, the ones it no longer holds.
+   */
+  handleReauthenticated: (connection: RealtimeConnection) => Promise<void>;
   /** Drops every subscription of a connection that closed. */
   handleConnectionClosed: (connection: RealtimeConnection) => void;
 }
@@ -52,6 +57,7 @@ export function createSubscriptionHandler(
   async function isAllowed(
     connection: RealtimeConnection,
     channel: NonNullable<ReturnType<typeof parseChannel>>,
+    messageType: string,
   ): Promise<boolean> {
     try {
       return await authorizer.canSubscribe(
@@ -62,7 +68,7 @@ export function createSubscriptionHandler(
       logger.error(LOG_EVENTS.realtimeHandlerFailed, {
         connectionId: connection.id,
         userId: connection.userId,
-        messageType: "SUBSCRIBE",
+        messageType,
         error: error instanceof Error ? error.message : String(error),
       });
       return false;
@@ -95,7 +101,7 @@ export function createSubscriptionHandler(
       return;
     }
 
-    const allowed = await isAllowed(connection, channel);
+    const allowed = await isAllowed(connection, channel, "SUBSCRIBE");
 
     // The socket may have closed while the authorization ran: subscribe nothing then.
     if (!connection.isOpen()) {
@@ -121,7 +127,31 @@ export function createSubscriptionHandler(
     connection.send({ type: "ACK", request: "UNSUBSCRIBE", channel: name });
   }
 
+  async function revalidate(connection: RealtimeConnection): Promise<void> {
+    for (const name of hub.channelsOf(connection)) {
+      const channel = parseChannel(name);
+      // Fail closed: a channel that cannot be parsed or authorized is dropped.
+      const allowed = channel !== null && (await isAllowed(connection, channel, "AUTHENTICATE"));
+
+      if (!connection.isOpen()) {
+        return;
+      }
+
+      if (!allowed) {
+        hub.unsubscribe(connection, name);
+        logger.warn(LOG_EVENTS.realtimeSubscriptionRefused, {
+          connectionId: connection.id,
+          userId: connection.userId,
+          channel: name,
+          reason: "reauthentication",
+        });
+        fail(connection, "FORBIDDEN_CHANNEL", "Channel not available.", name);
+      }
+    }
+  }
+
   return {
+    handleReauthenticated: revalidate,
     handleMessage: async (connection, message) => {
       if (message.type === "SUBSCRIBE") {
         await subscribe(connection, message.channel);

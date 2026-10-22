@@ -50,6 +50,7 @@ const realtimeGateway = createRealtimeGateway({
   logger,
   newId: randomUUID,
   handleMessage: subscriptions.handleMessage,
+  onReauthenticated: subscriptions.handleReauthenticated,
   onConnectionClosed: subscriptions.handleConnectionClosed,
 });
 // Connections close with 1001 before the HTTP server drains (ADR-007 point 16).

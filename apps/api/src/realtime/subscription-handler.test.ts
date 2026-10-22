@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { capturingLogger } from "@trading/application";
 import type { ChannelAuthorizer } from "@trading/application";
+import type { UserRole } from "@trading/domain";
 import { FakeTransport } from "./fake-transport.js";
 import type { FakeSocket } from "./fake-transport.js";
 import { createRealtimeGateway } from "./realtime-gateway.js";
@@ -32,21 +33,26 @@ function setup(options: { canSubscribe?: ChannelAuthorizer["canSubscribe"]; max?
   let counter = 0;
   createRealtimeGateway({
     transport,
-    authenticate: (token) => ({
-      userId: token,
-      role: "TRADER",
-      expiresAt: new Date(Date.now() + 600_000),
-    }),
+    // A token is `userId` or `userId:ROLE`.
+    authenticate: (token) => {
+      const [userId = "", role = "TRADER"] = token.split(":");
+      return {
+        userId,
+        role: role as UserRole,
+        expiresAt: new Date(Date.now() + 600_000),
+      };
+    },
     clock: { now: () => new Date() },
     logger,
     newId: () => `c${(++counter).toString()}`,
     handleMessage: handler.handleMessage,
+    onReauthenticated: handler.handleReauthenticated,
     onConnectionClosed: handler.handleConnectionClosed,
   }).start();
 
-  function connect(userId = "u1"): FakeSocket {
+  function connect(token = "u1"): FakeSocket {
     const socket = transport.connect();
-    socket.receive({ type: "AUTHENTICATE", accessToken: userId });
+    socket.receive({ type: "AUTHENTICATE", accessToken: token });
     socket.sent.length = 0;
     return socket;
   }
@@ -288,5 +294,100 @@ describe("ordering and cleanup", () => {
 
     expect(subscribed.replies()).toHaveLength(1);
     expect(other.replies()).toHaveLength(0);
+  });
+});
+
+describe("re-authentication", () => {
+  // A VIEWER may not see portfolios any more; everything else stays open.
+  const byRole: ChannelAuthorizer["canSubscribe"] = (actor, channel) =>
+    Promise.resolve(!(channel.kind === "portfolio" && actor.role === "VIEWER"));
+
+  it("drops the subscriptions the new role no longer holds and keeps the others", async () => {
+    const { hub, connect } = setup({ canSubscribe: byRole });
+    const socket = connect("u1:TRADER");
+    socket.receive(subscribe("portfolio:p1"));
+    socket.receive(subscribe("market:a1"));
+    await settle();
+    socket.sent.length = 0;
+
+    socket.receive({ type: "AUTHENTICATE", accessToken: "u1:VIEWER" });
+    await settle();
+    hub.publish({ type: "PORTFOLIO_UPDATED", channel: "portfolio:p1", payload: {} });
+    hub.publish({ type: "MARKET_PRICE_UPDATED", channel: "market:a1", payload: {} });
+
+    expect(socket.replies().map((message) => (message as { type: string }).type)).toEqual([
+      "ACK",
+      "ERROR",
+      "MARKET_PRICE_UPDATED",
+    ]);
+    expect(socket.replies()[1]).toMatchObject({
+      code: "FORBIDDEN_CHANNEL",
+      channel: "portfolio:p1",
+    });
+    expect(socket.closedWith).toBeUndefined();
+  });
+
+  it("keeps everything when the role still holds the subscriptions", async () => {
+    const { hub, connect } = setup({ canSubscribe: byRole });
+    const socket = connect("u1:TRADER");
+    socket.receive(subscribe("portfolio:p1"));
+    await settle();
+    socket.sent.length = 0;
+
+    socket.receive({ type: "AUTHENTICATE", accessToken: "u1:TRADER" });
+    await settle();
+    hub.publish({ type: "PORTFOLIO_UPDATED", channel: "portfolio:p1", payload: {} });
+
+    expect(socket.replies().map((message) => (message as { type: string }).type)).toEqual([
+      "ACK",
+      "PORTFOLIO_UPDATED",
+    ]);
+  });
+
+  it("uses the new role for the subscriptions that follow", async () => {
+    const { connect } = setup({ canSubscribe: byRole });
+    const socket = connect("u1:TRADER");
+    socket.receive({ type: "AUTHENTICATE", accessToken: "u1:VIEWER" });
+    socket.receive(subscribe("portfolio:p1"));
+    await settle();
+
+    expect(socket.replies().at(-1)).toMatchObject({ type: "ERROR", code: "FORBIDDEN_CHANNEL" });
+  });
+
+  it("drops every subscription when the authorization fails during revalidation", async () => {
+    let fails = false;
+    const { hub, connect } = setup({
+      canSubscribe: () => (fails ? Promise.reject(new Error("db down")) : Promise.resolve(true)),
+    });
+    const socket = connect("u1");
+    socket.receive(subscribe("portfolio:p1"));
+    await settle();
+    fails = true;
+
+    socket.receive({ type: "AUTHENTICATE", accessToken: "u1" });
+    await settle();
+
+    expect(hub.channelsOf({ userId: "u1", send: () => true })).toEqual([]);
+  });
+});
+
+describe("slow consumer", () => {
+  it("closes the slow socket with 4008 and still delivers to the others", async () => {
+    const { hub, connect } = setup();
+    const slow = connect("u1");
+    const healthy = connect("u2");
+    slow.receive(subscribe("market:a1"));
+    healthy.receive(subscribe("market:a1"));
+    await settle();
+    slow.sent.length = 0;
+    healthy.sent.length = 0;
+    slow.bufferedAmount = 1_048_576;
+
+    hub.publish({ type: "MARKET_PRICE_UPDATED", channel: "market:a1", payload: {} });
+    hub.publish({ type: "MARKET_PRICE_UPDATED", channel: "market:a1", payload: {} });
+
+    expect(slow.closedWith?.code).toBe(4008);
+    expect(slow.sent).toHaveLength(0);
+    expect(healthy.replies()).toHaveLength(2);
   });
 });

@@ -19,7 +19,8 @@ export type RealtimeLimits = Record<keyof typeof REALTIME_LIMITS, number>;
 export interface RealtimeConnection {
   readonly id: string;
   readonly userId: string;
-  readonly role: UserRole;
+  /** Refreshed by every re-authentication, which carries the current role. */
+  role: UserRole;
   /** Sends a JSON message; false when the socket is closed or the send closed it. */
   send: (message: unknown) => boolean;
   close: (code: number, reason: string) => void;
@@ -47,6 +48,12 @@ export interface RealtimeGatewayOptions {
   /** Overrides the limits of version 1; tests shorten the timers. */
   limits?: Partial<RealtimeLimits>;
   handleMessage?: RealtimeMessageHandler;
+  /**
+   * Called after a connection re-authenticates with a new token of the same
+   * user, once its `role` is refreshed. It runs in order with the connection's
+   * other messages.
+   */
+  onReauthenticated?: (connection: RealtimeConnection) => void | Promise<void>;
   /** Called once when an authenticated connection closes, whoever closed it. */
   onConnectionClosed?: (connection: RealtimeConnection) => void;
 }
@@ -70,8 +77,16 @@ const MAX_TIMER_MS = 2_147_483_647;
  * sockets per user stay open: the new one beyond the cap is the one closed.
  */
 export function createRealtimeGateway(options: RealtimeGatewayOptions): RealtimeGateway {
-  const { transport, authenticate, clock, logger, newId, handleMessage, onConnectionClosed } =
-    options;
+  const {
+    transport,
+    authenticate,
+    clock,
+    logger,
+    newId,
+    handleMessage,
+    onReauthenticated,
+    onConnectionClosed,
+  } = options;
   const limits: RealtimeLimits = { ...REALTIME_LIMITS, ...options.limits };
   const registry = createConnectionRegistry<RealtimeConnection>();
   const open = new Set<{ close: (code: number, reason: string) => void }>();
@@ -140,6 +155,17 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions): Realtime
       }, delay);
     }
 
+    /** Runs async work of this connection after the work queued before it. */
+    function enqueue(messageType: string, task: () => void | Promise<void>): void {
+      inbound = inbound.then(task).catch((error: unknown) => {
+        logger.error(LOG_EVENTS.realtimeHandlerFailed, {
+          ...fields(),
+          messageType,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
+
     function handleAuthenticate(accessToken: string): void {
       let identity;
       try {
@@ -174,6 +200,13 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions): Realtime
         // A token of another user never takes over a socket.
         rejectAuthentication();
         return;
+      } else {
+        // The new token carries the current role: it replaces the one the socket had.
+        connection.role = identity.role;
+        const refreshed = connection;
+        if (onReauthenticated) {
+          enqueue("AUTHENTICATE", () => onReauthenticated(refreshed));
+        }
       }
 
       bindToExpiry(identity.expiresAt);
@@ -230,15 +263,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions): Realtime
         close(REALTIME_CLOSE_CODES.UNAUTHENTICATED, "Authentication required.");
       } else if (handleMessage) {
         const current = connection;
-        inbound = inbound
-          .then(() => handleMessage(current, message))
-          .catch((error: unknown) => {
-            logger.error(LOG_EVENTS.realtimeHandlerFailed, {
-              ...fields(),
-              messageType: message.type,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          });
+        enqueue(message.type, () => handleMessage(current, message));
       } else {
         fail("INVALID_MESSAGE", "Message not supported.");
       }
