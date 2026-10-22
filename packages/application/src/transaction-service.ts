@@ -21,6 +21,10 @@ import type {
 import type { Actor } from "./actor.js";
 import type { Clock } from "./clock.js";
 import { NotFoundError } from "./errors.js";
+import { silentLogger } from "./logger.js";
+import type { Logger } from "./logger.js";
+import { publishQuietly } from "./publish-quietly.js";
+import type { RealtimePublisher } from "./realtime-publisher.js";
 import { ROLE_PERMISSIONS, assertPermission } from "./permissions.js";
 import { assertPortfolioWritable } from "./portfolio-guard.js";
 import type { RolePermissions } from "./permissions.js";
@@ -38,6 +42,14 @@ export interface TransactionServiceDependencies {
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
   /** Source of "now" for the future-execution-date invariant (ADR-001 point 8). */
   clock: Clock;
+  /**
+   * Publishes `PORTFOLIO_UPDATED` after a transaction committed (ADR-007 point
+   * 6); without one, nothing is published. A publish that fails is logged and
+   * never changes the result.
+   */
+  realtimePublisher?: Pick<RealtimePublisher, "portfolioUpdated">;
+  /** Receives the warning of a failed publish; defaults to a logger that drops it. */
+  logger?: Logger;
   /** Role matrix; defaults to the application matrix. Tests inject a restricted one. */
   permissions?: RolePermissions;
 }
@@ -75,6 +87,8 @@ export function createTransactionService(dependencies: TransactionServiceDepende
     unitOfWork,
     portfolioService,
     clock,
+    realtimePublisher,
+    logger = silentLogger,
     permissions = ROLE_PERMISSIONS,
   } = dependencies;
 
@@ -186,7 +200,7 @@ export function createTransactionService(dependencies: TransactionServiceDepende
 
     validateNewTransaction(createInput, clock.now());
 
-    return unitOfWork.run(async (repositories) => {
+    const created = await unitOfWork.run(async (repositories) => {
       const { transactions, positions } = repositories;
 
       // Serializes concurrent creations on this asset, so two SELLs cannot both
@@ -252,6 +266,18 @@ export function createTransactionService(dependencies: TransactionServiceDepende
 
       return result;
     });
+
+    // Only after the unit of work committed: a rolled-back creation publishes nothing.
+    if (realtimePublisher) {
+      await publishQuietly(
+        logger,
+        "PORTFOLIO_UPDATED",
+        { portfolioId, transactionId: created.transaction.id },
+        () => realtimePublisher.portfolioUpdated(portfolioId, "TRANSACTION_COMMITTED"),
+      );
+    }
+
+    return created;
   }
 
   return { listTransactions, getTransactionById, createTransaction };

@@ -90,7 +90,10 @@ export interface JobRunnerDependencies {
    * progress while validating, `COMPLETED` and `FAILED`. Without one, nothing
    * is published. A publish that fails is logged and never changes the job.
    */
-  realtimePublisher?: Pick<RealtimePublisher, "jobProgressUpdated" | "jobCompleted" | "jobFailed">;
+  realtimePublisher?: Pick<
+    RealtimePublisher,
+    "jobProgressUpdated" | "jobCompleted" | "jobFailed" | "portfolioUpdated"
+  >;
   pollIntervalMs?: number;
   shutdownGraceMs?: number;
 }
@@ -284,6 +287,12 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
       await handler.apply(job, context);
       logger.info(JOB_EVENTS.completed, jobLogFields(job));
       const completed = { ...job, status: JobStatus.COMPLETED, failureReason: null };
+      // Holdings changed only if the import wrote rows.
+      if (completed.total > 0) {
+        await publish("PORTFOLIO_UPDATED", completed, (publisher) =>
+          publisher.portfolioUpdated(completed.portfolioId, "IMPORT_COMMITTED"),
+        );
+      }
       await publish("JOB_COMPLETED", completed, (publisher) => publisher.jobCompleted(completed));
       await announce(completed);
     } catch (error) {

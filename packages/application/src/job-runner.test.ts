@@ -969,7 +969,10 @@ describe("job runner: realtime events", () => {
   function buildPublishing(
     initial: Job[],
     makeHandler: (r: Pick<JobRepository, "transition">) => JobHandler,
-    publisher: Pick<RealtimePublisher, "jobProgressUpdated" | "jobCompleted" | "jobFailed">,
+    publisher: Pick<
+      RealtimePublisher,
+      "jobProgressUpdated" | "jobCompleted" | "jobFailed" | "portfolioUpdated"
+    >,
   ) {
     const logger = capturingLogger();
     const { repository, get } = fakeRepository(initial);
@@ -985,7 +988,7 @@ describe("job runner: realtime events", () => {
     return { runner, logger, get, repository };
   }
 
-  it("publishes the progress while validating and then the completion, in order", async () => {
+  it("publishes the progress, the portfolio change and then the completion, in order", async () => {
     const publisher = capturingRealtimePublisher();
     const { runner } = buildPublishing([queuedJob("j1")], okHandler, publisher);
 
@@ -994,14 +997,68 @@ describe("job runner: realtime events", () => {
 
     expect(publisher.published.map((event) => event.type)).toEqual([
       "JOB_PROGRESS_UPDATED",
+      "PORTFOLIO_UPDATED",
       "JOB_COMPLETED",
     ]);
     expect(publisher.published[0]).toMatchObject({
       job: { id: "j1", status: JobStatus.PROCESSING, processed: 1, total: 3 },
     });
-    expect(publisher.published[1]).toMatchObject({
+    expect(publisher.published[2]).toMatchObject({
       job: { id: "j1", status: JobStatus.COMPLETED, total: 3 },
     });
+    await runner.stop();
+  });
+
+  it("publishes PORTFOLIO_UPDATED with IMPORT_COMMITTED when the import wrote rows", async () => {
+    const publisher = capturingRealtimePublisher();
+    const { runner } = buildPublishing([queuedJob("j1")], okHandler, publisher);
+
+    runner.start();
+    await settle();
+
+    expect(publisher.published).toContainEqual({
+      type: "PORTFOLIO_UPDATED",
+      portfolioId: "p1",
+      reason: "IMPORT_COMMITTED",
+    });
+    await runner.stop();
+  });
+
+  it("publishes no PORTFOLIO_UPDATED when the import wrote nothing", async () => {
+    const publisher = capturingRealtimePublisher();
+    const { runner } = buildPublishing(
+      [queuedJob("j1")],
+      (repository) => ({
+        validate: () => Promise.resolve({ total: 0, errors: [] }),
+        apply: async (_job, context) => {
+          await context.complete(repository);
+        },
+      }),
+      publisher,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(publisher.published.map((event) => event.type)).toEqual(["JOB_COMPLETED"]);
+    await runner.stop();
+  });
+
+  it("publishes nothing about the portfolio when the apply fails", async () => {
+    const publisher = capturingRealtimePublisher();
+    const { runner } = buildPublishing(
+      [queuedJob("j1")],
+      () => ({
+        validate: () => Promise.resolve({ total: 1, errors: [] }),
+        apply: () => Promise.reject(new Error("db down")),
+      }),
+      publisher,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(publisher.published.map((event) => event.type)).toEqual(["JOB_FAILED"]);
     await runner.stop();
   });
 
@@ -1130,6 +1187,7 @@ describe("job runner: realtime events", () => {
         throw new Error("hub gone");
       },
       jobFailed: () => Promise.reject(new Error("socket gone")),
+      portfolioUpdated: () => Promise.reject(new Error("socket gone")),
     };
     const { runner, logger, get } = buildPublishing([queuedJob("j1")], okHandler, failing);
 
@@ -1141,6 +1199,7 @@ describe("job runner: realtime events", () => {
       logger.entries.filter((entry) => entry.event === "realtime.publish_failed"),
     ).toMatchObject([
       { level: "warn", fields: { event: "JOB_PROGRESS_UPDATED", jobId: "j1" } },
+      { level: "warn", fields: { event: "PORTFOLIO_UPDATED", jobId: "j1" } },
       { level: "warn", fields: { event: "JOB_COMPLETED", jobId: "j1", error: "hub gone" } },
     ]);
     await runner.stop();
