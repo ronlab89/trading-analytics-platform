@@ -15,6 +15,7 @@ export const JOB_EVENTS = {
   failed: "job.failed",
   cancelled: "job.cancelled",
   timedOut: "job.timed_out",
+  notificationFailed: "job.notification_failed",
 } as const;
 
 /** The correlation field `jobId` (ADR-009 point 5) with the identifiers that locate the attempt. */
