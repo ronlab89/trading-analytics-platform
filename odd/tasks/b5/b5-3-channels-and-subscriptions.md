@@ -23,7 +23,7 @@ odd/tasks/b5/**
 
 ## Tasks
 
-- [ ] T1 `ChannelAuthorizer` with permission and ownership, tested with fake repositories.
+- [x] T1 `ChannelAuthorizer` with permission and ownership, tested with fake repositories. `canSubscribe(actor, channel)` returns a boolean, so a missing, foreign or forbidden channel is indistinguishable; `SubscriptionChannel` mirrors the contracts' `RealtimeChannel` (application does not depend on contracts). Pending: user runs the checks and commits.
 - [ ] T2 Hub with per-channel `sequence` and `epoch`, and the `RealtimePublisher` adapter.
 - [ ] T3 `SUBSCRIBE` and `UNSUBSCRIBE` handling, the 50-subscription limit and the `ERROR` codes.
 - [ ] T4 Re-authentication revalidation and the outbound buffer closing a slow socket.

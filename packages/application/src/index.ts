@@ -8,6 +8,7 @@ export * from "./range-attribution-service.js";
 export type { AnalyticsPeriod } from "./portfolio-series.js";
 export { SERIES_BUILT_EVENT } from "./portfolio-series.js";
 export * from "./asset-service.js";
+export * from "./channel-authorizer.js";
 export * from "./clock.js";
 export * from "./csv-import.js";
 export * from "./csv-import-handler.js";
