@@ -4,8 +4,6 @@ Source: roadmap B5; ADR-007 points 1, 2, 11, 15 and 16; ADR-005 point 13; ADR-00
 
 Working rules: tiny tasks, each approved by the user before any edit (or delegated for the whole slice); no subagents; the user runs tests, lint and commits unless asked.
 
-Provisional: the tasks below come from the roadmap and are re-verified against the code, and split further, when the slice starts.
-
 ## Allowed edit surfaces
 
 apps/api/src/realtime/**
@@ -29,11 +27,11 @@ odd/tasks/b5/**
 
 ## Tasks
 
-- [ ] T1 Transport port, `ws` adapter on `/ws`, connection registry, `ws` and its types added.
-- [ ] T2 Authentication handshake with the 5-second timeout and the `ACK` or `ERROR` reply.
-- [ ] T3 Token expiry binding, re-authentication and the `sub` check.
-- [ ] T4 Message size and rate limits, ping/pong heartbeat, outbound buffer limit.
-- [ ] T5 Per-user connection cap, the shutdown step, and the `realtime.*` log events.
+- [x] T1 Transport port, `ws` adapter on `/ws`, connection registry, `ws` and its types added.
+- [x] T2 Authentication handshake with the 5-second timeout and the `ACK` or `ERROR` reply.
+- [x] T3 Token expiry binding, re-authentication and the `sub` check.
+- [x] T4 Message size and rate limits, ping/pong heartbeat, outbound buffer limit.
+- [x] T5 Per-user connection cap, the shutdown step, and the `realtime.*` log events.
 
 ## Done when
 
@@ -48,3 +46,16 @@ Items 2 (authentication and guards), 4 (timers, ordering, concurrent connections
 pnpm typecheck, pnpm lint, pnpm test.
 
 ## Log
+
+- 2026-10-21 - Decisions of B5.2:
+  - The transport port (`transport.ts`) is the only surface the gateway sees; `ws-transport.ts` is the only file that imports `ws`. The adapter runs with `noServer` and takes the `upgrade` event of the API's HTTP server, so it shares the port and drops any path but `/ws`. It is created before `startServer` and attached to the server it returns, so its shutdown step registers before the HTTP step.
+  - A message over 64 KiB is closed by `ws` itself with `1009` (message too big), as `08-realtime-spec.md` already says; the gateway does not close it with `4008`. Tested with a real client: 64 KiB passes, 64 KiB + 1 closes with `1009`.
+  - Before authentication, anything but a valid `AUTHENTICATE` gets an `ERROR` and closes with `4001`. After it, a bad message gets `INVALID_MESSAGE` and the socket stays open.
+  - An invalid token on a re-authentication, or a token of another user, replies `INVALID_TOKEN` and closes with `4001`.
+  - The per-user cap counts authenticated sockets only, and the new one over the cap is the one closed with `4008`, with no `ERROR` reply.
+  - The heartbeat pings every 30 s; the third tick with the first two pings unanswered closes with `4008`.
+  - The outbound buffer limit is checked before each send through `connection.send`: past 1 MB the socket closes with `4008` and the message is dropped. B5.3 and B5.4 send through it.
+  - `SUBSCRIBE` and `UNSUBSCRIBE` of an authenticated socket go to an optional `handleMessage`; without one the reply is `INVALID_MESSAGE`. B5.3 installs the handler.
+  - The expiry comes from `exp` of the verified token (`access-token-authenticator.ts`), so a token is valid on `/ws` exactly when it is valid on an HTTP request.
+  - Log events: `realtime.connection.opened`, `.authenticated`, `.auth_failed`, `.rejected`, `.limit_exceeded`, `.closed`; each carries `connectionId` and, once known, `userId`. The token is never logged.
+  - Not run: the process was not started against PostgreSQL; the shutdown sequence is covered by the gateway and transport tests, not by a SIGTERM against the real process.

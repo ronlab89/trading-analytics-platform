@@ -28,4 +28,10 @@ export const LOG_EVENTS = {
   jobCancelled: JOB_EVENTS.cancelled,
   jobTimedOut: JOB_EVENTS.timedOut,
   jobNotificationFailed: JOB_EVENTS.notificationFailed,
+  realtimeConnectionOpened: "realtime.connection.opened",
+  realtimeConnectionAuthenticated: "realtime.connection.authenticated",
+  realtimeConnectionAuthFailed: "realtime.connection.auth_failed",
+  realtimeConnectionRejected: "realtime.connection.rejected",
+  realtimeConnectionLimitExceeded: "realtime.connection.limit_exceeded",
+  realtimeConnectionClosed: "realtime.connection.closed",
 } as const;
