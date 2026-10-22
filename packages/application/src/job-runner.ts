@@ -5,6 +5,8 @@ import { JOB_EVENTS, jobLogFields } from "./job-events.js";
 import type { JobNotifier } from "./job-notifier.js";
 import { silentLogger } from "./logger.js";
 import type { Logger } from "./logger.js";
+import { publishQuietly } from "./publish-quietly.js";
+import type { RealtimePublisher } from "./realtime-publisher.js";
 
 /** A background pass that fails is retried by the next poll; there is no caller to tell. */
 const ignore = (): void => undefined;
@@ -83,6 +85,12 @@ export interface JobRunnerDependencies {
   logger?: Logger;
   /** Tells the owner how a job ended; without one, nobody is notified. */
   notifier?: JobNotifier;
+  /**
+   * Publishes the job events after each change committed (ADR-007 point 15):
+   * progress while validating, `COMPLETED` and `FAILED`. Without one, nothing
+   * is published. A publish that fails is logged and never changes the job.
+   */
+  realtimePublisher?: Pick<RealtimePublisher, "jobProgressUpdated" | "jobCompleted" | "jobFailed">;
   pollIntervalMs?: number;
   shutdownGraceMs?: number;
 }
@@ -106,6 +114,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     clock,
     logger = silentLogger,
     notifier,
+    realtimePublisher,
     pollIntervalMs = DEFAULT_JOB_POLL_INTERVAL_MS,
     shutdownGraceMs = DEFAULT_JOB_SHUTDOWN_GRACE_MS,
   } = dependencies;
@@ -135,6 +144,17 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
       await notifier?.jobFinished(finished);
     } catch {
       logger.warn(JOB_EVENTS.notificationFailed, jobLogFields(finished));
+    }
+  }
+
+  /** Publishes a job event; `CANCELLED` and `TIMED_OUT` never reach here (ADR-007 point 15). */
+  async function publish(
+    event: string,
+    job: Job,
+    send: (publisher: NonNullable<typeof realtimePublisher>) => Promise<void>,
+  ): Promise<void> {
+    if (realtimePublisher) {
+      await publishQuietly(logger, event, jobLogFields(job), () => send(realtimePublisher));
     }
   }
 
@@ -239,6 +259,7 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
 
     if (failed) {
       logger.warn(JOB_EVENTS.failed, jobLogFields(job, { reason, stage: job.stage }));
+      await publish("JOB_FAILED", failed, (publisher) => publisher.jobFailed(failed));
       await announce(failed);
     }
   }
@@ -262,7 +283,9 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
     try {
       await handler.apply(job, context);
       logger.info(JOB_EVENTS.completed, jobLogFields(job));
-      await announce({ ...job, status: JobStatus.COMPLETED, failureReason: null });
+      const completed = { ...job, status: JobStatus.COMPLETED, failureReason: null };
+      await publish("JOB_COMPLETED", completed, (publisher) => publisher.jobCompleted(completed));
+      await announce(completed);
     } catch (error) {
       if (error instanceof JobSupersededError) {
         return;
@@ -303,7 +326,14 @@ export function createJobRunner(dependencies: JobRunnerDependencies) {
           updatedAt: clock.now(),
         });
 
-        return updated !== null;
+        if (updated === null) {
+          return false;
+        }
+
+        await publish("JOB_PROGRESS_UPDATED", updated, (publisher) =>
+          publisher.jobProgressUpdated(updated),
+        );
+        return true;
       };
 
       let result: JobValidationResult;

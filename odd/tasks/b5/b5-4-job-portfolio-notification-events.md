@@ -24,7 +24,7 @@ odd/tasks/b5/**
 
 ## Tasks
 
-- [ ] T1 Job events from the runner, with the publisher as an optional dependency.
+- [x] T1 Job events from the runner, with the publisher as an optional dependency. `publishQuietly` (application) logs `realtime.publish_failed` and never propagates; the runner publishes progress, completion and failure after each committed change.
 - [ ] T2 `PORTFOLIO_UPDATED` after `createTransaction` and after the import apply.
 - [ ] T3 `NOTIFICATION_CREATED` from the notification creation path.
 - [ ] T4 Publish failures are caught, logged and never propagate; tests with a publisher that throws.

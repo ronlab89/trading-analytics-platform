@@ -9,6 +9,8 @@ import {
 } from "./job-runner.js";
 import type { JobHandler } from "./job-runner.js";
 import { capturingLogger } from "./logger.js";
+import { capturingRealtimePublisher } from "./realtime-publisher.js";
+import type { RealtimePublisher } from "./realtime-publisher.js";
 
 const START = new Date("2026-03-01T12:00:00Z");
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -959,6 +961,188 @@ describe("job runner: notifications", () => {
       event: "job.notification_failed",
       fields: { jobId: "j1" },
     });
+    await runner.stop();
+  });
+});
+
+describe("job runner: realtime events", () => {
+  function buildPublishing(
+    initial: Job[],
+    makeHandler: (r: Pick<JobRepository, "transition">) => JobHandler,
+    publisher: Pick<RealtimePublisher, "jobProgressUpdated" | "jobCompleted" | "jobFailed">,
+  ) {
+    const logger = capturingLogger();
+    const { repository, get } = fakeRepository(initial);
+    const runner = createJobRunner({
+      jobRepository: repository,
+      handlers: { CSV_IMPORT: makeHandler(repository) },
+      clock,
+      logger,
+      realtimePublisher: publisher,
+      pollIntervalMs: 1000,
+    });
+
+    return { runner, logger, get, repository };
+  }
+
+  it("publishes the progress while validating and then the completion, in order", async () => {
+    const publisher = capturingRealtimePublisher();
+    const { runner } = buildPublishing([queuedJob("j1")], okHandler, publisher);
+
+    runner.start();
+    await settle();
+
+    expect(publisher.published.map((event) => event.type)).toEqual([
+      "JOB_PROGRESS_UPDATED",
+      "JOB_COMPLETED",
+    ]);
+    expect(publisher.published[0]).toMatchObject({
+      job: { id: "j1", status: JobStatus.PROCESSING, processed: 1, total: 3 },
+    });
+    expect(publisher.published[1]).toMatchObject({
+      job: { id: "j1", status: JobStatus.COMPLETED, total: 3 },
+    });
+    await runner.stop();
+  });
+
+  it("publishes the completion only after the apply committed", async () => {
+    const publisher = capturingRealtimePublisher();
+    const gate = deferred();
+    const { runner } = buildPublishing(
+      [queuedJob("j1")],
+      (repository) => ({
+        validate: () => Promise.resolve({ total: 1, errors: [] }),
+        apply: async (_job, context) => {
+          await gate.promise;
+          await context.complete(repository);
+        },
+      }),
+      publisher,
+    );
+
+    runner.start();
+    await settle();
+    expect(publisher.published.map((event) => event.type)).not.toContain("JOB_COMPLETED");
+
+    gate.resolve();
+    await settle();
+
+    expect(publisher.published.map((event) => event.type)).toContain("JOB_COMPLETED");
+    await runner.stop();
+  });
+
+  it("publishes JOB_FAILED with the reason when the rows are invalid", async () => {
+    const publisher = capturingRealtimePublisher();
+    const { runner } = buildPublishing(
+      [queuedJob("j1")],
+      () => ({
+        validate: () => Promise.resolve({ total: 1, errors: [{ row: 1, message: "bad" }] }),
+        apply: () => Promise.resolve(),
+      }),
+      publisher,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(publisher.published).toMatchObject([
+      {
+        type: "JOB_FAILED",
+        job: {
+          id: "j1",
+          status: JobStatus.FAILED,
+          failureReason: JobFailureReason.VALIDATION_FAILED,
+        },
+      },
+    ]);
+    await runner.stop();
+  });
+
+  it("publishes JOB_FAILED with APPLY_ERROR when the apply breaks", async () => {
+    const publisher = capturingRealtimePublisher();
+    const { runner } = buildPublishing(
+      [queuedJob("j1")],
+      () => ({
+        validate: () => Promise.resolve({ total: 1, errors: [] }),
+        apply: () => Promise.reject(new Error("db down")),
+      }),
+      publisher,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(publisher.published).toMatchObject([
+      { type: "JOB_FAILED", job: { failureReason: JobFailureReason.APPLY_ERROR } },
+    ]);
+    await runner.stop();
+  });
+
+  it("publishes nothing for a job that times out", async () => {
+    const publisher = capturingRealtimePublisher();
+    const { runner } = buildPublishing(
+      [queuedJob("old", { queuedAt: new Date(START.getTime() - 2 * FIVE_MINUTES) })],
+      okHandler,
+      publisher,
+    );
+
+    runner.start();
+    await settle();
+
+    expect(publisher.published).toEqual([]);
+    await runner.stop();
+  });
+
+  it("publishes nothing for a job that lost the race to a cancel", async () => {
+    const publisher = capturingRealtimePublisher();
+    const gate = deferred();
+    const { runner, repository } = buildPublishing(
+      [queuedJob("j1")],
+      () => ({
+        validate: async () => {
+          await gate.promise;
+          return { total: 1, errors: [] };
+        },
+        apply: () => Promise.resolve(),
+      }),
+      publisher,
+    );
+
+    runner.start();
+    await settle();
+    await repository.transition({
+      id: "j1",
+      expected: { status: JobStatus.PROCESSING, stage: JobStage.VALIDATING, attempt: 1 },
+      patch: { status: JobStatus.CANCELLED, finishedAt: new Date() },
+      updatedAt: new Date(),
+    });
+    gate.resolve();
+    await settle();
+
+    expect(publisher.published).toEqual([]);
+    await runner.stop();
+  });
+
+  it("keeps the job finished and logs a warning when the publisher rejects or throws", async () => {
+    const failing = {
+      jobProgressUpdated: () => Promise.reject(new Error("socket gone")),
+      jobCompleted: (): Promise<void> => {
+        throw new Error("hub gone");
+      },
+      jobFailed: () => Promise.reject(new Error("socket gone")),
+    };
+    const { runner, logger, get } = buildPublishing([queuedJob("j1")], okHandler, failing);
+
+    runner.start();
+    await settle();
+
+    expect(get("j1").status).toBe(JobStatus.COMPLETED);
+    expect(
+      logger.entries.filter((entry) => entry.event === "realtime.publish_failed"),
+    ).toMatchObject([
+      { level: "warn", fields: { event: "JOB_PROGRESS_UPDATED", jobId: "j1" } },
+      { level: "warn", fields: { event: "JOB_COMPLETED", jobId: "j1", error: "hub gone" } },
+    ]);
     await runner.stop();
   });
 });
