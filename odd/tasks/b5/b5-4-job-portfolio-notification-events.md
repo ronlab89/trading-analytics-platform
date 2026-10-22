@@ -27,7 +27,7 @@ odd/tasks/b5/**
 - [x] T1 Job events from the runner, with the publisher as an optional dependency. `publishQuietly` (application) logs `realtime.publish_failed` and never propagates; the runner publishes progress, completion and failure after each committed change.
 - [x] T2 `PORTFOLIO_UPDATED` after `createTransaction` and after the import apply. The transaction service publishes after the unit of work returns (nothing on a rollback or a rejection); the runner publishes `IMPORT_COMMITTED` before `JOB_COMPLETED`, only when the import wrote rows.
 - [x] T3 `NOTIFICATION_CREATED` from the notification creation path. The job notifier is the only creator of notifications today; it publishes after the row is stored, for completed, failed and timed-out jobs (alerts follow in B5.7).
-- [ ] T4 Publish failures are caught, logged and never propagate; tests with a publisher that throws.
+- [x] T4 Publish failures are caught, logged and never propagate; tests with a publisher that throws. `publishQuietly` is unit-tested; every service test has a publisher that rejects or throws; `realtime-runtime.ts` builds the hub and publisher before the composition, and `buildComposition` injects the publisher (default no-op) into the transaction service, the job notifier and the runner.
 
 ## Done when
 
@@ -42,3 +42,7 @@ Item 3 (existing services gain an optional dependency; additive) and item 4 (pub
 pnpm typecheck, pnpm lint, pnpm test.
 
 ## Log
+
+- 2026-10-23 S5 answer (ADR-007 point 5, no replay buffer): a client that subscribes to `jobs:{jobId}` after the job finished reads the final state from `GET /api/v1/jobs/:jobId`; nothing else is stored for it.
+- 2026-10-23 Decision: `PORTFOLIO_UPDATED` for an import is published only when the job wrote rows (`total > 0`), and before `JOB_COMPLETED`.
+- 2026-10-23 Decision: the notifier is the only notification creator today, so `NOTIFICATION_CREATED` lives there; the alert path follows in B5.7.

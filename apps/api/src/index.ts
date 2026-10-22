@@ -13,7 +13,7 @@ import { createShutdown } from "./lifecycle/shutdown.js";
 import { logger } from "./logging/logger.js";
 import { createAccessTokenAuthenticator } from "./realtime/access-token-authenticator.js";
 import { createRealtimeGateway } from "./realtime/realtime-gateway.js";
-import { createRealtimeHub } from "./realtime/realtime-hub.js";
+import { realtimeHub } from "./realtime/realtime-runtime.js";
 import { createSubscriptionHandler } from "./realtime/subscription-handler.js";
 import { REALTIME_PATH, createWsTransport } from "./realtime/ws-transport.js";
 import { accessTokens } from "./services/access-tokens.js";
@@ -28,12 +28,6 @@ composition.jobRunner.start();
 const wsTransport = createWsTransport({
   path: REALTIME_PATH,
   maxPayloadBytes: REALTIME_LIMITS.maxInboundPayloadBytes,
-});
-// `sequence` restarts with the process, so the epoch tells a client when to reset (ADR-007).
-const realtimeHub = createRealtimeHub({
-  clock: systemClock,
-  newId: randomUUID,
-  epoch: randomUUID(),
 });
 const subscriptions = createSubscriptionHandler({
   hub: realtimeHub,
