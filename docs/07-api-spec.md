@@ -37,7 +37,7 @@ point 5), `Planned (FE)`.
 | 5 | Explicit validation with Zod at the route boundary. | `Implemented`; request and response schemas live in `@trading/contracts` |
 | 6 | Pagination for large collections. | `Implemented` |
 | 7 | Filtering and sorting where required. | `Implemented` per endpoint |
-| 8 | `Idempotency-Key` where duplicates are dangerous (ADR-008 point 8). | `Planned (B4)` |
+| 8 | `Idempotency-Key` where duplicates are dangerous (ADR-008 point 8). | `Implemented` on transaction creation and import creation (§13, §14, §39) |
 | 9 | Versioned contracts, additive changes only within a version (ADR-002 point 8); OpenAPI generated from the schemas (ADR-002 point 7). | `Implemented` for versioning; OpenAPI `Planned (B6)` |
 | 10 | Realtime events are separate from HTTP responses (`08-realtime-spec.md`). | `Planned (B5)` |
 
@@ -621,7 +621,7 @@ position belongs to another portfolio or user. `averageEntryPrice` includes the
 
 # 13. Transaction API
 
-**Status:** `Implemented`; `Idempotency-Key` `Planned (B4)` (ADR-008 point 8)
+**Status:** `Implemented`; `Idempotency-Key` `Implemented` on creation (ADR-008 point 8)
 
 | Endpoint | Status |
 | --- | --- |
@@ -741,14 +741,16 @@ position is rebuilt by replaying the asset's transactions in date order
 
 The currency of `price` and `fees` is not compared with the portfolio's: only the
 asset's is (ADR-004 point 12).
-- (B4) `Idempotency-Key` header: the same key and request returns the stored
-  response; a different request returns 409 `CONFLICT` (ADR-008 point 8).
+- `Idempotency-Key` header (optional): the same key and request returns the
+  stored response with `Idempotency-Replayed: true`; a different request, or
+  one sent while the first is still running, returns 409 `CONFLICT` (ADR-008
+  point 8). Rules in §39.
 
 ---
 
 # 14. Transaction Processing
 
-**Status:** asynchronous transaction creation removed (ADR-008 point 12); CSV import `Planned (B4)` (FR-080)
+**Status:** asynchronous transaction creation removed (ADR-008 point 12); CSV import `Implemented` (FR-080)
 
 Transaction creation is synchronous (§13); there is no job for a single
 transaction. Background jobs exist only for CSV transaction import:
@@ -757,20 +759,25 @@ transaction. Background jobs exist only for CSV transaction import:
 POST /api/v1/portfolios/:portfolioId/imports
 ```
 
-`Planned (B4)` (ADR-008 points 1-2, 8-10): creates an import job and returns
-it in `QUEUED`. Every row is validated first; if any row fails, the job ends
-`FAILED` with a per-row report and nothing is written. Valid rows are applied
-in one unit of work. Rows follow the §13 rules (`BUY` and `SELL` only). File
-size and row count are bounded (values fixed in B4). The route needs its own
-body limit, set in B4 with the input limits (ADR-008 point 10 and Deferred
-detail), because the global JSON body limit is 100 kB. Accepts
-`Idempotency-Key`.
+`Implemented` (ADR-008 points 1-2, 8-10): creates an import job and answers
+202 with the job in `QUEUED` and a `Location: /api/v1/jobs/:jobId` header. It
+needs `transaction:create` and an owned, non-archived portfolio.
+
+The CSV is the raw request body, sent with `Content-Type: text/csv` (a JSON or
+empty body is 400 `VALIDATION_ERROR`; a file over 1 MB is 413). The columns are
+`symbol,type,quantity,price,fees,executedAt`, with `fees` optional, and a file
+has at most 5000 rows. Every row is validated first; if any row fails, the job
+ends `FAILED` with reason `VALIDATION_FAILED` and a per-row report (`row` is the
+line in the file, the header being row 1) and nothing is written. Valid rows are
+applied in one unit of work. Rows follow the §13 rules (`BUY` and `SELL` only).
+The route has its own 1 MB body limit, apart from the global 100 kB JSON limit.
+Accepts `Idempotency-Key` (§39).
 
 ---
 
 # 15. Transaction Job Status
 
-**Status:** `Planned (B4)` (ADR-008 points 3 and 9, FR-081)
+**Status:** `Implemented` (ADR-008 points 3 and 9, FR-081)
 
 ```text
 GET /api/v1/jobs/:jobId
@@ -782,8 +789,19 @@ Response:
 {
   "data": {
     "id": "job_001",
+    "portfolioId": "portfolio_001",
+    "type": "CSV_IMPORT",
     "status": "PROCESSING",
-    "progress": { "processed": 60, "total": 100 }
+    "stage": "APPLYING",
+    "attempt": 1,
+    "progress": { "processed": 60, "total": 100 },
+    "failureReason": null,
+    "report": null,
+    "queuedAt": "2026-10-21T10:00:00.000Z",
+    "deadlineAt": "2026-10-21T10:05:00.000Z",
+    "createdAt": "2026-10-21T10:00:00.000Z",
+    "updatedAt": "2026-10-21T10:00:05.000Z",
+    "finishedAt": null
   }
 }
 ```
@@ -802,20 +820,23 @@ TIMED_OUT
 Progress is a field, not a state. `FAILED` carries a reason:
 `VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or
 `PORTFOLIO_ARCHIVED` (the complete set, ADR-008 point 6).
+`report` is the per-row list (`{ "row": 2, "message": "..." }`) of a
+`VALIDATION_FAILED` job, otherwise `null`. The uploaded CSV is never returned.
 Ownership is checked; another user's job returns 404.
 
 ---
 
 # 16. Retry Failed Job
 
-**Status:** `Planned (B4)` (ADR-008 point 6, FR-081)
+**Status:** `Implemented` (ADR-008 point 6, FR-081)
 
 ```text
 POST /api/v1/jobs/:jobId/retry
 POST /api/v1/jobs/:jobId/cancel
 ```
 
-Retry returns the job to `QUEUED` and increments `attempt`. It is allowed for
+Retry answers 202 with the job back in `QUEUED` and `attempt` incremented;
+cancel answers 200 with the `CANCELLED` job. Retry is allowed for
 `TIMED_OUT`, `CANCELLED`, and `FAILED` with reason `INTERRUPTED`,
 `APPLY_ERROR` or `APPLY_REJECTED`; `VALIDATION_FAILED` and
 `PORTFOLIO_ARCHIVED` are not retryable (the user fixes the file, or the
@@ -1903,7 +1924,7 @@ replay buffer in version 1.
 
 # 39. Idempotency
 
-**Status:** `Planned (B4)` (ADR-008 point 8)
+**Status:** `Implemented` (ADR-008 point 8)
 
 ```text
 Idempotency-Key: <unique-key>
@@ -1915,6 +1936,17 @@ the resulting response, for 24 hours, in the same unit of work as the
 mutation. Same key and request returns the stored response; same key with a
 different request returns 409 `CONFLICT`. Deposits and withdrawals do not
 exist in version 1 (ADR-003).
+
+The header is optional; without it the request runs as before. A key is 1 to
+255 printable ASCII characters with no spaces, otherwise 400
+`VALIDATION_ERROR`. The request hash covers the method, the route, the path
+parameters and the body, so the same key and body against another portfolio is
+a different request. A first request holds its key for a 60-second lease: a
+second request with the same key inside it returns 409 `CONFLICT`, and after
+it a crashed request no longer blocks the key. A repeat is answered with the
+stored status and body and `Idempotency-Replayed: true` (the `Location`
+header of an import is not replayed). A 4xx is stored; a 5xx is never stored
+and frees the key. The key is scoped to the user.
 
 ---
 

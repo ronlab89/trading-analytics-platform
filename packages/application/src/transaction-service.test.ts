@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   InsufficientPositionQuantityError,
   InvalidTransactionError,
@@ -193,6 +193,30 @@ describe("transaction service", () => {
     expect(result.position).not.toBeNull();
     expect(calls.upserts).toHaveLength(1);
     expect(calls.statusUpdates).toEqual(["new"]);
+  });
+
+  it("runs the withinUnit hook last, inside the unit, with the created result", async () => {
+    const { service, calls } = build();
+    const order: string[] = [];
+    const withinUnit = vi.fn((_result: unknown, repositories: unknown) => {
+      order.push(`hook after ${String(calls.statusUpdates.length)} status update`);
+      expect(repositories).toHaveProperty("transactions");
+      return Promise.resolve();
+    });
+
+    const result = await service.createTransaction(actor, "p1", buy, withinUnit);
+
+    expect(withinUnit).toHaveBeenCalledTimes(1);
+    expect(withinUnit.mock.calls[0]?.[0]).toBe(result);
+    expect(order).toEqual(["hook after 1 status update"]);
+  });
+
+  it("fails the creation when the withinUnit hook fails, so the unit can roll back", async () => {
+    const { service } = build();
+
+    await expect(
+      service.createTransaction(actor, "p1", buy, () => Promise.reject(new Error("db down"))),
+    ).rejects.toThrow("db down");
   });
 
   it("deletes the position when a SELL closes it exactly", async () => {

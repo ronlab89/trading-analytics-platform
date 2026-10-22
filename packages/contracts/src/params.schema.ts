@@ -13,6 +13,7 @@ export const resourceIdSchema = z
 export const assetIdParamsSchema = z.object({ assetId: resourceIdSchema });
 export const alertIdParamsSchema = z.object({ alertId: resourceIdSchema });
 export const notificationIdParamsSchema = z.object({ notificationId: resourceIdSchema });
+export const jobIdParamsSchema = z.object({ jobId: resourceIdSchema });
 export const decisionIdParamsSchema = z.object({ decisionId: resourceIdSchema });
 export const portfolioIdParamsSchema = z.object({ portfolioId: resourceIdSchema });
 export const portfolioPositionParamsSchema = portfolioIdParamsSchema.extend({

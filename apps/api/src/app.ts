@@ -16,6 +16,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { portfoliosRouter } from "./routes/portfolios.routes.js";
 import { positionsRouter } from "./routes/positions.routes.js";
 import { transactionsRouter } from "./routes/transactions.routes.js";
+import { jobsRouter } from "./routes/jobs.routes.js";
 import { decisionsRouter } from "./routes/decisions.routes.js";
 import { scenariosRouter } from "./routes/scenarios.routes.js";
 import { assetsRouter } from "./routes/assets.routes.js";
@@ -96,6 +97,7 @@ export function createApp(options: AppOptions = {}): Express {
   app.use(portfoliosRouter);
   app.use(positionsRouter);
   app.use(transactionsRouter);
+  app.use(jobsRouter);
   app.use(decisionsRouter);
   app.use(scenariosRouter);
   app.use(assetsRouter);

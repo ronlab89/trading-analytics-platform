@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { authenticate } from "../middleware/authenticate.js";
+import { idempotency } from "../middleware/idempotency.js";
 import { validate } from "../middleware/validate.js";
 import {
   createTransactionRequestSchema,
@@ -12,7 +13,7 @@ import { makeTransactionsController } from "../controllers/transactions.controll
 import { composition } from "../composition.js";
 
 const { createTransactionHandler, getTransactionByIdHandler, listTransactionsHandler } =
-  makeTransactionsController(composition.transactionService);
+  makeTransactionsController(composition.transactionService, composition.idempotencyService);
 
 export const transactionsRouter: ExpressRouter = Router();
 
@@ -36,5 +37,6 @@ transactionsRouter.post(
   authenticate,
   validate(portfolioIdParamsSchema, "params"),
   validate(createTransactionRequestSchema, "body"),
+  idempotency(composition.idempotencyService),
   createTransactionHandler,
 );

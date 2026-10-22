@@ -15,6 +15,7 @@ import type {
   Transaction,
   TransactionListFilter,
   TransactionRepository,
+  TransactionalRepositories,
   UnitOfWork,
 } from "@trading/domain";
 import type { Actor } from "./actor.js";
@@ -145,11 +146,19 @@ export function createTransactionService(dependencies: TransactionServiceDepende
    * delete when a SELL closes it exactly), and mark the transaction
    * COMPLETED. If any step fails, everything rolls back and no orphaned
    * DRAFT transaction remains.
+   *
+   * `withinUnit`, when given, runs last inside that same Unit of Work with the
+   * result, so something that must commit with the transaction (the stored
+   * response of an `Idempotency-Key`) does, or rolls back with it.
    */
   async function createTransaction(
     actor: Actor,
     portfolioId: string,
     input: CreateTransactionRequest,
+    withinUnit?: (
+      result: CreateTransactionResult,
+      repositories: TransactionalRepositories,
+    ) => Promise<void>,
   ): Promise<CreateTransactionResult> {
     assertPermission(actor, "transaction:create", permissions);
     const portfolio = await portfolioService.getPortfolioById(actor, portfolioId);
@@ -177,7 +186,9 @@ export function createTransactionService(dependencies: TransactionServiceDepende
 
     validateNewTransaction(createInput, clock.now());
 
-    return unitOfWork.run(async ({ transactions, positions }) => {
+    return unitOfWork.run(async (repositories) => {
+      const { transactions, positions } = repositories;
+
       // Serializes concurrent creations on this asset, so two SELLs cannot both
       // be validated against the same history (FR-017 race).
       await transactions.lockPortfolioAsset(portfolioId, input.assetId);
@@ -236,7 +247,10 @@ export function createTransactionService(dependencies: TransactionServiceDepende
             null)
           : null;
 
-      return { transaction: completedTransaction, position, realizedPnL };
+      const result = { transaction: completedTransaction, position, realizedPnL };
+      await withinUnit?.(result, repositories);
+
+      return result;
     });
   }
 
