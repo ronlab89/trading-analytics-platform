@@ -38,14 +38,16 @@ import {
   createTransactionService,
   createUserPreferenceService,
   createWatchlistService,
+  noopRealtimePublisher,
 } from "@trading/application";
-import type { Clock, Logger } from "@trading/application";
+import type { Clock, Logger, RealtimePublisher } from "@trading/application";
 import { systemClock } from "./clock.js";
 import { env } from "./config/env.js";
 import { tokenizeCsv } from "./import/csv-tokenizer.js";
 import { LOG_EVENTS } from "./logging/events.js";
 import { logger as defaultLogger } from "./logging/logger.js";
 import { withRequestContext } from "./logging/request-context.js";
+import { realtimePublisher } from "./realtime/realtime-runtime.js";
 
 /**
  * Composition root: the one place that builds concrete dependencies and
@@ -58,7 +60,15 @@ import { withRequestContext } from "./logging/request-context.js";
  */
 export { systemClock };
 
-export function buildComposition(clock: Clock, logger: Logger = withRequestContext(defaultLogger)) {
+/**
+ * `publisher` is how the services hand realtime events to the sockets after a
+ * change committed; tests that build their own composition keep the no-op one.
+ */
+export function buildComposition(
+  clock: Clock,
+  logger: Logger = withRequestContext(defaultLogger),
+  publisher: RealtimePublisher = noopRealtimePublisher,
+) {
   const assetRepository = new PrismaAssetRepository();
 
   const portfolioRepository = new PrismaPortfolioRepository();
@@ -112,6 +122,8 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     unitOfWork: new PrismaUnitOfWork(),
     portfolioService,
     clock,
+    realtimePublisher: publisher,
+    logger,
   });
   const overviewService = createOverviewService({
     positionRepository,
@@ -187,7 +199,12 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     },
     clock,
     logger,
-    notifier: createJobNotifier({ notificationRepository: new PrismaNotificationRepository() }),
+    realtimePublisher: publisher,
+    notifier: createJobNotifier({
+      notificationRepository: new PrismaNotificationRepository(),
+      realtimePublisher: publisher,
+      logger,
+    }),
   });
 
   return {
@@ -215,4 +232,4 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
   };
 }
 
-export const composition = buildComposition(systemClock);
+export const composition = buildComposition(systemClock, undefined, realtimePublisher);

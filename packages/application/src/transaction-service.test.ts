@@ -17,7 +17,11 @@ import type {
 import type { Actor } from "./actor.js";
 import { fixedClock } from "./clock.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "./errors.js";
+import { capturingLogger } from "./logger.js";
+import type { Logger } from "./logger.js";
 import { PERMISSIONS, type RolePermissions } from "./permissions.js";
+import { capturingRealtimePublisher } from "./realtime-publisher.js";
+import type { RealtimePublisher } from "./realtime-publisher.js";
 import { createTransactionService } from "./transaction-service.js";
 
 const actor: Actor = { userId: "u1", role: "TRADER" };
@@ -60,6 +64,8 @@ function build(
     history?: Transaction[];
     existing?: Position | null;
     failOnStatus?: boolean;
+    realtimePublisher?: Pick<RealtimePublisher, "portfolioUpdated">;
+    logger?: Logger;
   } = {},
 ) {
   const {
@@ -131,6 +137,8 @@ function build(
     unitOfWork,
     portfolioService: portfolioService as never,
     clock: fixedClock(new Date("2026-06-15T12:00:00Z")),
+    ...(options.realtimePublisher ? { realtimePublisher: options.realtimePublisher } : {}),
+    ...(options.logger ? { logger: options.logger } : {}),
   });
   return { service, calls };
 }
@@ -528,5 +536,75 @@ describe("transaction service", () => {
     await expect(
       service.listTransactions(actor, "p1", {}, { page: 1, pageSize: 10 }),
     ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+describe("transaction service: realtime", () => {
+  it("publishes PORTFOLIO_UPDATED once, after the transaction committed", async () => {
+    const realtimePublisher = capturingRealtimePublisher();
+    const { service } = build({ realtimePublisher });
+
+    await service.createTransaction(actor, "p1", buy);
+
+    expect(realtimePublisher.published).toEqual([
+      { type: "PORTFOLIO_UPDATED", portfolioId: "p1", reason: "TRANSACTION_COMMITTED" },
+    ]);
+  });
+
+  it("publishes after the unit of work, never from inside it", async () => {
+    const realtimePublisher = capturingRealtimePublisher();
+    const { service } = build({ realtimePublisher });
+    let publishedInsideUnit = true;
+
+    await service.createTransaction(actor, "p1", buy, () => {
+      publishedInsideUnit = realtimePublisher.published.length > 0;
+      return Promise.resolve();
+    });
+
+    expect(publishedInsideUnit).toBe(false);
+    expect(realtimePublisher.published).toHaveLength(1);
+  });
+
+  it("publishes nothing when the creation rolls back", async () => {
+    const realtimePublisher = capturingRealtimePublisher();
+    const { service } = build({ realtimePublisher, failOnStatus: true });
+
+    await expect(service.createTransaction(actor, "p1", buy)).rejects.toThrow("db down");
+
+    expect(realtimePublisher.published).toEqual([]);
+  });
+
+  it("publishes nothing when the transaction is rejected before the write", async () => {
+    const realtimePublisher = capturingRealtimePublisher();
+    const { service } = build({ realtimePublisher, archivedPortfolios: ["p1"] });
+
+    await expect(service.createTransaction(actor, "p1", buy)).rejects.toBeInstanceOf(ConflictError);
+
+    expect(realtimePublisher.published).toEqual([]);
+  });
+
+  it("returns the transaction and logs a warning when the publish fails", async () => {
+    const logger = capturingLogger();
+    const { service } = build({
+      logger,
+      realtimePublisher: { portfolioUpdated: () => Promise.reject(new Error("hub gone")) },
+    });
+
+    const result = await service.createTransaction(actor, "p1", buy);
+
+    expect(result.transaction.status).toBe(TransactionStatus.COMPLETED);
+    expect(logger.entries).toMatchObject([
+      {
+        level: "warn",
+        event: "realtime.publish_failed",
+        fields: { event: "PORTFOLIO_UPDATED", portfolioId: "p1", error: "hub gone" },
+      },
+    ]);
+  });
+
+  it("works without a publisher", async () => {
+    const { service } = build();
+
+    await expect(service.createTransaction(actor, "p1", buy)).resolves.toBeDefined();
   });
 });
