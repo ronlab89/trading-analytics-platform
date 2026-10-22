@@ -22,9 +22,9 @@ odd/tasks/b5/**
 
 ## Tasks
 
-- [ ] T1 Channel names and the envelope schema, with the per-process `epoch` field of the Deferred detail.
-- [ ] T2 The seven payload schemas and the discriminated event union, with presenters from the domain types.
-- [ ] T3 Client and server protocol messages, the set of `ERROR` codes (decided here, recorded in the Log) and the close-code constants.
+- [x] T1 Channel names and the envelope schema, with the per-process `epoch` field of the Deferred detail.
+- [x] T2 The seven payload schemas and the discriminated event union, with presenters from the domain types.
+- [x] T3 Client and server protocol messages, the set of `ERROR` codes (decided here, recorded in the Log) and the close-code constants.
 - [ ] T4 `RealtimePublisher` port, no-op and capturing implementations, exported from the application index.
 
 ## Done when
