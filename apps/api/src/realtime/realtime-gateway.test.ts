@@ -240,7 +240,7 @@ describe("heartbeat", () => {
 });
 
 describe("outbound buffer", () => {
-  it("closes with 4008 instead of sending past 1 MB", () => {
+  it("closes with 4008 instead of sending past 1 MB", async () => {
     let connection: RealtimeConnection | undefined;
     const { authenticated } = setup({
       handleMessage: (current) => {
@@ -249,6 +249,7 @@ describe("outbound buffer", () => {
     });
     const socket = authenticated();
     socket.receive({ type: "SUBSCRIBE", channel: "notifications" });
+    await vi.advanceTimersByTimeAsync(0);
     socket.bufferedAmount = REALTIME_LIMITS.maxOutboundBufferBytes;
 
     const sent = connection?.send({ type: "ACK", request: "SUBSCRIBE" });
@@ -258,7 +259,7 @@ describe("outbound buffer", () => {
     expect(socket.sent).toHaveLength(1);
   });
 
-  it("sends while the buffer is under the limit", () => {
+  it("sends while the buffer is under the limit", async () => {
     let connection: RealtimeConnection | undefined;
     const { authenticated } = setup({
       handleMessage: (current) => {
@@ -267,6 +268,7 @@ describe("outbound buffer", () => {
     });
     const socket = authenticated();
     socket.receive({ type: "SUBSCRIBE", channel: "notifications" });
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(connection?.send({ hello: "world" })).toBe(true);
     expect(socket.replies().at(-1)).toEqual({ hello: "world" });
@@ -328,7 +330,7 @@ describe("connections per user", () => {
 });
 
 describe("messages of an authenticated connection", () => {
-  it("hands them to the handler with the connection", () => {
+  it("hands them to the handler with the connection", async () => {
     const received: [string, ClientMessage][] = [];
     const { authenticated } = setup({
       handleMessage: (connection, message) => {
@@ -338,6 +340,7 @@ describe("messages of an authenticated connection", () => {
     const socket = authenticated("u7:600");
 
     socket.receive({ type: "SUBSCRIBE", channel: "jobs:j1" });
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(received).toEqual([["u7", { type: "SUBSCRIBE", channel: "jobs:j1" }]]);
   });

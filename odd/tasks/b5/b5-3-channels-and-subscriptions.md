@@ -25,7 +25,7 @@ odd/tasks/b5/**
 
 - [x] T1 `ChannelAuthorizer` with permission and ownership, tested with fake repositories. `canSubscribe(actor, channel)` returns a boolean, so a missing, foreign or forbidden channel is indistinguishable; `SubscriptionChannel` mirrors the contracts' `RealtimeChannel` (application does not depend on contracts). Pending: user runs the checks and commits.
 - [x] T2 Hub with per-channel `sequence` and `epoch`, and the `RealtimePublisher` adapter. `createRealtimeHub` keeps one sequence per channel (per user for `notifications`), skips the sequence when nobody is subscribed, and a failing socket never stops the others.
-- [ ] T3 `SUBSCRIBE` and `UNSUBSCRIBE` handling, the 50-subscription limit and the `ERROR` codes.
+- [x] T3 `SUBSCRIBE` and `UNSUBSCRIBE` handling, the 50-subscription limit and the `ERROR` codes. The gateway runs the handler calls of one connection in arrival order (async handlers); authorization failure refuses the subscription (fail closed); the hub and handler are wired in `index.ts`.
 - [ ] T4 Re-authentication revalidation and the outbound buffer closing a slow socket.
 
 ## Done when

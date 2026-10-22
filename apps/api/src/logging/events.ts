@@ -34,4 +34,6 @@ export const LOG_EVENTS = {
   realtimeConnectionRejected: "realtime.connection.rejected",
   realtimeConnectionLimitExceeded: "realtime.connection.limit_exceeded",
   realtimeConnectionClosed: "realtime.connection.closed",
+  realtimeHandlerFailed: "realtime.message.handler_failed",
+  realtimeSubscriptionRefused: "realtime.subscription.refused",
 } as const;

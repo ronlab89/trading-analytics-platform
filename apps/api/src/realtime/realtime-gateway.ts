@@ -1,4 +1,5 @@
 import type { Clock, Logger } from "@trading/application";
+import type { UserRole } from "@trading/domain";
 import {
   REALTIME_CLOSE_CODES,
   REALTIME_LIMITS,
@@ -18,17 +19,24 @@ export type RealtimeLimits = Record<keyof typeof REALTIME_LIMITS, number>;
 export interface RealtimeConnection {
   readonly id: string;
   readonly userId: string;
-  readonly role: string;
+  readonly role: UserRole;
   /** Sends a JSON message; false when the socket is closed or the send closed it. */
   send: (message: unknown) => boolean;
   close: (code: number, reason: string) => void;
+  /** False once the socket is closing or closed, so a late async result can tell. */
+  isOpen: () => boolean;
 }
 
-/** Handles the messages of an authenticated connection other than `AUTHENTICATE` (B5.3). */
+/**
+ * Handles the messages of an authenticated connection other than `AUTHENTICATE`.
+ * The gateway runs the handler calls of one connection one after the other, in
+ * arrival order, so an async handler cannot reorder a `SUBSCRIBE` and the
+ * `UNSUBSCRIBE` that follows it. A rejection is logged and never closes the socket.
+ */
 export type RealtimeMessageHandler = (
   connection: RealtimeConnection,
   message: Exclude<ClientMessage, { type: "AUTHENTICATE" }>,
-) => void;
+) => void | Promise<void>;
 
 export interface RealtimeGatewayOptions {
   transport: RealtimeTransport;
@@ -39,6 +47,8 @@ export interface RealtimeGatewayOptions {
   /** Overrides the limits of version 1; tests shorten the timers. */
   limits?: Partial<RealtimeLimits>;
   handleMessage?: RealtimeMessageHandler;
+  /** Called once when an authenticated connection closes, whoever closed it. */
+  onConnectionClosed?: (connection: RealtimeConnection) => void;
 }
 
 export interface RealtimeGateway {
@@ -60,7 +70,8 @@ const MAX_TIMER_MS = 2_147_483_647;
  * sockets per user stay open: the new one beyond the cap is the one closed.
  */
 export function createRealtimeGateway(options: RealtimeGatewayOptions): RealtimeGateway {
-  const { transport, authenticate, clock, logger, newId, handleMessage } = options;
+  const { transport, authenticate, clock, logger, newId, handleMessage, onConnectionClosed } =
+    options;
   const limits: RealtimeLimits = { ...REALTIME_LIMITS, ...options.limits };
   const registry = createConnectionRegistry<RealtimeConnection>();
   const open = new Set<{ close: (code: number, reason: string) => void }>();
@@ -77,6 +88,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions): Realtime
     let windowStartedAt = clock.now().getTime();
     let messagesInWindow = 0;
     let expiryTimer: NodeJS.Timeout | undefined;
+    let inbound: Promise<void> = Promise.resolve();
 
     const fields = () => ({ connectionId, ...(connection ? { userId: connection.userId } : {}) });
 
@@ -153,6 +165,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions): Realtime
           role: identity.role,
           send,
           close,
+          isOpen: () => !closing,
         };
         registry.add(connection);
         clearTimeout(authenticationTimer);
@@ -216,7 +229,16 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions): Realtime
         fail("UNAUTHENTICATED", "Authenticate first.");
         close(REALTIME_CLOSE_CODES.UNAUTHENTICATED, "Authentication required.");
       } else if (handleMessage) {
-        handleMessage(connection, message);
+        const current = connection;
+        inbound = inbound
+          .then(() => handleMessage(current, message))
+          .catch((error: unknown) => {
+            logger.error(LOG_EVENTS.realtimeHandlerFailed, {
+              ...fields(),
+              messageType: message.type,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
       } else {
         fail("INVALID_MESSAGE", "Message not supported.");
       }
@@ -259,6 +281,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions): Realtime
       open.delete(self);
       if (connection) {
         registry.remove(connection);
+        onConnectionClosed?.(connection);
       }
       logger.info(LOG_EVENTS.realtimeConnectionClosed, {
         ...fields(),

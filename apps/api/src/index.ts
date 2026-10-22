@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createChannelAuthorizer } from "@trading/application";
 import { REALTIME_LIMITS } from "@trading/contracts";
 import { prisma } from "@trading/database";
 import { createApp } from "./app.js";
@@ -12,6 +13,8 @@ import { createShutdown } from "./lifecycle/shutdown.js";
 import { logger } from "./logging/logger.js";
 import { createAccessTokenAuthenticator } from "./realtime/access-token-authenticator.js";
 import { createRealtimeGateway } from "./realtime/realtime-gateway.js";
+import { createRealtimeHub } from "./realtime/realtime-hub.js";
+import { createSubscriptionHandler } from "./realtime/subscription-handler.js";
 import { REALTIME_PATH, createWsTransport } from "./realtime/ws-transport.js";
 import { accessTokens } from "./services/access-tokens.js";
 
@@ -26,12 +29,28 @@ const wsTransport = createWsTransport({
   path: REALTIME_PATH,
   maxPayloadBytes: REALTIME_LIMITS.maxInboundPayloadBytes,
 });
+// `sequence` restarts with the process, so the epoch tells a client when to reset (ADR-007).
+const realtimeHub = createRealtimeHub({
+  clock: systemClock,
+  newId: randomUUID,
+  epoch: randomUUID(),
+});
+const subscriptions = createSubscriptionHandler({
+  hub: realtimeHub,
+  authorizer: createChannelAuthorizer({
+    portfolioService: composition.portfolioService,
+    jobRepository: composition.jobRepository,
+  }),
+  logger,
+});
 const realtimeGateway = createRealtimeGateway({
   transport: wsTransport,
   authenticate: createAccessTokenAuthenticator(accessTokens),
   clock: systemClock,
   logger,
   newId: randomUUID,
+  handleMessage: subscriptions.handleMessage,
+  onConnectionClosed: subscriptions.handleConnectionClosed,
 });
 // Connections close with 1001 before the HTTP server drains (ADR-007 point 16).
 shutdown.register(createRealtimeShutdownStep(realtimeGateway));
