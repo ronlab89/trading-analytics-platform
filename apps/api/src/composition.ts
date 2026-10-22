@@ -210,6 +210,7 @@ export function buildComposition(clock: Clock, logger: Logger = withRequestConte
     userPreferenceService,
     idempotencyService,
     jobService,
+    jobRepository,
     jobRunner,
   };
 }

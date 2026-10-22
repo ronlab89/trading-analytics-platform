@@ -1,10 +1,11 @@
 import jwt from "jsonwebtoken";
+import type { UserRole } from "@trading/domain";
 import type { TokenService } from "../services/token.service.js";
 
 /** What the gateway needs to know about a verified access token. */
 export interface RealtimeIdentity {
   userId: string;
-  role: string;
+  role: UserRole;
   /** When the token stops being valid; the socket is bound to it (ADR-007 point 2). */
   expiresAt: Date;
 }
