@@ -4,6 +4,8 @@ export { PrismaPortfolioRepository } from "./repositories/prisma-portfolio-repos
 export { PrismaUserRepository } from "./repositories/prisma-user-repository.js";
 export { PrismaCredentialRepository } from "./repositories/prisma-credential-repository.js";
 export { PrismaSessionRepository } from "./repositories/prisma-session-repository.js";
+export { PrismaJobRepository } from "./repositories/prisma-job-repository.js";
+export { PrismaIdempotencyKeyRepository } from "./repositories/prisma-idempotency-key-repository.js";
 export { PrismaAssetRepository } from "./repositories/prisma-asset-repository.js";
 export { PrismaTransactionRepository } from "./repositories/prisma-transaction-repository.js";
 export { PrismaPositionRepository } from "./repositories/prisma-position-repository.js";

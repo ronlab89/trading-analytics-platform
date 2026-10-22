@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("MIGRATION_DATABASE_URL")
 }
@@ -90,6 +90,50 @@ enum NotificationSeverity {
   @@map("notification_severity")
 }
 
+// ADR-008 point 3. Progress is a field, not a state.
+enum JobType {
+  CSV_IMPORT
+
+  @@map("job_type")
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  TIMED_OUT
+
+  @@map("job_status")
+}
+
+enum JobStage {
+  QUEUED
+  VALIDATING
+  APPLYING
+
+  @@map("job_stage")
+}
+
+// ADR-008 point 6: the complete set of five failure reasons.
+enum JobFailureReason {
+  VALIDATION_FAILED
+  INTERRUPTED
+  APPLY_ERROR
+  APPLY_REJECTED
+  PORTFOLIO_ARCHIVED
+
+  @@map("job_failure_reason")
+}
+
+enum IdempotencyStatus {
+  RESERVED
+  COMPLETED
+
+  @@map("idempotency_status")
+}
+
 enum AlertType {
   PRICE
   PORTFOLIO_CHANGE
@@ -133,13 +177,15 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  portfolios     Portfolio[]
-  watchlistItems WatchlistItem[]
-  alerts         Alert[]
-  notifications  Notification[]
-  preference     UserPreference?
-  credential     Credential?
-  sessions       Session[]
+  portfolios      Portfolio[]
+  watchlistItems  WatchlistItem[]
+  alerts          Alert[]
+  notifications   Notification[]
+  preference      UserPreference?
+  credential      Credential?
+  sessions        Session[]
+  jobs            Job[]
+  idempotencyKeys IdempotencyKey[]
 
   @@map("users")
 }
@@ -186,6 +232,63 @@ model Session {
   @@map("sessions")
 }
 
+// See packages/domain/src/entities/job.ts
+// One run of a background task (ADR-008). Every change after creation is a
+// compare-and-set on status, stage and attempt. `input` (the CSV) is kept
+// while a retry can still need it. `queuedAt` and `deadlineAt` are per
+// attempt. `updatedAt` is written by the repository from the caller's clock,
+// so it has no @updatedAt.
+model Job {
+  id            String            @id @default(cuid())
+  userId        String            @map("user_id")
+  portfolioId   String            @map("portfolio_id")
+  type          JobType
+  status        JobStatus         @default(QUEUED)
+  stage         JobStage          @default(QUEUED)
+  attempt       Int               @default(1)
+  processed     Int               @default(0)
+  total         Int               @default(0)
+  failureReason JobFailureReason? @map("failure_reason")
+  report        Json?
+  input         String?
+  queuedAt      DateTime          @map("queued_at")
+  deadlineAt    DateTime          @map("deadline_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @default(now()) @map("updated_at")
+  finishedAt    DateTime?         @map("finished_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([portfolioId])
+  @@index([status, queuedAt])
+  @@map("jobs")
+}
+
+// See packages/domain/src/entities/idempotency-key.ts
+// The stored outcome of a request that carried an `Idempotency-Key`
+// (ADR-008 point 8). `(userId, key)` is the unique reservation; a lease
+// lets an expired reservation be taken over.
+model IdempotencyKey {
+  id             String            @id @default(cuid())
+  userId         String            @map("user_id")
+  key            String
+  requestHash    String            @map("request_hash")
+  status         IdempotencyStatus @default(RESERVED)
+  responseStatus Int?              @map("response_status")
+  responseBody   Json?             @map("response_body")
+  leaseExpiresAt DateTime          @map("lease_expires_at")
+  expiresAt      DateTime          @map("expires_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
 // See 05-data-model.md §6
 model Portfolio {
   id           String          @id @default(cuid())
@@ -203,6 +306,7 @@ model Portfolio {
   decisions    Decision[]
   scenarios    Scenario[]
   alerts       Alert[]
+  jobs         Job[]
 
   @@index([userId])
   @@map("portfolios")
@@ -440,13 +544,13 @@ model Notification {
 // same infrastructure-aligned-to-domain correction applied to Asset
 // (Step 6) and Decision (Step 9).
 model UserPreference {
-  userId                   String   @id @map("user_id")
-  theme                    String   @default("system")
-  language                 String   @default("en")
-  defaultPortfolioId       String?  @map("default_portfolio_id")
-  reducedMotion            Boolean  @default(false) @map("reduced_motion")
-  notificationPreferences  Json     @default("{}") @map("notification_preferences")
-  updatedAt                DateTime @updatedAt @map("updated_at")
+  userId                  String   @id @map("user_id")
+  theme                   String   @default("system")
+  language                String   @default("en")
+  defaultPortfolioId      String?  @map("default_portfolio_id")
+  reducedMotion           Boolean  @default(false) @map("reduced_motion")
+  notificationPreferences Json     @default("{}") @map("notification_preferences")
+  updatedAt               DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -459,14 +563,14 @@ model UserPreference {
 // entity requires price/previousPrice/change to be Money with a shared
 // currency, and the original schema had no column to persist it.
 model MarketPrice {
-  assetId        String            @id @map("asset_id")
-  price          Decimal           @db.Decimal(18, 8)
-  currency       String
-  previousPrice  Decimal           @map("previous_price") @db.Decimal(18, 8)
-  change         Decimal           @db.Decimal(18, 8)
-  changePercent  Float             @map("change_percent")
-  timestamp      DateTime
-  source         MarketDataSource @default(MOCK)
+  assetId       String           @id @map("asset_id")
+  price         Decimal          @db.Decimal(18, 8)
+  currency      String
+  previousPrice Decimal          @map("previous_price") @db.Decimal(18, 8)
+  change        Decimal          @db.Decimal(18, 8)
+  changePercent Float            @map("change_percent")
+  timestamp     DateTime
+  source        MarketDataSource @default(MOCK)
 
   asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
 

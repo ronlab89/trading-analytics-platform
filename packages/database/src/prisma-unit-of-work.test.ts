@@ -96,4 +96,76 @@ describe("PrismaUnitOfWork", () => {
     });
     expect(position).toBeNull();
   });
+
+  describe("jobs and idempotency keys", () => {
+    const reservedAt = new Date("2026-10-21T10:00:00.000Z");
+    const queued = { status: "QUEUED", stage: "QUEUED", attempt: 1 } as const;
+
+    async function setup() {
+      const job = await prisma.job.create({
+        data: {
+          userId,
+          portfolioId,
+          type: "CSV_IMPORT",
+          input: "date,type\n",
+          queuedAt: reservedAt,
+          deadlineAt: new Date("2026-10-21T10:05:00.000Z"),
+        },
+      });
+      const key = `uow-${crypto.randomUUID()}`;
+      await prisma.idempotencyKey.create({
+        data: {
+          userId,
+          key,
+          requestHash: "hash-1",
+          leaseExpiresAt: new Date("2026-10-21T10:01:00.000Z"),
+          expiresAt: new Date("2026-10-22T10:00:00.000Z"),
+        },
+      });
+      return { job, key };
+    }
+
+    it("commits a job completion and an idempotency completion together", async () => {
+      const { job, key } = await setup();
+
+      await unitOfWork.run(async ({ jobs, idempotencyKeys }) => {
+        await jobs.transition({
+          id: job.id,
+          expected: queued,
+          patch: { status: "COMPLETED" },
+          updatedAt: reservedAt,
+        });
+        await idempotencyKeys.complete({ userId, key, responseStatus: 201, responseBody: {} });
+      });
+
+      expect((await prisma.job.findUnique({ where: { id: job.id } }))?.status).toBe("COMPLETED");
+      expect(
+        (await prisma.idempotencyKey.findUnique({ where: { userId_key: { userId, key } } }))
+          ?.status,
+      ).toBe("COMPLETED");
+    });
+
+    it("rolls back both when work throws", async () => {
+      const { job, key } = await setup();
+
+      await expect(
+        unitOfWork.run(async ({ jobs, idempotencyKeys }) => {
+          await jobs.transition({
+            id: job.id,
+            expected: queued,
+            patch: { status: "COMPLETED" },
+            updatedAt: reservedAt,
+          });
+          await idempotencyKeys.complete({ userId, key, responseStatus: 201, responseBody: {} });
+          throw new Error("boom");
+        }),
+      ).rejects.toThrow("boom");
+
+      expect((await prisma.job.findUnique({ where: { id: job.id } }))?.status).toBe("QUEUED");
+      expect(
+        (await prisma.idempotencyKey.findUnique({ where: { userId_key: { userId, key } } }))
+          ?.status,
+      ).toBe("RESERVED");
+    });
+  });
 });

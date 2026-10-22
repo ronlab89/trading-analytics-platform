@@ -1,13 +1,20 @@
+import type { IdempotencyKeyRepository } from "./idempotency-key-repository";
+import type { JobRepository } from "./job-repository";
 import type { PositionRepository } from "./position-repository";
 import type { TransactionRepository } from "./transaction-repository";
 
 /**
  * Repositories that participate in a single atomic unit of work.
  * Every repository here shares the same underlying transaction.
+ * `jobs` lets an import set its job `COMPLETED` in the unit that writes its
+ * rows; `idempotencyKeys` lets a mutation store its response in the unit that
+ * commits it (ADR-008 points 5 and 8).
  */
 export interface TransactionalRepositories {
   transactions: TransactionRepository;
   positions: PositionRepository;
+  jobs: JobRepository;
+  idempotencyKeys: IdempotencyKeyRepository;
 }
 
 /**
