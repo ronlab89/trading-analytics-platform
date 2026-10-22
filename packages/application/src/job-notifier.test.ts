@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { InvalidNotificationError } from "@trading/domain";
 import type { CreateNotificationInput, Job } from "@trading/domain";
 import { createJobNotifier } from "./job-notifier.js";
+import { capturingLogger } from "./logger.js";
+import { capturingRealtimePublisher } from "./realtime-publisher.js";
 
 const NOW = new Date("2026-03-01T12:00:00Z");
 
@@ -114,5 +116,79 @@ describe("job notifier", () => {
       InvalidNotificationError,
     );
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("job notifier: realtime", () => {
+  const stored = { id: "n1", userId: "u1" } as never;
+
+  function buildPublishing(create = vi.fn(() => Promise.resolve(stored))) {
+    const realtimePublisher = capturingRealtimePublisher();
+    const logger = capturingLogger();
+    const notifier = createJobNotifier({
+      notificationRepository: { create },
+      realtimePublisher,
+      logger,
+    });
+    return { notifier, realtimePublisher, logger, create };
+  }
+
+  it("publishes NOTIFICATION_CREATED with the stored notification, after it was created", async () => {
+    const { notifier, realtimePublisher } = buildPublishing();
+
+    await notifier.jobFinished(job());
+
+    expect(realtimePublisher.published).toEqual([
+      { type: "NOTIFICATION_CREATED", notification: stored },
+    ]);
+  });
+
+  it("publishes for a failed and for a timed-out job too", async () => {
+    const { notifier, realtimePublisher } = buildPublishing();
+
+    await notifier.jobFinished(job({ status: "FAILED", failureReason: "APPLY_ERROR" }));
+    await notifier.jobFinished(job({ status: "TIMED_OUT" }));
+
+    expect(realtimePublisher.published).toHaveLength(2);
+  });
+
+  it("publishes nothing for a cancelled job, which creates no notification", async () => {
+    const { notifier, realtimePublisher, create } = buildPublishing();
+
+    await notifier.jobFinished(job({ status: "CANCELLED" }));
+
+    expect(create).not.toHaveBeenCalled();
+    expect(realtimePublisher.published).toEqual([]);
+  });
+
+  it("publishes nothing when the notification could not be stored", async () => {
+    const { notifier, realtimePublisher } = buildPublishing(
+      vi.fn(() => Promise.reject(new Error("db down"))),
+    );
+
+    await expect(notifier.jobFinished(job())).rejects.toThrow("db down");
+
+    expect(realtimePublisher.published).toEqual([]);
+  });
+
+  it("keeps the notification and logs a warning when the publish fails", async () => {
+    const logger = capturingLogger();
+    const create = vi.fn(() => Promise.resolve(stored));
+    const notifier = createJobNotifier({
+      notificationRepository: { create },
+      realtimePublisher: { notificationCreated: () => Promise.reject(new Error("hub gone")) },
+      logger,
+    });
+
+    await expect(notifier.jobFinished(job())).resolves.toBeUndefined();
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(logger.entries).toMatchObject([
+      {
+        level: "warn",
+        event: "realtime.publish_failed",
+        fields: { event: "NOTIFICATION_CREATED", notificationId: "n1", error: "hub gone" },
+      },
+    ]);
   });
 });

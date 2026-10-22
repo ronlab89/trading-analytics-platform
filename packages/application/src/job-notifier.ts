@@ -5,6 +5,10 @@ import type {
   NotificationRepository,
   JobFailureReason,
 } from "@trading/domain";
+import { silentLogger } from "./logger.js";
+import type { Logger } from "./logger.js";
+import { publishQuietly } from "./publish-quietly.js";
+import type { RealtimePublisher } from "./realtime-publisher.js";
 
 export interface JobNotifier {
   /** Tells the owner how the job ended; does nothing for a job that did not end in a notified state. */
@@ -13,6 +17,14 @@ export interface JobNotifier {
 
 export interface JobNotifierDependencies {
   notificationRepository: Pick<NotificationRepository, "create">;
+  /**
+   * Publishes `NOTIFICATION_CREATED` once the notification is stored (ADR-007
+   * point 9); without one, nothing is published. A publish that fails is logged
+   * and never fails the notification.
+   */
+  realtimePublisher?: Pick<RealtimePublisher, "notificationCreated">;
+  /** Receives the warning of a failed publish; defaults to a logger that drops it. */
+  logger?: Logger;
 }
 
 const FAILURE_MESSAGES: Readonly<Record<JobFailureReason, string>> = {
@@ -71,7 +83,7 @@ function notificationFor(job: Job): CreateNotificationInput | null {
  * `COMPLETED`, `ERROR` for `FAILED` and `TIMED_OUT`, none for `CANCELLED`.
  */
 export function createJobNotifier(dependencies: JobNotifierDependencies): JobNotifier {
-  const { notificationRepository } = dependencies;
+  const { notificationRepository, realtimePublisher, logger = silentLogger } = dependencies;
 
   return {
     async jobFinished(job) {
@@ -82,7 +94,16 @@ export function createJobNotifier(dependencies: JobNotifierDependencies): JobNot
       }
 
       validateNewNotification(input);
-      await notificationRepository.create(input);
+      const notification = await notificationRepository.create(input);
+
+      if (realtimePublisher) {
+        await publishQuietly(
+          logger,
+          "NOTIFICATION_CREATED",
+          { jobId: job.id, userId: job.userId, notificationId: notification.id },
+          () => realtimePublisher.notificationCreated(notification),
+        );
+      }
     },
   };
 }
