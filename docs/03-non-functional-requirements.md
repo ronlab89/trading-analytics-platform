@@ -344,7 +344,7 @@ Realtime failure test in B5 ("realtime failure degrades to HTTP",
 ## NFR-015 — Operation Consistency
 
 **Priority:** P0  
-**Status:** transaction creation `Implemented`; CSV import `Planned (B4)`
+**Status:** transaction creation `Implemented`; CSV import `Implemented` (B4)
 
 ### Target
 
@@ -366,7 +366,7 @@ state (`apps/api/src/routes/transactions.routes.test.ts`; B4 import tests).
 ## NFR-016 — Retry Safety
 
 **Priority:** P1  
-**Status:** `Planned (B4)` (ADR-008)
+**Status:** `Implemented` (B4) (ADR-008)
 
 ### Target
 
@@ -385,7 +385,7 @@ B4 idempotency tests with duplicate and concurrent submissions.
 ## NFR-017 — Timeout Handling
 
 **Priority:** P1  
-**Status:** job timeouts `Planned (B4)`; client request timeouts
+**Status:** job timeouts `Implemented` (B4); client request timeouts
 `Planned (FE)`
 
 ### Target

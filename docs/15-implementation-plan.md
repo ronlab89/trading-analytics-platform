@@ -138,7 +138,7 @@ Code vs ADR:
 | --- | --- | --- |
 | 0 Repository foundation | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Implemented` | none |
 | 1 Product and domain foundation | `Implemented` (`packages/domain`); analytics additions `Implemented`; application layer and `@trading/contracts` `Planned (B0)` | none |
-| 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Planned (B4)`; runtime database role `Implemented` | none |
+| 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Implemented` (B4); runtime database role `Implemented` | none |
 | 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Planned (B6)` | none |
 | 4 Authentication and RBAC | login, `me`, refresh, logout and role enforcement `Implemented` (B2) | session screens `Planned (FE1)` |
 | 5 Frontend foundation | none | `Planned (FE0)` |
@@ -146,7 +146,7 @@ Code vs ADR:
 | 7 Transactions and positions | endpoints `Implemented`; fee handling change `Implemented` | `Planned (FE1)` |
 | 8 Tables, filters and analytics | allocation and attribution `Implemented`; performance and risk endpoints `Implemented` | `Planned (FE2)` |
 | 9 Realtime | server `Planned (B5)` | client `Planned (FE3)` |
-| 10 Background operations | jobs and idempotency `Planned (B4)` | screens `Planned (FE3)` |
+| 10 Background operations | jobs and idempotency `Implemented` (B4) | screens `Planned (FE3)` |
 | 11 Demo Mode | `@trading/market-sim` `Planned (B5)` | `Planned (FE4)` |
 | 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
 | 13 Observability | logger and security events `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
@@ -273,7 +273,7 @@ Create the repository structure and development conventions.
 
 Code vs ADR:
 
-- The initial concepts below are a "may include" list, and the final model follows the product and functional specifications. Against the real model: `Instrument` is `Asset`; `Role` is the `UserRole` enum (`VIEWER`, `TRADER` and `ADMIN`, ADR-005 point 1, `Implemented` in B2.1); `PortfolioMember` has no entity, because every portfolio belongs to one user and collaboration is out of scope (`05-data-model.md` §49); `PriceSnapshot` is `MarketPrice` and `HistoricalPrice`; `AnalyticsSnapshot` has no entity, because analytics are computed from transactions and prices (ADR-004) and portfolio snapshots are `Deferred`; `BackgroundJob` is the `Job` entity, `Planned (B4)` (ADR-008). `Credential`, `WatchlistItem`, `Alert`, `Decision`, `DecisionEvent`, `Scenario`, `UserPreference` and `MarketEvent` exist in the code and are not in the list.
+- The initial concepts below are a "may include" list, and the final model follows the product and functional specifications. Against the real model: `Instrument` is `Asset`; `Role` is the `UserRole` enum (`VIEWER`, `TRADER` and `ADMIN`, ADR-005 point 1, `Implemented` in B2.1); `PortfolioMember` has no entity, because every portfolio belongs to one user and collaboration is out of scope (`05-data-model.md` §49); `PriceSnapshot` is `MarketPrice` and `HistoricalPrice`; `AnalyticsSnapshot` has no entity, because analytics are computed from transactions and prices (ADR-004) and portfolio snapshots are `Deferred`; `BackgroundJob` is the `Job` entity, `Implemented` (B4) (ADR-008). `Credential`, `WatchlistItem`, `Alert`, `Decision`, `DecisionEvent`, `Scenario`, `UserPreference` and `MarketEvent` exist in the code and are not in the list.
 - The application layer is still inside `apps/api/src/services`, and those services create Prisma repositories directly (for example `auth.service.ts`). Rules that live there cannot be tested without Prisma until `@trading/application` exists (`06-architecture.md` §11, ADR-001).
 - The analytics rows marked `Implemented` cover the current-state and asset-level metrics only. The status of each analytics item is in `16-analytics-spec.md`.
 
@@ -330,7 +330,7 @@ Core business rules can be tested without React, Express, or PostgreSQL.
 | Migration tooling: Prisma (`packages/database/prisma`) | `Implemented` | none |
 | Initial schema and migrations (`schema.prisma`: 12 enums and 16 models; 10 migrations) | `Implemented` | none |
 | `Session` (refresh tokens, `05-data-model.md` §5.3) | `Implemented` in `schema.prisma` (B2.3, plus the successor column in B2.4) | B2 |
-| `Job` and `IdempotencyKey` (`05-data-model.md` §52 and §53) | In `05`, not in `schema.prisma`; `Planned (B4)` | B4 |
+| `Job` and `IdempotencyKey` (`05-data-model.md` §52 and §53) | In `schema.prisma` since B4.1; `Implemented` | B4 |
 | Seed workflow (`packages/database/prisma/seed.ts`, `src/seed`, `pnpm --filter @trading/database db:seed`) | `Implemented`, including the production guard (ADR-006 point 13) | none |
 | Local reset workflow: light reset by rerunning the seed, hard reset by `db:reset` (`prisma migrate reset`) | `Implemented`, including the production guard (`prisma/reset.ts`) | none |
 | Database connection (`packages/database/src/client.ts`, shared `prisma` client) | `Implemented`; `DATABASE_URL` validation at startup `Planned (B7)` | B7 |
@@ -702,7 +702,7 @@ A user can complete the primary portfolio workflow against the real backend.
 | A `SELL` with `fees > quantity × price` is rejected with 400; fees equal to the gross proceeds are accepted (ADR-004 point 2) | `Implemented` (B1.1) | none |
 | An asset whose currency differs from the portfolio's `baseCurrency` is rejected with 400, never 500 (ADR-004 point 12) | `Implemented` | B1 |
 | Role check on create: a `VIEWER` is denied (ADR-005) | `Implemented` (B2.2, `viewer-role.routes.test.ts`) | B2 |
-| Duplicate prevention: `Idempotency-Key` on `POST .../transactions`; a repeated key and request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Planned (B4)` | B4 |
+| Duplicate prevention: `Idempotency-Key` on `POST .../transactions`; a repeated key and request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Implemented` (B4.4) | B4 |
 | `PORTFOLIO_UPDATED` emitted after the commit (ADR-007 point 6) | `Planned (B5)` | B5 |
 | Edit, delete and cancel of a transaction | No endpoint in version 1: transactions are immutable except for `status` (ADR-003 point 7, `05-data-model.md` §43, `07-api-spec.md` §13) | none |
 | Screens: transaction form, transaction history with the FR-016 filters, positions, derived values (market value, unrealized P/L) and user feedback; submit disabled while pending and dependent views updated without reload (FR-017, FR-077) | `Planned (FE1)` | FE1 |
@@ -918,19 +918,19 @@ Do not build complex market simulation before the transport itself is stable.
 
 | Deliverable | Status | Block |
 | --- | --- | --- |
-| Scope: the only background operation of version 1 is the CSV transaction import (ADR-008 point 1); transactions stay synchronous (point 12) | `Planned (B4)` | B4 |
-| `Job` and `IdempotencyKey` models and migrations (`05-data-model.md` §52 and §53) | `Planned (B4)` | B4 |
-| In-process runner backed by a `jobs` table in PostgreSQL, with no separate worker and no external queue; the CSV content is stored in the job row when the job is created; the stored input is kept while the job can be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED` (ADR-008 point 4) | `Planned (B4)` | B4 |
-| States `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`; progress is the field `{ processed, total }`, not a state (ADR-008 point 3) | `Planned (B4)` | B4 |
-| Two stages: validate every row (a failure ends `FAILED` with `VALIDATION_FAILED`, a per-row report and nothing written), then apply all rows in one `UnitOfWork` that re-checks the invariants and the portfolio status (`APPLY_REJECTED`, `APPLY_ERROR`, `PORTFOLIO_ARCHIVED`); no partial import (ADR-008 point 2 and Deferred detail) | `Planned (B4)` | B4 |
-| Endpoints `POST /api/v1/portfolios/:portfolioId/imports`, `GET /api/v1/jobs/:jobId`, `POST /api/v1/jobs/:jobId/retry` and `POST /api/v1/jobs/:jobId/cancel`, checked for permission and ownership (ADR-008 point 9) | `Planned (B4)`; the import and job permissions are not in the matrix yet and join it in B4 | B4 |
-| Retry returns a job to `QUEUED` and increments `attempt`; allowed for `TIMED_OUT`, `CANCELLED` and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`; not for `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED`. Cancel is allowed while `QUEUED` or validating, never during apply. A retry or cancel that the state does not allow returns 409 `CONFLICT` and changes nothing (ADR-008 point 6) | `Planned (B4)` | B4 |
-| Timeout per job type, measured per attempt from when the job was queued, applying while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7 and Deferred detail); the timeout values are fixed in B4 | `Planned (B4)` | B4 |
-| Restart handling: a job left in `PROCESSING` becomes `FAILED` with `INTERRUPTED`, and every `QUEUED` job resumes; every status transition is a compare-and-set (ADR-008 points 5 and Deferred detail) | `Planned (B4)` | B4 |
-| Notifications: `COMPLETED` creates a `SUCCESS` notification, `FAILED` and `TIMED_OUT` an `ERROR` notification, `CANCELLED` none (ADR-008 point 6, ADR-010 point 9) | `Planned (B4)` | B4 |
-| `Idempotency-Key` on `POST .../transactions` and on import creation: stored per user with a request hash for 24 hours, same request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Planned (B4)` | B4 |
-| Input limits: file size and row count (values fixed in B4), a route-specific body limit because the global JSON limit is 100 kB, the way the CSV reaches the route, and the CSV parsing dependency (ADR-008 point 10 and Deferred detail) | `Planned (B4)`; values are open details | B4 |
-| Archived portfolio: creating an import is rejected with 409; a job whose portfolio is archived while `QUEUED` or `PROCESSING` fails with the non-retryable reason `PORTFOLIO_ARCHIVED` and writes nothing (ADR-010 point 5 and Deferred detail, ADR-008 point 6) | `Planned (B0)` for the guard, `Planned (B4)` for the job check | B0, B4 |
+| Scope: the only background operation of version 1 is the CSV transaction import (ADR-008 point 1); transactions stay synchronous (point 12) | `Implemented` (B4) | B4 |
+| `Job` and `IdempotencyKey` models and migrations (`05-data-model.md` §52 and §53) | `Implemented` (B4) | B4 |
+| In-process runner backed by a `jobs` table in PostgreSQL, with no separate worker and no external queue; the CSV content is stored in the job row when the job is created; the stored input is kept while the job can be retried and cleared for `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED` (ADR-008 point 4) | `Implemented` (B4) | B4 |
+| States `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`; progress is the field `{ processed, total }`, not a state (ADR-008 point 3) | `Implemented` (B4) | B4 |
+| Two stages: validate every row (a failure ends `FAILED` with `VALIDATION_FAILED`, a per-row report and nothing written), then apply all rows in one `UnitOfWork` that re-checks the invariants and the portfolio status (`APPLY_REJECTED`, `APPLY_ERROR`, `PORTFOLIO_ARCHIVED`); no partial import (ADR-008 point 2 and Deferred detail) | `Implemented` (B4) | B4 |
+| Endpoints `POST /api/v1/portfolios/:portfolioId/imports`, `GET /api/v1/jobs/:jobId`, `POST /api/v1/jobs/:jobId/retry` and `POST /api/v1/jobs/:jobId/cancel`, checked for permission and ownership (ADR-008 point 9) | `Implemented` (B4.4); the endpoints reuse `transaction:create` and `transaction:read`, so the matrix has no new permission | B4 |
+| Retry returns a job to `QUEUED` and increments `attempt`; allowed for `TIMED_OUT`, `CANCELLED` and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`; not for `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED`. Cancel is allowed while `QUEUED` or validating, never during apply. A retry or cancel that the state does not allow returns 409 `CONFLICT` and changes nothing (ADR-008 point 6) | `Implemented` (B4) | B4 |
+| Timeout per job type, measured per attempt from when the job was queued, applying while `QUEUED` or validating; the apply stage is exempt (ADR-008 point 7 and Deferred detail); 5 minutes per attempt | `Implemented` (B4.2) | B4 |
+| Restart handling: a job left in `PROCESSING` becomes `FAILED` with `INTERRUPTED`, and every `QUEUED` job resumes; every status transition is a compare-and-set (ADR-008 points 5 and Deferred detail) | `Implemented` (B4) | B4 |
+| Notifications: `COMPLETED` creates a `SUCCESS` notification, `FAILED` and `TIMED_OUT` an `ERROR` notification, `CANCELLED` none (ADR-008 point 6, ADR-010 point 9) | `Implemented` (B4) | B4 |
+| `Idempotency-Key` on `POST .../transactions` and on import creation: stored per user with a request hash for 24 hours, same request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Implemented` (B4) | B4 |
+| Input limits: file size and row count (1 MB and 5000 rows), a route-specific body limit because the global JSON limit is 100 kB, the way the CSV reaches the route, and the CSV parsing dependency (ADR-008 point 10 and Deferred detail) | `Implemented` (B4.3, B4.4) | B4 |
+| Archived portfolio: creating an import is rejected with 409; a job whose portfolio is archived while `QUEUED` or `PROCESSING` fails with the non-retryable reason `PORTFOLIO_ARCHIVED` and writes nothing (ADR-010 point 5 and Deferred detail, ADR-008 point 6) | `Planned (B0)` for the guard, `Implemented` (B4) for the job check | B0, B4 |
 | Job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` on `jobs:{jobId}`; `CANCELLED` and `TIMED_OUT` emit no event and clients read them from the job's HTTP status (ADR-008 point 11, ADR-007 point 15) | `Planned (B5)`, with the transport | B5 |
 | Screens: CSV upload, progress, current state, per-row errors, cancel and retry where the state allows them, completion feedback, and the imported transactions | `Planned (FE3)` | FE3 |
 | Demo: the same use case runs in process with simulated progress and injectable import failures (ADR-008 point 13, FR-069, FR-071) | `Planned (FE4)`; other scripted failures `Deferred` (ADR-010 point 6) | FE4 |
@@ -1069,7 +1069,7 @@ The same product/application behavior should remain conceptually shared with the
 | Contract tests against the `@trading/contracts` schemas (ADR-002 point 6) | `Planned (B0)` | B0 |
 | Token tests: expired token and wrong signature return 401, with refresh, logout and role enforcement tests (`10` §29) | `Implemented` (B2.1 to B2.4) | B2 |
 | Redaction and event-name unit tests; an integration test that a request's `requestId` appears in its log entries (ADR-009 point 13) | `Implemented` (B3.1, B3.2) | B3 |
-| Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | B1 `Implemented`; B4 to B6 `Planned`, per block | B1 to B6 |
+| Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | B1 and B4 `Implemented`; B5 and B6 `Planned`, per block | B1 to B6 |
 | Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Implemented`; the CI test database uses the ADR-005 point 13 roles | none |
 | Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the runner and React Testing Library `Deferred` to the frontend-stage ADR | FE5 |
 | Realtime client tests (connect, disconnect, reconnect, event processing) | Server `Planned (B5)`; client `Planned (FE3)` with the feature; component and E2E checks `Planned (FE5)` | B5, FE3, FE5 |
@@ -1166,14 +1166,14 @@ E2E
 | Log fields and stable dotted event names such as `http.request.completed` (ADR-009 point 3); `LOG_LEVEL` is the only logging variable: `debug` in development, `info` in production, `silent` in tests (point 7) | `Implemented` (B3.1) | B3 |
 | Redaction of passwords, the `Authorization` header, cookies, access tokens and refresh tokens, with tests (ADR-009 point 4 and Deferred detail) | `Implemented` (B3.1) | B3 |
 | Request IDs: the `requestId` middleware generates or accepts a safe `X-Request-ID` and sets it on the response (`apps/api/src/middleware/request-id.ts`) | `Implemented` | none |
-| Correlation: `requestId` propagated through `AsyncLocalStorage` to every log line of the request; `X-Request-ID` exposed through CORS (`exposedHeaders`); `jobId` and `connectionId` on job and realtime entries (ADR-009 point 5) | `Implemented` (B3.2); job and realtime fields `Planned (B4)` and `Planned (B5)` | B3, B4, B5 |
+| Correlation: `requestId` propagated through `AsyncLocalStorage` to every log line of the request; `X-Request-ID` exposed through CORS (`exposedHeaders`); `jobId` and `connectionId` on job and realtime entries (ADR-009 point 5) | `Implemented` (B3.2); job fields `Implemented` (B4.2), realtime fields `Planned (B5)` | B3, B4, B5 |
 | Error categorization: the error handler returns a coded error body with the `requestId` (`apps/api/src/middleware/error-handler.ts`) | `Implemented` | none |
 | Error logging by category: levels by code, the event name `http.request.failed`, `errorCategory` and the stack on internal errors (ADR-009 points 3 and 6); every failed request is logged | `Implemented` (B3.1) | B3 |
 | Health checks and readiness: `GET /health` and `GET /health/ready` (`SELECT 1`), the failure line `health.database.unavailable` | `Implemented`; their route test `Planned (B0)` | B0 |
 | Shutdown behavior of readiness (503 while shutting down) and the `app.startup.*` and `app.shutdown.*` entries (ADR-006 point 12, ADR-009 point 11) | `Implemented` (B3.4) | B3 |
 | Security events `auth.login.succeeded`, `auth.login.failed`, `auth.refresh.reuse_detected`, `authz.denied` and `auth.logout` (ADR-009 point 9) | `Implemented` (B3.3); the `auth.logout` endpoint and the reuse revocation `Implemented` (B2.4) | B3 |
 | Performance measurements: a `warn` entry when a request exceeds `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms), and separate timing of the analytics series reconstruction (ADR-009 point 8); individual database operations are not timed | `Implemented` (B3.2, B3.3) | B3 |
-| Realtime and background-job diagnostics: lifecycle entries for realtime connections (ADR-007) and job transitions (ADR-008); simulator entries `simulation.started`, `simulation.paused`, `simulation.mode.changed` (ADR-009 point 11) | Job entries `Planned (B4)`; realtime and simulator entries `Planned (B5)`; entry names and fields are open details | B4, B5 |
+| Realtime and background-job diagnostics: lifecycle entries for realtime connections (ADR-007) and job transitions (ADR-008); simulator entries `simulation.started`, `simulation.paused`, `simulation.mode.changed` (ADR-009 point 11) | Job entries `Implemented` (B4.2); realtime and simulator entries `Planned (B5)`; their names and fields are open details | B4, B5 |
 | Local debugging tools: `LOG_LEVEL=debug` with `pino-pretty` covers local debugging | `Implemented` (B3.1; workflow documented in B3.5) | B3 |
 | Browser-console `Logger` adapter, so application code logs without knowing where it runs (ADR-009 point 1) | `Planned (FE0)`; demo event names `Deferred` (ADR-010 point 6) | FE0 |
 | Metrics, a `/metrics` endpoint and process metrics | `Deferred` (ADR-009 point 10) | none |
@@ -1498,14 +1498,14 @@ How the original nodes map to the blocks:
 | --- | --- | --- |
 | Repository | Phase 0 `Implemented`; the minimal CI is the new first step | `Implemented`; CI `Implemented` |
 | Domain | Phase 1 `Implemented` in `packages/domain`; analytics additions in B1; application layer and contracts in B0 | `Implemented`; `Planned (B0)` |
-| Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented`; `Planned (B4)` |
+| Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented` |
 | Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Planned (B6)` |
 | Auth | Phase 4 login, `me`, refresh, logout and roles `Implemented` in B2; session screens in FE1 | `Implemented` (B2), `Planned (FE1)` |
 | Frontend | Phase 5, FE0 | `Planned (FE0)` |
 | Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | `Planned (FE1)` |
 | Analytics | Allocation and attribution `Implemented`; performance and risk in B1; views in FE2 | `Implemented`; `Planned (FE2)` |
 | Realtime | Server B5; client FE3 | `Planned (B5)`, `Planned (FE3)` |
-| Background operations | Jobs B4; screens FE3 | `Planned (B4)`, `Planned (FE3)` |
+| Background operations | Jobs B4; screens FE3 | `Implemented` (B4), `Planned (FE3)` |
 | Demo | Engine in B5 (with the application layer from B0); demo mode in FE4 | `Planned (B5)`, `Planned (FE4)` |
 | Testing | Spread across the blocks from B0; component, E2E and accessibility checks in FE5 | `Planned (B0)`, `Planned (FE5)` |
 | Observability | Backend B3; browser `Logger` adapter FE0 | `Implemented` (B3), `Planned (FE0)` |
@@ -1531,10 +1531,10 @@ Code vs ADR:
 | --- | --- | --- |
 | 1 Authentication | Login, `me`, refresh, logout and role enforcement `Implemented` (B2) | Session screens and the authenticated shell: FE1, on the FE0 foundation |
 | 2 Portfolio | API and database `Implemented`; layering and archived-portfolio guard `Planned (B0)` | Portfolio screens: FE1 |
-| 3 Transaction | Validation, persistence and position update `Implemented`; `Clock` port and chronological validation `Planned (B0)`; fee handling `Implemented`; `Idempotency-Key` `Planned (B4)` | Transaction and position screens: FE1 |
+| 3 Transaction | Validation, persistence and position update `Implemented`; `Clock` port and chronological validation `Planned (B0)`; fee handling `Implemented`; `Idempotency-Key` `Implemented` (B4) | Transaction and position screens: FE1 |
 | 4 Analytics | Allocation and attribution `Implemented`; performance and risk calculation and endpoints `Implemented` | Table and chart views: FE2 |
 | 5 Realtime | Server and event contract `Planned (B5)` | Client, notifications and alerts: FE3 |
-| 6 Background operation | CSV import job, progress and completion `Planned (B4)`; job events over the socket `Planned (B5)` | Upload, progress and completion screens: FE3 |
+| 6 Background operation | CSV import job, progress and completion `Implemented` (B4); job events over the socket `Planned (B5)` | Upload, progress and completion screens: FE3 |
 | 7 Demo | Application layer and in-memory repositories `Planned (B0)`; shared simulation engine `Planned (B5)` | In-process adapters, composition root and publication: FE4 |
 
 Code vs ADR:
@@ -1657,12 +1657,12 @@ This reduces accidental coupling.
 | Auth: login | `Implemented` | none |
 | Auth: refresh and logout | `Implemented` (B2.4) | B2 |
 | Users and session: `GET /auth/me` | `Implemented`; there is no users resource, because registration is out of scope (ADR-005 point 10) | none |
-| Portfolios, positions, transactions: list, read and create (no edit, delete or cancel, ADR-003 point 7) | `Implemented`; archived-portfolio guard (ADR-010 point 5) and chronological validation (ADR-003 point 6) `Planned (B0)`; `Idempotency-Key` on transaction creation `Planned (B4)` | B0, B4 |
+| Portfolios, positions, transactions: list, read and create (no edit, delete or cancel, ADR-003 point 7) | `Implemented`; archived-portfolio guard (ADR-010 point 5) and chronological validation (ADR-003 point 6) `Planned (B0)`; `Idempotency-Key` on transaction creation `Implemented` (B4.4) | B0, B4 |
 | Decisions, scenarios, assets, market, overview, watchlist, alerts, preferences | `Implemented` | none |
 | Analytics: allocation and attribution | `Implemented` | none |
 | Analytics: performance, risk and What Changed | `Implemented` | B1 |
-| Notifications: list and mark as read | `Implemented`; creation by import jobs `Planned (B4)` (ADR-008 point 6, ADR-010 point 9) | B4 |
-| Background jobs: `POST /api/v1/portfolios/:portfolioId/imports` and the `jobs` endpoints (ADR-008 point 9) | `Planned (B4)` | B4 |
+| Notifications: list and mark as read | `Implemented`; creation by import jobs `Implemented` (B4) (ADR-008 point 6, ADR-010 point 9) | B4 |
+| Background jobs: `POST /api/v1/portfolios/:portfolioId/imports` and the `jobs` endpoints (ADR-008 point 9) | `Implemented` (B4) | B4 |
 | Simulation control: `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode` (ADR-007 point 15) | `Planned (B5)` | B5 |
 | API document | `Planned (B6)` | B6 |
 
@@ -1715,7 +1715,7 @@ Realtime capabilities should be implemented alongside the corresponding domain c
 | Price data: `MarketPrice`, `MarketEvent` and `HistoricalPrice` | `Implemented`; bounded `MarketEvent` retention, daily candle rollover and startup catch-up `Planned (B5)` | B5 |
 | Product data: `Decision`, `DecisionEvent`, `Scenario`, `WatchlistItem`, `Alert`, `Notification`, `UserPreference` | `Implemented` | none |
 | Analytics support data | `Reference`: the schema has no analytics table, and ADR-001 point 6 and ADR-010 point 1 place analytics in application read models | none |
-| Jobs: `Job` and `IdempotencyKey` | `Planned (B4)` | B4 |
+| Jobs: `Job` and `IdempotencyKey` | `Implemented` (B4) | B4 |
 | Runtime database role: a non-superuser role for the API; only the migration role keeps DDL rights | `Implemented` | none |
 
 Code vs ADR:
@@ -1924,13 +1924,13 @@ Backend/domain validation protects correctness.
 | Authentication | 401 `UNAUTHORIZED` | `Implemented`; refresh failures `Implemented` (B2.4) | B2 |
 | Authorization | 403 `FORBIDDEN` for a missing permission; 404 for another user's resource (ADR-005 point 12) | 404 `Implemented`; 403 `Implemented` (B2.2) | B2 |
 | Not Found | 404 `NOT_FOUND` | `Implemented` | none |
-| Conflict | 409 `CONFLICT` (archived portfolio, job retry or cancel in the wrong state, idempotency key reuse) | Code `Implemented`; those causes `Planned (B0)` and `Planned (B4)` | B0, B4 |
+| Conflict | 409 `CONFLICT` (archived portfolio, job retry or cancel in the wrong state, idempotency key reuse) | Code `Implemented`; those causes `Planned (B0)` and `Implemented` (B4) | B0, B4 |
 | Rate Limit | 429 `RATE_LIMITED` | `Implemented` (`apps/api/src/middleware/rate-limit.ts`) | none |
 | Dependency Failure | 503 `DEPENDENCY_ERROR` when the database is unreachable (ADR-002 point 10) | `Implemented` (B0.4): the error handler maps Prisma connection errors to 503 `DEPENDENCY_ERROR` (`07-api-spec.md` §6); the readiness endpoint answers 503 on its own | none |
 | Internal Error | 500 `INTERNAL_ERROR`, stack logged and not returned | `Implemented` | none |
 | Network Failure | None on the server: a client concern; the API has no request timeout (ADR-002 point 10) and `TIMEOUT` was removed from `AppErrorCode` in B0.4 | Handling `Planned (FE0)`; the client timeout and retry policy `Deferred` to the frontend-stage ADR (ADR-006 point 11) | FE0 |
 | Realtime Failure | Socket `ERROR` message with a `code` and close codes `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | Server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
-| Background Job Failure | Job state `FAILED` with a reason (`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED`, `PORTFOLIO_ARCHIVED`) or `TIMED_OUT` (ADR-008 points 3 and 6), and an `ERROR` notification | `Planned (B4)`; screens `Planned (FE3)` | B4, FE3 |
+| Background Job Failure | Job state `FAILED` with a reason (`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED`, `PORTFOLIO_ARCHIVED`) or `TIMED_OUT` (ADR-008 points 3 and 6), and an `ERROR` notification | `Implemented` (B4); screens `Planned (FE3)` | B4, FE3 |
 
 Code vs ADR:
 
@@ -2075,13 +2075,13 @@ unless measured and documented.
 | --- | --- | --- |
 | Authentication | Login, `me`, refresh, logout and sessions `Implemented` (B2) | B2 |
 | Authorization | Ownership checks `Implemented`; `Actor` and permission checks `Implemented` (B0); roles and 403 `Implemented` (B2.1, B2.2) | B0, B2 |
-| Input validation | Body, query and headers `Implemented`; route parameters `Planned (B0)`; CSV `Planned (B4)`; WebSocket messages `Planned (B5)` | B0, B4, B5 |
+| Input validation | Body, query and headers `Implemented`; route parameters `Planned (B0)`; CSV `Implemented` (B4); WebSocket messages `Planned (B5)` | B0, B4, B5 |
 | CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Implemented`; credentials for the refresh cookie `Implemented` (B2.4) | B2 |
 | Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Planned (B7)`; the seed and reset production guard `Implemented` | B7 |
 | Rate limiting | HTTP `Implemented`; realtime limits `Planned (B5)` | B5 |
-| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Planned (B4)`; WebSocket limits `Planned (B5)` | B4, B5 |
+| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Implemented` (B4); WebSocket limits `Planned (B5)` | B4, B5 |
 | Error exposure | `Implemented`; redaction in logs `Implemented` (B3.1) | B3 |
-| File handling | CSV import `Planned (B4)`; no file is accepted today | B4 |
+| File handling | CSV import `Implemented` (B4); the only file accepted is the CSV import body (`text/csv`, 1 MB) | B4 |
 | Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; audit `Planned (B7)` | B7 |
 | Security headers | `helmet` `Implemented`; header test `Planned (B7)` | B7 |
 | Runtime database role | `Implemented` | none |
@@ -2211,7 +2211,7 @@ The demo must remain coherent after each scenario.
 | Request problem: request ID, structured log, error | `X-Request-ID` and the error body `Implemented`; propagation to every log line and the log of handled errors `Implemented` (B3.1, B3.2) | B3 |
 | Database problem: health and readiness, dependency error, diagnostic log | Endpoints and the `health.database.unavailable` line `Implemented`; mapping to `DEPENDENCY_ERROR` `Implemented` (B0.4); shutdown readiness `Implemented` (B3.4) | B0, B3 |
 | Realtime problem: connection ID, lifecycle event, reconnect | `Planned (B5)` (ADR-009 points 5 and 11) | B5 |
-| Background problem: job ID, progress, failure or timeout | `Planned (B4)` | B4 |
+| Background problem: job ID, progress, failure or timeout | `Implemented` (B4) | B4 |
 | Tests that prove the paths: redaction and event-name unit tests, and an integration test that the `requestId` appears in its log entries | `Implemented` (B3.1, B3.2) | B3 |
 
 Code vs ADR:
@@ -2382,7 +2382,7 @@ Avoid enormous commits containing unrelated systems.
 | --- | --- | --- |
 | Domain | `packages/domain`; analytics additions in B1 | `Implemented` |
 | API | Endpoints in each backend block; OpenAPI document in B6 | `Implemented` in part; `Planned (B6)` |
-| Persistence | `packages/database` (Prisma); `Job` and `IdempotencyKey` models in B4 | `Implemented`; `Planned (B4)` |
+| Persistence | `packages/database` (Prisma); `Job` and `IdempotencyKey` models in B4 | `Implemented` |
 | UI | Frontend blocks FE1 to FE4 | `Planned (FE1)` |
 | Validation | Zod at the API, domain invariants; route parameters and chronological validation in B0 | `Implemented` in part; `Planned (B0)` |
 | Error states | Backend categories in §30; screens in FE1 to FE3 | `Implemented` in part; `Planned (FE1)` |
@@ -2437,7 +2437,7 @@ Omissions must be intentional.
 | PostgreSQL persists data | `Implemented` | none |
 | REST API works | `Implemented` in part; the remaining endpoints in B1, B2 and B4; the OpenAPI document `Planned (B6)` | B1, B2, B4, B6 |
 | WebSockets work | Server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
-| Background operations work | `Planned (B4)` (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
+| Background operations work | `Implemented` (B4) (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
 | Demo Mode works | `Planned (FE4)`; needs B0 (in-memory repositories) and B5 (simulation engine) | FE4 |
 | Tests cover primary flows | Domain, database and API route tests `Implemented`; mandatory application and contract tests `Planned (B0)`; component, E2E and accessibility checks `Planned (FE5)`; no coverage percentage is set (ADR-006 point 11) | B0, FE5 |
 | Observability is available | `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | B3 |
@@ -2485,7 +2485,7 @@ The project is technically complete when:
 | Record transactions | `BUY` and `SELL` only, no cash balance (ADR-003 points 1 and 2); chronological validation `Planned (B0)` (ADR-003 point 6); a transaction cannot be edited or deleted, no such endpoint (ADR-003 point 7); the form `Planned (FE1)` | B0, FE1 |
 | Review analytics | Allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)`; win/loss and transaction statistics are not in version 1 (ADR-010 point 10) | B1, FE2 |
 | Experience realtime updates | `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
-| Receive operation feedback | Job progress and notifications `Planned (B4)`; screens `Planned (FE3)` | B4, FE3 |
+| Receive operation feedback | Job progress and notifications `Implemented` (B4); screens `Planned (FE3)` | B4, FE3 |
 | Coherent loading, empty, success and failure states | API empty results and error envelope `Implemented`; UI states `Planned (FE1)` | FE1 |
 
 Code vs ADR:
@@ -2738,7 +2738,7 @@ The project should demonstrate engineering judgment by knowing what **not** to b
 | --- | --- | --- | --- |
 | Repository interface | Database replacement; the demo already uses it with in-memory repositories (ADR-001) | Repositories over Prisma `Implemented`; in-memory implementations `Planned (B0)` | B0 |
 | Realtime hub behind its own interface | A shared broker later (ADR-007 deferred detail: the hub is not tied to the transport or to a broker) | `Planned (B5)` | B5 |
-| Job runner behind an interface, state in a `jobs` table | A dedicated worker later (ADR-008 point 4 puts the runner in process today) | `Planned (B4)` | B4 |
+| Job runner behind an interface, state in a `jobs` table | A dedicated worker later (ADR-008 point 4 puts the runner in process today) | `Implemented` (B4) | B4 |
 | Infrastructure ports such as `Logger` | An external provider later | `Implemented` (B3.1) | B3 |
 
 Code vs ADR:
@@ -2820,7 +2820,7 @@ Optimize observed bottlenecks, not hypothetical ones.
 | Validation | Body, query and headers `Implemented`; route parameters `Planned (B0)` | B0 |
 | CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Implemented` | none |
 | Rate limits | HTTP `Implemented`; realtime `Planned (B5)` | B5 |
-| Resource limits | Body limit `Implemented`; CSV and WebSocket limits `Planned (B4)` and `Planned (B5)` | B4, B5 |
+| Resource limits | Body limit `Implemented`; CSV limits `Implemented` (B4), WebSocket limits `Planned (B5)` | B4, B5 |
 | Secret management | Environment separation `Implemented`; seed and reset production guard `Implemented` | none |
 | Safe errors | `Implemented`; redaction in logs `Implemented` (B3.1) | B3 |
 
@@ -3127,7 +3127,7 @@ primary user workflow works end-to-end
 
 ## 55. Milestone 4 — Realtime and Operations
 
-**Status:** `Planned (B4)`, `Planned (B5)` for the backend; `Planned (FE3)` for the client items
+**Status:** `Implemented` (B4), `Planned (B5)` for the backend; `Planned (FE3)` for the client items
 
 **Owning blocks:** Backend: B4 (background jobs and idempotency), B5 (realtime and market simulation). Frontend: FE3 (WebSocket client, notifications, job progress). Decisions: ADR-007, ADR-008, ADR-010 point 3.
 
@@ -3135,9 +3135,9 @@ primary user workflow works end-to-end
 | --- | --- | --- |
 | WebSockets, realtime updates | server `Planned (B5)` (ADR-007) | B5 |
 | Reconnect | server-side behavior `Planned (B5)`; client reconnect `Planned (FE3)` | B5, FE3 |
-| Background jobs | `Planned (B4)` (ADR-008); the `Job` and `IdempotencyKey` models do not exist yet | B4 |
+| Background jobs | `Implemented` (B4) (ADR-008); the `Job` and `IdempotencyKey` models exist (B4.1) | B4 |
 | Progress UI | `Planned (FE3)` | FE3 |
-| Notifications | creation by jobs `Planned (B4)` (ADR-008); delivery over the realtime channel `Planned (B5)`; screens `Planned (FE3)`; states are `unread` and `read` only (ADR-010 point 3) | B4, B5, FE3 |
+| Notifications | creation by jobs `Implemented` (B4) (ADR-008); delivery over the realtime channel `Planned (B5)`; screens `Planned (FE3)`; states are `unread` and `read` only (ADR-010 point 3) | B4, B5, FE3 |
 
 Code vs ADR:
 
@@ -3543,8 +3543,8 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 18 Analytics | allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)` | B1, FE2 |
 | 19 Tables/filters | `Planned (FE2)` (sorting is client-side, ADR-010 point 4) | FE2 |
 | 20 Realtime | server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
-| 21 Background operations | `Planned (B4)` (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
-| 22 Notifications | alerts and notifications from the realtime and job paths `Planned (B4)`, `Planned (B5)`; screens `Planned (FE3)` | B4, B5, FE3 |
+| 21 Background operations | `Implemented` (B4) (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
+| 22 Notifications | alerts and notifications from the realtime and job paths `Implemented` (B4), `Planned (B5)`; screens `Planned (FE3)` | B4, B5, FE3 |
 | 23 Demo adapters | `Planned (FE4)`; needs the application layer and in-memory repositories from B0 | FE4 |
 | 24 Demo simulations | `@trading/market-sim` `Planned (B5)`; demo wiring `Planned (FE4)` | B5, FE4 |
 | 25 Unit/integration/component tests | domain, database and API tests `Implemented`; application and contract tests `Planned (B0)`; tests per block; component tests `Planned (FE5)` | B0, FE5 |
@@ -3738,10 +3738,10 @@ The portfolio should demonstrate:
 | Frontend | The frontend blocks; the libraries named in the original list are not decided by any ADR and stay `Deferred` (confirmed 2026-10-08, see Decided); see §40 | `Planned (FE0)` | FE0 to FE5 |
 | Backend | Node.js and TypeScript API, PostgreSQL persistence, validation, error envelope and health routes `Implemented`; contracts `Planned (B0)`; authentication and RBAC `Implemented` (B2) (ADR-005); OpenAPI `Planned (B6)`; see §40 | `Implemented` in part; `Planned (B0)` | B0, B2, B6 |
 | Realtime | Server `Planned (B5)` (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Planned (B5)`; `Planned (FE3)` | B5, FE3, FE4 |
-| Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Planned (B4)`; screens `Planned (FE3)` | `Planned (B4)` | B4, FE3 |
+| Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Implemented` (B4); screens `Planned (FE3)` | `Implemented` (B4) | B4, FE3 |
 | Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E tooling `Deferred` to the frontend-stage ADR and E2E checks `Planned (FE5)`; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
 | Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Implemented` (B0, B2.2); roles and sessions `Implemented` (B2) (ADR-005); production configuration guard `Implemented` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part (the B2 auth review is recorded in `odd/tasks/b2/b2-5-close.md`); the B7 pass `Planned (B7)` | B0, B2 |
-| Observability | Request IDs and health routes `Implemented`; structured logs, redaction, security events and the startup and shutdown entries `Implemented` (B3, ADR-009); job and realtime lifecycle events `Planned (B4)`, `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` (B3); B4 and B5 pending | B3, B4, B5 |
+| Observability | Request IDs and health routes `Implemented`; structured logs, redaction, security events and the startup and shutdown entries `Implemented` (B3, ADR-009); job lifecycle events `Implemented` (B4.2), realtime lifecycle events `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` (B3); B5 pending | B3, B4, B5 |
 | Deployment | Minimal CI `Implemented` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Implemented`; `Planned (B7)`; `Planned (FE4)` | B7, FE4 |
 | Demo | No paid infrastructure (ADR-007); reset, simulated latency and failure scenarios (ADR-010 point 6); in-process adapters (ADR-001, ADR-007 point 13); see §56 | `Planned (FE4)` | B5, FE4 |
 | Portfolio | Case study, architecture visuals, tradeoffs and walkthrough; measured outcomes only when measured; see §42 and §59 | `Planned (FE6)` | FE6 |

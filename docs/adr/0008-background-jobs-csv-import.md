@@ -7,7 +7,7 @@ the user from the `14-deployment-spec.md` reconciliation; Deferred detail row;
 2026-10-08, points 4 and 6, new failure reason `PORTFOLIO_ARCHIVED` and the
 matching clearing of the stored input, approved by the user from the T6.2
 decision batch; Deferred detail row)
-**Implemented in:** roadmap block B4 (not yet implemented)
+**Implemented in:** roadmap block B4 (B4.1 to B4.4, 2026-10-21); the values and choices point 10 and the Deferred detail left to B4 are under Resolved in B4
 
 ## Context
 
@@ -51,7 +51,7 @@ retried `POST` must not create a duplicate transaction.
    content, bounded by point 10) is stored in the `jobs` row when the job is
    created, so resuming after a restart and retrying never depend on the
    original request. (Amended 2026-10-07, approved by the user from the
-   `14-deployment-spec.md` reconciliation; `Planned (B4)`:) The stored input
+   `14-deployment-spec.md` reconciliation; `Implemented`, B4.2:) The stored input
    is kept while the job can still be retried (point 6) and is cleared for
    `COMPLETED` jobs and for jobs that `FAILED` with `VALIDATION_FAILED`.
    (Amended 2026-10-08, approved by the user: it is also cleared for jobs
@@ -174,6 +174,21 @@ specified and tested in the listed block.
 | A timeout measured from creation makes retried or resumed jobs time out immediately. | The timeout is measured per attempt from when the job was queued. Startup handling of jobs past their deadline is defined. | B4 |
 | Retry and cancel have no stated permission. | Retry requires `transaction:create`; cancel requires `transaction:create` on an owned job. | B4 |
 | How the CSV reaches `POST .../imports`, and its body limit: the global JSON limit is 100 kB. | The transport and a route-specific body limit are set with the input limits of point 10. | B4 |
+
+## Resolved in B4
+
+What the decision left to the block, as built (2026-10-21):
+
+| Item | Built |
+|---|---|
+| File size and row count (point 10) | 1 MB and 5000 data rows; a file over either is rejected before any row is read (413 for the body, `VALIDATION_FAILED` with a file-level report for the rows) |
+| How the CSV reaches `POST .../imports` | The raw `text/csv` body, read by a route-level `express.text` with the 1 MB limit; the global 100 kB JSON limit is not raised |
+| CSV parsing dependency | `csv-parse` in `apps/api`, behind a `CsvTokenizer` port that `@trading/application` receives, so the application layer imports only `@trading/domain` (ADR-001) |
+| Timeout per attempt (point 7) | 5 minutes, from when the attempt was queued, while `QUEUED` or validating; the apply stage is exempt |
+| Idempotency (point 8) | Optional `Idempotency-Key`; 60-second reservation lease, 24-hour expiry; the hash covers method, route pattern, path parameters and body; the response is stored in the mutation's unit of work; a 4xx is stored, a 5xx is released |
+| Progress (point 3) | Reported while validating (`processed`, `total`); the apply stage is one unit of work and reports none |
+| Retry and cancel permissions | Both require `transaction:create` on an owned job; reading requires `transaction:read`; no new permission in the matrix |
+| Log events (ADR-009 point 11) | `job.queued` (create and retry), `job.started`, `job.completed`, `job.failed`, `job.cancelled`, `job.timed_out`, `job.notification_failed`, all with `jobId` |
 
 ## Related
 

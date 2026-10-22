@@ -2078,7 +2078,7 @@ routes are not rate-limited. Realtime inbound limits are `Planned (B5)`
 
 # 48. API Timeout Behavior
 
-**Status:** Job timeouts `Planned (B4)` (ADR-008 point 7); no HTTP request timeout in v1 (ADR-002 point 10)
+**Status:** Job timeouts `Implemented` (B4) (ADR-008 point 7); no HTTP request timeout in v1 (ADR-002 point 10)
 
 The API sets no request timeout, and none is planned for v1: it runs locally
 for one user, and the 15 s client timeout (NFR-017) covers the user

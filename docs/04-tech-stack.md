@@ -178,7 +178,7 @@ free to use and need no paid API (§49).
 
 Node.js, `engines.node >=24.0.0`. The API runs in development with `tsx`
 `4.23.13` (`tsx watch`) and is started with `node dist/index.js`. Background
-jobs run in the API process (`Planned (B4)`, ADR-008 point 4); the realtime
+jobs run in the API process (`Implemented` (B4), ADR-008 point 4); the realtime
 server runs in it too (`Planned (B5)`, ADR-007).
 
 Open detail (B7): the production build path is fixed in B7 (ADR-006 point 3).

@@ -114,7 +114,7 @@ come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
 | Overview (dashboard data) | `Implemented` | — |
 | Performance and risk analytics (TWR, P/L, drawdown, volatility, attribution, Pulse) | `Implemented` | ADR-004, `16-analytics-spec.md` |
 | Structured logging | `Implemented` (B3.1) | ADR-009 |
-| CSV transaction import (background jobs) and idempotency | `Planned (B4)` | ADR-008 |
+| CSV transaction import (background jobs) and idempotency | `Implemented` (B4) | ADR-008 |
 | Realtime prices and events, shared market simulator | `Planned (B5)` | ADR-007 |
 | Generated OpenAPI document | `Planned (B6)` | ADR-002 point 7 |
 | Production-like containerized local run | `Planned (B7)` | ADR-006 |
@@ -206,7 +206,7 @@ Runs locally only (ADR-006 point 1):
   `@trading/database`. `Implemented`
 - PostgreSQL in Docker Compose for development. `Implemented`
 - Application layer and shared contracts. `Planned (B0)`
-- Background jobs in process. `Planned (B4)`
+- Background jobs in process. `Implemented` (B4)
 - WebSocket realtime. `Planned (B5)`
 - API container and `full` Compose profile. `Planned (B7)`
 - Web app in real mode. `Planned (FE)`

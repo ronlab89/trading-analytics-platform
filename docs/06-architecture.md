@@ -249,7 +249,7 @@ Target (ADR-001):
 6. Unit tests use in-memory fake repositories (§60).
 
 Later additions to the same package: the `Logger` port (ADR-009 point 1,
-`Implemented`, B3.1), the CSV import use case (ADR-008, `Planned (B4)`) and
+`Implemented`, B3.1), the CSV import use case (ADR-008, `Implemented` (B4)) and
 realtime subscription authorization (ADR-007 point 3, `Planned (B5)`).
 
 ---
@@ -542,8 +542,8 @@ and the position together.
 | Isolation for concurrent position updates | ADR-001 Deferred detail | `Implemented` (advisory lock, `lockPortfolioAsset`) |
 | In-memory `UnitOfWork` with rollback, serialized | ADR-001 Deferred detail | `Implemented` |
 | Chronological holding check inside the unit | ADR-003 point 6 | `Implemented` (`replayPosition`) |
-| CSV apply in one unit that also sets `COMPLETED` | ADR-008 points 2, 5 | `Planned (B4)` |
-| Idempotency record written in the mutation's unit | ADR-008 Deferred detail | `Planned (B4)` |
+| CSV apply in one unit that also sets `COMPLETED` | ADR-008 points 2, 5 | `Implemented` (B4.3) |
+| Idempotency record written in the mutation's unit | ADR-008 Deferred detail | `Implemented` (B4.4) |
 | Alert state and notification in one transaction | ADR-007 Deferred detail | `Planned (B5)` |
 
 ---
@@ -564,7 +564,7 @@ of ADR-007 point 5.
 
 # 32. Background Processing
 
-**Status:** `Planned (B4)` for jobs; simulator ticks, rollover and backfill `Planned (B5)`.
+**Status:** `Implemented` (B4) for jobs; simulator ticks, rollover and backfill `Planned (B5)`.
 
 - Jobs (ADR-008): one use case, CSV transaction import; an in-process runner
   backed by a `jobs` table; input stored in the row; states `QUEUED`,
@@ -789,7 +789,7 @@ sequence per asset (ADR-007 Deferred detail).
 
 # 50. Data Flow Example — Transaction
 
-**Status:** `Implemented`, chronological check included; idempotency `Planned (B4)`; event `Planned (B5)`.
+**Status:** `Implemented`, chronological check included; idempotency `Implemented` (B4.4); event `Planned (B5)`.
 
 ```text
 POST /api/v1/portfolios/:portfolioId/transactions

@@ -13,10 +13,10 @@ specification: the SDD (`00`-`16`) stays the source of truth for behavior,
 `PROGRESS.md` records what is done and why, and this file says what is
 left, in what order, and when each block counts as closed.
 
-**Last updated:** 2026-10-20 (B3 closed; reconciled with ADR-001 to ADR-010)
-**Status:** B0, B1, B2 and B3 are done (B0.1 to B0.7 on 2026-10-16; B1.1 to
+**Last updated:** 2026-10-21 (B4 closed; reconciled with ADR-001 to ADR-010)
+**Status:** B0, B1, B2, B3 and B4 are done (B0.1 to B0.7 on 2026-10-16; B1.1 to
 B1.7 on 2026-10-17; B2.1 to B2.5 on 2026-10-18; B3.1 to B3.5 on 2026-10-19 and
-2026-10-20). The next block is B4, then B5 to B7.
+2026-10-20; B4.1 to B4.5 on 2026-10-21). The next block is B5, then B6 and B7.
 **Decision behind it:** the user chose to finish the backend completely
 before starting the frontend. This is a deliberate override of the phase
 order in `15-implementation-plan.md` §4, which alternated backend and
@@ -791,7 +791,7 @@ must exist before starting them:
 | B1 Performance and risk analytics | Done (2026-10-17) |
 | B2 Auth and RBAC | Done (2026-10-18: B2.1 roles and matrix, B2.2 permission checks, B2.3 sessions and login, B2.4 refresh and logout, B2.5 security review and close) |
 | B3 Observability foundation | Done (2026-10-20: B3.1 logger and error logging, B3.2 request logs and correlation, B3.3 security events, defensive-read log and series timing, B3.4 graceful shutdown and lifecycle entries, B3.5 docs and close) |
-| B4 Background jobs and idempotency | Not started |
+| B4 Background jobs and idempotency | Done (2026-10-21: B4.1 job and idempotency storage, B4.2 service and runner, B4.3 CSV import, B4.4 endpoints and `Idempotency-Key`, B4.5 docs and close) |
 | B5 Realtime | Not started |
 | B6 API documentation and contract | Not started |
 | B7 Deployment readiness and hardening | Not started |
