@@ -4,6 +4,8 @@ import { MarketMode, modeProfile } from "./mode";
 import { stepPrice } from "./price-step";
 import { createRandom } from "./random";
 import type { Random } from "./random";
+import { scenarioDefinition, scenarioDuration, scenarioProfileAt } from "./scenario";
+import type { ScenarioDefinition, SimulationScenario } from "./scenario";
 
 /** The starting state of one asset. */
 export interface AssetSeed {
@@ -41,12 +43,27 @@ export interface PriceTick {
   readonly timestamp: Date;
 }
 
+/** Where a running scenario stands. */
+export interface ScenarioProgress {
+  readonly id: SimulationScenario;
+  readonly elapsedTicks: number;
+  readonly totalTicks: number;
+}
+
 export interface MarketEngine {
   mode(): MarketMode;
   setMode(mode: MarketMode): void;
+  /** The running scenario, or `null` when none runs. */
+  scenario(): ScenarioProgress | null;
+  /**
+   * Starts a scenario from the current prices. It replaces a running one and, until it ends or
+   * `stopScenario` is called, sets the price movement instead of the mode.
+   */
+  startScenario(id: SimulationScenario): void;
+  stopScenario(): void;
   /**
    * Advances every asset by one tick, in the order of `assets`. In `PAUSED` mode nothing moves:
-   * it returns no ticks and no sequence is used.
+   * it returns no ticks, uses no sequence and does not advance a running scenario.
    */
   tick(): PriceTick[];
 }
@@ -101,16 +118,39 @@ export function createMarketEngine(options: MarketEngineOptions): MarketEngine {
     sequence: asset.sequence ?? 0,
   }));
 
+  let active: { definition: ScenarioDefinition; elapsed: number } | null = null;
+
   return {
     mode: () => currentMode,
     setMode: (mode) => {
       currentMode = mode;
     },
+    scenario: () =>
+      active
+        ? {
+            id: active.definition.id,
+            elapsedTicks: active.elapsed,
+            totalTicks: scenarioDuration(active.definition),
+          }
+        : null,
+    startScenario: (id) => {
+      active = { definition: scenarioDefinition(id), elapsed: 0 };
+    },
+    stopScenario: () => {
+      active = null;
+    },
     tick: () => {
       if (currentMode === MarketMode.PAUSED) {
         return [];
       }
-      const profile = modeProfile(currentMode);
+      const scenarioProfile = active ? scenarioProfileAt(active.definition, active.elapsed) : null;
+      const profile = scenarioProfile ?? modeProfile(currentMode);
+      if (active) {
+        active.elapsed += 1;
+        if (scenarioProfileAt(active.definition, active.elapsed) === null) {
+          active = null;
+        }
+      }
       const timestamp = options.clock.now();
       return states.map((state) => {
         const next = stepPrice(state.price, profile, state.random);

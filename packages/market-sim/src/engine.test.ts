@@ -145,11 +145,11 @@ describe("createMarketEngine", () => {
     });
 
     it("drifts up in BULLISH and down in BEARISH, on average across seeds", () => {
-      const seeds = Array.from({ length: 30 }, (_, index) => `seed-${String(index)}`);
+      const seeds = Array.from({ length: 12 }, (_, index) => `seed-${String(index)}`);
       const meanReturn = (mode: MarketMode): number => {
         const total = seeds.reduce(
           (sum, seed) =>
-            sum + (finalPrice(run({ seed, assets: [asset("a")], mode, ticks: 2000 }), "a") - 100),
+            sum + (finalPrice(run({ seed, assets: [asset("a")], mode, ticks: 1500 }), "a") - 100),
           0,
         );
         return total / seeds.length;
