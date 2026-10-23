@@ -2140,26 +2140,46 @@ Decided in the frontend-stage ADR, with the demo data layers.
 
 # 54. Demo Simulation Controls
 
-**Status:** `Deferred` for the demo (ADR-010 point 6); real-mode control `Planned (B5)` (ADR-007 point 10)
+**Status:** `Deferred` for the demo (ADR-010 point 6); real-mode control `Implemented` (B5.6) (ADR-007 point 10)
 
 In real mode, starting, pausing and changing the simulation mode require the
 `simulation:control` permission (`ADMIN`, ADR-005). Endpoints, all
-`Planned (B5)` (ADR-007 point 15):
+`Implemented` (B5.6) (ADR-007 point 15):
 
 | Endpoint | Status |
 | --- | --- |
-| `POST /api/v1/simulation/start` | `Planned (B5)` |
-| `POST /api/v1/simulation/pause` | `Planned (B5)` |
-| `PUT /api/v1/simulation/mode` | `Planned (B5)` |
+| `POST /api/v1/simulation/start` | `Implemented` (B5.6) |
+| `POST /api/v1/simulation/pause` | `Implemented` (B5.6) |
+| `PUT /api/v1/simulation/mode` | `Implemented` (B5.6) |
 
 Request for `PUT /api/v1/simulation/mode`: `{ "mode": "<wire id>" }`, one
 of `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH`. The lifecycle is
 only `RUNNING <-> HALTED` (ADR-007 point 16); there is no stop and no
 seed reset.
 
-Errors: 400 `VALIDATION_ERROR` for an unknown mode; 403 `FORBIDDEN` without
-`simulation:control` (ADR-002 point 10). Success bodies and the behavior
-of the `PAUSED` mode are open details in `08-realtime-spec.md` §40-§41.
+Responses: every endpoint answers `200` with the status after the call:
+
+```json
+{ "data": { "state": "RUNNING", "mode": "NORMAL" } }
+```
+
+`state` is `RUNNING` or `HALTED`; `mode` is a mode wire id. Repeating a call
+that changes nothing (`start` while `RUNNING`, `pause` while `HALTED`, the
+same mode) is not an error: it answers `200` with the unchanged status.
+
+Behavior (decisions of B5.6):
+
+- `pause` moves `RUNNING` to `HALTED`: nothing ticks and no daily candle
+  closes until `start`, which closes the days missed.
+- The `PAUSED` mode keeps the simulator `RUNNING` but emits no tick; daily
+  candles still close at midnight.
+- `start` resumes into the mode in effect when it was paused. A mode set while
+  `HALTED` takes effect on `start`.
+- The state and the mode are not persisted: a restart is `RUNNING` in `NORMAL`.
+
+Errors: 400 `VALIDATION_ERROR` for an unknown mode (`details[0].field` is
+`mode`); 401 `UNAUTHORIZED` without a valid access token; 403 `FORBIDDEN`
+without `simulation:control` (ADR-002 point 10).
 
 ---
 

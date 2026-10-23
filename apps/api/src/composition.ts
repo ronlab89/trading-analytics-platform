@@ -6,6 +6,7 @@ import {
   PrismaIdempotencyKeyRepository,
   PrismaJobRepository,
   PrismaHistoricalPriceRepository,
+  PrismaMarketEventRepository,
   PrismaMarketPriceRepository,
   PrismaNotificationRepository,
   PrismaPortfolioRepository,
@@ -35,6 +36,7 @@ import {
   createRangeAttributionService,
   createRiskService,
   createScenarioService,
+  createSimulationService,
   createTransactionService,
   createUserPreferenceService,
   createWatchlistService,
@@ -48,6 +50,7 @@ import { LOG_EVENTS } from "./logging/events.js";
 import { logger as defaultLogger } from "./logging/logger.js";
 import { withRequestContext } from "./logging/request-context.js";
 import { realtimePublisher } from "./realtime/realtime-runtime.js";
+import { createMarketSimulator } from "./simulation/market-simulator.js";
 
 /**
  * Composition root: the one place that builds concrete dependencies and
@@ -207,6 +210,20 @@ export function buildComposition(
     }),
   });
 
+  // Built here but booted by `index.ts`, so tests that load the composition never tick or touch
+  // the database.
+  const marketSimulator = createMarketSimulator({
+    clock,
+    logger,
+    publisher,
+    assetRepository,
+    marketPriceRepository,
+    marketEventRepository: new PrismaMarketEventRepository(),
+    historicalPriceRepository,
+    positionRepository,
+  });
+  const simulationService = createSimulationService({ control: marketSimulator });
+
   return {
     clock,
     portfolioService,
@@ -229,6 +246,8 @@ export function buildComposition(
     jobService,
     jobRepository,
     jobRunner,
+    marketSimulator,
+    simulationService,
   };
 }
 
