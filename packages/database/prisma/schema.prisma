@@ -590,7 +590,9 @@ model MarketEvent {
 
   asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
-  @@index([assetId, sequence])
+  // Unique so a restart cannot append a sequence twice (ADR-007 Deferred detail, B5.6). The
+  // unique index also serves the lookup of the last sequence of an asset.
+  @@unique([assetId, sequence])
   @@map("market_events")
 }
 
