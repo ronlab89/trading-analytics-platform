@@ -151,6 +151,9 @@ importers:
       '@trading/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@trading/market-sim':
+        specifier: workspace:*
+        version: link:../../packages/market-sim
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3

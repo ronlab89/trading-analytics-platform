@@ -36,4 +36,11 @@ export const LOG_EVENTS = {
   realtimeConnectionClosed: "realtime.connection.closed",
   realtimeHandlerFailed: "realtime.message.handler_failed",
   realtimeSubscriptionRefused: "realtime.subscription.refused",
+  simulationStarted: "simulation.started",
+  simulationPaused: "simulation.paused",
+  simulationModeChanged: "simulation.mode.changed",
+  simulationBootFailed: "simulation.boot.failed",
+  simulationTickFailed: "simulation.tick.failed",
+  simulationCandleFailed: "simulation.candle.failed",
+  simulationPruneFailed: "simulation.prune.failed",
 } as const;

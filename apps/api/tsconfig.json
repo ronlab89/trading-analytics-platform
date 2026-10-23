@@ -19,6 +19,9 @@
       "path": "../../packages/domain"
     },
     {
+      "path": "../../packages/market-sim"
+    },
+    {
       "path": "../../packages/database"
     },
     {
