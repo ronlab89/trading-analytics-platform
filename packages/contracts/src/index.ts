@@ -31,6 +31,7 @@ export * from "./response-common.schema.js";
 export * from "./scenario-impact.response.js";
 export * from "./scenario.response.js";
 export * from "./scenario.schema.js";
+export * from "./simulation.schema.js";
 export * from "./transaction.response.js";
 export * from "./transaction.schema.js";
 export * from "./user-preference.response.js";
