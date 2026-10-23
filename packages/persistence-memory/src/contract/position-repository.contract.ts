@@ -143,6 +143,31 @@ export function positionRepositoryContract(
       expect(await context.repository.getById(created.id)).toEqual(updated);
     });
 
+    it("sets the current price of every position in an asset and only those", async () => {
+      const { portfolioId, otherPortfolioId, assetId, otherAssetId } = context.fixtures;
+      const first = await context.repository.upsert(input(portfolioId, assetId));
+      const second = await context.repository.upsert(input(otherPortfolioId, assetId));
+      const untouched = await context.repository.upsert(input(portfolioId, otherAssetId));
+      const price = Money.of("123.45", "USD");
+      expect(await context.repository.updateCurrentPriceByAssetId(assetId, price)).toBe(2);
+      expect((await context.repository.getById(first.id))?.currentPrice).toEqual(price);
+      expect((await context.repository.getById(second.id))?.currentPrice).toEqual(price);
+      expect(await context.repository.getById(first.id)).toMatchObject({
+        quantity: first.quantity,
+        averageEntryPrice: first.averageEntryPrice,
+      });
+      expect(await context.repository.getById(untouched.id)).toEqual(untouched);
+    });
+
+    it("changes nothing for an asset nobody holds", async () => {
+      const { portfolioId, assetId, otherAssetId } = context.fixtures;
+      const held = await context.repository.upsert(input(portfolioId, assetId));
+      expect(
+        await context.repository.updateCurrentPriceByAssetId(otherAssetId, Money.of("1", "USD")),
+      ).toBe(0);
+      expect(await context.repository.getById(held.id)).toEqual(held);
+    });
+
     it("deletes the position of a portfolio and asset and leaves the others", async () => {
       const { portfolioId, otherPortfolioId, assetId, otherAssetId } = context.fixtures;
       await context.repository.upsert(input(portfolioId, assetId));

@@ -40,6 +40,14 @@ export class PrismaHistoricalPriceRepository implements HistoricalPriceRepositor
     return rows.map(toDomainHistoricalPrice);
   }
 
+  async getLatestByAssetId(assetId: string): Promise<HistoricalPrice | null> {
+    const row = await prisma.historicalPrice.findFirst({
+      where: { assetId },
+      orderBy: { timestamp: "desc" },
+    });
+    return row ? toDomainHistoricalPrice(row) : null;
+  }
+
   async create(input: CreateHistoricalPriceInput): Promise<HistoricalPrice> {
     const data = toPrismaCreateInput(input);
     const row = await prisma.historicalPrice.upsert({

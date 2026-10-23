@@ -60,6 +60,14 @@ export class PrismaPositionRepository implements PositionRepository {
     return toDomainPosition(row);
   }
 
+  async updateCurrentPriceByAssetId(assetId: string, currentPrice: Money): Promise<number> {
+    const result = await this.db.position.updateMany({
+      where: { assetId },
+      data: { currentPrice: currentPrice.toString() },
+    });
+    return result.count;
+  }
+
   async deleteByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<void> {
     await this.db.position.delete({
       where: { portfolioId_assetId: { portfolioId, assetId } },
