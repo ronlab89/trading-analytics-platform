@@ -221,7 +221,8 @@ export function createMarketEngine(options: MarketEngineOptions): MarketEngine {
       const profile = scenarioProfile ?? modeProfile(currentMode);
       if (active) {
         active.elapsed += 1;
-        if (scenarioProfileAt(active.definition, active.elapsed) === null) {
+        // The scenario ends with the tick that uses its last phase tick.
+        if (active.elapsed >= scenarioDuration(active.definition)) {
           active = null;
         }
       }

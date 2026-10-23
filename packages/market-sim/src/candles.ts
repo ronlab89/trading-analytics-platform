@@ -15,6 +15,10 @@ export const VOLUME_PER_TICK = 10;
 const GENERATED_STEPS = 48;
 const GENERATED_PROFILE: PriceProfile = { drift: 0, volatility: 0.0015 };
 
+/** The volume of a generated day is drawn from 500 000 to 1 000 000, around a live day's 864 000. */
+const GENERATED_VOLUME_MIN = 500_000;
+const GENERATED_VOLUME_SPREAD = 500_000;
+
 /** The UTC day of an instant, counted in whole days since 1970-01-01. */
 export function utcDay(instant: Date): number {
   return Math.floor(instant.getTime() / DAY_MS);
@@ -59,6 +63,6 @@ export function generateDayCandle(input: {
     high,
     low,
     close: price,
-    volume: Math.floor(500_000 + random.next() * 500_000),
+    volume: Math.floor(GENERATED_VOLUME_MIN + random.next() * GENERATED_VOLUME_SPREAD),
   };
 }
