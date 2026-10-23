@@ -10,6 +10,7 @@
     { "path": "./packages/contracts" },
     { "path": "./packages/application" },
     { "path": "./packages/persistence-memory" },
+    { "path": "./packages/market-sim" },
     { "path": "./packages/database" },
     { "path": "./apps/api" }
   ]

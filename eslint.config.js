@@ -84,6 +84,47 @@ export default [
   },
 
   {
+    // @trading/market-sim imports nothing except @trading/domain (and its own files), and reads
+    // neither the wall clock nor an unseeded random source (ADR-007 point 7).
+    files: ["packages/market-sim/src/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^(?!@trading/domain$|\\.{1,2}/).+",
+              message:
+                "@trading/market-sim may only import @trading/domain: no Prisma, Express, Zod, @trading/application or other packages (ADR-007 point 7).",
+            },
+          ],
+        },
+      ],
+      "no-restricted-properties": [
+        "error",
+        {
+          object: "Math",
+          property: "random",
+          message: "Use the seeded generator (createRandom), never an unseeded source.",
+        },
+        {
+          object: "Date",
+          property: "now",
+          message: "Read time from the injected Clock, never the wall clock.",
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length=0]",
+          message: "Read time from the injected Clock, never `new Date()`.",
+        },
+      ],
+    },
+  },
+
+  {
     // Config files and repository scripts live outside any tsconfig `include`, so type-aware rules
     // (which require project membership) must be disabled for them.
     // This is typescript-eslint's documented pattern for root-level config files.
