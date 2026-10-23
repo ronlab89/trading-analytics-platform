@@ -37,11 +37,11 @@ odd/tasks/b5/**
 
 The roadmap tasks were split against the code when the slice started (L2).
 
-- [ ] T1 `MarketEvent`: unique `(assetId, sequence)` migration and a bounded-retention method (S2, S5). Risk item 1.
-- [ ] T2 `HistoricalPriceRepository.getLatestByAssetId` and `PositionRepository.updateCurrentPriceByAssetId` (S2, S3, S5). Risk item 1.
-- [ ] T3 The `simulation:control` use cases and the contracts: `SimulationControl` port, `createSimulationService`, mode request and status response (S4).
-- [ ] T4 The simulator adapter in `apps/api`: start from persisted state, tick loop, persist, publish, retention, daily candles, `simulation.*` logs (S1, S2, S3, S5, S6). Risk item 4.
-- [ ] T5 The control endpoints, the composition and `index.ts` wiring, the shutdown step, and `docs/07-api-spec.md` (S4, S6). Risk item 2.
+- [x] T1 `MarketEvent`: unique `(assetId, sequence)` migration and a bounded-retention method (S2, S5). Risk item 1. Commit `5b34a9b`.
+- [x] T2 `HistoricalPriceRepository.getLatestByAssetId` and `PositionRepository.updateCurrentPriceByAssetId` (S2, S3, S5). Risk item 1. Commit `b1fcfdc`.
+- [x] T3 The `simulation:control` use cases and the contracts: `SimulationControl` port, `createSimulationService`, mode request and status response (S4). Commit `71b239a`.
+- [x] T4 The simulator adapter in `apps/api`: start from persisted state, tick loop, persist, publish, retention, daily candles, `simulation.*` logs (S1, S2, S3, S5, S6). Risk item 4. Commit `603ea3c`.
+- [x] T5 The control endpoints, the composition and `index.ts` wiring, the shutdown step, and `docs/07-api-spec.md` (S4, S6). Risk item 2. Commit `94ec46c`.
 
 ## Done when
 
@@ -69,3 +69,14 @@ L2 Decisions taken with the recommendation (same approval as B5.5):
 - D6 Failures. A persistence error on one asset logs `simulation.tick.failed` and skips that asset for the tick; a tick that is still running makes the next one be skipped. Neither stops the loop or the process. A skipped asset leaves a gap in its persisted sequence for that tick; the next restart resumes from the persisted maximum.
 - D7 Logging. Ticks are not logged; only `simulation.started`, `simulation.paused` and `simulation.mode.changed` at `info` and failures at `warn` (answers the open detail of `08-realtime-spec.md` §58).
 - D8 A restart in the middle of a UTC day: the candle of that day is built from the ticks since the restart (it opens at the price found).
+- D9 The engine seed is `trading-analytics-platform:<highest persisted sequence>`. The same persisted state gives the same series, and a restart from a later point does not replay the noise of the first run.
+- D10 Edit surfaces added to the list above while working: `packages/persistence-memory/src/**` (the in-memory repositories and the contract suites follow the ports), `apps/api/src/app.ts`, `apps/api/package.json` and `apps/api/tsconfig.json` (the new `@trading/market-sim` dependency and reference), and `pnpm-lock.yaml`.
+- D11 Rolling the price without a tick. When a day closes and the asset does not tick in that call (mode `PAUSED`, or days generated at boot), the simulator writes `MarketPrice` with price and previous price at the close, `change` 0, and updates the held positions, so `previousPrice` rolls at every rollover (S3).
+
+L3 Checks, observed on 2026-10-23:
+
+- `pnpm typecheck`, `pnpm lint`, `pnpm build` and `pnpm docs:check` pass.
+- Tests added and passing: 23 in `market-simulator.test.ts`, 23 in `simulation.routes.test.ts`, 2 in `simulator-step.test.ts`, 4 in `simulation-service.test.ts`, 16 in `simulation.schema.test.ts`, and 8 new contract cases (event uniqueness and pruning, latest candle, position price by asset) run against the in-memory repositories (persistence-memory 306 pass, application 450 pass, contracts 216 pass).
+- A mutation check on the simulator (dropping the persisted sequence and the prune interval) made the resume and retention tests fail, so they pin those rules.
+- `apps/api`: 29 test files fail only because this environment has no database (same count as before this slice); none is a new file. The Prisma repositories and the migration were not run: `prisma validate` passes, but the new Prisma contract cases and the `20261023120000_make_market_event_sequence_unique` migration need the user to run `db:test:migrate` and the DB-backed suites.
+- Known limit (D8): a restart in the middle of a UTC day builds that day candle from the ticks since the restart.
