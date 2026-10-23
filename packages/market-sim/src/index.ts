@@ -11,6 +11,7 @@ export {
   SimulationScenario,
 } from "./scenario";
 export type { ScenarioDefinition, ScenarioPhase } from "./scenario";
+export { VOLUME_PER_TICK } from "./candles";
 export { createMarketEngine, InvalidSimulationInputError } from "./engine";
 export type {
   AssetSeed,
