@@ -49,6 +49,8 @@ pnpm --filter @trading/database db:seed       # optional, see Local Database bel
 pnpm --filter @trading/api dev                # PORT defaults to 7001
 ```
 
+The API documentation is at `http://localhost:7001/api/docs` (Scalar) and the OpenAPI document at `/openapi.json`; both are off in production unless `API_DOCS_ENABLED=true`.
+
 Check that it is up: `GET /health` (liveness) and `GET /health/ready` (readiness, answers 503
 when PostgreSQL is not reachable). Environment notes and troubleshooting are in
 [`CONTRIBUTING.md`](./CONTRIBUTING.md) sections 9 and 10.

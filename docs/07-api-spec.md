@@ -38,7 +38,7 @@ point 5), `Planned (FE)`.
 | 6 | Pagination for large collections. | `Implemented` |
 | 7 | Filtering and sorting where required. | `Implemented` per endpoint |
 | 8 | `Idempotency-Key` where duplicates are dangerous (ADR-008 point 8). | `Implemented` on transaction creation and import creation (§13, §14, §39) |
-| 9 | Versioned contracts, additive changes only within a version (ADR-002 point 8); OpenAPI generated from the schemas (ADR-002 point 7). | `Implemented` for versioning; OpenAPI `Planned (B6)` |
+| 9 | Versioned contracts, additive changes only within a version (ADR-002 point 8); OpenAPI generated from the schemas (ADR-002 point 7). | `Implemented` for versioning; OpenAPI `Implemented` (B6) |
 | 10 | Realtime events are separate from HTTP responses (`08-realtime-spec.md`). | `Implemented` (B5) |
 
 Wire format (ADR-002 point 3), `Implemented`; enforced by the response schemas
@@ -2208,11 +2208,35 @@ not validated at runtime in production.
 
 # 57. API Documentation
 
-**Status:** `Planned (B6)` (ADR-002 point 7)
+**Status:** `Implemented` (B6) (ADR-002 point 7)
 
 OpenAPI is generated from the Zod schemas with the `toJSONSchema` function
 of Zod v4. There is no hand-maintained API document; this file stays the
 design spec.
+
+## Open the viewer
+
+Run the API (outside production, or with `API_DOCS_ENABLED=true`) and open
+`http://localhost:7001/api/docs`. The raw document is at
+`http://localhost:7001/openapi.json`. To call a protected endpoint, log in
+with `POST /api/v1/auth/login`, choose **bearerAuth** in the viewer and paste
+the access token; the page stores no credential. In production both paths
+answer 404 unless `API_DOCS_ENABLED=true`.
+
+## Add or change an endpoint
+
+1. Add the route in `apps/api/src/routes/` with `validate()` for each
+   `params`, `query` and `body` schema, as every route does.
+2. Add its `ApiOperation` in `packages/contracts/src/operations/`, using
+   the same schema objects, the response schema and the error statuses, and
+   join it in `API_OPERATIONS`.
+3. Run the contracts and API tests. `apps/api/src/openapi-drift.test.ts`
+   fails with the route and what differs when a route has no operation, an
+   operation has no route, or the method, path, authentication or validated
+   schemas differ.
+
+The WebSocket is not an HTTP operation and is not in the document
+(`08-realtime-spec.md`).
 
 ---
 
