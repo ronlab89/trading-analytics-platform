@@ -93,3 +93,42 @@ describe("envSchema CORS_ORIGIN", () => {
     expect(parseCors(value).success).toBe(false);
   });
 });
+
+describe("envSchema API_DOCS_ENABLED", () => {
+  it.each([
+    ["development", true],
+    ["test", true],
+    ["production", false],
+  ])("defaults for %s to %s when it is not set", (nodeEnv, enabled) => {
+    const result = envSchema.safeParse({ ...base, NODE_ENV: nodeEnv });
+
+    expect(result.success && result.data.API_DOCS_ENABLED).toBe(enabled);
+  });
+
+  it.each([
+    ["production", "true", true],
+    ["development", "false", false],
+  ])("takes the value over the default (%s, %s)", (nodeEnv, value, enabled) => {
+    const result = envSchema.safeParse({ ...base, NODE_ENV: nodeEnv, API_DOCS_ENABLED: value });
+
+    expect(result.success && result.data.API_DOCS_ENABLED).toBe(enabled);
+  });
+
+  it.each(["yes", "1", ""])("rejects %s", (value) => {
+    expect(envSchema.safeParse({ ...base, API_DOCS_ENABLED: value }).success).toBe(false);
+  });
+
+  it("leaves the viewer CDN unset by default and accepts an http(s) URL", () => {
+    const unset = envSchema.safeParse(base);
+    const set = envSchema.safeParse({
+      ...base,
+      API_DOCS_CDN_URL: "https://cdn.example.com/scalar.js",
+    });
+
+    expect(unset.success && unset.data.API_DOCS_CDN_URL).toBeUndefined();
+    expect(set.success && set.data.API_DOCS_CDN_URL).toBe("https://cdn.example.com/scalar.js");
+    expect(envSchema.safeParse({ ...base, API_DOCS_CDN_URL: "javascript:alert(1)" }).success).toBe(
+      false,
+    );
+  });
+});

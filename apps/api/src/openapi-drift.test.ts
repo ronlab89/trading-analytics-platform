@@ -15,7 +15,8 @@ import type { MountedRoute } from "./test-utils/openapi-drift.js";
  */
 describe("the OpenAPI operations against the mounted routes", () => {
   it("describe exactly the routes the app mounts, with the same schemas and authentication", () => {
-    const routes = readMountedRoutes(createApp());
+    // The docs routes (/openapi.json, /api/docs) are not API routes and are not operations.
+    const routes = readMountedRoutes(createApp({ docsEnabled: false }));
 
     expect(routes.length).toBeGreaterThan(0);
     expect(findDrift(routes, API_OPERATIONS)).toEqual([]);

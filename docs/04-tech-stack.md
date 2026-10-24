@@ -550,6 +550,8 @@ cover it); test variables come from the job `env`, not a generated
 | `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_PORT` | Docker Compose | development defaults |
 | `LOG_LEVEL` | API | `debug`, `info`, `warn`, `error` or `silent`; default follows `NODE_ENV`: `debug` in development, `silent` in test, `info` in production |
 | `SLOW_REQUEST_THRESHOLD_MS` | API (B3) | milliseconds; default `500`; HTTP requests only |
+| `API_DOCS_ENABLED` | API (B6) | `true` or `false`; unset means on outside production and off in production; serves `/openapi.json` and the Scalar viewer at `/api/docs`; when off both answer 404 |
+| `API_DOCS_CDN_URL` | API (B6) | optional http(s) URL of the viewer script; default Scalar's jsDelivr bundle. The viewer needs the network to load it; set this to a host you serve to work offline |
 | `APP_MODE` | web build (FE) | `real` or `demo`, exposed as `VITE_APP_MODE` |
 
 The API validates its variables with Zod at startup and exits with code 1
