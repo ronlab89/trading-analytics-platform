@@ -60,11 +60,13 @@ async function start(limits: Partial<RealtimeLimits> = {}): Promise<Running> {
   });
   const handler = createSubscriptionHandler({
     hub,
-    // A user owns only the portfolio `p-<userId>`.
+    // A user owns only the portfolio `p-<userId>` and the job `j-<userId>`.
     authorizer: {
       canSubscribe: (actor, channel) =>
         Promise.resolve(
-          channel.kind !== "portfolio" || channel.portfolioId === `p-${actor.userId}`,
+          channel.kind === "portfolio"
+            ? channel.portfolioId === `p-${actor.userId}`
+            : channel.kind !== "jobs" || channel.jobId === `j-${actor.userId}`,
         ),
     },
     logger,
@@ -265,5 +267,42 @@ describe("delivery over real sockets", () => {
 
     expect(owner.messages[2]).toMatchObject({ type: "NOTIFICATION_CREATED", sequence: 1 });
     expect(other.messages).toHaveLength(2);
+  });
+
+  it("refuses another user's job with the same error as an unknown one", async () => {
+    const { url } = await start();
+    const client = await connect(url, "u1");
+
+    client.send({ type: "SUBSCRIBE", channel: "jobs:j-u2" });
+    client.send({ type: "SUBSCRIBE", channel: "jobs:j-nobody" });
+    client.send({ type: "SUBSCRIBE", channel: "jobs:j-u1" });
+    await client.waitFor(4);
+
+    const [, foreign, missing, own] = client.messages;
+    expect(foreign).toMatchObject({ type: "ERROR", code: "FORBIDDEN_CHANNEL" });
+    expect({ ...foreign, channel: "" }).toEqual({ ...missing, channel: "" });
+    expect(own).toMatchObject({ type: "ACK", channel: "jobs:j-u1" });
+  });
+
+  it("gives a reconnected client nothing until it subscribes again, and keeps the epoch", async () => {
+    const { url, publisher } = await start();
+    const first = await connect(url, "u1");
+    first.send({ type: "SUBSCRIBE", channel: "market:a1" });
+    await first.waitFor(2);
+    await publisher.marketPriceUpdated(tick("a1", "101"));
+    await first.waitFor(3);
+    first.socket.terminate();
+    await first.closed;
+
+    const second = await connect(url, "u1");
+    await publisher.marketPriceUpdated(tick("a1", "102"));
+    second.send({ type: "SUBSCRIBE", channel: "market:a1" });
+    await second.waitFor(2);
+    await publisher.marketPriceUpdated(tick("a1", "103"));
+    await second.waitFor(3);
+
+    expect(second.messages.map((m) => m.type)).toEqual(["ACK", "ACK", "MARKET_PRICE_UPDATED"]);
+    // The tick sent while nobody listened used no sequence number.
+    expect(second.messages[2]).toMatchObject({ sequence: 2, epoch: "e1" });
   });
 });
