@@ -27,7 +27,7 @@ odd/tasks/b6/**
 
 - [x] T1 `API_DOCS_ENABLED` (and `API_DOCS_CDN_URL`) in the environment schema with the default of S2; dependency b41f42a, env 49f1a71.
 - [x] T2 The two routes behind that flag, with tests for on and off (0a087b5, 2e17c36); the production default is tested on the environment schema.
-- [ ] T3 The relaxed policy for the viewer page only is done (0a087b5) and tested; the manual check in a browser is pending: it needs a person with a browser and the running API.
+- [x] T3 The relaxed policy for the viewer page only (0a087b5), tested; the user opened the viewer in a browser on 2026-10-24 and it rendered (logged in B6.6 D1).
 
 ## Done when
 
