@@ -13,10 +13,10 @@ specification: the SDD (`00`-`16`) stays the source of truth for behavior,
 `PROGRESS.md` records what is done and why, and this file says what is
 left, in what order, and when each block counts as closed.
 
-**Last updated:** 2026-10-24 (B5 closed; reconciled with ADR-001 to ADR-010)
-**Status:** B0, B1, B2, B3, B4 and B5 are done (B0.1 to B0.7 on 2026-10-16; B1.1 to
+**Last updated:** 2026-10-24 (B6 closed; reconciled with ADR-001 to ADR-010)
+**Status:** B0, B1, B2, B3, B4, B5 and B6 are done (B0.1 to B0.7 on 2026-10-16; B1.1 to
 B1.7 on 2026-10-17; B2.1 to B2.5 on 2026-10-18; B3.1 to B3.5 on 2026-10-19 and
-2026-10-20; B4.1 to B4.5 on 2026-10-21; B5.1 to B5.8 on 2026-10-21 to 2026-10-24). The next block is B6, then B7.
+2026-10-20; B4.1 to B4.5 on 2026-10-21; B5.1 to B5.8 on 2026-10-21 to 2026-10-24; B6.1 to B6.6 on 2026-10-24). The next block is B7.
 **Decision behind it:** the user chose to finish the backend completely
 before starting the frontend. This is a deliberate override of the phase
 order in `15-implementation-plan.md` §4, which alternated backend and
@@ -624,6 +624,8 @@ the demo's adapters are checked against it.
 code (not hand-maintained), and a test fails when a route and its schema
 drift apart.
 
+**Built (B6.1 to B6.6, 2026-10-24):** every HTTP route has an `ApiOperation` in `@trading/contracts`; the document is generated from them; `openapi-drift.test.ts` fails on any difference between the routes and the operations; the API serves the document and the Scalar viewer behind `API_DOCS_ENABLED`. Generated examples are `Deferred`. What ADR-002 left to the block is under Resolved in B6.
+
 **Size:** medium.
 
 ### B7. Deployment readiness and hardening
@@ -793,5 +795,5 @@ must exist before starting them:
 | B3 Observability foundation | Done (2026-10-20: B3.1 logger and error logging, B3.2 request logs and correlation, B3.3 security events, defensive-read log and series timing, B3.4 graceful shutdown and lifecycle entries, B3.5 docs and close) |
 | B4 Background jobs and idempotency | Done (2026-10-21: B4.1 job and idempotency storage, B4.2 service and runner, B4.3 CSV import, B4.4 endpoints and `Idempotency-Key`, B4.5 docs and close) |
 | B5 Realtime | Done (2026-10-24: B5.1 contracts, B5.2 WebSocket server, B5.3 channels and subscriptions, B5.4 job, portfolio and notification events, B5.5 market engine, B5.6 simulator in the server, B5.7 alerts, B5.8 tests, measurement, docs and close) |
-| B6 API documentation and contract | Not started |
+| B6 API documentation and contract | Done (2026-10-24: B6.1 operation type and document builder, B6.2 core operations, B6.3 remaining operations, B6.4 drift test, B6.5 viewer and `API_DOCS_ENABLED`, B6.6 docs and close) |
 | B7 Deployment readiness and hardening | Not started |

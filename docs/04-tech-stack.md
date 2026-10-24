@@ -221,16 +221,24 @@ endpoints in `07-api-spec.md`.
 
 # 21. API Documentation
 
-**Status:** `Planned (B6)` — ADR-002 point 7.
+**Status:** `Implemented` (B6) — ADR-002 point 7.
 
 ## OpenAPI
 
-The OpenAPI document is generated from the `@trading/contracts` Zod schemas
-with Zod v4's `toJSONSchema`. There is no hand-maintained API document. It
-covers endpoints, parameters, bodies, responses, the error envelope,
-authentication and examples.
+The OpenAPI 3.1.0 document is generated from the `@trading/contracts`
+operations (`API_OPERATIONS`) and their Zod schemas with Zod v4's
+`toJSONSchema`. There is no hand-maintained API document. It covers
+endpoints, parameters, bodies, responses, the error envelope and the bearer
+authentication; it has no generated examples (`Deferred`).
 
-Open detail (B6): whether and how the generated document is served.
+## Serving and viewing
+
+The API serves the document at `GET /openapi.json` and the Scalar viewer
+(`@scalar/express-api-reference`, MIT, free, no endpoint limit and no hosted
+service) at `GET /api/docs`. Both sit behind `API_DOCS_ENABLED`: on by
+default outside production, off in production, and a 404 when off (§42). The
+viewer script loads from Scalar's CDN unless `API_DOCS_CDN_URL` points to a
+copy you serve, which is what working offline needs.
 
 ---
 
@@ -715,7 +723,7 @@ ADR already names is added in that ADR's block.
 | Request logging | In-repo middleware over the `Logger` port; `pino-http` not adopted | — | `Implemented` (B3.2) | ADR-009 point 2 |
 | Realtime | ws | — | `Implemented` (B5) | ADR-007 point 1 |
 | Simulation | `@trading/market-sim` | — | `Implemented` (B5) | ADR-007 point 7 |
-| API docs | OpenAPI from Zod `toJSONSchema` | — | `Planned (B6)` | ADR-002 point 7 |
+| API docs | OpenAPI from Zod `toJSONSchema` | — | `Implemented` (B6) | ADR-002 point 7 |
 | Infrastructure | API Dockerfile, `full` profile | — | `Planned (B7)` | ADR-006 point 4 |
 | Frontend build | Vite | — | `Planned (FE)` | ADR-006 point 8 |
 | Frontend | UI library, styling, components, animation, server and client state, tables, forms, charts | — | `Deferred` | §4, §7-13, §16 |
@@ -751,7 +759,7 @@ technology under a port can change without changing product behavior.
 - Sessions with refresh tokens and permission-based roles. `Implemented` (B0, B2)
 - Structured logging. `Implemented` (B3)
 - WebSocket realtime with the shared simulator. `Implemented` (B5)
-- Generated OpenAPI. `Planned (B6)`
+- Generated OpenAPI. `Implemented` (B6)
 - Containerized production-like local run. `Planned (B7)`
 - The public demo runs entirely on in-process infrastructure. `Planned (FE)`
 - No required paid API exists. `Implemented`

@@ -2387,7 +2387,7 @@ Final routes must remain aligned with `07-api-spec.md`.
 | Unversioned operational routes: `GET /health`, `GET /health/ready` and `GET /` | `Implemented` (`07-api-spec.md` §3) |
 | Only additive changes within `v1`; a breaking change needs a new version | `Implemented` as a rule (ADR-002 point 8) |
 | Contracts as versioned schemas in `@trading/contracts` | `Planned (B0)` (ADR-002 points 1 and 8) |
-| OpenAPI document generated from the schemas | `Planned (B6)` (ADR-002 point 7) |
+| OpenAPI document generated from the schemas | `Implemented` (B6) (ADR-002 point 7) |
 | Version of the WebSocket endpoint | `Implemented` (B5): the endpoint has a fixed path, proposed `/ws` and confirmed in B5 (ADR-007 point 1; §72) |
 
 Code vs ADR:

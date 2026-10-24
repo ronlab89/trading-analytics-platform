@@ -1528,7 +1528,7 @@ Decided recovery behavior to test: a dropped socket triggers reconnection with b
 
 # 52. API Contract Testing
 
-**Status:** `Planned (B0)` (ADR-002 point 6); OpenAPI generation `Planned (B6)` (ADR-002 point 7)
+**Status:** `Planned (B0)` (ADR-002 point 6); OpenAPI generation `Implemented` (B6) (ADR-002 point 7)
 
 API request and response contracts should be verified against the `@trading/contracts` Zod schemas.
 
