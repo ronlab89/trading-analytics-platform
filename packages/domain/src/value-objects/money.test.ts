@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CurrencyMismatchError, InvalidMoneyError, Money } from "./money";
+import { CurrencyMismatchError, InvalidMoneyError, Money } from "./money.js";
 
 describe("Money.of", () => {
   it("should create a valid Money instance", () => {

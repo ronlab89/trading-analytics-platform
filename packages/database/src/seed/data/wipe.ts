@@ -1,4 +1,4 @@
-import { prisma } from "../../client";
+import { prisma } from "../../client.js";
 
 /**
  * Deletes all seed-managed data, in strict reverse-FK-dependency order.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidScenarioError, validateNewScenario, validateScenarioChanges } from "./scenario";
+import { InvalidScenarioError, validateNewScenario, validateScenarioChanges } from "./scenario.js";
 
 const baseInput = {
   portfolioId: "portfolio_001",

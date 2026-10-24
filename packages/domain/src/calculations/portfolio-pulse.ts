@@ -1,9 +1,9 @@
-import type { Portfolio } from "../entities/portfolio";
-import type { Position } from "../entities/position";
-import type { DrawdownResult } from "./drawdown";
-import type { VolatilityResult } from "./volatility";
-import { calculateAllocation } from "./allocation";
-import { calculatePortfolioMetrics } from "./portfolio-metrics";
+import type { Portfolio } from "../entities/portfolio.js";
+import type { Position } from "../entities/position.js";
+import type { DrawdownResult } from "./drawdown.js";
+import type { VolatilityResult } from "./volatility.js";
+import { calculateAllocation } from "./allocation.js";
+import { calculatePortfolioMetrics } from "./portfolio-metrics.js";
 
 /**
  * Portfolio Pulse calculation.

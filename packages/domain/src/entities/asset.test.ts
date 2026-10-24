@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AssetType } from "./enums";
-import { InvalidAssetError, validateNewAsset } from "./asset";
+import { AssetType } from "./enums.js";
+import { InvalidAssetError, validateNewAsset } from "./asset.js";
 
 const baseInput = {
   symbol: "AAPL",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import { DecisionDirection } from "./enums";
-import { InvalidDecisionError, validateNewDecision } from "./decision";
+import { Money } from "../value-objects/money.js";
+import { DecisionDirection } from "./enums.js";
+import { InvalidDecisionError, validateNewDecision } from "./decision.js";
 
 const baseInput = {
   portfolioId: "portfolio_001",

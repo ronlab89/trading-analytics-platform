@@ -7,7 +7,7 @@
  * calendar dates (ADR-004).
  */
 
-import { addUtcDays, startOfUtcDay } from "./utc-date";
+import { addUtcDays, startOfUtcDay } from "./utc-date.js";
 
 /** The presets served by the daily series. `1D` comes from `MarketPrice`. */
 export const PRESET_PERIODS = ["1W", "1M", "3M", "6M", "YTD", "1Y", "ALL"] as const;

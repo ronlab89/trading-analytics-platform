@@ -1,7 +1,7 @@
-import type { HistoricalPrice } from "../entities/historical-price";
-import { Money } from "../value-objects/money";
-import type { QuantityTimeline } from "./quantity-timeline";
-import { startOfUtcDay } from "./utc-date";
+import type { HistoricalPrice } from "../entities/historical-price.js";
+import { Money } from "../value-objects/money.js";
+import type { QuantityTimeline } from "./quantity-timeline.js";
+import { startOfUtcDay } from "./utc-date.js";
 
 /**
  * Daily portfolio value series.

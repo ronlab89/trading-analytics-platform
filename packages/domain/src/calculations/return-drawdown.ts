@@ -1,6 +1,6 @@
 import { Decimal } from "decimal.js";
-import type { DailyReturnPoint } from "./period-performance";
-import { addUtcDays } from "./utc-date";
+import type { DailyReturnPoint } from "./period-performance.js";
+import { addUtcDays } from "./utc-date.js";
 
 /**
  * Drawdown on the cumulative return index.

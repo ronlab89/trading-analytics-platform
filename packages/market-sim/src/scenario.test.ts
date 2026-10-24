@@ -1,14 +1,14 @@
 import { Money } from "@trading/domain";
 import { describe, expect, it } from "vitest";
-import { createMarketEngine } from "./engine";
-import type { MarketEngine, PriceTick } from "./engine";
-import { MarketMode } from "./mode";
+import { createMarketEngine } from "./engine.js";
+import type { MarketEngine, PriceTick } from "./engine.js";
+import { MarketMode } from "./mode.js";
 import {
   scenarioDefinition,
   scenarioDuration,
   scenarioProfileAt,
   SimulationScenario,
-} from "./scenario";
+} from "./scenario.js";
 
 const clock = { now: () => new Date("2026-10-23T14:30:00.000Z") };
 const START = 100;

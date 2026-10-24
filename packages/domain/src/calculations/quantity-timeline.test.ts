@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TransactionType } from "../entities/enums";
-import { InsufficientPositionQuantityError } from "./position-recalculation";
-import { buildQuantityTimeline } from "./quantity-timeline";
-import type { QuantityEntry } from "./quantity-timeline";
+import { TransactionType } from "../entities/enums.js";
+import { InsufficientPositionQuantityError } from "./position-recalculation.js";
+import { buildQuantityTimeline } from "./quantity-timeline.js";
+import type { QuantityEntry } from "./quantity-timeline.js";
 
 const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);
 

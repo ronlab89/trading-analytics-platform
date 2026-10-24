@@ -1,19 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": true,
-    "outDir": "./dist",
-    "rootDir": ".",
+    "noEmit": true,
     "types": ["node"]
   },
   "include": ["src", "prisma"],
-  "exclude": ["dist", "node_modules", "generated"],
-  "references": [
-    {
-      "path": "../domain"
-    },
-    {
-      "path": "../persistence-memory"
-    }
-  ]
+  "exclude": ["dist", "node_modules", "generated"]
 }

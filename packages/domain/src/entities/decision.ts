@@ -1,5 +1,5 @@
-import type { Money } from "../value-objects/money";
-import { DecisionDirection } from "./enums";
+import type { Money } from "../value-objects/money.js";
+import { DecisionDirection } from "./enums.js";
 
 /**
  * Decision entity.

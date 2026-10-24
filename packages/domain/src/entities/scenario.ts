@@ -1,4 +1,4 @@
-import type { ScenarioStatus } from "./enums";
+import type { ScenarioStatus } from "./enums.js";
 
 /**
  * Scenario entity.

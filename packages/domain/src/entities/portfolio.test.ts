@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidPortfolioError, validateNewPortfolio } from "./portfolio";
+import { InvalidPortfolioError, validateNewPortfolio } from "./portfolio.js";
 
 const baseInput = {
   userId: "user_001",

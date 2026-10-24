@@ -1,4 +1,4 @@
-import type { PortfolioStatus } from "./enums";
+import type { PortfolioStatus } from "./enums.js";
 
 /**
  * Portfolio entity.

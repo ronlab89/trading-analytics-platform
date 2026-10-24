@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidSessionError, validateNewSession } from "./session";
+import { InvalidSessionError, validateNewSession } from "./session.js";
 
 const valid = {
   userId: "user_123",

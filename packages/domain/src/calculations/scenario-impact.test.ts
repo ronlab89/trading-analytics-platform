@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import type { Portfolio } from "../entities/portfolio";
-import type { Position } from "../entities/position";
-import { PortfolioStatus } from "../entities/enums";
-import { calculateScenarioImpact } from "./scenario-impact";
+import { Money } from "../value-objects/money.js";
+import type { Portfolio } from "../entities/portfolio.js";
+import type { Position } from "../entities/position.js";
+import { PortfolioStatus } from "../entities/enums.js";
+import { calculateScenarioImpact } from "./scenario-impact.js";
 
 function buildPortfolio(overrides: Partial<Portfolio> = {}): Portfolio {
   return {

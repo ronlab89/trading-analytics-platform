@@ -1,6 +1,6 @@
-import type { CreateTransactionInput, Transaction } from "../entities/transaction";
-import type { TransactionStatus, TransactionType } from "../entities/enums";
-import type { Page, PageRequest } from "./pagination";
+import type { CreateTransactionInput, Transaction } from "../entities/transaction.js";
+import type { TransactionStatus, TransactionType } from "../entities/enums.js";
+import type { Page, PageRequest } from "./pagination.js";
 
 /**
  * Filters supported when listing a portfolio's transactions.

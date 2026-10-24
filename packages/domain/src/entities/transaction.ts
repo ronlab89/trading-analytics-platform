@@ -1,6 +1,6 @@
-import type { Money } from "../value-objects/money";
-import type { TransactionStatus } from "./enums";
-import { TransactionType } from "./enums";
+import type { Money } from "../value-objects/money.js";
+import type { TransactionStatus } from "./enums.js";
+import { TransactionType } from "./enums.js";
 
 /**
  * Transaction entity.

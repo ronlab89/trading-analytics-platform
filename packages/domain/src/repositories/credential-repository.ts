@@ -1,4 +1,4 @@
-import type { CreateCredentialInput, Credential } from "../entities/credential";
+import type { CreateCredentialInput, Credential } from "../entities/credential.js";
 
 /**
  * Credential repository contract.

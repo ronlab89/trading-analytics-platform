@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { TransactionType } from "../entities/enums";
-import { Money } from "../value-objects/money";
-import { buildQuantityTimeline } from "./quantity-timeline";
-import { calculateRangeAttribution, groupContributions } from "./range-attribution";
-import type { AttributionEntry } from "./range-attribution";
-import type { PriceCandle } from "./value-series";
+import { TransactionType } from "../entities/enums.js";
+import { Money } from "../value-objects/money.js";
+import { buildQuantityTimeline } from "./quantity-timeline.js";
+import { calculateRangeAttribution, groupContributions } from "./range-attribution.js";
+import type { AttributionEntry } from "./range-attribution.js";
+import type { PriceCandle } from "./value-series.js";
 
 const day = (n: number) => new Date(Date.UTC(2026, 2, n));
 const usd = (amount: string) => Money.of(amount, "USD");

@@ -1,5 +1,5 @@
-import type { Money } from "../value-objects/money";
-import { MarketDataSource } from "./enums";
+import type { Money } from "../value-objects/money.js";
+import { MarketDataSource } from "./enums.js";
 
 /**
  * MarketPrice entity.

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { TransactionType } from "../entities/enums";
-import { Money } from "../value-objects/money";
-import { InsufficientPositionQuantityError } from "./position-recalculation";
-import { replayPosition } from "./position-replay";
-import type { ReplayEntry } from "./position-replay";
+import { TransactionType } from "../entities/enums.js";
+import { Money } from "../value-objects/money.js";
+import { InsufficientPositionQuantityError } from "./position-recalculation.js";
+import { replayPosition } from "./position-replay.js";
+import type { ReplayEntry } from "./position-replay.js";
 
 const day1 = new Date("2026-06-01T12:00:00Z");
 const day2 = new Date("2026-06-02T12:00:00Z");

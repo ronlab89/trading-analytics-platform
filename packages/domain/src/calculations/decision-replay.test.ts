@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { Decision } from "../entities/decision";
-import type { DecisionEvent } from "../entities/decision-event";
-import { DecisionDirection, DecisionEventType } from "../entities/enums";
-import { Money } from "../value-objects/money";
+import type { Decision } from "../entities/decision.js";
+import type { DecisionEvent } from "../entities/decision-event.js";
+import { DecisionDirection, DecisionEventType } from "../entities/enums.js";
+import { Money } from "../value-objects/money.js";
 import {
   DecisionReplayError,
   projectDecisionReplay,
   type DecisionReplayInput,
-} from "./decision-replay";
+} from "./decision-replay.js";
 
 const CURRENCY = "USD";
 

@@ -1,7 +1,7 @@
-import type { CreateTransactionInput } from "../entities/transaction";
-import { TransactionType } from "../entities/enums";
-import type { Position } from "../entities/position";
-import type { Money } from "../value-objects/money";
+import type { CreateTransactionInput } from "../entities/transaction.js";
+import { TransactionType } from "../entities/enums.js";
+import type { Position } from "../entities/position.js";
+import type { Money } from "../value-objects/money.js";
 
 /**
  * Position recalculation.

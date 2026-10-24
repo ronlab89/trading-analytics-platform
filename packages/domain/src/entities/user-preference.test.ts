@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidUserPreferenceError, validateNewUserPreference } from "./user-preference";
+import { InvalidUserPreferenceError, validateNewUserPreference } from "./user-preference.js";
 
 const baseInput = {
   userId: "user_001",

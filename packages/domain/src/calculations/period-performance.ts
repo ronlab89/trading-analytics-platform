@@ -1,8 +1,8 @@
 import { Decimal } from "decimal.js";
-import { Money } from "../value-objects/money";
-import { calculateDailyReturn } from "./daily-return";
-import type { DailyFlow } from "./daily-return";
-import type { DailyValue } from "./value-series";
+import { Money } from "../value-objects/money.js";
+import { calculateDailyReturn } from "./daily-return.js";
+import type { DailyFlow } from "./daily-return.js";
+import type { DailyValue } from "./value-series.js";
 
 /**
  * Period return and period P/L.

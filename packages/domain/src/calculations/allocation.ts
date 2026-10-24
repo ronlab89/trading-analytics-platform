@@ -1,5 +1,5 @@
-import type { Position } from "../entities/position";
-import { Money } from "../value-objects/money";
+import type { Position } from "../entities/position.js";
+import { Money } from "../value-objects/money.js";
 
 /**
  * Allocation calculations.

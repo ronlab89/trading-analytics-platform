@@ -1,4 +1,4 @@
-import type { CreateWatchlistItemInput, WatchlistItem } from "../entities/watchlist-item";
+import type { CreateWatchlistItemInput, WatchlistItem } from "../entities/watchlist-item.js";
 
 /**
  * WatchlistItem repository contract.

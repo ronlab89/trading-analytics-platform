@@ -1,4 +1,4 @@
-import type { CreateMarketPriceInput, MarketPrice } from "../entities/market-price";
+import type { CreateMarketPriceInput, MarketPrice } from "../entities/market-price.js";
 
 /**
  * MarketPrice repository contract.

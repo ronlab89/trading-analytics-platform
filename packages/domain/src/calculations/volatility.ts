@@ -1,6 +1,6 @@
 import { Decimal } from "decimal.js";
-import type { HistoricalPrice } from "../entities/historical-price";
-import { InsufficientDataError } from "./drawdown";
+import type { HistoricalPrice } from "../entities/historical-price.js";
+import { InsufficientDataError } from "./drawdown.js";
 
 /**
  * Volatility calculation.

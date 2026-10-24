@@ -1,12 +1,12 @@
 import type { HistoricalPrice, Money } from "@trading/domain";
-import { generateDayCandle, utcDay, utcDayStart, VOLUME_PER_TICK } from "./candles";
-import type { Clock } from "./clock";
-import { MarketMode, modeProfile } from "./mode";
-import { stepPrice } from "./price-step";
-import { createRandom } from "./random";
-import type { Random } from "./random";
-import { scenarioDefinition, scenarioDuration, scenarioProfileAt } from "./scenario";
-import type { ScenarioDefinition, SimulationScenario } from "./scenario";
+import { generateDayCandle, utcDay, utcDayStart, VOLUME_PER_TICK } from "./candles.js";
+import type { Clock } from "./clock.js";
+import { MarketMode, modeProfile } from "./mode.js";
+import { stepPrice } from "./price-step.js";
+import { createRandom } from "./random.js";
+import type { Random } from "./random.js";
+import { scenarioDefinition, scenarioDuration, scenarioProfileAt } from "./scenario.js";
+import type { ScenarioDefinition, SimulationScenario } from "./scenario.js";
 
 /** The starting state of one asset. */
 export interface AssetSeed {

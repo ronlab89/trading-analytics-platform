@@ -1,4 +1,4 @@
-import type { CreateUserPreferenceInput, UserPreference } from "../entities/user-preference";
+import type { CreateUserPreferenceInput, UserPreference } from "../entities/user-preference.js";
 
 /**
  * UserPreference repository contract.

@@ -1,8 +1,8 @@
 import { Decimal } from "decimal.js";
-import { TransactionType } from "../entities/enums";
-import type { Transaction } from "../entities/transaction";
-import { InsufficientPositionQuantityError } from "./position-recalculation";
-import { DAY_MS, addUtcDays, startOfUtcDay } from "./utc-date";
+import { TransactionType } from "../entities/enums.js";
+import type { Transaction } from "../entities/transaction.js";
+import { InsufficientPositionQuantityError } from "./position-recalculation.js";
+import { DAY_MS, addUtcDays, startOfUtcDay } from "./utc-date.js";
 
 /**
  * Daily quantity timeline.

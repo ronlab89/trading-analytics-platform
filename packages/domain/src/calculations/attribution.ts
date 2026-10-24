@@ -1,7 +1,7 @@
-import type { Portfolio } from "../entities/portfolio";
-import type { Position } from "../entities/position";
-import { Money } from "../value-objects/money";
-import { calculatePositionMetrics } from "./position-metrics";
+import type { Portfolio } from "../entities/portfolio.js";
+import type { Position } from "../entities/position.js";
+import { Money } from "../value-objects/money.js";
+import { calculatePositionMetrics } from "./position-metrics.js";
 
 /**
  * Performance attribution calculations.

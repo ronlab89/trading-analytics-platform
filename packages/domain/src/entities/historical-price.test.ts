@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import { InvalidHistoricalPriceError, validateNewHistoricalPrice } from "./historical-price";
+import { Money } from "../value-objects/money.js";
+import { InvalidHistoricalPriceError, validateNewHistoricalPrice } from "./historical-price.js";
 
 const baseInput = {
   assetId: "asset_001",

@@ -1,4 +1,4 @@
-import type { QuantityTimeline } from "./quantity-timeline";
+import type { QuantityTimeline } from "./quantity-timeline.js";
 
 /**
  * Positions opened and closed over a period.

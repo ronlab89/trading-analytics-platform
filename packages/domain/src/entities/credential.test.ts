@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidCredentialError, validateNewCredential } from "./credential";
+import { InvalidCredentialError, validateNewCredential } from "./credential.js";
 
 describe("validateNewCredential", () => {
   it("should accept a valid credential input", () => {

@@ -1,4 +1,4 @@
-import { AlertType } from "./enums";
+import { AlertType } from "./enums.js";
 
 /**
  * Alert entity.

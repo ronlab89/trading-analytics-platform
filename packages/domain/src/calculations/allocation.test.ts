@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import type { Position } from "../entities/position";
-import { calculateAllocation } from "./allocation";
+import { Money } from "../value-objects/money.js";
+import type { Position } from "../entities/position.js";
+import { calculateAllocation } from "./allocation.js";
 
 function buildPosition(overrides: Partial<Position> = {}): Position {
   return {
