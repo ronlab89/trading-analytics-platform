@@ -28,6 +28,7 @@ import { alertsRouter } from "./routes/alerts.routes.js";
 import { notificationsRouter } from "./routes/notifications.routes.js";
 import { preferencesRouter } from "./routes/preferences.routes.js";
 import { simulationRouter } from "./routes/simulation.routes.js";
+import { createDocsRouter } from "./routes/docs.routes.js";
 
 // Explicit body-size ceiling (09-security-spec.md §27). 100kb matches the
 // Express default but is stated here so it is a deliberate, visible limit.
@@ -39,6 +40,8 @@ export interface AppOptions {
   slowRequestThresholdMs?: number;
   /** True once the shutdown has started, so `GET /health/ready` answers 503. */
   isShuttingDown?: () => boolean;
+  /** Overrides `API_DOCS_ENABLED`, for tests. */
+  docsEnabled?: boolean;
 }
 
 /**
@@ -89,6 +92,13 @@ export function createApp(options: AppOptions = {}): Express {
 
   app.use(generalApiRateLimiter);
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
+
+  // The OpenAPI document and its viewer, only when enabled (off by default in
+  // production). Behind the same limiter as the API; when off, both paths fall
+  // through to the 404 below.
+  if (options.docsEnabled ?? env.API_DOCS_ENABLED) {
+    app.use(createDocsRouter({ cdnUrl: env.API_DOCS_CDN_URL }));
+  }
 
   app.get("/", (_req, res) => {
     res.json({ service: "trading-api", status: "ok" });
