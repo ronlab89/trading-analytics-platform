@@ -17,6 +17,12 @@ export const envSchema = z
     LOG_LEVEL: z.enum(LOG_LEVELS).optional(),
     SLOW_REQUEST_THRESHOLD_MS: z.coerce.number().int().positive().default(500),
     PORT: z.coerce.number().int().positive().default(7001),
+    // Prisma reads this variable itself, so without the check a bad value only fails at the
+    // first query. The message names the variable and never the value, which holds a password.
+    DATABASE_URL: z.url({
+      protocol: /^postgres(ql)?$/,
+      error: "DATABASE_URL must be a postgresql:// or postgres:// URL.",
+    }),
     JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters long."),
     JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(900),
     SESSION_IDLE_SECONDS: z.coerce.number().int().positive().default(604800),
