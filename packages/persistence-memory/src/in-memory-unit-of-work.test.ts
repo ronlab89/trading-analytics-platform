@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { Money, TransactionType } from "@trading/domain";
+import { AlertType, Money, TransactionType } from "@trading/domain";
+import { InMemoryAlertRepository } from "./in-memory-alert-repository.js";
 import { InMemoryIdempotencyKeyRepository } from "./in-memory-idempotency-key-repository.js";
 import { InMemoryJobRepository } from "./in-memory-job-repository.js";
+import { InMemoryNotificationRepository } from "./in-memory-notification-repository.js";
 import { InMemoryPositionRepository } from "./in-memory-position-repository.js";
 import { InMemoryTransactionRepository } from "./in-memory-transaction-repository.js";
 import { InMemoryUnitOfWork } from "./in-memory-unit-of-work.js";
@@ -28,8 +30,17 @@ function build() {
   const positions = new InMemoryPositionRepository();
   const jobs = new InMemoryJobRepository();
   const idempotencyKeys = new InMemoryIdempotencyKeyRepository();
-  const unitOfWork = new InMemoryUnitOfWork({ transactions, positions, jobs, idempotencyKeys });
-  return { transactions, positions, jobs, idempotencyKeys, unitOfWork };
+  const alerts = new InMemoryAlertRepository();
+  const notifications = new InMemoryNotificationRepository();
+  const unitOfWork = new InMemoryUnitOfWork({
+    transactions,
+    positions,
+    jobs,
+    idempotencyKeys,
+    alerts,
+    notifications,
+  });
+  return { transactions, positions, jobs, idempotencyKeys, alerts, notifications, unitOfWork };
 }
 
 const jobInput = {
@@ -215,5 +226,59 @@ describe("InMemoryUnitOfWork", () => {
     await expect(unitOfWork.run(() => Promise.reject(new Error("boom")))).rejects.toThrow("boom");
 
     expect(await unitOfWork.run(() => Promise.resolve("ok"))).toBe("ok");
+  });
+
+  it("rolls back an alert update and its notification together", async () => {
+    const { alerts, notifications, unitOfWork } = build();
+    const alert = await alerts.create({
+      userId: "u1",
+      assetId: "a1",
+      type: AlertType.PRICE,
+      condition: "ABOVE",
+      threshold: 100,
+    });
+    const boom = new Error("boom");
+
+    await expect(
+      unitOfWork.run(async (repositories) => {
+        await repositories.alerts.update(alert.id, { armed: false, lastTriggeredAt: new Date() });
+        await repositories.notifications.create({
+          userId: "u1",
+          type: "ALERT_TRIGGERED",
+          title: "t",
+          message: "m",
+          severity: "WARNING",
+        });
+        throw boom;
+      }),
+    ).rejects.toBe(boom);
+
+    expect(await alerts.getById(alert.id)).toEqual(alert);
+    expect(await notifications.listByUserId("u1")).toEqual([]);
+  });
+
+  it("keeps an alert update and its notification made in a committed unit", async () => {
+    const { alerts, notifications, unitOfWork } = build();
+    const alert = await alerts.create({
+      userId: "u1",
+      assetId: "a1",
+      type: AlertType.PRICE,
+      condition: "ABOVE",
+      threshold: 100,
+    });
+
+    await unitOfWork.run(async (repositories) => {
+      await repositories.alerts.update(alert.id, { armed: false });
+      await repositories.notifications.create({
+        userId: "u1",
+        type: "ALERT_TRIGGERED",
+        title: "t",
+        message: "m",
+        severity: "WARNING",
+      });
+    });
+
+    expect((await alerts.getById(alert.id))?.armed).toBe(false);
+    expect(await notifications.listByUserId("u1")).toHaveLength(1);
   });
 });

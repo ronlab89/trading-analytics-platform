@@ -505,6 +505,10 @@ model Alert {
   condition   String
   threshold   Float
   enabled     Boolean   @default(true)
+  // Edge-trigger state (ADR-007 point 9): an armed alert fires when its
+  // condition turns true; it is disarmed until the condition clears.
+  armed           Boolean   @default(true)
+  lastTriggeredAt DateTime? @map("last_triggered_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 

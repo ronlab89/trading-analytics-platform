@@ -1,4 +1,4 @@
-import { JOB_EVENTS, SERIES_BUILT_EVENT } from "@trading/application";
+import { ALERT_EVENTS, JOB_EVENTS, SERIES_BUILT_EVENT } from "@trading/application";
 
 /**
  * Stable dotted event names of the API log (ADR-009 points 3, 6, 9 and 11;
@@ -43,4 +43,6 @@ export const LOG_EVENTS = {
   simulationTickFailed: "simulation.tick.failed",
   simulationCandleFailed: "simulation.candle.failed",
   simulationPruneFailed: "simulation.prune.failed",
+  alertTriggered: ALERT_EVENTS.triggered,
+  alertEvaluationFailed: ALERT_EVENTS.evaluationFailed,
 } as const;

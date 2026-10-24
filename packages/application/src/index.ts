@@ -1,4 +1,6 @@
 export * from "./actor.js";
+export * from "./alert-evaluator.js";
+export * from "./alert-events.js";
 export * from "./alert-service.js";
 export * from "./analytics-service.js";
 export * from "./publish-quietly.js";

@@ -15,6 +15,8 @@ export function toDomainAlert(row: PrismaAlert): Alert {
     condition: row.condition,
     threshold: row.threshold,
     enabled: row.enabled,
+    armed: row.armed,
+    lastTriggeredAt: row.lastTriggeredAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -29,5 +31,6 @@ export function toPrismaCreateInput(input: CreateAlertInput) {
     ...(input.assetId !== undefined ? { assetId: input.assetId } : {}),
     ...(input.portfolioId !== undefined ? { portfolioId: input.portfolioId } : {}),
     ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+    ...(input.armed !== undefined ? { armed: input.armed } : {}),
   };
 }

@@ -243,6 +243,51 @@ describe("market simulator ticks", () => {
     expect(await world.sequencesOf(world.ids[0] ?? "")).toEqual([1]);
     expect(world.logged("realtime.publish_failed")).toHaveLength(2);
   });
+
+  it("evaluates the alerts once per tick, with the ticks that were stored, after their prices", async () => {
+    const world = await setup();
+    const [failingId, healthyId] = world.ids;
+    const evaluated: { assetIds: string[]; stored: (string | undefined)[] }[] = [];
+    const simulator = world.create({
+      marketPriceRepository: {
+        listByAssetIds: (ids) => world.prices.listByAssetIds(ids),
+        upsert: (input) =>
+          input.assetId === failingId
+            ? Promise.reject(new Error("db down"))
+            : world.prices.upsert(input),
+      },
+      alertEvaluator: {
+        evaluate: async (ticks) => {
+          const price = await world.prices.getByAssetId(healthyId ?? "");
+          evaluated.push({
+            assetIds: ticks.map((tick) => tick.assetId),
+            stored: [price?.price.toString()],
+          });
+        },
+      },
+    });
+    await simulator.boot();
+
+    await world.timer.fire();
+    await world.timer.fire();
+
+    expect(evaluated.map((call) => call.assetIds)).toEqual([[healthyId], [healthyId]]);
+    expect(evaluated[0]?.stored).not.toEqual(["100"]);
+  });
+
+  it("keeps ticking when the alert evaluation rejects", async () => {
+    const world = await setup();
+    const simulator = world.create({
+      alertEvaluator: { evaluate: () => Promise.reject(new Error("evaluator down")) },
+    });
+    await simulator.boot();
+
+    await world.timer.fire();
+    await world.timer.fire();
+
+    expect(await world.sequencesOf(world.ids[0] ?? "")).toEqual([1, 2]);
+    expect(world.logged("simulation.tick.failed")).toHaveLength(2);
+  });
 });
 
 describe("market simulator lifecycle", () => {
