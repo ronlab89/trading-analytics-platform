@@ -1,7 +1,9 @@
 import type { TransactionalRepositories, UnitOfWork } from "@trading/domain";
 import { prisma } from "./client.js";
+import { PrismaAlertRepository } from "./repositories/prisma-alert-repository.js";
 import { PrismaIdempotencyKeyRepository } from "./repositories/prisma-idempotency-key-repository.js";
 import { PrismaJobRepository } from "./repositories/prisma-job-repository.js";
+import { PrismaNotificationRepository } from "./repositories/prisma-notification-repository.js";
 import { PrismaPositionRepository } from "./repositories/prisma-position-repository.js";
 import { PrismaTransactionRepository } from "./repositories/prisma-transaction-repository.js";
 
@@ -20,6 +22,8 @@ export class PrismaUnitOfWork implements UnitOfWork {
         positions: new PrismaPositionRepository(tx),
         jobs: new PrismaJobRepository(tx),
         idempotencyKeys: new PrismaIdempotencyKeyRepository(tx),
+        alerts: new PrismaAlertRepository(tx),
+        notifications: new PrismaNotificationRepository(tx),
       }),
     );
   }

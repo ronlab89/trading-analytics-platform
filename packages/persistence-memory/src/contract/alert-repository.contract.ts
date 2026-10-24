@@ -59,6 +59,8 @@ export function alertRepositoryContract(
         assetId: null,
         portfolioId: null,
         enabled: true,
+        armed: true,
+        lastTriggeredAt: null,
       });
       expect(created.createdAt).toBeInstanceOf(Date);
       expect(created.updatedAt).toBeInstanceOf(Date);
@@ -70,6 +72,11 @@ export function alertRepositoryContract(
         input({ assetId, portfolioId, enabled: false }),
       );
       expect(created).toMatchObject({ assetId, portfolioId, enabled: false });
+    });
+
+    it("keeps an explicit armed flag", async () => {
+      const created = await context.repository.create(input({ armed: false }));
+      expect(created.armed).toBe(false);
     });
 
     it("finds an alert by id and returns null for an unknown id", async () => {
@@ -98,6 +105,31 @@ export function alertRepositoryContract(
       expect(updated.createdAt).toEqual(created.createdAt);
       expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(created.updatedAt.getTime());
       expect(await context.repository.getById(created.id)).toEqual(updated);
+    });
+
+    it("updates the edge-trigger state without touching the rest", async () => {
+      const created = await context.repository.create(input());
+      const firedAt = new Date("2026-10-24T10:00:00.000Z");
+      const updated = await context.repository.update(created.id, {
+        armed: false,
+        lastTriggeredAt: firedAt,
+      });
+      expect(updated).toMatchObject({ ...input(), armed: false, lastTriggeredAt: firedAt });
+      const rearmed = await context.repository.update(created.id, { armed: true });
+      expect(rearmed).toMatchObject({ armed: true, lastTriggeredAt: firedAt });
+      expect(await context.repository.getById(created.id)).toEqual(rearmed);
+    });
+
+    it("lists the enabled alerts of the given assets for every owner", async () => {
+      const { userId, otherUserId, assetId } = context.fixtures;
+      const mine = await context.repository.create(input({ assetId }));
+      const theirs = await context.repository.create(input({ userId: otherUserId, assetId }));
+      await context.repository.create(input({ assetId, enabled: false }));
+      await context.repository.create(input({ userId }));
+      const found = await context.repository.listEnabledByAssetIds([assetId]);
+      expect(found.map((alert) => alert.id).sort()).toEqual([mine.id, theirs.id].sort());
+      expect(await context.repository.listEnabledByAssetIds([])).toEqual([]);
+      expect(await context.repository.listEnabledByAssetIds(["nonexistent-id"])).toEqual([]);
     });
 
     it("deletes an alert", async () => {

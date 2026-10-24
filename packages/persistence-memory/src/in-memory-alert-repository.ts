@@ -1,14 +1,18 @@
-import type { Alert, AlertRepository, CreateAlertInput } from "@trading/domain";
+import type { Alert, AlertRepository, AlertUpdate, CreateAlertInput } from "@trading/domain";
 import type { InMemoryRepositoryOptions } from "./options.js";
 
-type AlertUpdate = Partial<Pick<Alert, "condition" | "threshold" | "enabled">>;
+/** Opaque copy of the repository state, for `snapshot` and `restore`. */
+export interface InMemoryAlertSnapshot {
+  readonly rows: ReadonlyMap<string, Alert>;
+  readonly sequence: number;
+}
 
 /**
  * In-memory implementation of `AlertRepository`.
  * Source: docs/06-architecture.md §12-13, docs/12-demo-mode-spec.md §4.
  *
- * Mirrors the Prisma adapter: a new alert is enabled and has no asset or
- * portfolio unless given, alerts are listed in insertion order, `update`
+ * Mirrors the Prisma adapter: a new alert is enabled and armed, never fired,
+ * and has no asset or portfolio unless given, alerts are listed in insertion order, `update`
  * moves `updatedAt` and ignores undefined fields, and `update` and `delete`
  * throw when the row does not exist.
  */
@@ -21,12 +25,34 @@ export class InMemoryAlertRepository implements AlertRepository {
     this.now = options.now ?? (() => new Date());
   }
 
+  /** Captures the current state; used by the unit of work to roll back. */
+  snapshot(): InMemoryAlertSnapshot {
+    return { rows: new Map(this.rows), sequence: this.sequence };
+  }
+
+  /** Replaces the current state with a snapshot; the snapshot stays reusable. */
+  restore(snapshot: InMemoryAlertSnapshot): void {
+    this.rows.clear();
+    for (const [id, row] of snapshot.rows) {
+      this.rows.set(id, row);
+    }
+    this.sequence = snapshot.sequence;
+  }
+
   listByUserId(userId: string): Promise<Alert[]> {
     return Promise.resolve([...this.rows.values()].filter((row) => row.userId === userId));
   }
 
   getById(id: string): Promise<Alert | null> {
     return Promise.resolve(this.rows.get(id) ?? null);
+  }
+
+  listEnabledByAssetIds(assetIds: readonly string[]): Promise<Alert[]> {
+    return Promise.resolve(
+      [...this.rows.values()].filter(
+        (row) => row.enabled && row.assetId !== null && assetIds.includes(row.assetId),
+      ),
+    );
   }
 
   create(input: CreateAlertInput): Promise<Alert> {
@@ -41,6 +67,8 @@ export class InMemoryAlertRepository implements AlertRepository {
       condition: input.condition,
       threshold: input.threshold,
       enabled: input.enabled ?? true,
+      armed: input.armed ?? true,
+      lastTriggeredAt: null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };

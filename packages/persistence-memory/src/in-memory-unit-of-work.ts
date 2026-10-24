@@ -1,6 +1,8 @@
 import type { TransactionalRepositories, UnitOfWork } from "@trading/domain";
+import type { InMemoryAlertRepository } from "./in-memory-alert-repository.js";
 import type { InMemoryIdempotencyKeyRepository } from "./in-memory-idempotency-key-repository.js";
 import type { InMemoryJobRepository } from "./in-memory-job-repository.js";
+import type { InMemoryNotificationRepository } from "./in-memory-notification-repository.js";
 import type { InMemoryPositionRepository } from "./in-memory-position-repository.js";
 import type { InMemoryTransactionRepository } from "./in-memory-transaction-repository.js";
 
@@ -9,6 +11,8 @@ export interface InMemoryUnitOfWorkRepositories {
   readonly positions: InMemoryPositionRepository;
   readonly jobs: InMemoryJobRepository;
   readonly idempotencyKeys: InMemoryIdempotencyKeyRepository;
+  readonly alerts: InMemoryAlertRepository;
+  readonly notifications: InMemoryNotificationRepository;
 }
 
 /**
@@ -37,19 +41,31 @@ export class InMemoryUnitOfWork implements UnitOfWork {
   private async execute<T>(
     work: (repositories: TransactionalRepositories) => Promise<T>,
   ): Promise<T> {
-    const { transactions, positions, jobs, idempotencyKeys } = this.repositories;
+    const { transactions, positions, jobs, idempotencyKeys, alerts, notifications } =
+      this.repositories;
     const transactionsSnapshot = transactions.snapshot();
     const positionsSnapshot = positions.snapshot();
     const jobsSnapshot = jobs.snapshot();
     const idempotencyKeysSnapshot = idempotencyKeys.snapshot();
+    const alertsSnapshot = alerts.snapshot();
+    const notificationsSnapshot = notifications.snapshot();
 
     try {
-      return await work({ transactions, positions, jobs, idempotencyKeys });
+      return await work({
+        transactions,
+        positions,
+        jobs,
+        idempotencyKeys,
+        alerts,
+        notifications,
+      });
     } catch (error) {
       transactions.restore(transactionsSnapshot);
       positions.restore(positionsSnapshot);
       jobs.restore(jobsSnapshot);
       idempotencyKeys.restore(idempotencyKeysSnapshot);
+      alerts.restore(alertsSnapshot);
+      notifications.restore(notificationsSnapshot);
       throw error;
     }
   }

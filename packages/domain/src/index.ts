@@ -61,7 +61,7 @@ export type { DecisionRepository } from "./repositories/decision-repository";
 export type { DecisionEventRepository } from "./repositories/decision-event-repository";
 export type { ScenarioRepository } from "./repositories/scenario-repository";
 export type { WatchlistItemRepository } from "./repositories/watchlist-item-repository";
-export type { AlertRepository } from "./repositories/alert-repository";
+export type { AlertRepository, AlertUpdate } from "./repositories/alert-repository";
 export type { NotificationRepository } from "./repositories/notification-repository";
 export type { UserPreferenceRepository } from "./repositories/user-preference-repository";
 export type { MarketPriceRepository } from "./repositories/market-price-repository";

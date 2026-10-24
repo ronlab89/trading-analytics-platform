@@ -5,9 +5,15 @@ import type {
 } from "@trading/domain";
 import type { InMemoryRepositoryOptions } from "./options.js";
 
-interface StoredNotification {
+export interface StoredNotification {
   readonly notification: Notification;
   /** Creation order, the tie-break between notifications that share a `createdAt`. */
+  readonly sequence: number;
+}
+
+/** Opaque copy of the repository state, for `snapshot` and `restore`. */
+export interface InMemoryNotificationSnapshot {
+  readonly rows: ReadonlyMap<string, StoredNotification>;
   readonly sequence: number;
 }
 
@@ -27,6 +33,20 @@ export class InMemoryNotificationRepository implements NotificationRepository {
 
   constructor(options: InMemoryRepositoryOptions = {}) {
     this.now = options.now ?? (() => new Date());
+  }
+
+  /** Captures the current state; used by the unit of work to roll back. */
+  snapshot(): InMemoryNotificationSnapshot {
+    return { rows: new Map(this.rows), sequence: this.sequence };
+  }
+
+  /** Replaces the current state with a snapshot; the snapshot stays reusable. */
+  restore(snapshot: InMemoryNotificationSnapshot): void {
+    this.rows.clear();
+    for (const [id, row] of snapshot.rows) {
+      this.rows.set(id, row);
+    }
+    this.sequence = snapshot.sequence;
   }
 
   listByUserId(userId: string, filter?: { unreadOnly?: boolean }): Promise<Notification[]> {
