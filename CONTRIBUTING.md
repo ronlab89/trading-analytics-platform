@@ -70,6 +70,7 @@ CI is `Implemented` (ADR-006 points 10 and 11): one GitHub Actions workflow,
 - `pnpm test` (the domain, database and API suites; the latter two run against a
   PostgreSQL service container)
 - `pnpm build`
+- starting the built API (`node apps/api/dist/index.js`) and waiting for `GET /health/ready`
 
 There is no coverage threshold and no continuous deployment. The CI test database
 still connects with the container superuser; the runtime and migration roles of
@@ -241,6 +242,13 @@ pnpm docs:check
 pnpm test
 pnpm build
 ```
+
+Every workspace package exposes its compiled `dist` through `exports`, and the
+`@trading/source` condition points the same entry at `src`. Vitest, `tsx` and
+`tsc` enable that condition, so tests and `pnpm dev` need no build; `node` on a
+`dist` does not, which is how the built API runs. Relative imports inside the
+packages and the API end in `.js` (`NodeNext`): `tsc` rejects a missing
+extension. `pnpm typecheck` builds the referenced projects first.
 
 `pnpm lint:fix` and `pnpm format` apply fixes. `pnpm docs:check` verifies the
 documentation structure (references, code fences, ADR sections), not its content.

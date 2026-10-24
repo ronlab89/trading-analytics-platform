@@ -42,11 +42,11 @@ odd/tasks/b7/**
 
 ## Tasks
 
-- [ ] T1 Spike: prove D1 and D2 on `@trading/domain` and `apps/api` (build, `node dist/index.js`, vitest and tsc still green). Report before touching the other packages.
-- [ ] T2 Extensions and `NodeNext` across the packages, one package per commit if the diff is large.
-- [ ] T3 `exports` and `dist` for each package, `files` field, root `build` order.
-- [ ] T4 `DATABASE_URL` validation in `env.ts` with RED tests (missing, wrong scheme, valid).
-- [ ] T5 CI step for S5 and the docs touched (`README` build and run notes).
+- [x] T1 Spike: D1 and D2 proven on every package at once (the codemod was small enough), no commit of its own.
+- [x] T2 Extensions and `NodeNext` across the packages, ab2d9a1.
+- [x] T3 `exports` and `dist` for each package, `files` field, vitest and `tsx` conditions, 52ad05b.
+- [x] T4 `DATABASE_URL` validation in `env.ts` with RED tests (missing, wrong scheme, valid), 10d03f5.
+- [x] T5 CI step for S5, bbf57a6, and the docs (CONTRIBUTING, PROGRESS, `15` marks).
 
 ## Done when
 
@@ -63,4 +63,20 @@ pnpm build; node apps/api/dist/index.js against the local database; pnpm lint; p
 ## Log
 
 L1 Request: "PR merged y develop actualizada, que sigue?" then "Si arranca la lectura" then "si armalos" (the task files for B7).
-L2 Read-only exploration on 2026-10-24 produced F1 to F4; D1 to D3 wait for approval.
+L2 Read-only exploration on 2026-10-24 produced F1 to F4.
+L3 Decisions taken with the recommendation (user, 2026-10-24: "decisiones que salgan las apruebo con tus recomendaciones"):
+
+- D1 `.js` extensions plus `NodeNext`, no bundler. Only `domain` (331 specifiers in 101 files), `market-sim` (40 in 10) and `database` (3 in 2) needed the change; `contracts`, `application`, `persistence-memory` and `apps/api` already used `.js`. A throwaway codemod did it (kept out of the repository); `tsconfig.base.json` moves to `NodeNext`, which `apps/web` does not extend.
+- D2 The `@trading/source` condition, enabled by `customConditions` in `tsconfig.base.json`, `resolve.conditions` plus `ssr.resolve.conditions` and `externalConditions` in each vitest config (the plain `resolve.conditions` was not enough for the SSR resolver), and `--conditions=@trading/source` on every `tsx` script. `domain` has no workspace dependency, so its vitest config is unchanged.
+- D3 changed: CI checks `GET /health/ready`, not `/health/live` (the route is `/health`). CI has the database, so readiness proves more.
+- D4 Found during the spike: `packages/database` compiled with `rootDir: "."`, which put the output in `dist/src` and broke the `../generated/client` import. It now has `tsconfig.build.json` (`rootDir: src`, used by `build` and by the references of the root and `apps/api`) and `tsconfig.json` (no emit, includes `prisma/`, used by typecheck and ESLint).
+- D5 `MIGRATION_DATABASE_URL` is not validated by the API: only the Prisma CLI uses it.
+
+L4 Checks, run on 2026-10-24:
+
+- Clean state (every `dist` and `tsbuildinfo` removed): `pnpm typecheck` passes, `pnpm build` passes, `node dist/index.js` starts and `/health` answers 200. `/health/ready` answered 503 locally because no database was running; the CI step covers the 200.
+- Built API with `DATABASE_URL=mysql://...`: exits at startup naming the variable, the value is not printed.
+- `pnpm -r test` with no `dist` present: every package passes. In one full run `docs.routes.test.ts` timed out at 5000 ms while 75 files ran in parallel; alone it passes in 212 ms. It failed again in the final full run of this branch; on `develop` the same test failed in 1 of 2 full `apps/api` runs, so it is a flake that predates this slice (the first request generates the OpenAPI document under load). Not fixed here.
+- `pnpm format:check` fails on this Windows checkout for files nobody touched (for example `.prettierrc.json`), a CRLF artifact; the files of this slice went through Prettier in the pre-commit hook.
+- Not verified here: the new CI step itself (it only runs on GitHub).
+- Risk: item 5 (package entry points and the build), item 3 for the `exports` of the six packages.
