@@ -139,7 +139,7 @@ Code vs ADR:
 | 0 Repository foundation | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Implemented` | none |
 | 1 Product and domain foundation | `Implemented` (`packages/domain`); analytics additions `Implemented`; application layer and `@trading/contracts` `Planned (B0)` | none |
 | 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Implemented` (B4); runtime database role `Implemented` | none |
-| 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Planned (B6)` | none |
+| 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Implemented` (B6) | none |
 | 4 Authentication and RBAC | login, `me`, refresh, logout and role enforcement `Implemented` (B2) | session screens `Planned (FE1)` |
 | 5 Frontend foundation | none | `Planned (FE0)` |
 | 6 Core portfolio workflow | endpoints `Implemented` | `Planned (FE1)` |
@@ -412,7 +412,7 @@ start database
 | `GET /health/ready` returns 503 with `status: "unavailable"` and no `checks` while the API shuts down (ADR-006 point 12) | `Implemented` (B3.4) | B3 |
 | Safe structured logging: `Logger` port in `@trading/application`, pino adapter, request logs, security events (ADR-009) | `Implemented` (B3.1 to B3.3) | B3 |
 | Graceful shutdown on `SIGTERM` and `SIGINT` (ADR-006 point 12) | `Implemented` (B3.4) | B3 |
-| OpenAPI document generated from the `@trading/contracts` schemas (ADR-002 point 7) | `Planned (B6)` | B6 |
+| OpenAPI document generated from the `@trading/contracts` schemas (ADR-002 point 7) | `Implemented` (B6) | B6 |
 
 Code vs ADR:
 
@@ -1499,7 +1499,7 @@ How the original nodes map to the blocks:
 | Repository | Phase 0 `Implemented`; the minimal CI is the new first step | `Implemented`; CI `Implemented` |
 | Domain | Phase 1 `Implemented` in `packages/domain`; analytics additions in B1; application layer and contracts in B0 | `Implemented`; `Planned (B0)` |
 | Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented` |
-| Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Planned (B6)` |
+| Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Implemented` (B6) |
 | Auth | Phase 4 login, `me`, refresh, logout and roles `Implemented` in B2; session screens in FE1 | `Implemented` (B2), `Planned (FE1)` |
 | Frontend | Phase 5, FE0 | `Planned (FE0)` |
 | Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | `Planned (FE1)` |
@@ -1617,7 +1617,7 @@ Same flow
 | Domain behavior: entities, validators, calculations and the repository and `UnitOfWork` contracts in `packages/domain` | `Implemented` | none |
 | Application use case: `@trading/application`, one factory per resource (ADR-001 points 1 and 2); `packages/application` does not exist yet | `Planned (B0)` | B0 |
 | API contract: request schemas exist in `apps/api/src/schemas/`; `@trading/contracts` with request schemas, response schemas, the error envelope, pagination `meta` and presenters (ADR-002 points 1 to 4) | Requests `Implemented` in the API only; `@trading/contracts` `Planned (B0)` (the package holds only `.gitkeep`) | B0 |
-| API document generated from the schemas (ADR-002 point 7) | `Planned (B6)` | B6 |
+| API document generated from the schemas (ADR-002 point 7) | `Implemented` (B6) | B6 |
 | Persistence contract: the repository interfaces of `packages/domain/src/repositories/`, with Prisma implementations in `packages/database` | `Implemented`; in-memory implementations `Planned (B0)` (ADR-001 points 4 and 7) | B0 |
 | Frontend data contract: DTOs from `@trading/contracts` consumed through a `TradingClient` port (ADR-002 point 5) | DTOs `Planned (B0)`; HTTP adapter `Planned (FE0)`; in-process adapter `Planned (FE4)` | B0, FE0, FE4 |
 
@@ -1664,7 +1664,7 @@ This reduces accidental coupling.
 | Notifications: list and mark as read | `Implemented`; creation by import jobs `Implemented` (B4) (ADR-008 point 6, ADR-010 point 9) | B4 |
 | Background jobs: `POST /api/v1/portfolios/:portfolioId/imports` and the `jobs` endpoints (ADR-008 point 9) | `Implemented` (B4) | B4 |
 | Simulation control: `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode` (ADR-007 point 15) | `Implemented` (B5) | B5 |
-| API document | `Planned (B6)` | B6 |
+| API document | `Implemented` (B6) | B6 |
 
 Code vs ADR:
 
@@ -2381,7 +2381,7 @@ Avoid enormous commits containing unrelated systems.
 | Dimension | Where it is delivered | Status |
 | --- | --- | --- |
 | Domain | `packages/domain`; analytics additions in B1 | `Implemented` |
-| API | Endpoints in each backend block; OpenAPI document in B6 | `Implemented` in part; `Planned (B6)` |
+| API | Endpoints in each backend block; OpenAPI document in B6 | `Implemented` in part; OpenAPI document `Implemented` (B6) |
 | Persistence | `packages/database` (Prisma); `Job` and `IdempotencyKey` models in B4 | `Implemented` |
 | UI | Frontend blocks FE1 to FE4 | `Planned (FE1)` |
 | Validation | Zod at the API, domain invariants; route parameters and chronological validation in B0 | `Implemented` in part; `Planned (B0)` |
@@ -2435,7 +2435,7 @@ Omissions must be intentional.
 | Authentication works | Login, `me`, refresh and logout `Implemented` (B2) | B2 |
 | RBAC works | `Implemented` (B2.1, B2.2); the permission mechanism `Implemented` (B0) (ADR-005) | B0, B2 |
 | PostgreSQL persists data | `Implemented` | none |
-| REST API works | `Implemented` in part; the remaining endpoints in B1, B2 and B4; the OpenAPI document `Planned (B6)` | B1, B2, B4, B6 |
+| REST API works | `Implemented` in part; the remaining endpoints in B1, B2 and B4; the OpenAPI document `Implemented` (B6) | B1, B2, B4, B6 |
 | WebSockets work | Server `Implemented` (B5); client `Planned (FE3)` | B5, FE3 |
 | Background operations work | `Implemented` (B4) (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
 | Demo Mode works | `Planned (FE4)`; needs B0 (in-memory repositories) and B5 (simulation engine) | FE4 |
@@ -2569,7 +2569,7 @@ The portfolio project is complete when a reviewer can:
 | --- | --- | --- |
 | Architecture: why feature/domain-oriented | ADR-001 (application layer as a shared, injectable package) and `06-architecture.md` | Answer sources `Implemented`; layering in code `Planned (B0)` |
 | Database: why PostgreSQL | `04-tech-stack.md`; the code uses PostgreSQL through Prisma | `Implemented` |
-| API: why REST and where contracts are enforced | ADR-002 (`@trading/contracts`, explicit wire format) | `Planned (B0)`; OpenAPI `Planned (B6)` |
+| API: why REST and where contracts are enforced | ADR-002 (`@trading/contracts`, explicit wire format) | `Planned (B0)`; OpenAPI `Implemented` (B6) |
 | State: why TanStack Query and Zustand | No ADR decides them; `Deferred` to the frontend-stage ADR (§28) | `Deferred` |
 | Tables: why TanStack Table | No ADR decides it (§25 to §28); `Deferred` to the frontend-stage ADR | `Deferred` |
 | Realtime: why WebSockets | ADR-007 | `Implemented` (B5) |
@@ -2914,7 +2914,7 @@ Documentation should cover:
 | --- | --- | --- | --- |
 | README | `README.md` | `Implemented` (slice H): real status and the API run flow | none |
 | Architecture | `docs/06-architecture.md` and `docs/adr/` | `Implemented` | none |
-| API | `docs/07-api-spec.md`; OpenAPI document | Spec `Implemented`; generated document `Planned (B6)` | B6 |
+| API | `docs/07-api-spec.md`; OpenAPI document | Spec `Implemented`; generated document `Implemented` (B6) | B6 |
 | Development | `CONTRIBUTING.md` | `Implemented` (slice I): the gaps listed in §38 and §49 are closed; the CI wording describes a CI that is `Implemented` | none |
 | Testing | `docs/10-testing-strategy.md` | `Implemented` | none |
 | Demo | `docs/12-demo-mode-spec.md` | `Implemented`; the demo specifics are `Deferred` to the frontend-stage ADR | FE4 |
@@ -3530,7 +3530,7 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 05 Migrations | `Implemented` (Prisma); runtime database role `Implemented` | none |
 | 06 Domain model | `Implemented` (`packages/domain`); analytics additions `Implemented` | B1 |
 | 07 Repository layer | `Implemented` (`packages/database`, repository contracts in `packages/domain`); the application layer over it `Planned (B0)` (ADR-001) | B0 |
-| 08 Express/API foundation | `Implemented`; layering over `@trading/application` and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002); OpenAPI `Planned (B6)` | B0, B6 |
+| 08 Express/API foundation | `Implemented`; layering over `@trading/application` and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002); OpenAPI `Implemented` (B6) | B0, B6 |
 | 09 Observability foundation | `Implemented` (B3, ADR-009) | B3 |
 | 10 Authentication | login, `me`, refresh and logout `Implemented` (B2) (ADR-005) | B2 |
 | 11 RBAC | `Implemented` (B2.1, B2.2); the permission mechanism `Implemented` (B0) (ADR-005 point 3) | B0, B2 |
@@ -3736,7 +3736,7 @@ The portfolio should demonstrate:
 | Product | Core workflows: endpoints `Implemented`, screens in FE1 to FE3; analytics from B1 (ADR-004); no win/loss or transaction statistics in version 1 (ADR-010 point 10); holdings only, no cash balance (ADR-003 points 1 and 2); see §41 | `Implemented` in part; `Planned (FE1)` | B1, FE1 to FE3 |
 | Architecture | Application layer, contracts and ports (ADR-001, ADR-002) in B0; Demo Mode substitution in FE4; boundaries documented by the ADRs; see §64 | `Planned (B0)`; `Planned (FE4)` | B0, FE4 |
 | Frontend | The frontend blocks; the libraries named in the original list are not decided by any ADR and stay `Deferred` (confirmed 2026-10-08, see Decided); see §40 | `Planned (FE0)` | FE0 to FE5 |
-| Backend | Node.js and TypeScript API, PostgreSQL persistence, validation, error envelope and health routes `Implemented`; contracts `Planned (B0)`; authentication and RBAC `Implemented` (B2) (ADR-005); OpenAPI `Planned (B6)`; see §40 | `Implemented` in part; `Planned (B0)` | B0, B2, B6 |
+| Backend | Node.js and TypeScript API, PostgreSQL persistence, validation, error envelope and health routes `Implemented`; contracts `Planned (B0)`; authentication and RBAC `Implemented` (B2) (ADR-005); OpenAPI `Implemented` (B6); see §40 | `Implemented` in part; `Planned (B0)` | B0, B2, B6 |
 | Realtime | Server `Implemented` (B5) (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Implemented` (B5); `Planned (FE3)` | B5, FE3, FE4 |
 | Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Implemented` (B4); screens `Planned (FE3)` | `Implemented` (B4) | B4, FE3 |
 | Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E tooling `Deferred` to the frontend-stage ADR and E2E checks `Planned (FE5)`; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |

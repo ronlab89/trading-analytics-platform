@@ -4,7 +4,7 @@
 **Date:** 2026-10-04
 **Amended:** 2026-10-08 (point 10, validation detail `code`, approved by the
 user from the T6.2 decision batch)
-**Implemented in:** roadmap block B0 (package and presenters), B6 (OpenAPI)
+**Implemented in:** roadmap block B0 (package and presenters), B6 (OpenAPI, B6.1 to B6.6, 2026-10-24); what point 7 left to B6 is under Resolved in B6
 
 ## Context
 
@@ -142,6 +142,21 @@ specified and tested in the listed block.
 | Decimal strings can come out in exponential notation (`decimal.js` `toString` gives `"5e-8"`). | Presenters emit fixed notation, and the response schema enforces a decimal-string pattern. Scale and rounding for computed amounts are defined. | B0 |
 | Decision event payloads store `price` and `quantity` as JSON numbers, and replay reads them as numbers (decision point 9). | Replay parses both with `Decimal`. Its readers accept only decimal strings matching the response pattern; a number or a malformed value is reported as an issue, like any other malformed event. Seed data and test fixtures are rewritten to strings. No legacy numeric data needs converting, because nothing is deployed (ADR-006). | B0 |
 | Scenario impact computes its price factor in floating point (decision point 9). | `applyScenarioChanges` builds the factor as `Decimal(percentChange).div(100).plus(1)`. A test asserts an exact result for a percentage that is not exactly representable in binary, such as `-12.3`. | B0 |
+
+## Resolved in B6
+
+What point 7 left to the block, as built (2026-10-24):
+
+| Item | Built |
+|---|---|
+| Where the endpoints are described | `ApiOperation` in `packages/contracts/src/api-operation.ts`: plain data (method, path, tag, whether the token is needed, `params`, `query`, `headers`, `cookies`, `body`, the success response, other responses and the error statuses). The 58 operations live in `packages/contracts/src/operations/`, one file per resource group, joined in `API_OPERATIONS`. The package has no Express dependency |
+| Schemas | The operations reference the schemas the routes already validate with and the response schemas of the package; nothing is copied. The few responses that had no schema (`/auth/me`, `/`, `/health`, `/health/ready`) got one in the package |
+| How the document is generated | `buildOpenApiDocument` in `packages/contracts/src/openapi.ts` builds OpenAPI 3.1.0 from the operations with `toJSONSchema` (target `draft-2020-12`): `io: "input"` for requests and `io: "output"` for responses. It adds the `bearerAuth` scheme, the shared error envelope on every declared error status and `Retry-After` on every 429 |
+| How drift is caught | `validate()` tags the middleware it returns with its schema and source. `apps/api/src/openapi-drift.test.ts` walks the routing table of `createApp()` and fails when a route has no operation, an operation has no route, the method, path or authentication differ, or a validated `params`, `query` or `body` schema is not the same object as the operation's. It sends no request and needs no database |
+| How it is served | `GET /openapi.json` and the Scalar viewer at `GET /api/docs` (`@scalar/express-api-reference`, MIT, no hosted service), mounted by `createApp()` only when `API_DOCS_ENABLED` is on: unset means on outside production and off in production, and when off both answer the normal 404. The viewer page has its own CSP (script by per-request nonce and the CDN origin, no `unsafe-eval`); every other route keeps the `helmet()` policy. `API_DOCS_CDN_URL` lets a deployment serve the viewer script itself |
+| What is outside the document | The WebSocket (`08-realtime-spec.md`), and the docs routes themselves |
+
+Not covered by the drift test, by design: headers, cookies, response schemas and status codes are not visible in the routing table; the route tests already validate responses against the schemas. The document has descriptions but no generated examples (`Deferred`).
 
 ## Related
 

@@ -466,7 +466,7 @@ services.
 
 # 27. DTO Boundary
 
-**Status:** `Planned (B0)` — ADR-002; OpenAPI `Planned (B6)`.
+**Status:** `Planned (B0)` — ADR-002; OpenAPI `Implemented` (B6).
 
 Today controllers return domain objects and Express serializes them; the
 money shape `{ amount: "100", currency: "USD" }` emerges from `Decimal`'s

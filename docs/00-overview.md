@@ -116,7 +116,7 @@ come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
 | Structured logging | `Implemented` (B3.1) | ADR-009 |
 | CSV transaction import (background jobs) and idempotency | `Implemented` (B4) | ADR-008 |
 | Realtime prices and events, shared market simulator | `Implemented` (B5) | ADR-007 |
-| Generated OpenAPI document | `Planned (B6)` | ADR-002 point 7 |
+| Generated OpenAPI document | `Implemented` (B6) | ADR-002 point 7 |
 | Production-like containerized local run | `Planned (B7)` | ADR-006 |
 | Web app, dashboard UI, charts, public demo | `Planned (FE)` | ADR-001, ADR-002, ADR-006 |
 
