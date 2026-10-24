@@ -18,6 +18,7 @@
     "@trading/contracts": "workspace:*",
     "@trading/database": "workspace:*",
     "@trading/domain": "workspace:*",
+    "@trading/market-sim": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "csv-parse": "^7.0.3",

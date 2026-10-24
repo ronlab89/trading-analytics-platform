@@ -32,4 +32,17 @@ export class PrismaMarketEventRepository implements MarketEventRepository {
     const row = await prisma.marketEvent.create({ data: toPrismaCreateInput(input) });
     return toDomainMarketEvent(row);
   }
+
+  async pruneBeforeSequence(assetId: string, sequence: number): Promise<number> {
+    const latest = await this.getLastSequence(assetId);
+    if (latest === null) {
+      return 0;
+    }
+    // Capped at the newest event, so the last sequence of the asset is never deleted.
+    const below = Math.min(sequence, latest);
+    const result = await prisma.marketEvent.deleteMany({
+      where: { assetId, sequence: { lt: BigInt(below) } },
+    });
+    return result.count;
+  }
 }

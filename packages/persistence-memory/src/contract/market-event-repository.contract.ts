@@ -18,8 +18,7 @@ export interface MarketEventContractContext {
  * Behavior every `MarketEventRepository` must have, whatever the storage.
  * Source: docs/10-testing-strategy.md §17.
  *
- * The suite never creates two events with the same (asset, sequence): the
- * schema does not forbid it, so it is not part of the contract.
+ * (asset, sequence) is unique, and pruning never removes an asset's newest event.
  */
 export function marketEventRepositoryContract(
   name: string,
@@ -81,6 +80,40 @@ export function marketEventRepositoryContract(
       await createAll([99], context.fixtures.otherAssetId);
       expect(await context.repository.getLastSequence(context.fixtures.assetId)).toBe(12);
       expect(await context.repository.getLastSequence("nonexistent-id")).toBeNull();
+    });
+
+    it("rejects a second event with the same asset and sequence and keeps the first", async () => {
+      await createAll([1, 2]);
+      await expect(context.repository.create(input(2))).rejects.toThrow();
+      expect(await sequencesOf(context.fixtures.assetId)).toEqual([1, 2]);
+    });
+
+    it("accepts the same sequence for another asset", async () => {
+      await createAll([1]);
+      await createAll([1], context.fixtures.otherAssetId);
+      expect(await sequencesOf(context.fixtures.otherAssetId)).toEqual([1]);
+    });
+
+    it("prunes the events below a sequence and returns how many it deleted", async () => {
+      await createAll([1, 2, 3, 4, 5]);
+      await createAll([1, 2], context.fixtures.otherAssetId);
+      expect(await context.repository.pruneBeforeSequence(context.fixtures.assetId, 4)).toBe(3);
+      expect(await sequencesOf(context.fixtures.assetId)).toEqual([4, 5]);
+      expect(await sequencesOf(context.fixtures.otherAssetId)).toEqual([1, 2]);
+    });
+
+    it("never prunes the newest event, so the last sequence survives", async () => {
+      await createAll([1, 2, 3]);
+      expect(await context.repository.pruneBeforeSequence(context.fixtures.assetId, 100)).toBe(2);
+      expect(await sequencesOf(context.fixtures.assetId)).toEqual([3]);
+      expect(await context.repository.getLastSequence(context.fixtures.assetId)).toBe(3);
+    });
+
+    it("prunes nothing when no event is below the sequence or the asset has none", async () => {
+      await createAll([5, 6]);
+      expect(await context.repository.pruneBeforeSequence(context.fixtures.assetId, 5)).toBe(0);
+      expect(await context.repository.pruneBeforeSequence("nonexistent-id", 5)).toBe(0);
+      expect(await sequencesOf(context.fixtures.assetId)).toEqual([5, 6]);
     });
   });
 }

@@ -26,6 +26,13 @@ export interface HistoricalPriceRepository {
   listByAssetIds(assetIds: readonly string[], from: Date, to: Date): Promise<HistoricalPrice[]>;
 
   /**
+   * Returns the candle with the latest timestamp of an asset, or null when it
+   * has none. The market simulator reads it at startup to know which days the
+   * server was offline (ADR-007 point 8).
+   */
+  getLatestByAssetId(assetId: string): Promise<HistoricalPrice | null>;
+
+  /**
    * Creates a historical price candle.
    * Callers are expected to have already run `validateNewHistoricalPrice`
    * (see entities/historical-price.ts) before calling this. Implementations

@@ -49,6 +49,20 @@ export class InMemoryHistoricalPriceRepository implements HistoricalPriceReposit
     return Promise.resolve(found);
   }
 
+  getLatestByAssetId(assetId: string): Promise<HistoricalPrice | null> {
+    let latest: HistoricalPrice | null = null;
+    for (const row of this.rows.values()) {
+      if (
+        row.assetId === assetId &&
+        (latest === null || row.timestamp.getTime() > latest.timestamp.getTime())
+      ) {
+        latest = row;
+      }
+    }
+
+    return Promise.resolve(latest);
+  }
+
   create(input: CreateHistoricalPriceInput): Promise<HistoricalPrice> {
     const candle: HistoricalPrice = { ...input, timestamp: input.timestamp ?? this.now() };
     this.rows.set(`${candle.assetId}|${String(candle.timestamp.getTime())}`, candle);

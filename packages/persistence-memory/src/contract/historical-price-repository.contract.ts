@@ -137,5 +137,16 @@ export function historicalPriceRepositoryContract(
       expect(mine.map((c) => c.assetId)).toEqual([assetId]);
       expect(await context.repository.listByAssetIds([], day(1), day(30))).toEqual([]);
     });
+
+    it("returns the latest candle of an asset, or null when it has none", async () => {
+      const { assetId, otherAssetId } = context.fixtures;
+      await context.repository.create(candle(assetId, day(9), "109"));
+      await context.repository.create(candle(assetId, day(3), "103"));
+      await context.repository.create(candle(otherAssetId, day(20), "120"));
+      const latest = await context.repository.getLatestByAssetId(assetId);
+      expect(latest?.timestamp).toEqual(day(9));
+      expect(latest?.close).toEqual(Money.of("109", "USD"));
+      expect(await context.repository.getLatestByAssetId("no-such-asset")).toBeNull();
+    });
   });
 }

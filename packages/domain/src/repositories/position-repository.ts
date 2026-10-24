@@ -60,6 +60,15 @@ export interface PositionRepository {
   updateCurrentPrice(id: string, currentPrice: Money): Promise<Position>;
 
   /**
+   * Sets the current market price of every position held in an asset, in one
+   * write, and returns how many positions changed. The market simulator calls
+   * it on every tick so valuation, allocation and `dailyChange` read the same
+   * price as `MarketPrice` (ADR-007 Deferred detail, B5.6). An asset nobody
+   * holds changes nothing and returns 0.
+   */
+  updateCurrentPriceByAssetId(assetId: string, currentPrice: Money): Promise<number>;
+
+  /**
    * Removes a position, e.g. when it has been fully closed (quantity
    * reached zero). Scoped by portfolio+asset rather than a bare id to
    * keep the operation explicit about what is being closed.

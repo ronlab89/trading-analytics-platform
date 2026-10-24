@@ -9,6 +9,7 @@ import { env } from "./config/env.js";
 import { startServer } from "./lifecycle/bootstrap.js";
 import { createJobsShutdownStep } from "./lifecycle/jobs-step.js";
 import { createRealtimeShutdownStep } from "./lifecycle/realtime-step.js";
+import { createSimulatorShutdownStep } from "./lifecycle/simulator-step.js";
 import { createShutdown } from "./lifecycle/shutdown.js";
 import { logger } from "./logging/logger.js";
 import { createAccessTokenAuthenticator } from "./realtime/access-token-authenticator.js";
@@ -21,9 +22,13 @@ import { accessTokens } from "./services/access-tokens.js";
 const shutdown = createShutdown({ logger, exit: (code) => process.exit(code) });
 const app = createApp({ isShuttingDown: shutdown.isShuttingDown });
 
-// The runner stops first on shutdown, then the HTTP server closes (ADR-008 point 5).
+// The simulator and the runner stop first on shutdown, then the HTTP server closes (ADR-006
+// point 12, ADR-008 point 5).
+shutdown.register(createSimulatorShutdownStep(composition.marketSimulator));
 shutdown.register(createJobsShutdownStep(composition.jobRunner));
 composition.jobRunner.start();
+// Starts from the persisted prices and sequences; it never rejects, so a failure is only logged.
+void composition.marketSimulator.boot();
 
 const wsTransport = createWsTransport({
   path: REALTIME_PATH,

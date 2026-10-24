@@ -28,6 +28,7 @@ export * from "./permissions.js";
 export * from "./portfolio-service.js";
 export * from "./position-service.js";
 export * from "./scenario-service.js";
+export * from "./simulation-service.js";
 export * from "./transaction-service.js";
 export * from "./user-preference-service.js";
 export * from "./watchlist-service.js";

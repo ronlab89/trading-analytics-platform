@@ -85,6 +85,19 @@ export class InMemoryPositionRepository implements PositionRepository {
     return Promise.resolve(updated);
   }
 
+  updateCurrentPriceByAssetId(assetId: string, currentPrice: Money): Promise<number> {
+    const updatedAt = this.now();
+    let changed = 0;
+    for (const [id, row] of this.rows) {
+      if (row.assetId === assetId) {
+        this.rows.set(id, { ...row, currentPrice, updatedAt });
+        changed += 1;
+      }
+    }
+
+    return Promise.resolve(changed);
+  }
+
   deleteByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<void> {
     const existing = this.find(portfolioId, assetId);
 
