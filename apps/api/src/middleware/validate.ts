@@ -24,6 +24,16 @@ declare global {
 
 type ValidationSource = "query" | "body" | "params";
 
+/**
+ * What a `validate()` middleware checks. It is attached to the middleware
+ * function so the test that compares the routes with the OpenAPI operations
+ * can read it from the router (B6.4).
+ */
+export interface Validation {
+  readonly schema: ZodType;
+  readonly source: ValidationSource;
+}
+
 const SOURCE_MESSAGES: Record<ValidationSource, string> = {
   query: "The request contains invalid query parameters.",
   body: "The request contains invalid fields.",
@@ -46,7 +56,7 @@ const SOURCE_MESSAGES: Record<ValidationSource, string> = {
  * system at the call site.
  */
 export function validate(schema: ZodType, source: ValidationSource) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  const middleware = (req: Request, _res: Response, next: NextFunction): void => {
     const parsed = schema.safeParse(req[source]);
 
     if (!parsed.success) {
@@ -69,4 +79,12 @@ export function validate(schema: ZodType, source: ValidationSource) {
     req.validated[source] = parsed.data;
     next();
   };
+  return Object.assign(middleware, { validation: { schema, source } satisfies Validation });
+}
+
+/** The schema and source a middleware validates, or `undefined` when it is not a `validate()` one. */
+export function validationOf(handler: unknown): Validation | undefined {
+  return typeof handler === "function" && "validation" in handler
+    ? (handler.validation as Validation)
+    : undefined;
 }

@@ -38,3 +38,5 @@ export * from "./user-preference.response.js";
 export * from "./user-preference.schema.js";
 export * from "./watchlist.response.js";
 export * from "./watchlist.schema.js";
+export * from "./api-operation.js";
+export * from "./openapi.js";
