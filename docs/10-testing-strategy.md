@@ -119,9 +119,9 @@ Additional specialized testing covers:
 | --- | --- | --- |
 | Security | `09-security-spec.md` §55; §29-§31 | partial `Implemented` (ownership, auth, rate limit); rest by block |
 | Accessibility | §36 | `Planned (FE)` |
-| Realtime | §21-§23, §40 | `Planned (B5)` server; `Planned (FE)` client |
-| Performance | §39-§42 | `Planned (FE)` client; `Planned (B5)` server limits; no load test |
-| Simulation determinism | §20 | `Planned (B5)` |
+| Realtime | §21-§23, §40 | `Implemented` (B5) server; `Planned (FE)` client |
+| Performance | §39-§42 | `Planned (FE)` client; `Implemented` (B5) server limits; no load test |
+| Simulation determinism | §20 | `Implemented` (B5) |
 
 ---
 
@@ -193,7 +193,7 @@ Priority areas:
 
 Today `packages/domain/src` holds 28 test files (about 250 cases) next to the code (`*.test.ts`), run by `vitest run` in the `node` environment (`packages/domain/vitest.config.ts`). They need no database and no environment file.
 
-Code vs ADR: services in `apps/api/src/services` call Prisma repositories directly and are exercised only through HTTP (§16). ADR-001 moves them to `@trading/application`, unit-tested with in-memory fake repositories, in B0. Permission rules (ADR-005) are `Implemented` (B0, B2.1, B2.2) and tested (`permissions.test.ts`, `viewer-role.routes.test.ts`). Simulation logic is `Planned (B5)` (§20). Formatting utilities and state transformations belong to the frontend (`Planned (FE)`).
+Code vs ADR: services in `apps/api/src/services` call Prisma repositories directly and are exercised only through HTTP (§16). ADR-001 moves them to `@trading/application`, unit-tested with in-memory fake repositories, in B0. Permission rules (ADR-005) are `Implemented` (B0, B2.1, B2.2) and tested (`permissions.test.ts`, `viewer-role.routes.test.ts`). Simulation logic is `Implemented` (B5) (§20). Formatting utilities and state transformations belong to the frontend (`Planned (FE)`).
 
 ---
 
@@ -409,7 +409,7 @@ Network Offline
 
 The UI must provide an intentional experience for each state.
 
-Backend today: `rate-limit.test.ts`, `auth.routes.test.ts` and the ownership tests cover Unauthorized, Forbidden-as-404 (ADR-005, `09` §14-15), Conflict and Rate Limited responses. The API has no server timeout (ADR-002 point 10), so "Timeout" is a client-side state only (`Planned (FE)`). "Network Offline" and "Retrying" are frontend states; the realtime reconnect states are tested under §21 (`Planned (B5)`).
+Backend today: `rate-limit.test.ts`, `auth.routes.test.ts` and the ownership tests cover Unauthorized, Forbidden-as-404 (ADR-005, `09` §14-15), Conflict and Rate Limited responses. The API has no server timeout (ADR-002 point 10), so "Timeout" is a client-side state only (`Planned (FE)`). "Network Offline" and "Retrying" are frontend states; the realtime reconnect states are tested under §21 (`Implemented` (B5)).
 
 ---
 
@@ -579,7 +579,7 @@ The demo runs the application layer in process on in-memory repositories (ADR-00
 
 # 20. Demo Simulation Testing
 
-**Status:** `Planned (B5)` for the shared engine; demo wiring `Planned (FE)`
+**Status:** `Implemented` (B5) for the shared engine; demo wiring `Planned (FE)`
 
 The simulation engine must be deterministic when a seed is supplied.
 
@@ -603,7 +603,7 @@ No simulation engine exists. ADR-007 point 7 decides a pure `@trading/market-sim
 
 # 21. Realtime Testing
 
-**Status:** server `Planned (B5)`; client `Planned (FE)` (ADR-007, `08-realtime-spec.md` §59)
+**Status:** server `Implemented` (B5); client `Planned (FE)` (ADR-007, `08-realtime-spec.md` §59)
 
 Realtime behavior must be tested independently from visual rendering.
 
@@ -621,7 +621,7 @@ Tests should cover:
 - stale events;
 - unauthorized subscriptions.
 
-No realtime code exists yet: there is no `ws` dependency, no WebSocket server and no realtime client, so none of these cases has a test. The detailed case list lives in `08-realtime-spec.md` §59 (realtime view) and `09-security-spec.md` §55 (security view). This section maps the list above to them:
+The server side is `Implemented` (B5) and its cases have tests; the realtime client does not exist yet, so the client cases have none. The detailed case list lives in `08-realtime-spec.md` §59 (realtime view) and `09-security-spec.md` §55 (security view). This section maps the list above to them:
 
 | Topic | Rule under test | Block |
 | --- | --- | --- |
@@ -673,7 +673,7 @@ The component test tooling is `Deferred` to the frontend-stage ADR (ADR-006 poin
 
 # 23. Reconnection Testing
 
-**Status:** client `Planned (FE)`; server close codes and heartbeat `Planned (B5)` (NFR-018, `08-realtime-spec.md` §7 and §26-30)
+**Status:** client `Planned (FE)`; server close codes and heartbeat `Implemented` (B5) (NFR-018, `08-realtime-spec.md` §7 and §26-30)
 
 The application must recover from temporary realtime failures.
 
@@ -702,7 +702,7 @@ Further cases: a `4002` close refreshes the token and then reconnects (`08-realt
 
 # 24. Background Process Testing
 
-**Status:** job runner `Implemented` (B4.2); job events `Planned (B5)`; demo jobs `Planned (FE)` (ADR-008)
+**Status:** job runner `Implemented` (B4.2); job events `Implemented` (B5); demo jobs `Planned (FE)` (ADR-008)
 
 Background processes should be tested through state transitions.
 
@@ -777,7 +777,7 @@ Progress is `{ processed, total }`, not a percentage (`08-realtime-spec.md` §20
 
 # 26. Notification Testing
 
-**Status:** read state, ownership and persistence `Implemented`; creation from alerts `Planned (B5)` and from jobs `Implemented` (B4.3); realtime delivery `Planned (B5)`; client `Planned (FE)`
+**Status:** read state, ownership and persistence `Implemented`; creation from alerts `Implemented` (B5) and from jobs `Implemented` (B4.3); realtime delivery `Implemented` (B5); client `Planned (FE)`
 
 Notifications should be tested for:
 
@@ -795,10 +795,10 @@ Notifications should be tested for:
 | Another user's notification: 404, left unread; mark-all touches only the caller's | `Implemented` (`notifications.routes.test.ts`) |
 | Persistence (repository create with and without metadata) | `Implemented` (`prisma-notification-repository.test.ts`) |
 | Ordering | Gap: the repository orders by `createdAt` descending, but no test asserts it |
-| Creation by a triggered alert (`WARNING`) | `Planned (B5)` (ADR-007 point 9) |
+| Creation by a triggered alert (`WARNING`) | `Implemented` (B5) (ADR-007 point 9) |
 | Creation by an import job (`SUCCESS`, `ERROR`; none for `CANCELLED`) | `Implemented` (B4.3) (ADR-008 point 6) |
-| Duplicate prevention: edge-triggered alerts, no notification per tick, no re-fire after restart | `Planned (B5)` (ADR-007 point 9 and Deferred detail) |
-| Realtime delivery: `NOTIFICATION_CREATED` and `ALERT_TRIGGERED` on `notifications` | `Planned (B5)` (ADR-007 point 15) |
+| Duplicate prevention: edge-triggered alerts, no notification per tick, no re-fire after restart | `Implemented` (B5) (ADR-007 point 9 and Deferred detail) |
+| Realtime delivery: `NOTIFICATION_CREATED` and `ALERT_TRIGGERED` on `notifications` | `Implemented` (B5) (ADR-007 point 15) |
 
 Code vs ADR: dismissal is removed from version 1; a notification is only `unread` or `read` (ADR-010 point 3), so there is no dismissal test. Today no endpoint creates notifications; they come from the seed. Connection changes never create one (ADR-010 point 9).
 
@@ -967,7 +967,7 @@ At minimum:
 | Unauthorized resource access | `Implemented` (cross-user 404, §30) |
 | Invalid input | `Implemented` (`validate.test.ts`, route tests); malformed path parameters and unexpected fields `Planned (B0)`; CSV input `Implemented` (B4.3) |
 | Permission escalation | `Implemented` (a `VIEWER` is denied mutations and a forged `ADMIN` token is 401, `viewer-role.routes.test.ts`, B2.2) (§30) |
-| Unauthorized realtime subscription | `Planned (B5)` (§21) |
+| Unauthorized realtime subscription | `Implemented` (B5) (§21) |
 | Sensitive error exposure | `Implemented` (B3.1: generic 500 and redaction tests, ADR-009 points 4, 6 and 13) |
 | Session isolation | `Planned (FE)` (`09-security-spec.md` §10) |
 
@@ -1001,7 +1001,7 @@ No frontend and no E2E suite exist. Playwright is a working assumption, not a de
 
 # 33. Critical E2E Flows
 
-**Status:** `Planned (FE)`; logout depends on the endpoint, `Implemented` (B2.4), CSV import on `Implemented` (B4.4), realtime on `Planned (B5)`
+**Status:** `Planned (FE)`; logout depends on the endpoint, `Implemented` (B2.4), CSV import on `Implemented` (B4.4), realtime on `Implemented` (B5)
 
 The following flows should have E2E coverage:
 
@@ -1225,7 +1225,7 @@ With `prefers-reduced-motion: reduce`, non-essential animations, including realt
 
 # 39. Performance Testing
 
-**Status:** client `Planned (FE)`; server realtime limits `Planned (B5)`; slow-request logging `Implemented` (B3.2); no performance test exists today
+**Status:** client `Planned (FE)`; server realtime limits `Implemented` (B5); slow-request logging `Implemented` (B3.2); no performance test exists today
 
 Performance testing should focus on known risk areas.
 
@@ -1256,7 +1256,7 @@ On the server, requests slower than 500 ms are logged at `warn` (ADR-009 point 8
 
 # 40. Realtime Performance Tests
 
-**Status:** client `Planned (FE)`; server limits `Planned (B5)` (NFR-004, NFR-005, NFR-006)
+**Status:** client `Planned (FE)`; server limits `Implemented` (B5) (NFR-004, NFR-005, NFR-006)
 
 Realtime tests should measure whether frequent updates cause unacceptable rendering behavior.
 
@@ -1308,7 +1308,7 @@ The only measurable target is NFR-008: a chart with 5 years of daily points per 
 
 # 42. Simulation Load Testing
 
-**Status:** modes `Planned (B5)` (ADR-007 points 7 and 15); configurable tick rate and stress load `Deferred`
+**Status:** modes `Implemented` (B5) (ADR-007 points 7 and 15); configurable tick rate and stress load `Deferred`
 
 The simulation engine should support controlled modes.
 
@@ -1398,7 +1398,7 @@ Each database and API test file creates its own users, portfolios and assets wit
 
 # 46. Test Isolation
 
-**Status:** database isolation by unique data `Implemented`; in-memory stores `Planned (B0)`; browser contexts `Planned (FE)`; deterministic seeds `Planned (B5)`
+**Status:** database isolation by unique data `Implemented`; in-memory stores `Planned (B0)`; browser contexts `Planned (FE)`; deterministic seeds `Implemented` (B5)
 
 Tests should use isolated state.
 
@@ -1417,7 +1417,7 @@ The chosen mechanism depends on the test layer.
 | Domain unit tests | Pure functions, no shared state | `Implemented` |
 | Database and API tests | One shared test database (`.env.test.local`); unique rows per file, deleted in `afterAll`. No per-test transaction rollback and no truncation between runs | `Implemented` |
 | Application services | Fresh in-memory fakes per test (ADR-001 point 7) | `Planned (B0)` |
-| Simulator | Fixed seed and injected clock (ADR-007 point 7) | `Planned (B5)` |
+| Simulator | Fixed seed and injected clock (ADR-007 point 7) | `Implemented` (B5) |
 | Component and E2E | Isolated browser contexts; tool `Deferred` to the frontend-stage ADR (ADR-006 point 11) | `Planned (FE)` |
 
 `packages/database/src/seed/wipe.ts` deletes every table; it is a seed step, never used by tests.
@@ -1468,7 +1468,7 @@ Today no test uses `vi.mock`, fake timers or a mocked repository: domain tests n
 
 # 49. Time Control
 
-**Status:** shared `Clock` port `Planned (B0)` (ADR-001 point 8); simulator clock on that port `Planned (B5)` (ADR-007 point 7); no controllable clock exists today
+**Status:** shared `Clock` port `Planned (B0)` (ADR-001 point 8); simulator clock on that port `Implemented` (B5) (ADR-007 point 7); no controllable clock exists today
 
 Time-dependent functionality should use controllable clocks where practical.
 
@@ -1490,7 +1490,7 @@ ADR-001 point 8 decides one shared `Clock` port, injected through the compositio
 
 # 50. Randomness Control
 
-**Status:** `Planned (B5)` (ADR-007 point 7, NFR-059); demo determinism `Planned (FE)` (NFR-045)
+**Status:** `Implemented` (B5) (ADR-007 point 7, NFR-059); demo determinism `Planned (FE)` (NFR-045)
 
 Random simulation behavior must support deterministic seeds.
 
@@ -1730,13 +1730,13 @@ Required properties:
 | Property | Today | Decision and status |
 | --- | --- | --- |
 | Dependency injection at infrastructure boundaries | API services create Prisma repositories at module level (for example `new PrismaPortfolioRepository()`) | Factories receive dependencies; composition root in `apps/api/src/composition.ts` (ADR-001 points 2 and 4), `Planned (B0)` |
-| Deterministic simulation | No simulator | `@trading/market-sim`, `Planned (B5)` (ADR-007 point 7) |
+| Deterministic simulation | No simulator | `@trading/market-sim`, `Implemented` (B5) (ADR-007 point 7) |
 | Isolated domain logic | Pure calculations, no database (NFR-042) | `Implemented`; gap: `validateNewTransaction` reads the system clock, moved to the `Clock` port in B0 (§49) |
-| Explicit state transitions | None | Jobs `Implemented` (B4) (ADR-008 point 3); simulator lifecycle `RUNNING <-> HALTED` `Planned (B5)` (ADR-007 point 16); realtime client states `Planned (FE)` |
+| Explicit state transitions | None | Jobs `Implemented` (B4) (ADR-008 point 3); simulator lifecycle `RUNNING <-> HALTED` `Implemented` (B5) (ADR-007 point 16); realtime client states `Planned (FE)` |
 | Typed contracts | Hand-written DTOs | `@trading/contracts`, `Planned (B0)` (ADR-002) |
 | Replaceable repositories | Repository interfaces in `@trading/domain` with Prisma implementations | Interfaces `Implemented`; in-memory implementations `Planned (B0)` (NFR-044) |
-| Controllable clocks | None | Shared `Clock` port `Planned (B0)` (ADR-001 point 8); simulator on that port `Planned (B5)` (§49) |
-| Controllable randomness | None needed yet | Seeded generator `Planned (B5)` (§50) |
+| Controllable clocks | None | Shared `Clock` port `Planned (B0)` (ADR-001 point 8); simulator on that port `Implemented` (B5) (§49) |
+| Controllable randomness | None needed yet | Seeded generator `Implemented` (B5) (§50) |
 | Transport abstractions | None in the client | Realtime client port with a demo adapter, `Planned (FE)` (ADR-007 point 13); HTTP through a DTO client (ADR-002 point 5) |
 
 ---
@@ -1767,9 +1767,9 @@ Required properties:
 
 How the columns map to the code and blocks:
 
-- **Unit.** Domain calculations, validation and entity rules are `Implemented` (§7-§9). Application-service unit tests (authorization, portfolios, transactions, notifications) are `Planned (B0)` (ADR-001 point 7); analytics `Implemented`; background jobs `Implemented` (B4); realtime and simulation `Planned (B5)`.
+- **Unit.** Domain calculations, validation and entity rules are `Implemented` (§7-§9). Application-service unit tests (authorization, portfolios, transactions, notifications) are `Planned (B0)` (ADR-001 point 7); analytics `Implemented`; background jobs `Implemented` (B4); realtime and simulation `Implemented` (B5).
 - **Component** and **E2E.** `Planned (FE)` for every row; tools `Deferred` to the frontend-stage ADR (ADR-006 point 11).
-- **Integration.** Authentication, authorization, portfolios, transactions and notifications are `Implemented` (§16, §26, §29-§30). `analytics.routes.ts`, `positions.routes.ts`, `assets.routes.ts` and `market.routes.ts` have no route test file yet (the overview is exercised once, in `transactions.routes.test.ts`). Their HTTP integration tests are `Planned (B0)`, added before the layering refactor as its safety net (ADR-001 point 8); the reworked analytics endpoints are then tested in B1 (ADR-004). Background jobs `Implemented` (B4); realtime and simulation `Planned (B5)`.
+- **Integration.** Authentication, authorization, portfolios, transactions and notifications are `Implemented` (§16, §26, §29-§30). `analytics.routes.ts`, `positions.routes.ts`, `assets.routes.ts` and `market.routes.ts` have no route test file yet (the overview is exercised once, in `transactions.routes.test.ts`). Their HTTP integration tests are `Planned (B0)`, added before the layering refactor as its safety net (ADR-001 point 8); the reworked analytics endpoints are then tested in B1 (ADR-004). Background jobs `Implemented` (B4); realtime and simulation `Implemented` (B5).
 - **Background jobs** means the CSV import (ADR-008), whose E2E flow is in §33. **Tables** follow ADR-010 points 4 and 9 (§27). **Performance** targets are those of §39-§41; no server load test is planned.
 
 ---
@@ -1821,9 +1821,9 @@ Before the project is considered portfolio-ready, the following must exist:
 
 | Group | Exists today | Still to build |
 | --- | --- | --- |
-| Unit | Domain calculations, `Money`, transaction input rules (`transaction.test.ts`), position rules, request validation middleware (`validate.test.ts`) | Chronological validation and application services `Planned (B0)`; permissions `Implemented` (B2.1); simulation and realtime event processing `Planned (B5)` |
+| Unit | Domain calculations, `Money`, transaction input rules (`transaction.test.ts`), position rules, request validation middleware (`validate.test.ts`) | Chronological validation and application services `Planned (B0)`; permissions `Implemented` (B2.1); simulation and realtime event processing `Implemented` (B5) |
 | Component | Nothing | All items `Planned (FE)` |
-| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests and route tests for analytics, positions, assets and market `Planned (B0)` (ADR-001 point 8); reworked analytics API `Implemented`; import API `Implemented` (B4.4); realtime events `Planned (B5)` |
+| Integration | Authentication, authorization by ownership, portfolio API, transaction API, repository behavior | Contract tests and route tests for analytics, positions, assets and market `Planned (B0)` (ADR-001 point 8); reworked analytics API `Implemented`; import API `Implemented` (B4.4); realtime events `Implemented` (B5) |
 | E2E | Nothing | All items `Planned (FE)`; CSV import added on 2026-10-06 (§33); reset `Deferred` (ADR-010 point 6), so "logout/reset" means logout |
 
 ---
@@ -1933,7 +1933,7 @@ The demo has no network (ADR-006 point 7), so network and HTTP failures can only
 
 # 64. Interview Demonstration Mode
 
-**Status:** realtime scenario `Planned (B5)` (server) and `Planned (FE)` (client); failure scenario `Deferred` (ADR-010 point 6); architecture scenario `Planned (FE)` as two builds
+**Status:** realtime scenario `Implemented` (B5) (server) and `Planned (FE)` (client); failure scenario `Deferred` (ADR-010 point 6); architecture scenario `Planned (FE)` as two builds
 
 The application should provide deterministic scenarios suitable for technical interviews.
 
@@ -2012,8 +2012,8 @@ Testing is considered complete when:
 | Critical components have interaction tests | `Planned (FE)` |
 | API boundaries have integration tests | `Implemented` for most routes (gaps in §59); contract tests `Planned (B0)` |
 | Authentication and authorization are tested | `Implemented` (§29-§30); sessions and roles `Implemented` (B2.1 to B2.4) |
-| Realtime behavior is tested | `Planned (B5)` and `Planned (FE)` |
-| Simulation is deterministic | `Planned (B5)` (ADR-007 point 7) |
+| Realtime behavior is tested | `Implemented` (B5) and `Planned (FE)` |
+| Simulation is deterministic | `Implemented` (B5) (ADR-007 point 7) |
 | Critical E2E flows pass | `Planned (FE)` (§33) |
 | Demo flows are covered | `Planned (FE)`; reset and scripted failures `Deferred` (§34) |
 | Failure and recovery states are covered | Server error responses `Implemented` (§13); UI and demo `Planned (FE)` |

@@ -8,7 +8,7 @@ package location, approved by the user from the `15-implementation-plan.md`
 reconciliation; new point 17, event hand-off, approved by the user on
 2026-10-08 from the `15-implementation-plan.md` reconciliation; Deferred
 detail `maxPayload` value, 64 KiB, approved by the user on 2026-10-08)
-**Implemented in:** roadmap block B5 (not yet implemented)
+**Implemented in:** roadmap block B5 (B5.1 to B5.8, 2026-10-21 to 2026-10-24); the values and choices the decision left to B5 are under Resolved in B5
 
 ## Context
 
@@ -39,7 +39,7 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
 1. **Transport.** WebSocket using the `ws` library, behind a transport port
    so the rest of the code does not depend on it. (Amended 2026-10-07,
    approved by the user from the `14-deployment-spec.md` reconciliation,
-   §10, §31, §72; `Planned (B5)`:) The WebSocket is served by the same HTTP
+   §10, §31, §72; `Implemented` (B5):) The WebSocket is served by the same HTTP
    server and port as the API (7001) on a fixed path, proposed `/ws` and
    confirmed in B5. There is no `WEBSOCKET_PATH` variable.
 2. **Authentication.** The client sends the access token in the first
@@ -162,7 +162,7 @@ overview's `dailyChange` and ADR-004's `1D` period rely on.
       the new (excess) connection is closed with `4008` (point 15); the
       existing connections stay open.
 17. **Event hand-off** (added 2026-10-08, approved by the user, from the
-    `15-implementation-plan.md` reconciliation, §31; `Planned (B5)`). The
+    `15-implementation-plan.md` reconciliation, §31; `Implemented` (B5)). The
     application layer hands an event to the realtime adapter through a
     `RealtimePublisher` port in `packages/application`; the adapter that
     implements it lives in `apps/api`, behind the transport port of point 1.
@@ -233,6 +233,32 @@ specified and tested in the listed block.
 | The realtime hub could be tied to the transport or to a broker. | It sits behind its own interface, and v1 has no broker. | B5 |
 | The application layer has no defined way to hand an event to the realtime adapter. | Point 17 (added 2026-10-08): the `RealtimePublisher` port in `packages/application`, its adapter in `apps/api`, no domain events in v1. Tests: a transaction service test with an in-memory publisher fake asserts `PORTFOLIO_UPDATED` is published only after commit. | B5 |
 | What the `PAUSED` mode does (point 16 renamed the lifecycle state to `HALTED`): whether `PUT /api/v1/simulation/mode` with `PAUSED` stops ticking like `POST /api/v1/simulation/pause`, and which mode `start` resumes into. | Define the `PAUSED` mode's behavior relative to `HALTED`, and which mode `start` resumes. | B5 |
+
+## Resolved in B5
+
+What the decision left to the block, as built (2026-10-24):
+
+| Item | Built |
+|---|---|
+| WebSocket library and path (point 1) | `ws` only in `apps/api/src/realtime/ws-transport.ts`, behind the transport port; it takes the `upgrade` event of the API's own HTTP server and serves the fixed path `/ws` on the same port; any other path is dropped |
+| Authentication (point 2) | The access token in the first `AUTHENTICATE` message, verified like an HTTP token; no message in 5 s closes `4001`; expiry (`exp`) closes `4002`; re-authentication with the same `sub` extends the bound, another `sub` closes `4001`; a role change drops the subscriptions the new role no longer holds |
+| `maxPayload` | 64 KiB kept; a bigger message is closed by `ws` with `1009`. No measured need to change it |
+| Limits (point 15) | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer and 5 connections per user, all closing `4008`; the excess connection is the one closed |
+| Heartbeat | Ping every 30 s; closed with `4008` after two unanswered pings |
+| Channels and sequence (points 3 to 5) | Per-channel monotonic `sequence` (per user for `notifications`), not consumed while nobody is subscribed, and a per-process `epoch` in the envelope; an unauthorized or unknown channel gets the same `FORBIDDEN_CHANNEL` reply and `authz.denied` is logged |
+| Event hand-off (point 17) | `RealtimePublisher` port in `@trading/application` speaking domain types, the hub adapter in `apps/api`; every publish goes through `publishQuietly`, so a failed publish never fails the use case |
+| Events (points 6 and 15) | The seven events of version 1; `PORTFOLIO_UPDATED` after commit (for an import only when rows were written, before `JOB_COMPLETED`); `NOTIFICATION_CREATED` and `ALERT_TRIGGERED` on `notifications` |
+| Engine (point 7) | `@trading/market-sim`: seeded per asset (`seed:assetId`), injected clock, modes and scenarios; the API seed is `trading-analytics-platform:<highest persisted sequence>` |
+| Lifecycle (points 10 and 16) | `RUNNING` and `HALTED` through `POST /api/v1/simulation/start` and `pause`, and `PUT /api/v1/simulation/mode`, all behind `simulation:control`; the `PAUSED` mode keeps the loop running and emits nothing; `start` resumes into the mode in effect when it paused, and a mode set while `HALTED` takes effect on `start`; state is not persisted and a restart is `RUNNING` in `NORMAL` |
+| Persistence (points 8 and 14) | `MarketPrice` and `MarketEvent` written per tick; `(assetId, sequence)` unique; the latest 3,600 events per asset kept, pruned every 300 ticks without deleting the highest sequence; the engine resumes from `MarketPrice` and `MAX(sequence)`; daily candles close at the UTC rollover and offline days are backfilled at boot |
+| `Position.currentPrice` | Updated on every tick, so valuation, allocation and `dailyChange` read it unchanged |
+| Alerts (point 9) | Only `PRICE` alerts with `ABOVE` or `BELOW`; strict comparison; `armed` and `lastTriggeredAt` persisted and written with the notification in one transaction; re-arm at 0.5% past the threshold, no cooldown; an alert already true when created or edited starts disarmed. The other alert types are stored but never evaluated (`Deferred`) |
+| Log events (ADR-009 point 11) | `realtime.connection.opened`, `.authenticated`, `.auth_failed`, `.rejected`, `.limit_exceeded`, `.closed`; `simulation.started`, `simulation.paused`, `simulation.mode.changed`; `simulation.tick.failed`; `alert.triggered`, `alert.evaluation_failed`. Ticks are not logged |
+| Shutdown | The realtime step closes every socket with `1001` before the HTTP step |
+| Measurement | `08-realtime-spec.md` §63 |
+
+Still open for the client (FE): subscribing first and buffering before the
+snapshot, and resetting the baseline when the `epoch` changes.
 
 ## Related
 

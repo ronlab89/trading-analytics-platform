@@ -63,7 +63,7 @@ unnecessary infrastructure or paid third-party services.
 
 # 3. Security Architecture
 
-**Status:** HTTP pipeline `Implemented` (`apps/api/src/app.ts`); enforcement in the application layer `Planned (B0)` (ADR-001); realtime flow `Planned (B5)` (ADR-007)
+**Status:** HTTP pipeline `Implemented` (`apps/api/src/app.ts`); enforcement in the application layer `Planned (B0)` (ADR-001); realtime flow `Implemented` (B5) (ADR-007)
 
 Target HTTP flow (ADR-001, ADR-005 point 3):
 
@@ -459,7 +459,7 @@ market data and assets are shared reference data with no owner.
 
 `simulation:control` guards `POST /api/v1/simulation/start`,
 `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode`
-(ADR-007 points 10 and 15, `Planned (B5)`).
+(ADR-007 points 10 and 15, `Implemented` (B5)).
 
 Decided (ADR-005 point 13, approved 2026-10-06): a `VIEWER` may update
 its own preferences (`PATCH /api/v1/preferences`) and mark its own
@@ -504,7 +504,7 @@ scenarios, imports) are checked through their portfolio.
 
 Realtime subscriptions follow the same rule: `portfolio:{portfolioId}` of
 another user is denied, and `notifications` is scoped to the authenticated
-user (ADR-007 point 3, FR-086, `Planned (B5)`).
+user (ADR-007 point 3, FR-086, `Implemented` (B5)).
 
 ---
 
@@ -558,7 +558,7 @@ expiry, malformed payload) with the same 401 `Authentication required.`.
 
 # 17. Authorization Failure
 
-**Status:** 401, 403 and 404 `Implemented` (403 in B2.2) (ADR-002 point 10, ADR-005 points 2 and 12); socket close codes `Planned (B5)` (ADR-007 point 15)
+**Status:** 401, 403 and 404 `Implemented` (403 in B2.2) (ADR-002 point 10, ADR-005 points 2 and 12); socket close codes `Implemented` (B5) (ADR-007 point 15)
 
 | Situation | Response | Status |
 | --- | --- | --- |
@@ -586,7 +586,7 @@ Open detail (B5) owned by `08-realtime-spec.md` §9.
 
 # 18. Input Validation
 
-**Status:** body, query, headers and environment `Implemented` (`apps/api/src/middleware/validate.ts`, `apps/api/src/schemas/`, `apps/api/src/config/env.ts`); route parameters `Planned (B0)` (ADR-002 point 10, NFR-021); schemas in `@trading/contracts` `Planned (B0)` (ADR-002 points 1-2); WebSocket messages `Planned (B5)` (ADR-007 points 4 and 15); CSV files `Implemented` (B4.3, B4.4) (ADR-008 point 10)
+**Status:** body, query, headers and environment `Implemented` (`apps/api/src/middleware/validate.ts`, `apps/api/src/schemas/`, `apps/api/src/config/env.ts`); route parameters `Planned (B0)` (ADR-002 point 10, NFR-021); schemas in `@trading/contracts` `Planned (B0)` (ADR-002 points 1-2); WebSocket messages `Implemented` (B5) (ADR-007 points 4 and 15); CSV files `Implemented` (B4.3, B4.4) (ADR-008 point 10)
 
 All external input is validated before it reaches a service (NFR-021).
 
@@ -598,7 +598,7 @@ All external input is validated before it reaches a service (NFR-021).
 | JSON syntax and size | `express.json({ limit: "100kb" })` (§27) | `Implemented` |
 | Headers | `Authorization` parsed by `authenticate` (§16); `X-Request-ID` checked against an allowlist (§30) | `Implemented` |
 | Environment variables | Zod schema at startup; invalid configuration stops the process | `Implemented` |
-| WebSocket messages | Zod schemas for `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE` (§33) | `Planned (B5)` |
+| WebSocket messages | Zod schemas for `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE` (§33) | `Implemented` (B5) |
 | CSV import files | Bounded file size and row count; every row validated | `Implemented` (B4.3) |
 
 Code today: request schemas live in `apps/api/src/schemas/`. ADR-002
@@ -808,13 +808,13 @@ Code today: no test asserts the headers. NFR-025 requires one asserting
 
 # 26. Rate Limiting
 
-**Status:** `Implemented` (`apps/api/src/middleware/rate-limit.ts`, `apps/api/src/app.ts`); realtime limits `Planned (B5)` (ADR-007 points 11 and 15, §35)
+**Status:** `Implemented` (`apps/api/src/middleware/rate-limit.ts`, `apps/api/src/app.ts`); realtime limits `Implemented` (B5) (ADR-007 points 11 and 15, §35)
 
 | Limiter | Scope | Limit | Status |
 | --- | --- | --- | --- |
 | General | Every route except health | 300 requests per 15 minutes per IP | `Implemented` |
 | Login | `POST /api/v1/auth/login`, in addition to the general limiter | 5 attempts per 15 minutes per IP | `Implemented` (ADR-005 point 12) |
-| Realtime inbound | Per connection | 20 messages per second | `Planned (B5)` |
+| Realtime inbound | Per connection | 20 messages per second | `Implemented` (B5) |
 
 - Exceeding a limit returns 429 `RATE_LIMITED` in the normal error
   envelope (§29) with standard `RateLimit` headers (draft 7); the legacy
@@ -834,7 +834,7 @@ Coverage of the abuse-prone endpoints:
 | Password-related operations | None exist: no self-registration or reset (§52-53, ADR-005 point 10) |
 | Analytics | General limiter |
 | `POST /api/v1/auth/refresh` (`Implemented`, B2.4) | General limiter |
-| Simulation control (`Planned (B5)`, `simulation:control`) | General limiter |
+| Simulation control (`Implemented` (B5), `simulation:control`) | General limiter |
 
 > Open detail (B2): whether `POST /api/v1/auth/refresh` also gets a
 > dedicated limiter. ADR-005 fixes only the login limit; B2.4 leaves refresh
@@ -844,7 +844,7 @@ Coverage of the abuse-prone endpoints:
 
 # 27. Request Size Limits
 
-**Status:** JSON body, pagination and list parameters `Implemented` (`apps/api/src/app.ts`, `apps/api/src/schemas/`, `apps/api/src/middleware/error-handler.ts`); CSV limits `Implemented` (B4.3, B4.4) (ADR-008 point 10); realtime limits `Planned (B5)` (ADR-007 point 15)
+**Status:** JSON body, pagination and list parameters `Implemented` (`apps/api/src/app.ts`, `apps/api/src/schemas/`, `apps/api/src/middleware/error-handler.ts`); CSV limits `Implemented` (B4.3, B4.4) (ADR-008 point 10); realtime limits `Implemented` (B5) (ADR-007 point 15)
 
 | Input | Limit | Over the limit | Status |
 | --- | --- | --- | --- |
@@ -855,9 +855,9 @@ Coverage of the abuse-prone endpoints:
 | Text filters | For example `search` ≤ 100 characters (`asset.schema.ts`) | 400 `VALIDATION_ERROR` | `Implemented` |
 | Query string | No explicit limit; Node.js caps the request line and headers | 431 from Node.js | Runtime default |
 | CSV import | 1 MB and 5000 rows (ADR-008 point 10) | Job rejected | `Implemented` (B4.3, B4.4) |
-| Realtime | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer (§35) | `4008` close | `Planned (B5)` |
+| Realtime | 50 subscriptions, 20 inbound messages per second, 1 MB outbound buffer (§35) | `4008` close | `Implemented` (B5) |
 
-> Decided (ADR-007, Deferred detail, amended 2026-10-08; `Planned (B5)`):
+> Decided (ADR-007, Deferred detail, amended 2026-10-08; `Implemented` (B5)):
 > the maximum inbound WebSocket message size is 64 KiB (65,536 bytes), set
 > through `maxPayload`, as an initial value adjustable during B5. ADR-007
 > point 11 requires bounded memory per connection, and the `ws` library
@@ -924,7 +924,7 @@ for unknown routes and 429, uses one envelope:
 
 # 30. Request IDs
 
-**Status:** header and error envelope `Implemented` (`apps/api/src/middleware/request-id.ts`); log propagation `Implemented` (B3.2, ADR-009 point 5); realtime `connectionId` `Planned (B5)` (ADR-009 point 5)
+**Status:** header and error envelope `Implemented` (`apps/api/src/middleware/request-id.ts`); log propagation `Implemented` (B3.2, ADR-009 point 5); realtime `connectionId` `Implemented` (B5) (ADR-009 point 5)
 
 - Every response carries `X-Request-ID`. The middleware runs before the
   rate limiter and the routes, so 429 and error responses carry it too.
@@ -944,7 +944,7 @@ connections `connectionId`. The correlation strategy is
 
 # 31. Realtime Security
 
-**Status:** `Planned (B5)` (ADR-007 points 2-3 and 15, ADR-005 points 3 and 12; FR-086, NFR-020, NFR-026)
+**Status:** `Implemented` (B5) (ADR-007 points 2-3 and 15, ADR-005 points 3 and 12; FR-086, NFR-020, NFR-026)
 
 This section is the security view of the realtime protocol, which
 `08-realtime-spec.md` owns (§9, §10, §55).
@@ -985,7 +985,7 @@ another origin that opens a socket gains no ambient credential.
 
 # 32. Channel Authorization
 
-**Status:** `Planned (B5)` (ADR-007 point 3, ADR-008 point 11, ADR-005 points 3 and 12; FR-086, NFR-020)
+**Status:** `Implemented` (B5) (ADR-007 point 3, ADR-008 point 11, ADR-005 points 3 and 12; FR-086, NFR-020)
 
 Knowing a channel name never grants access. Every `SUBSCRIBE` is
 authorized by an application-layer use case, by permission (§13) and
@@ -1016,7 +1016,7 @@ User A → SUBSCRIBE portfolio:{portfolio of User B} → ERROR, no events
 
 # 33. Realtime Event Validation
 
-**Status:** server `Planned (B5)`; client `Planned (FE)` (ADR-007 points 4 and 15, ADR-002 points 1 and 6)
+**Status:** server `Implemented` (B5); client `Planned (FE)` (ADR-007 points 4 and 15, ADR-002 points 1 and 6)
 
 Clients never publish events. The only client messages are
 `AUTHENTICATE`, `SUBSCRIBE` and `UNSUBSCRIBE`, so the server never trusts
@@ -1036,7 +1036,7 @@ limit (§35). The `ERROR` code set is an Open detail (B5) of
 
 # 34. Realtime Event Integrity
 
-**Status:** server `sequence` `Planned (B5)`; client checks `Planned (FE)` (ADR-007 points 4-5; NFR-018)
+**Status:** server `sequence` `Implemented` (B5); client checks `Planned (FE)` (ADR-007 points 4-5; NFR-018)
 
 | Need | Mechanism | Reference |
 | --- | --- | --- |
@@ -1060,7 +1060,7 @@ The scope and format of the envelope `id` are an Open detail (B5) of
 
 # 35. Realtime Rate Protection
 
-**Status:** `Planned (B5)` (ADR-007 points 2, 11 and 15)
+**Status:** `Implemented` (B5) (ADR-007 points 2, 11 and 15)
 
 Server limits per connection (`08-realtime-spec.md` §7, §48):
 
@@ -1080,7 +1080,7 @@ Decided (ADR-005 point 13, ADR-007 point 16, approved 2026-10-06):
 concurrent connections are capped per authenticated user, not per IP. The
 v1 value is 5 per user. The new (excess) connection is closed with `4008`
 and the existing connections stay open (ADR-007 point 16, amended
-2026-10-07). Status `Planned (B5)`. Numeric tuning is an Open detail (B5).
+2026-10-07). Status `Implemented` (B5). Numeric tuning is an Open detail (B5).
 Unauthenticated sockets stay bounded by the 5-second timeout.
 
 ---
@@ -1391,7 +1391,7 @@ Measurement: the NFR-020 tests call the API directly, bypassing the UI
 
 # 48. Sensitive Information in URLs
 
-**Status:** API `Implemented` (`apps/api/src/routes/auth.routes.ts`, `apps/api/src/middleware/authenticate.ts`); WebSocket `Planned (B5)` (ADR-007 point 2); client routes `Planned (FE)` (NFR-019)
+**Status:** API `Implemented` (`apps/api/src/routes/auth.routes.ts`, `apps/api/src/middleware/authenticate.ts`); WebSocket `Implemented` (B5) (ADR-007 point 2); client routes `Planned (FE)` (NFR-019)
 
 Credentials, tokens and secrets never appear in a URL, so they never reach
 browser history, server logs or `Referer` headers (NFR-019).
@@ -1401,7 +1401,7 @@ browser history, server logs or `Referer` headers (NFR-019).
 | Email and password | `POST /api/v1/auth/login` JSON body | `Implemented` |
 | Access token | `Authorization: Bearer` header | `Implemented` |
 | Refresh token | `HttpOnly` cookie (§8) | `Implemented` (B2.3, B2.4) |
-| WebSocket token | `AUTHENTICATE` message, never the connection URL (ADR-007 point 2) | `Planned (B5)` |
+| WebSocket token | `AUTHENTICATE` message, never the connection URL (ADR-007 point 2) | `Implemented` (B5) |
 
 Path and query parameters carry only resource IDs, filters and pagination.
 IDs grant nothing without ownership (§15). Client routes follow the same
@@ -1439,7 +1439,7 @@ point 4: redaction is by field name, not by message text).
 
 # 50. Auditability
 
-**Status:** `Implemented` (B3.3) for login, refresh reuse, logout and role checks; the refused realtime subscription `Planned (B5)` (ADR-009 points 3, 9 and 13; ADR-005 point 5)
+**Status:** `Implemented` (B3.3) for login, refresh reuse, logout and role checks; the refused realtime subscription `Implemented` (B5) (ADR-009 points 3, 9 and 13; ADR-005 point 5)
 
 Security-relevant actions are traceable through structured security
 events in the operational log (ADR-009 point 9). Version 1 has no separate
@@ -1451,7 +1451,7 @@ audit store; operational logs are not permanent audit storage
 | `auth.login.succeeded` | `info` | `userId` | Valid credentials | `Implemented` (B3.3) |
 | `auth.login.failed` | `warn` | none | Any credential failure, with the same fields whatever the cause (§51) | `Implemented` (B3.3) |
 | `auth.refresh.reuse_detected` | `warn` | `userId`, `familyId` | An already-rotated refresh token is presented and its family is revoked (§7) | `Implemented` (B3.3) |
-| `authz.denied` | `warn` | `userId`, `role`, `permission` | A permission check fails with 403 (§17); a refused realtime subscription follows with B5 | `Implemented` (B3.3) for role checks; `Planned (B5)` for realtime |
+| `authz.denied` | `warn` | `userId`, `role`, `permission` | A permission check fails with 403 (§17); a refused realtime subscription follows with B5 | `Implemented` (B3.3) for role checks; `Implemented` (B5) for realtime |
 | `auth.logout` | `info` | `userId` | A logout request revokes the refresh token family (ADR-009 point 9, amended 2026-10-07); a request that ends no session logs nothing | `Implemented` (B3.3) |
 
 Each event carries `timestamp`, `event` and `requestId` from the logger, plus
@@ -1611,10 +1611,10 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 
 | Case | Status |
 | --- | --- |
-| No `AUTHENTICATE` within 5 s closes `4001`; expired token closes `4002` | `Planned (B5)` |
-| Unauthorized channel is refused and logged as `authz.denied` | `Planned (B5)` |
-| Invalid, duplicate and stale events | `Planned (B5)`; client checks `Planned (FE)` (§33, §34) |
-| Subscription and inbound-rate limits close `4008` | `Planned (B5)` (§35) |
+| No `AUTHENTICATE` within 5 s closes `4001`; expired token closes `4002` | `Implemented` (B5) |
+| Unauthorized channel is refused and logged as `authz.denied` | `Implemented` (B5) |
+| Invalid, duplicate and stale events | `Implemented` (B5); client checks `Planned (FE)` (§33, §34) |
+| Subscription and inbound-rate limits close `4008` | `Implemented` (B5) (§35) |
 
 ### Transport, data and logging
 
@@ -1654,10 +1654,10 @@ Security is complete for version 1 when:
 | 9 | Secrets stay server-side, are validated at startup and are never tracked | `Implemented`; `DATABASE_URL` check `Planned (B7)` |
 | 10 | Errors expose no internals and do not reveal another user's resources | `Implemented` |
 | 11 | CORS allows only `CORS_ORIGIN`, with credentials for the refresh cookie | `Implemented`; credentials `Implemented` (B2.4) |
-| 12 | Realtime sockets authenticate by message and channels are authorized | `Planned (B5)` |
-| 13 | Realtime events are validated and ordered by `sequence` | `Planned (B5)`; client `Planned (FE)` |
+| 12 | Realtime sockets authenticate by message and channels are authorized | `Implemented` (B5) |
+| 13 | Realtime events are validated and ordered by `sequence` | `Implemented` (B5); client `Planned (FE)` |
 | 14 | No credential, token or secret is logged, enforced by tests | `Implemented` (B3.1, B3.3) |
-| 15 | Security events of §50 are emitted | `Implemented` (B3.3); the realtime `authz.denied` `Planned (B5)` |
+| 15 | Security events of §50 are emitted | `Implemented` (B3.3); the realtime `authz.denied` `Implemented` (B5) |
 | 16 | Session data is cleared on logout and role switch | `Planned (FE)` |
 | 17 | Demo data is synthetic and the demo build contains no secrets | Seed `Implemented`; build `Planned (FE)` |
 | 18 | The dependency audit shows no unrecorded high or critical advisory | `Planned (B7)` |

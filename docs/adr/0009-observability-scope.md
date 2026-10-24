@@ -120,7 +120,7 @@ of its scope.
       shutdown pair. `Implemented` (B3.4), at `info`.
     - **Simulator.** `simulation.started`, `simulation.paused` and
       `simulation.mode.changed`; the names follow the endpoints (ADR-007
-      point 15). `Planned (B5)`. There is no `simulation.resumed`, because
+      point 15). `Implemented` (B5). There is no `simulation.resumed`, because
       `start` from `HALTED` is the resume, and no `simulation.stopped`,
       because real mode has no stop (ADR-007 point 15). `simulation.error`
       is deferred because no ADR defines simulator errors.

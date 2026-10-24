@@ -145,9 +145,9 @@ Code vs ADR:
 | 6 Core portfolio workflow | endpoints `Implemented` | `Planned (FE1)` |
 | 7 Transactions and positions | endpoints `Implemented`; fee handling change `Implemented` | `Planned (FE1)` |
 | 8 Tables, filters and analytics | allocation and attribution `Implemented`; performance and risk endpoints `Implemented` | `Planned (FE2)` |
-| 9 Realtime | server `Planned (B5)` | client `Planned (FE3)` |
+| 9 Realtime | server `Implemented` (B5) | client `Planned (FE3)` |
 | 10 Background operations | jobs and idempotency `Implemented` (B4) | screens `Planned (FE3)` |
-| 11 Demo Mode | `@trading/market-sim` `Planned (B5)` | `Planned (FE4)` |
+| 11 Demo Mode | `@trading/market-sim` `Implemented` (B5) | `Planned (FE4)` |
 | 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
 | 13 Observability | logger and security events `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
 | 14 Deployment | local full stack `Planned (B7)`; CI `Implemented` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
@@ -626,7 +626,7 @@ The final structure may evolve during implementation.
 | Portfolio endpoints: list, create, get by id, update (`PATCH`) and archive (`apps/api/src/routes/portfolios.routes.ts`) | `Implemented` | none |
 | Position endpoints: list and get by id (`positions.routes.ts`) | `Implemented` | none |
 | Overview endpoint with the Pulse (`overview.routes.ts`, `GET /api/v1/portfolios/:portfolioId/overview`) | `Implemented`, with the period `performance` field (`07-api-spec.md` §11) | B1 |
-| Asset endpoints: list, detail, price and history (`assets.routes.ts`), and the batch price endpoint (`market.routes.ts`) | `Implemented`; change semantics against the last closed candle `Planned (B5)` (ADR-007 point 14) | B5 |
+| Asset endpoints: list, detail, price and history (`assets.routes.ts`), and the batch price endpoint (`market.routes.ts`) | `Implemented`; change semantics against the last closed candle `Implemented` (B5) (ADR-007 point 14) | B5 |
 | Archived portfolio is read-only: any mutation scoped to it returns 409 `CONFLICT` and writes nothing; reads and the archive call are unchanged (ADR-010 point 5). A delete on an archived portfolio, such as deleting one of its alerts, is a mutation and returns 409 too | `Planned (B0)` | B0 |
 | Route tests for the positions, assets, market and analytics routes, before the services move into `@trading/application` (ADR-001 point 8) | `Planned (B0)` | B0 |
 | Session state: the access token kept in memory only (ADR-005 point 4), login and logout screens | `Planned (FE1)`; session endpoints `Implemented` (B2.3, B2.4) | FE1 |
@@ -703,7 +703,7 @@ A user can complete the primary portfolio workflow against the real backend.
 | An asset whose currency differs from the portfolio's `baseCurrency` is rejected with 400, never 500 (ADR-004 point 12) | `Implemented` | B1 |
 | Role check on create: a `VIEWER` is denied (ADR-005) | `Implemented` (B2.2, `viewer-role.routes.test.ts`) | B2 |
 | Duplicate prevention: `Idempotency-Key` on `POST .../transactions`; a repeated key and request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Implemented` (B4.4) | B4 |
-| `PORTFOLIO_UPDATED` emitted after the commit (ADR-007 point 6) | `Planned (B5)` | B5 |
+| `PORTFOLIO_UPDATED` emitted after the commit (ADR-007 point 6) | `Implemented` (B5) | B5 |
 | Edit, delete and cancel of a transaction | No endpoint in version 1: transactions are immutable except for `status` (ADR-003 point 7, `05-data-model.md` §43, `07-api-spec.md` §13) | none |
 | Screens: transaction form, transaction history with the FR-016 filters, positions, derived values (market value, unrealized P/L) and user feedback; submit disabled while pending and dependent views updated without reload (FR-017, FR-077) | `Planned (FE1)` | FE1 |
 
@@ -838,18 +838,18 @@ Exact formulas must be explicitly defined and tested.
 
 | Deliverable | Status | Block |
 | --- | --- | --- |
-| WebSocket server with `ws` behind a transport port, served by the same HTTP server and port (7001) as the API on a fixed path, proposed `/ws` and confirmed in B5; there is no `WEBSOCKET_PATH` variable (ADR-007 point 1) | `Planned (B5)`; the path is an open detail | B5 |
-| Authentication: the access token in the first message, never in the URL; a connection not authenticated within 5 seconds is closed with `4001`; each socket is bound to its token's expiry and re-authenticates over the same socket after a refresh (ADR-007 point 2) | `Planned (B5)`; refresh itself `Implemented` (B2.4) | B5 |
-| Channels `market:{assetId}`, `portfolio:{portfolioId}` and `notifications`, each subscription authorized in the application layer by permission and ownership (ADR-007 point 3); `jobs:{jobId}` for the job events of ADR-008 point 11 | `Planned (B5)` | B5 |
-| Envelope `{ id, type, channel, sequence, timestamp, payload }` and the event catalog `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED` (delivered on `notifications`), as Zod schemas in `@trading/contracts` (ADR-007 points 4, 6, 15); job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` | `Planned (B5)`; the package `Planned (B0)` | B5 |
-| Protocol messages `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`, with `ACK` or `ERROR` (carrying a `code`) as replies; event validation at the boundary (ADR-007 point 15) | `Planned (B5)` | B5 |
-| Close codes: `4001` unauthenticated or invalid token, `4002` token expired, `4008` limit exceeded, `1001` server going away (ADR-007 point 15) | `Planned (B5)` | B5 |
-| Limits: 50 subscriptions and 20 inbound messages per second per connection, 1 MB outbound buffer, ping every 30 seconds with close after 2 missed pongs (ADR-007 points 11, 15) | `Planned (B5)` | B5 |
-| Per-user cap of 5 concurrent connections (not per IP); when a user is at the cap, the new connection is closed with `4008` and the existing ones stay open (ADR-007 point 16, ADR-005 point 13) | `Planned (B5)`; the value is tuned in B5 | B5 |
-| Ordering: `sequence` monotonic per channel; on a gap the client resynchronizes through HTTP; no server replay buffer (ADR-007 point 5) | `Planned (B5)` for the sequence; resynchronization `Planned (FE3)` | B5, FE3 |
-| Simulation engine and persistence: tick every second, `MarketPrice` update and `MarketEvent` append, daily candle closing and startup backfill, edge-triggered alerts (ADR-007 points 7 to 9). The package is `@trading/market-sim` (§16) | `Planned (B5)` | B5 |
-| Control endpoints `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode`, requiring `simulation:control` (`ADMIN`) (ADR-007 points 10, 15) | `Planned (B5)`; the permission `simulation:control` `Implemented` (B2.1) | B5 |
-| Lifecycle state `RUNNING <-> HALTED`; `PAUSED` stays only as a mode wire identifier (ADR-007 point 16) | `Planned (B5)` | B5 |
+| WebSocket server with `ws` behind a transport port, served by the same HTTP server and port (7001) as the API on a fixed path, proposed `/ws` and confirmed in B5; there is no `WEBSOCKET_PATH` variable (ADR-007 point 1) | `Implemented` (B5); the path is an open detail | B5 |
+| Authentication: the access token in the first message, never in the URL; a connection not authenticated within 5 seconds is closed with `4001`; each socket is bound to its token's expiry and re-authenticates over the same socket after a refresh (ADR-007 point 2) | `Implemented` (B5); refresh itself `Implemented` (B2.4) | B5 |
+| Channels `market:{assetId}`, `portfolio:{portfolioId}` and `notifications`, each subscription authorized in the application layer by permission and ownership (ADR-007 point 3); `jobs:{jobId}` for the job events of ADR-008 point 11 | `Implemented` (B5) | B5 |
+| Envelope `{ id, type, channel, sequence, timestamp, payload }` and the event catalog `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED` (delivered on `notifications`), as Zod schemas in `@trading/contracts` (ADR-007 points 4, 6, 15); job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` | `Implemented` (B5); the package `Planned (B0)` | B5 |
+| Protocol messages `AUTHENTICATE`, `SUBSCRIBE`, `UNSUBSCRIBE`, with `ACK` or `ERROR` (carrying a `code`) as replies; event validation at the boundary (ADR-007 point 15) | `Implemented` (B5) | B5 |
+| Close codes: `4001` unauthenticated or invalid token, `4002` token expired, `4008` limit exceeded, `1001` server going away (ADR-007 point 15) | `Implemented` (B5) | B5 |
+| Limits: 50 subscriptions and 20 inbound messages per second per connection, 1 MB outbound buffer, ping every 30 seconds with close after 2 missed pongs (ADR-007 points 11, 15) | `Implemented` (B5) | B5 |
+| Per-user cap of 5 concurrent connections (not per IP); when a user is at the cap, the new connection is closed with `4008` and the existing ones stay open (ADR-007 point 16, ADR-005 point 13) | `Implemented` (B5); the value is tuned in B5 | B5 |
+| Ordering: `sequence` monotonic per channel; on a gap the client resynchronizes through HTTP; no server replay buffer (ADR-007 point 5) | `Implemented` (B5) for the sequence; resynchronization `Planned (FE3)` | B5, FE3 |
+| Simulation engine and persistence: tick every second, `MarketPrice` update and `MarketEvent` append, daily candle closing and startup backfill, edge-triggered alerts (ADR-007 points 7 to 9). The package is `@trading/market-sim` (§16) | `Implemented` (B5) | B5 |
+| Control endpoints `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode`, requiring `simulation:control` (`ADMIN`) (ADR-007 points 10, 15) | `Implemented` (B5); the permission `simulation:control` `Implemented` (B2.1) | B5 |
+| Lifecycle state `RUNNING <-> HALTED`; `PAUSED` stays only as a mode wire identifier (ADR-007 point 16) | `Implemented` (B5) | B5 |
 | Client connection manager with the states `Connected`, `Connecting`, `Reconnecting`, `Disconnected` and `Failed`; reconnection that authenticates first, resubscribes and resynchronizes through HTTP (FR-046, FR-047) | `Planned (FE3)` | FE3 |
 | UI update strategy: the client recomputes position value, unrealized P/L, portfolio value, `1D` change, allocation and Pulse from price events with the shared domain functions; the server pushes no valuations (FR-045, ADR-007 context) | `Planned (FE3)` | FE3 |
 | Degradation: a stale-data indicator and an HTTP refetch every 10 seconds while the socket is down (ADR-007 points 12, 15); cleanup of subscriptions and timers on unmount | `Planned (FE3)` | FE3 |
@@ -858,7 +858,7 @@ Exact formulas must be explicitly defined and tested.
 
 Code vs ADR:
 
-- The code has no WebSocket server, no `ws` dependency, no simulator and no `packages/market-sim`. `MarketPrice`, `MarketEvent` and `HistoricalPrice` exist as tables, and prices change only through the seed.
+- B5 added the WebSocket server (`ws`), the simulator and `packages/market-sim`; `MarketPrice`, `MarketEvent` and `HistoricalPrice` are written by the simulator as well as the seed.
 - The task "market simulation" is split: the engine and its control are B5, the browser side of it is the demo adapter (FE4), and the client UI strategy is FE3. The recommended order below stays valid inside B5: the transport is stable before the simulation grows.
 - The recommended order puts "authentication" as its own step after the connection. ADR-007 point 2 makes it the first message of the connection, with a 5-second deadline, and the token is re-validated on every re-authentication.
 - `08-realtime-spec.md` §15 listed eleven event types. ADR-007 point 6 keeps four, and `TRANSACTION_CREATED`, `TRANSACTION_COMPLETED` and `POSITION_UPDATED` are removed because transactions are synchronous.
@@ -931,7 +931,7 @@ Do not build complex market simulation before the transport itself is stable.
 | `Idempotency-Key` on `POST .../transactions` and on import creation: stored per user with a request hash for 24 hours, same request returns the stored response, a different request returns 409 (ADR-008 point 8) | `Implemented` (B4) | B4 |
 | Input limits: file size and row count (1 MB and 5000 rows), a route-specific body limit because the global JSON limit is 100 kB, the way the CSV reaches the route, and the CSV parsing dependency (ADR-008 point 10 and Deferred detail) | `Implemented` (B4.3, B4.4) | B4 |
 | Archived portfolio: creating an import is rejected with 409; a job whose portfolio is archived while `QUEUED` or `PROCESSING` fails with the non-retryable reason `PORTFOLIO_ARCHIVED` and writes nothing (ADR-010 point 5 and Deferred detail, ADR-008 point 6) | `Planned (B0)` for the guard, `Implemented` (B4) for the job check | B0, B4 |
-| Job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` on `jobs:{jobId}`; `CANCELLED` and `TIMED_OUT` emit no event and clients read them from the job's HTTP status (ADR-008 point 11, ADR-007 point 15) | `Planned (B5)`, with the transport | B5 |
+| Job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` on `jobs:{jobId}`; `CANCELLED` and `TIMED_OUT` emit no event and clients read them from the job's HTTP status (ADR-008 point 11, ADR-007 point 15) | `Implemented` (B5), with the transport | B5 |
 | Screens: CSV upload, progress, current state, per-row errors, cancel and retry where the state allows them, completion feedback, and the imported transactions | `Planned (FE3)` | FE3 |
 | Demo: the same use case runs in process with simulated progress and injectable import failures (ADR-008 point 13, FR-069, FR-071) | `Planned (FE4)`; other scripted failures `Deferred` (ADR-010 point 6) | FE4 |
 
@@ -990,13 +990,13 @@ The frontend should expose:
 | --- | --- | --- |
 | Application layer `@trading/application` that the demo runs in the browser, with in-memory implementations of the repository contracts and of `UnitOfWork` (rollback included) | `Planned (B0)`; the package does not exist yet | B0 |
 | `@trading/contracts`: the DTOs and schemas both adapters return | `Planned (B0)` | B0 |
-| `@trading/market-sim`: a pure, deterministic package with a seeded pseudo-random generator, an injected clock and the modes and scenarios of `12-demo-mode-spec.md` §37-§40; depends only on `@trading/domain`; the API and the demo use the same engine (ADR-007 point 7) | `Planned (B5)`; the package lives at `packages/market-sim` (ADR-007 point 7) | B5 |
+| `@trading/market-sim`: a pure, deterministic package with a seeded pseudo-random generator, an injected clock and the modes and scenarios of `12-demo-mode-spec.md` §37-§40; depends only on `@trading/domain`; the API and the demo use the same engine (ADR-007 point 7) | `Implemented` (B5); the package lives at `packages/market-sim` (ADR-007 point 7) | B5 |
 | Runtime mode selection: `APP_MODE` is `real` or `demo`, fixed at build time through `VITE_APP_MODE` (ADR-006 point 8) | `Planned (FE0)` for the build-time values; `Planned (FE4)` for the demo build | FE0, FE4 |
 | In-process adapter of the `TradingClient` port, calling `@trading/application` and the same presenters, so the UI cannot tell which mode it runs in (ADR-002 point 5); the HTTP adapter is FE0 | `Planned (FE4)` | FE4 |
 | Demo composition root with in-memory repositories (ADR-001 point 4); the in-memory fakes written for the application tests are its starting point | `Planned (FE4)` | FE4 |
 | Demo identity with a role selector (Viewer, Trader, Admin) that goes through the same permission checks (ADR-005 point 11) | `Planned (FE4)` | FE4 |
 | Simulated realtime: the in-process realtime adapter fed by `@trading/market-sim` in the browser (ADR-007 point 13, FR-070) | `Planned (FE4)` | FE4 |
-| Market modes and scenarios (`STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY`) and their demo controls (FR-048) | Engine `Planned (B5)`; controls `Planned (FE4)` | B5, FE4 |
+| Market modes and scenarios (`STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY`) and their demo controls (FR-048) | Engine `Implemented` (B5); controls `Planned (FE4)` | B5, FE4 |
 | Background job simulation: the CSV import runs in process with simulated progress and injectable failures (ADR-008 point 13, FR-069, FR-071) | `Planned (FE4)` | FE4 |
 | Validation errors and rejected operations (for example an oversell) through the real rules, without scripting (FR-071) | `Planned (FE4)` | FE4 |
 | Static build of `apps/web` in demo mode: no call to any backend, no secrets in the build, namespaced browser storage, configurable base path, SPA fallback (ADR-006 point 7) and its publication | `Planned (FE4)` | FE4 |
@@ -1072,8 +1072,8 @@ The same product/application behavior should remain conceptually shared with the
 | Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | B1 and B4 `Implemented`; B5 and B6 `Planned`, per block | B1 to B6 |
 | Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Implemented`; the CI test database uses the ADR-005 point 13 roles | none |
 | Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the runner and React Testing Library `Deferred` to the frontend-stage ADR | FE5 |
-| Realtime client tests (connect, disconnect, reconnect, event processing) | Server `Planned (B5)`; client `Planned (FE3)` with the feature; component and E2E checks `Planned (FE5)` | B5, FE3, FE5 |
-| Demo tests: simulation determinism of the shared engine, and the demo flows with the CSV import failure | Engine `Planned (B5)`; demo flows `Planned (FE4)` | B5, FE4 |
+| Realtime client tests (connect, disconnect, reconnect, event processing) | Server `Implemented` (B5); client `Planned (FE3)` with the feature; component and E2E checks `Planned (FE5)` | B5, FE3, FE5 |
+| Demo tests: simulation determinism of the shared engine, and the demo flows with the CSV import failure | Engine `Implemented` (B5); demo flows `Planned (FE4)` | B5, FE4 |
 | E2E flows (login, portfolio workflow, transaction workflow, analytics, realtime, recovery), plus the CSV import flow as a critical flow (`10` §33) | `Planned (FE5)`; Playwright `Deferred` to the frontend-stage ADR | FE5 |
 | Accessibility checks | `Planned (FE5)`; the scanning tool `Deferred` to the frontend-stage ADR | FE5 |
 | Demo reset, local persistence and scripted failures other than the import failure | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
@@ -1166,14 +1166,14 @@ E2E
 | Log fields and stable dotted event names such as `http.request.completed` (ADR-009 point 3); `LOG_LEVEL` is the only logging variable: `debug` in development, `info` in production, `silent` in tests (point 7) | `Implemented` (B3.1) | B3 |
 | Redaction of passwords, the `Authorization` header, cookies, access tokens and refresh tokens, with tests (ADR-009 point 4 and Deferred detail) | `Implemented` (B3.1) | B3 |
 | Request IDs: the `requestId` middleware generates or accepts a safe `X-Request-ID` and sets it on the response (`apps/api/src/middleware/request-id.ts`) | `Implemented` | none |
-| Correlation: `requestId` propagated through `AsyncLocalStorage` to every log line of the request; `X-Request-ID` exposed through CORS (`exposedHeaders`); `jobId` and `connectionId` on job and realtime entries (ADR-009 point 5) | `Implemented` (B3.2); job fields `Implemented` (B4.2), realtime fields `Planned (B5)` | B3, B4, B5 |
+| Correlation: `requestId` propagated through `AsyncLocalStorage` to every log line of the request; `X-Request-ID` exposed through CORS (`exposedHeaders`); `jobId` and `connectionId` on job and realtime entries (ADR-009 point 5) | `Implemented` (B3.2); job fields `Implemented` (B4.2), realtime fields `Implemented` (B5) | B3, B4, B5 |
 | Error categorization: the error handler returns a coded error body with the `requestId` (`apps/api/src/middleware/error-handler.ts`) | `Implemented` | none |
 | Error logging by category: levels by code, the event name `http.request.failed`, `errorCategory` and the stack on internal errors (ADR-009 points 3 and 6); every failed request is logged | `Implemented` (B3.1) | B3 |
 | Health checks and readiness: `GET /health` and `GET /health/ready` (`SELECT 1`), the failure line `health.database.unavailable` | `Implemented`; their route test `Planned (B0)` | B0 |
 | Shutdown behavior of readiness (503 while shutting down) and the `app.startup.*` and `app.shutdown.*` entries (ADR-006 point 12, ADR-009 point 11) | `Implemented` (B3.4) | B3 |
 | Security events `auth.login.succeeded`, `auth.login.failed`, `auth.refresh.reuse_detected`, `authz.denied` and `auth.logout` (ADR-009 point 9) | `Implemented` (B3.3); the `auth.logout` endpoint and the reuse revocation `Implemented` (B2.4) | B3 |
 | Performance measurements: a `warn` entry when a request exceeds `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms), and separate timing of the analytics series reconstruction (ADR-009 point 8); individual database operations are not timed | `Implemented` (B3.2, B3.3) | B3 |
-| Realtime and background-job diagnostics: lifecycle entries for realtime connections (ADR-007) and job transitions (ADR-008); simulator entries `simulation.started`, `simulation.paused`, `simulation.mode.changed` (ADR-009 point 11) | Job entries `Implemented` (B4.2); realtime and simulator entries `Planned (B5)`; their names and fields are open details | B4, B5 |
+| Realtime and background-job diagnostics: lifecycle entries for realtime connections (ADR-007) and job transitions (ADR-008); simulator entries `simulation.started`, `simulation.paused`, `simulation.mode.changed` (ADR-009 point 11) | Job entries `Implemented` (B4.2); realtime and simulator entries `Implemented` (B5); their names and fields are open details | B4, B5 |
 | Local debugging tools: `LOG_LEVEL=debug` with `pino-pretty` covers local debugging | `Implemented` (B3.1; workflow documented in B3.5) | B3 |
 | Browser-console `Logger` adapter, so application code logs without knowing where it runs (ADR-009 point 1) | `Planned (FE0)`; demo event names `Deferred` (ADR-010 point 6) | FE0 |
 | Metrics, a `/metrics` endpoint and process metrics | `Deferred` (ADR-009 point 10) | none |
@@ -1300,7 +1300,7 @@ A production-like deployment can be started and verified through documented step
 Code vs ADR:
 
 - The phase keeps its scope. What changes is its owner and its input: it runs once, in FE5, against a working frontend, and it uses the targets already approved in `03`. This document sets no new metric (rule 2 of §3). No NFR sets a bundle-size or network-payload target, so those two areas are measured and reported, not judged against a number, until a decision adds one.
-- The server side of performance is not part of this phase. Slow-request logging and the timing of the analytics series reconstruction are `Implemented` (B3.2, B3.3) (§18), and the server realtime limits are `Planned (B5)`.
+- The server side of performance is not part of this phase. Slow-request logging and the timing of the analytics series reconstruction are `Implemented` (B3.2, B3.3) (§18), and the server realtime limits are `Implemented` (B5).
 - NFR-008 is enough for large datasets in version 1; the memory target stays `Deferred` (`10` §41).
 - "Realtime update frequency" is bounded by NFR-005 and NFR-006 and needs the realtime client of FE3 to exist before it can be measured.
 - The accessibility checks of this phase are the same automated and manual checks listed in `10` §36; component and E2E tests that touch them are listed in §17.
@@ -1504,9 +1504,9 @@ How the original nodes map to the blocks:
 | Frontend | Phase 5, FE0 | `Planned (FE0)` |
 | Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | `Planned (FE1)` |
 | Analytics | Allocation and attribution `Implemented`; performance and risk in B1; views in FE2 | `Implemented`; `Planned (FE2)` |
-| Realtime | Server B5; client FE3 | `Planned (B5)`, `Planned (FE3)` |
+| Realtime | Server B5; client FE3 | `Implemented` (B5), `Planned (FE3)` |
 | Background operations | Jobs B4; screens FE3 | `Implemented` (B4), `Planned (FE3)` |
-| Demo | Engine in B5 (with the application layer from B0); demo mode in FE4 | `Planned (B5)`, `Planned (FE4)` |
+| Demo | Engine in B5 (with the application layer from B0); demo mode in FE4 | `Implemented` (B5), `Planned (FE4)` |
 | Testing | Spread across the blocks from B0; component, E2E and accessibility checks in FE5 | `Planned (B0)`, `Planned (FE5)` |
 | Observability | Backend B3; browser `Logger` adapter FE0 | `Implemented` (B3), `Planned (FE0)` |
 | Deployment | Local full stack B7; demo build and publication FE4 | `Planned (B7)`, `Planned (FE4)` |
@@ -1533,9 +1533,9 @@ Code vs ADR:
 | 2 Portfolio | API and database `Implemented`; layering and archived-portfolio guard `Planned (B0)` | Portfolio screens: FE1 |
 | 3 Transaction | Validation, persistence and position update `Implemented`; `Clock` port and chronological validation `Planned (B0)`; fee handling `Implemented`; `Idempotency-Key` `Implemented` (B4) | Transaction and position screens: FE1 |
 | 4 Analytics | Allocation and attribution `Implemented`; performance and risk calculation and endpoints `Implemented` | Table and chart views: FE2 |
-| 5 Realtime | Server and event contract `Planned (B5)` | Client, notifications and alerts: FE3 |
-| 6 Background operation | CSV import job, progress and completion `Implemented` (B4); job events over the socket `Planned (B5)` | Upload, progress and completion screens: FE3 |
-| 7 Demo | Application layer and in-memory repositories `Planned (B0)`; shared simulation engine `Planned (B5)` | In-process adapters, composition root and publication: FE4 |
+| 5 Realtime | Server and event contract `Implemented` (B5) | Client, notifications and alerts: FE3 |
+| 6 Background operation | CSV import job, progress and completion `Implemented` (B4); job events over the socket `Implemented` (B5) | Upload, progress and completion screens: FE3 |
+| 7 Demo | Application layer and in-memory repositories `Planned (B0)`; shared simulation engine `Implemented` (B5) | In-process adapters, composition root and publication: FE4 |
 
 Code vs ADR:
 
@@ -1663,7 +1663,7 @@ This reduces accidental coupling.
 | Analytics: performance, risk and What Changed | `Implemented` | B1 |
 | Notifications: list and mark as read | `Implemented`; creation by import jobs `Implemented` (B4) (ADR-008 point 6, ADR-010 point 9) | B4 |
 | Background jobs: `POST /api/v1/portfolios/:portfolioId/imports` and the `jobs` endpoints (ADR-008 point 9) | `Implemented` (B4) | B4 |
-| Simulation control: `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode` (ADR-007 point 15) | `Planned (B5)` | B5 |
+| Simulation control: `POST /api/v1/simulation/start`, `POST /api/v1/simulation/pause` and `PUT /api/v1/simulation/mode` (ADR-007 point 15) | `Implemented` (B5) | B5 |
 | API document | `Planned (B6)` | B6 |
 
 Code vs ADR:
@@ -1712,7 +1712,7 @@ Realtime capabilities should be implemented alongside the corresponding domain c
 | Portfolios: `Portfolio` with its status | `Implemented` | none |
 | Instruments: `Asset` | `Implemented` | none |
 | Transactions and positions: `Transaction` (`BUY` and `SELL`, `fees` as a field) and `Position` | `Implemented` | none |
-| Price data: `MarketPrice`, `MarketEvent` and `HistoricalPrice` | `Implemented`; bounded `MarketEvent` retention, daily candle rollover and startup catch-up `Planned (B5)` | B5 |
+| Price data: `MarketPrice`, `MarketEvent` and `HistoricalPrice` | `Implemented`; bounded `MarketEvent` retention, daily candle rollover and startup catch-up `Implemented` (B5) | B5 |
 | Product data: `Decision`, `DecisionEvent`, `Scenario`, `WatchlistItem`, `Alert`, `Notification`, `UserPreference` | `Implemented` | none |
 | Analytics support data | `Reference`: the schema has no analytics table, and ADR-001 point 6 and ADR-010 point 1 place analytics in application read models | none |
 | Jobs: `Job` and `IdempotencyKey` | `Implemented` (B4) | B4 |
@@ -1929,7 +1929,7 @@ Backend/domain validation protects correctness.
 | Dependency Failure | 503 `DEPENDENCY_ERROR` when the database is unreachable (ADR-002 point 10) | `Implemented` (B0.4): the error handler maps Prisma connection errors to 503 `DEPENDENCY_ERROR` (`07-api-spec.md` §6); the readiness endpoint answers 503 on its own | none |
 | Internal Error | 500 `INTERNAL_ERROR`, stack logged and not returned | `Implemented` | none |
 | Network Failure | None on the server: a client concern; the API has no request timeout (ADR-002 point 10) and `TIMEOUT` was removed from `AppErrorCode` in B0.4 | Handling `Planned (FE0)`; the client timeout and retry policy `Deferred` to the frontend-stage ADR (ADR-006 point 11) | FE0 |
-| Realtime Failure | Socket `ERROR` message with a `code` and close codes `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | Server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
+| Realtime Failure | Socket `ERROR` message with a `code` and close codes `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | Server `Implemented` (B5); client `Planned (FE3)` | B5, FE3 |
 | Background Job Failure | Job state `FAILED` with a reason (`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED`, `PORTFOLIO_ARCHIVED`) or `TIMED_OUT` (ADR-008 points 3 and 6), and an `ERROR` notification | `Implemented` (B4); screens `Planned (FE3)` | B4, FE3 |
 
 Code vs ADR:
@@ -1974,17 +1974,17 @@ Each category should have appropriate:
 
 | Item | Status | Block |
 | --- | --- | --- |
-| WebSocket with `ws` behind a transport port, served by the same HTTP server and port as the API on a fixed path (proposed `/ws`, confirmed in B5) | `Planned (B5)` | B5 |
-| Authentication in the first message, a 5-second deadline, socket bound to the token expiry and re-authentication after a refresh (ADR-007 point 2) | `Planned (B5)`; needs the refresh endpoint of B2 | B5 |
-| Channels `market:{assetId}`, `portfolio:{portfolioId}`, `notifications` and `jobs:{jobId}`, each subscription authorized in the application layer | `Planned (B5)`; the job channel with B4 events | B4, B5 |
-| Envelope `{ id, type, channel, sequence, timestamp, payload }` as Zod schemas in `@trading/contracts` | `Planned (B5)` | B5 |
-| Event catalog: `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED`, and the three job events | `Planned (B5)`; the job events are produced by the B4 runner and delivered on the socket in B5 | B4, B5 |
-| Shared simulation engine `@trading/market-sim` in `packages/market-sim` (seeded generator, injected clock) | `Planned (B5)`; the package does not exist yet | B5 |
-| Limits, heartbeat and degradation (ADR-007 points 11, 12 and 15) | Server `Planned (B5)`; client polling and stale-data indicator `Planned (FE3)` | B5, FE3 |
-| Realtime lifecycle log entries and simulator entries (ADR-009 point 11) | `Planned (B5)` | B5 |
+| WebSocket with `ws` behind a transport port, served by the same HTTP server and port as the API on a fixed path (proposed `/ws`, confirmed in B5) | `Implemented` (B5) | B5 |
+| Authentication in the first message, a 5-second deadline, socket bound to the token expiry and re-authentication after a refresh (ADR-007 point 2) | `Implemented` (B5); needs the refresh endpoint of B2 | B5 |
+| Channels `market:{assetId}`, `portfolio:{portfolioId}`, `notifications` and `jobs:{jobId}`, each subscription authorized in the application layer | `Implemented` (B5); the job channel with B4 events | B4, B5 |
+| Envelope `{ id, type, channel, sequence, timestamp, payload }` as Zod schemas in `@trading/contracts` | `Implemented` (B5) | B5 |
+| Event catalog: `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED`, and the three job events | `Implemented` (B5); the job events are produced by the B4 runner and delivered on the socket in B5 | B4, B5 |
+| Shared simulation engine `@trading/market-sim` in `packages/market-sim` (seeded generator, injected clock) | `Implemented` (B5) | B5 |
+| Limits, heartbeat and degradation (ADR-007 points 11, 12 and 15) | Server `Implemented` (B5); client polling and stale-data indicator `Planned (FE3)` | B5, FE3 |
+| Realtime lifecycle log entries and simulator entries (ADR-009 point 11) | `Implemented` (B5) | B5 |
 | Client WebSocket adapter and event handlers | `Planned (FE3)` | FE3 |
 | In-process realtime adapter fed by `@trading/market-sim` running in the browser | `Planned (FE4)` | FE4 |
-| Mechanism that carries an event from the application layer to the realtime adapter (the "Domain event" and "Application event" steps of the chain below): a `RealtimePublisher` port in `packages/application`, its adapter in `apps/api`, and no domain events in version 1 (ADR-007 point 17; decided 2026-10-08) | `Planned (B5)` | B5 |
+| Mechanism that carries an event from the application layer to the realtime adapter (the "Domain event" and "Application event" steps of the chain below): a `RealtimePublisher` port in `packages/application`, its adapter in `apps/api`, and no domain events in version 1 (ADR-007 point 17; decided 2026-10-08) | `Implemented` (B5) | B5 |
 
 Code vs ADR:
 
@@ -2025,7 +2025,7 @@ The UI should react to meaningful state changes rather than infrastructure detai
 | --- | --- | --- |
 | Method: hypothesis, measurement, diagnosis, change, measurement, comparison | `Reference` | none |
 | Server timing: a `warn` entry for a request above `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms) and separate timing of the analytics series reconstruction; no other timing in version 1 (ADR-009 point 8) | `Implemented` (B3.2, B3.3) | B3 |
-| Backend and realtime measurement, taken after realtime exists (decided 2026-10-08); the frontend side is FE5; metrics stay `Deferred` (ADR-009 point 10) | `Planned (B5)` | B5 |
+| Backend and realtime measurement, taken after realtime exists (decided 2026-10-08); the frontend side is FE5; metrics stay `Deferred` (ADR-009 point 10) | `Implemented` (B5) | B5 |
 | Frontend measurement against the approved targets of NFR-001 to NFR-008 | `Planned (FE5)` | FE5 |
 | Realtime update frequency and burst handling (NFR-005, NFR-006) | `Planned (FE5)`, after the realtime client of FE3 exists | FE5 |
 | Measurement tooling for the frontend (Lighthouse, profiler, bundle analysis or others) | `Deferred` to the frontend-stage ADR | FE5 |
@@ -2075,11 +2075,11 @@ unless measured and documented.
 | --- | --- | --- |
 | Authentication | Login, `me`, refresh, logout and sessions `Implemented` (B2) | B2 |
 | Authorization | Ownership checks `Implemented`; `Actor` and permission checks `Implemented` (B0); roles and 403 `Implemented` (B2.1, B2.2) | B0, B2 |
-| Input validation | Body, query and headers `Implemented`; route parameters `Planned (B0)`; CSV `Implemented` (B4); WebSocket messages `Planned (B5)` | B0, B4, B5 |
+| Input validation | Body, query and headers `Implemented`; route parameters `Planned (B0)`; CSV `Implemented` (B4); WebSocket messages `Implemented` (B5) | B0, B4, B5 |
 | CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Implemented`; credentials for the refresh cookie `Implemented` (B2.4) | B2 |
 | Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Planned (B7)`; the seed and reset production guard `Implemented` | B7 |
-| Rate limiting | HTTP `Implemented`; realtime limits `Planned (B5)` | B5 |
-| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Implemented` (B4); WebSocket limits `Planned (B5)` | B4, B5 |
+| Rate limiting | HTTP `Implemented`; realtime limits `Implemented` (B5) | B5 |
+| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Implemented` (B4); WebSocket limits `Implemented` (B5) | B4, B5 |
 | Error exposure | `Implemented`; redaction in logs `Implemented` (B3.1) | B3 |
 | File handling | CSV import `Implemented` (B4); the only file accepted is the CSV import body (`text/csv`, 1 MB) | B4 |
 | Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; audit `Planned (B7)` | B7 |
@@ -2165,11 +2165,11 @@ Automated accessibility testing should complement manual inspection.
 | Realtime disconnect and reconnect | `Deferred`: scripted failures are a demo specific (ADR-010 point 6); the real-mode reconnect behavior is `Planned (FE3)` | FE4 |
 | Background job failure and timeout | `Planned (FE4)`: injectable failures in the in-process CSV import (ADR-008 point 13) | FE4 |
 | Empty state | `Planned (FE4)` | FE4 |
-| Simulation pause | `Planned (FE4)`; the engine `Planned (B5)` | B5, FE4 |
+| Simulation pause | `Planned (FE4)`; the engine `Implemented` (B5) | B5, FE4 |
 | Forbidden, validation error | `Planned (FE4)`: the Viewer role is refused mutations by the same permission checks, and validation comes from the shared use cases | FE4 |
 | Reset | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
 | Persistence | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
-| Determinism of the shared simulation engine | `Planned (B5)` | B5 |
+| Determinism of the shared simulation engine | `Implemented` (B5) | B5 |
 
 Code vs ADR:
 
@@ -2210,7 +2210,7 @@ The demo must remain coherent after each scenario.
 | --- | --- | --- |
 | Request problem: request ID, structured log, error | `X-Request-ID` and the error body `Implemented`; propagation to every log line and the log of handled errors `Implemented` (B3.1, B3.2) | B3 |
 | Database problem: health and readiness, dependency error, diagnostic log | Endpoints and the `health.database.unavailable` line `Implemented`; mapping to `DEPENDENCY_ERROR` `Implemented` (B0.4); shutdown readiness `Implemented` (B3.4) | B0, B3 |
-| Realtime problem: connection ID, lifecycle event, reconnect | `Planned (B5)` (ADR-009 points 5 and 11) | B5 |
+| Realtime problem: connection ID, lifecycle event, reconnect | `Implemented` (B5) (ADR-009 points 5 and 11) | B5 |
 | Background problem: job ID, progress, failure or timeout | `Implemented` (B4) | B4 |
 | Tests that prove the paths: redaction and event-name unit tests, and an integration test that the `requestId` appears in its log entries | `Implemented` (B3.1, B3.2) | B3 |
 
@@ -2436,7 +2436,7 @@ Omissions must be intentional.
 | RBAC works | `Implemented` (B2.1, B2.2); the permission mechanism `Implemented` (B0) (ADR-005) | B0, B2 |
 | PostgreSQL persists data | `Implemented` | none |
 | REST API works | `Implemented` in part; the remaining endpoints in B1, B2 and B4; the OpenAPI document `Planned (B6)` | B1, B2, B4, B6 |
-| WebSockets work | Server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
+| WebSockets work | Server `Implemented` (B5); client `Planned (FE3)` | B5, FE3 |
 | Background operations work | `Implemented` (B4) (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
 | Demo Mode works | `Planned (FE4)`; needs B0 (in-memory repositories) and B5 (simulation engine) | FE4 |
 | Tests cover primary flows | Domain, database and API route tests `Implemented`; mandatory application and contract tests `Planned (B0)`; component, E2E and accessibility checks `Planned (FE5)`; no coverage percentage is set (ADR-006 point 11) | B0, FE5 |
@@ -2484,7 +2484,7 @@ The project is technically complete when:
 | Inspect positions | Endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
 | Record transactions | `BUY` and `SELL` only, no cash balance (ADR-003 points 1 and 2); chronological validation `Planned (B0)` (ADR-003 point 6); a transaction cannot be edited or deleted, no such endpoint (ADR-003 point 7); the form `Planned (FE1)` | B0, FE1 |
 | Review analytics | Allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)`; win/loss and transaction statistics are not in version 1 (ADR-010 point 10) | B1, FE2 |
-| Experience realtime updates | `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
+| Experience realtime updates | `Implemented` (B5); client `Planned (FE3)` | B5, FE3 |
 | Receive operation feedback | Job progress and notifications `Implemented` (B4); screens `Planned (FE3)` | B4, FE3 |
 | Coherent loading, empty, success and failure states | API empty results and error envelope `Implemented`; UI states `Planned (FE1)` | FE1 |
 
@@ -2572,7 +2572,7 @@ The portfolio project is complete when a reviewer can:
 | API: why REST and where contracts are enforced | ADR-002 (`@trading/contracts`, explicit wire format) | `Planned (B0)`; OpenAPI `Planned (B6)` |
 | State: why TanStack Query and Zustand | No ADR decides them; `Deferred` to the frontend-stage ADR (§28) | `Deferred` |
 | Tables: why TanStack Table | No ADR decides it (§25 to §28); `Deferred` to the frontend-stage ADR | `Deferred` |
-| Realtime: why WebSockets | ADR-007 | `Planned (B5)` |
+| Realtime: why WebSockets | ADR-007 | `Implemented` (B5) |
 | Demo: why mock adapters instead of a static prototype | ADR-001 and ADR-006 point 7: the demo runs the same application layer in process over in-memory repositories | `Planned (FE4)` |
 | Authentication: why JWT and RBAC | ADR-005 (15-minute JWT, roles and permissions) | Login `Implemented`; roles `Implemented` (B2.1) |
 | Deployment: why Docker and a simple topology | ADR-006 (two targets, no public backend) | Compose default profile `Implemented`; `full` profile `Planned (B7)` |
@@ -2737,7 +2737,7 @@ The project should demonstrate engineering judgment by knowing what **not** to b
 | Boundary | What it allows later | Status | Block |
 | --- | --- | --- | --- |
 | Repository interface | Database replacement; the demo already uses it with in-memory repositories (ADR-001) | Repositories over Prisma `Implemented`; in-memory implementations `Planned (B0)` | B0 |
-| Realtime hub behind its own interface | A shared broker later (ADR-007 deferred detail: the hub is not tied to the transport or to a broker) | `Planned (B5)` | B5 |
+| Realtime hub behind its own interface | A shared broker later (ADR-007 deferred detail: the hub is not tied to the transport or to a broker) | `Implemented` (B5) | B5 |
 | Job runner behind an interface, state in a `jobs` table | A dedicated worker later (ADR-008 point 4 puts the runner in process today) | `Implemented` (B4) | B4 |
 | Infrastructure ports such as `Logger` | An external provider later | `Implemented` (B3.1) | B3 |
 
@@ -2778,11 +2778,11 @@ This is stronger than claiming that the initial system is infinitely scalable.
 
 | Evidence | Status | Block |
 | --- | --- | --- |
-| Measurement and profiling before any claim | `Planned (FE5)` for the frontend; `Planned (B5)` for the backend and realtime, after realtime exists (decided 2026-10-08); nothing measured today | B5, FE5 |
+| Measurement and profiling before any claim | `Planned (FE5)` for the frontend; `Implemented` (B5) for the backend and realtime, after realtime exists (decided 2026-10-08); nothing measured today | B5, FE5 |
 | Efficient data fetching | Not assessed | B1 |
 | Pagination | `Implemented` for assets and transactions (`apps/api/src/schemas/pagination.schema.ts`); other lists are returned in full and sorted in the client (ADR-010 point 4) | none |
 | Caching where justified | `Deferred` until a measured bottleneck | none |
-| Bounded realtime history | `Planned (B5)` | B5 |
+| Bounded realtime history | `Implemented` (B5) | B5 |
 | Controlled renders | `Planned (FE3)` | FE3 |
 | Appropriate payload sizes | JSON body limit of 100 kB `Implemented`; response sizes not measured; measured in B5 | B5 |
 
@@ -2819,8 +2819,8 @@ Optimize observed bottlenecks, not hypothetical ones.
 | RBAC | `Implemented` (B2.1, B2.2); permission mechanism `Implemented` (B0) | B0, B2 |
 | Validation | Body, query and headers `Implemented`; route parameters `Planned (B0)` | B0 |
 | CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Implemented` | none |
-| Rate limits | HTTP `Implemented`; realtime `Planned (B5)` | B5 |
-| Resource limits | Body limit `Implemented`; CSV limits `Implemented` (B4), WebSocket limits `Planned (B5)` | B4, B5 |
+| Rate limits | HTTP `Implemented`; realtime `Implemented` (B5) | B5 |
+| Resource limits | Body limit `Implemented`; CSV limits `Implemented` (B4), WebSocket limits `Implemented` (B5) | B4, B5 |
 | Secret management | Environment separation `Implemented`; seed and reset production guard `Implemented` | none |
 | Safe errors | `Implemented`; redaction in logs `Implemented` (B3.1) | B3 |
 
@@ -3127,17 +3127,17 @@ primary user workflow works end-to-end
 
 ## 55. Milestone 4 — Realtime and Operations
 
-**Status:** `Implemented` (B4), `Planned (B5)` for the backend; `Planned (FE3)` for the client items
+**Status:** `Implemented` (B4), `Implemented` (B5) for the backend; `Planned (FE3)` for the client items
 
 **Owning blocks:** Backend: B4 (background jobs and idempotency), B5 (realtime and market simulation). Frontend: FE3 (WebSocket client, notifications, job progress). Decisions: ADR-007, ADR-008, ADR-010 point 3.
 
 | Item | Status | Block |
 | --- | --- | --- |
-| WebSockets, realtime updates | server `Planned (B5)` (ADR-007) | B5 |
-| Reconnect | server-side behavior `Planned (B5)`; client reconnect `Planned (FE3)` | B5, FE3 |
+| WebSockets, realtime updates | server `Implemented` (B5) (ADR-007) | B5 |
+| Reconnect | server-side behavior `Implemented` (B5); client reconnect `Planned (FE3)` | B5, FE3 |
 | Background jobs | `Implemented` (B4) (ADR-008); the `Job` and `IdempotencyKey` models exist (B4.1) | B4 |
 | Progress UI | `Planned (FE3)` | FE3 |
-| Notifications | creation by jobs `Implemented` (B4) (ADR-008); delivery over the realtime channel `Planned (B5)`; screens `Planned (FE3)`; states are `unread` and `read` only (ADR-010 point 3) | B4, B5, FE3 |
+| Notifications | creation by jobs `Implemented` (B4) (ADR-008); delivery over the realtime channel `Implemented` (B5); screens `Planned (FE3)`; states are `unread` and `read` only (ADR-010 point 3) | B4, B5, FE3 |
 
 Code vs ADR:
 
@@ -3167,7 +3167,7 @@ work reliably with failure states
 
 ## 56. Milestone 5 — Demo
 
-**Status:** `Planned (FE4)`; the shared simulation engine is `Planned (B5)`, and the demo specifics are `Deferred` to the frontend-stage ADR
+**Status:** `Planned (FE4)`; the shared simulation engine is `Implemented` (B5), and the demo specifics are `Deferred` to the frontend-stage ADR
 
 **Owning blocks:** Backend: B0 (application layer the demo adapters reuse), B5 (`@trading/market-sim`). Frontend: FE4. Decisions: ADR-001, ADR-006 points 1, 2 and 7, ADR-007, ADR-010 point 6.
 
@@ -3175,7 +3175,7 @@ work reliably with failure states
 | --- | --- | --- |
 | Mock adapters (in-process, over the same application layer) | `Planned (FE4)` | FE4 |
 | Deterministic data, persistence, simulated latency, failure injection, reset | `Deferred`: ADR-010 point 6 leaves these to the frontend-stage ADR | FE4 |
-| Realtime simulation | `Planned (B5)` engine; `Planned (FE4)` wiring in the browser | B5, FE4 |
+| Realtime simulation | `Implemented` (B5) engine; `Planned (FE4)` wiring in the browser | B5, FE4 |
 | Public demo without production infrastructure | `Planned (FE4)`: static build under a subpath, no backend calls, no secrets (ADR-006 points 2 and 7); hosting is `Deferred` | FE4 |
 
 Code vs ADR:
@@ -3218,7 +3218,7 @@ public demo works without production infrastructure
 | E2E | tooling `Deferred` to the frontend-stage ADR (same decision; Playwright is named in ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | Accessibility | the scanning tool is chosen in the frontend-stage ADR; checks `Planned (FE5)` | FE5 |
 | Security review | B2 owns the auth-focused review; B7 owns the final pass with the checklist of §33 (decided 2026-10-08) | B2, B7 |
-| Performance measurement | server: slow-request logging at 500 ms `Implemented` (B3.2), no load test, metrics `Deferred` (ADR-009 points 8 and 10); measurement after realtime exists `Planned (B5)` (decided 2026-10-08); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, B5, FE5 |
+| Performance measurement | server: slow-request logging at 500 ms `Implemented` (B3.2), no load test, metrics `Deferred` (ADR-009 points 8 and 10); measurement after realtime exists `Implemented` (B5) (decided 2026-10-08); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, B5, FE5 |
 
 Code vs ADR:
 
@@ -3542,11 +3542,11 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 17 Transactions | endpoints `Implemented`; chronological validation `Planned (B0)`; screens `Planned (FE1)` | B0, FE1 |
 | 18 Analytics | allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)` | B1, FE2 |
 | 19 Tables/filters | `Planned (FE2)` (sorting is client-side, ADR-010 point 4) | FE2 |
-| 20 Realtime | server `Planned (B5)`; client `Planned (FE3)` | B5, FE3 |
+| 20 Realtime | server `Implemented` (B5); client `Planned (FE3)` | B5, FE3 |
 | 21 Background operations | `Implemented` (B4) (CSV import only, ADR-008); screens `Planned (FE3)` | B4, FE3 |
-| 22 Notifications | alerts and notifications from the realtime and job paths `Implemented` (B4), `Planned (B5)`; screens `Planned (FE3)` | B4, B5, FE3 |
+| 22 Notifications | alerts and notifications from the realtime and job paths `Implemented` (B4), `Implemented` (B5); screens `Planned (FE3)` | B4, B5, FE3 |
 | 23 Demo adapters | `Planned (FE4)`; needs the application layer and in-memory repositories from B0 | FE4 |
-| 24 Demo simulations | `@trading/market-sim` `Planned (B5)`; demo wiring `Planned (FE4)` | B5, FE4 |
+| 24 Demo simulations | `@trading/market-sim` `Implemented` (B5); demo wiring `Planned (FE4)` | B5, FE4 |
 | 25 Unit/integration/component tests | domain, database and API tests `Implemented`; application and contract tests `Planned (B0)`; tests per block; component tests `Planned (FE5)` | B0, FE5 |
 | 26 E2E tests | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
 | 27 Accessibility validation | `Planned (FE5)` | FE5 |
@@ -3628,7 +3628,7 @@ This sequence should be adjusted when real implementation dependencies reveal a 
 | `infrastructure` is replaceable through ports | Prisma repositories exist in `packages/database`; the swap to in-memory fakes is not demonstrated until the application layer and its fakes exist (ADR-001 point 7) | `Planned (B0)` | B0 |
 | One composition root builds the adapters (ADR-001 point 4) | `apps/api/src/composition.ts` does not exist | `Planned (B0)` | B0 |
 | Shared typed contracts at the boundary (ADR-002) | `packages/contracts` holds only `.gitkeep` | `Planned (B0)` | B0 |
-| WebSocket adapter behind a transport port (ADR-007 point 1) | no WebSocket code exists | `Planned (B5)` | B5 |
+| WebSocket adapter behind a transport port (ADR-007 point 1) | `apps/api/src/realtime/ws-transport.ts` | `Implemented` (B5) | B5 |
 | `features` and `presentation` | `apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md` | `Planned (FE0)` | FE0 |
 | Demo Mode shares `application` and `domain`, and replaces only infrastructure (ADR-001, ADR-006 point 7, ADR-007 point 13) | no demo code exists | `Planned (FE4)` | FE4 |
 | Layer boundaries are enforced mechanically (ADR-001 point 1) | ADR-001 point 1 enforces it with lint rules, which land with the application layer | `Planned (B0)` | B0 |
@@ -3699,7 +3699,7 @@ The product/application layer remains shared.
 
 **Owning blocks:** Backend and Frontend: every block, closing in FE6. Decisions: ADR-001 to ADR-010.
 
-Code vs ADR: no ADR changes this section. "Infrastructure substitution" is the mechanism of ADR-001 and ADR-006 point 7, and `Planned (B0)`; "realtime capability" is ADR-007, `Planned (B5)`.
+Code vs ADR: no ADR changes this section. "Infrastructure substitution" is the mechanism of ADR-001 and ADR-006 point 7, and `Planned (B0)`; "realtime capability" is ADR-007, `Implemented` (B5).
 
 Original text:
 
@@ -3737,11 +3737,11 @@ The portfolio should demonstrate:
 | Architecture | Application layer, contracts and ports (ADR-001, ADR-002) in B0; Demo Mode substitution in FE4; boundaries documented by the ADRs; see §64 | `Planned (B0)`; `Planned (FE4)` | B0, FE4 |
 | Frontend | The frontend blocks; the libraries named in the original list are not decided by any ADR and stay `Deferred` (confirmed 2026-10-08, see Decided); see §40 | `Planned (FE0)` | FE0 to FE5 |
 | Backend | Node.js and TypeScript API, PostgreSQL persistence, validation, error envelope and health routes `Implemented`; contracts `Planned (B0)`; authentication and RBAC `Implemented` (B2) (ADR-005); OpenAPI `Planned (B6)`; see §40 | `Implemented` in part; `Planned (B0)` | B0, B2, B6 |
-| Realtime | Server `Planned (B5)` (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Planned (B5)`; `Planned (FE3)` | B5, FE3, FE4 |
+| Realtime | Server `Implemented` (B5) (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Implemented` (B5); `Planned (FE3)` | B5, FE3, FE4 |
 | Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Implemented` (B4); screens `Planned (FE3)` | `Implemented` (B4) | B4, FE3 |
 | Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E tooling `Deferred` to the frontend-stage ADR and E2E checks `Planned (FE5)`; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
 | Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Implemented` (B0, B2.2); roles and sessions `Implemented` (B2) (ADR-005); production configuration guard `Implemented` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part (the B2 auth review is recorded in `odd/tasks/b2/b2-5-close.md`); the B7 pass `Planned (B7)` | B0, B2 |
-| Observability | Request IDs and health routes `Implemented`; structured logs, redaction, security events and the startup and shutdown entries `Implemented` (B3, ADR-009); job lifecycle events `Implemented` (B4.2), realtime lifecycle events `Planned (B5)`; metrics `Deferred` (ADR-009 point 10) | `Implemented` (B3); B5 pending | B3, B4, B5 |
+| Observability | Request IDs and health routes `Implemented`; structured logs, redaction, security events and the startup and shutdown entries `Implemented` (B3, ADR-009); job lifecycle events `Implemented` (B4.2), realtime lifecycle events `Implemented` (B5); metrics `Deferred` (ADR-009 point 10) | `Implemented` (B3); B5 pending | B3, B4, B5 |
 | Deployment | Minimal CI `Implemented` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Implemented`; `Planned (B7)`; `Planned (FE4)` | B7, FE4 |
 | Demo | No paid infrastructure (ADR-007); reset, simulated latency and failure scenarios (ADR-010 point 6); in-process adapters (ADR-001, ADR-007 point 13); see §56 | `Planned (FE4)` | B5, FE4 |
 | Portfolio | Case study, architecture visuals, tradeoffs and walkthrough; measured outcomes only when measured; see §42 and §59 | `Planned (FE6)` | FE6 |

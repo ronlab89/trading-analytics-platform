@@ -528,7 +528,7 @@ removes the asset.
 
 # 18. Market Price
 
-**Status:** `Implemented` — table `market_prices`. Tick semantics `Planned (B5)`.
+**Status:** `Implemented` — table `market_prices`. Tick semantics `Implemented` (B5).
 
 | Field | Type | Null | Default | Notes |
 | --- | --- | --- | --- | --- |
@@ -548,7 +548,7 @@ One row per asset. The seed sets `previousPrice` to the previous daily close
 (`Implemented`). Under continuous ticking, `previousPrice`, `change` and
 `changePercent` are always measured against the last closed daily candle,
 never the previous tick, and roll over at each UTC day close (ADR-007 points 8
-and 14, `Planned (B5)`).
+and 14, `Implemented` (B5)).
 
 Open detail (B5): a tick older than the stored `timestamp` must not overwrite
 it (§44); the comparison key (`timestamp` or `MarketEvent.sequence`) is not
@@ -558,7 +558,7 @@ fixed.
 
 # 19. Market Event
 
-**Status:** `Implemented` — table `market_events`. Uniqueness and retention `Planned (B5)`.
+**Status:** `Implemented` — table `market_events`. Uniqueness and retention `Implemented` (B5).
 
 | Field | Type | Null | Default | Notes |
 | --- | --- | --- | --- | --- |
@@ -571,7 +571,7 @@ fixed.
 
 Index: `(assetId, sequence)`, not unique.
 
-`Planned (B5)` per ADR-007 point 8 and Deferred detail:
+`Implemented` (B5) per ADR-007 point 8 and Deferred detail:
 
 - `(assetId, sequence)` becomes unique, so a duplicated tick is rejected;
 - after a restart the engine resumes from `MAX(sequence)` per asset;
@@ -581,7 +581,7 @@ Index: `(assetId, sequence)`, not unique.
 
 # 20. Historical Price
 
-**Status:** `Implemented` — table `historical_prices`. Simulator candles `Planned (B5)`.
+**Status:** `Implemented` — table `historical_prices`. Simulator candles `Implemented` (B5).
 
 | Field | Type | Null | Default | Notes |
 | --- | --- | --- | --- | --- |
@@ -599,7 +599,7 @@ timestamp and writes can be idempotent upserts. There is no `id` and no
 granularity column: candles are daily by convention.
 
 The seed writes 90 daily candles per asset at `00:00:00Z`, ending on the fixed
-date 2026-09-14 (`Implemented`). `Planned (B5)` per ADR-007 point 8: seed
+date 2026-09-14 (`Implemented`). `Implemented` (B5) per ADR-007 point 8: seed
 candles end the day before the seed runs (relative dates), the simulator
 closes one candle per asset at each UTC day rollover, and on startup it
 generates the candles for days the server was offline, so the daily series has
@@ -631,7 +631,7 @@ Enum `NotificationSeverity` (`notification_severity`): `INFO`, `SUCCESS`,
 `WARNING`, `ERROR`.
 
 An alert trigger creates a notification in the same transaction that records
-the trigger (ADR-007 point 9 and Deferred detail, `Planned (B5)`).
+the trigger (ADR-007 point 9 and Deferred detail, `Implemented` (B5)).
 
 ---
 
@@ -1001,7 +1001,7 @@ are rejected with 409 `CONFLICT` (ADR-010 point 5).
 
 # 44. Event Ordering
 
-**Status:** `Planned (B5)`
+**Status:** `Implemented` (B5)
 
 Ordering uses `MarketEvent.sequence` (monotonic per asset) and, for decision
 events, `timestamp`. Realtime envelopes carry a per-channel `sequence`; on a
@@ -1021,7 +1021,7 @@ overwrites a newer value. See §12, §18 and §19 for open details.
 | Two transactions on one position at once | See §8 Open detail | `Planned (B0)` |
 | Duplicate `POST` with the same `Idempotency-Key` | Reservation under a unique constraint (§53) | `Implemented` (B4.1, B4.4) |
 | Job status transitions (resume, cancel, apply) | Compare-and-set on status (§52) | `Implemented` (B4.2) |
-| Duplicate market tick | Unique `(assetId, sequence)` (§19) | `Planned (B5)` |
+| Duplicate market tick | Unique `(assetId, sequence)` (§19) | `Implemented` (B5) |
 | Demo in-memory unit of work interleaving | ADR-001 Deferred detail | `Planned (B0)` |
 
 ---

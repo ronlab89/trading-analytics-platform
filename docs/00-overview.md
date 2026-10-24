@@ -115,7 +115,7 @@ come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
 | Performance and risk analytics (TWR, P/L, drawdown, volatility, attribution, Pulse) | `Implemented` | ADR-004, `16-analytics-spec.md` |
 | Structured logging | `Implemented` (B3.1) | ADR-009 |
 | CSV transaction import (background jobs) and idempotency | `Implemented` (B4) | ADR-008 |
-| Realtime prices and events, shared market simulator | `Planned (B5)` | ADR-007 |
+| Realtime prices and events, shared market simulator | `Implemented` (B5) | ADR-007 |
 | Generated OpenAPI document | `Planned (B6)` | ADR-002 point 7 |
 | Production-like containerized local run | `Planned (B7)` | ADR-006 |
 | Web app, dashboard UI, charts, public demo | `Planned (FE)` | ADR-001, ADR-002, ADR-006 |
@@ -170,7 +170,7 @@ browser-console adapter (ADR-009 point 1). No network-level API mock is used.
 
 ### 6.3 Deterministic Demo Behavior
 
-**Status:** seeded simulator `Planned (B5)`; CSV import failure injection `Planned (FE)`; other failure scenarios `Deferred`.
+**Status:** seeded simulator `Implemented` (B5); CSV import failure injection `Planned (FE)`; other failure scenarios `Deferred`.
 
 The simulator is deterministic for a given seed (ADR-007 point 7). The demo's
 CSV import has simulated progress and injectable failures (ADR-008 point
@@ -179,7 +179,7 @@ CSV import has simulated progress and injectable failures (ADR-008 point
 
 ### 6.4 Simulated Real-Time Data
 
-**Status:** `Planned (B5)` for the engine; demo adapter `Planned (FE)`.
+**Status:** `Implemented` (B5) for the engine; demo adapter `Planned (FE)`.
 
 ```text
 @trading/market-sim (seeded, in the browser)
@@ -207,7 +207,7 @@ Runs locally only (ADR-006 point 1):
 - PostgreSQL in Docker Compose for development. `Implemented`
 - Application layer and shared contracts. `Planned (B0)`
 - Background jobs in process. `Implemented` (B4)
-- WebSocket realtime. `Planned (B5)`
+- WebSocket realtime. `Implemented` (B5)
 - API container and `full` Compose profile. `Planned (B7)`
 - Web app in real mode. `Planned (FE)`
 
