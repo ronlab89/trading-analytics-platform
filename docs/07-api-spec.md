@@ -1541,12 +1541,15 @@ tab under Markets (ADR-010 point 9). `Implemented`: `VIEWER` reads only (403
 | `PATCH /api/v1/alerts/:alertId` | `Implemented`; 409 on archived portfolio |
 | `DELETE /api/v1/alerts/:alertId` | `Implemented`; 409 on archived portfolio |
 
-Nothing evaluates alerts yet. `Planned (B5)` (ADR-007 point 9): the server
-evaluates alerts on every tick; an alert fires when its condition changes
-from false to true and re-arms when it becomes false. Each trigger creates
-a `WARNING` notification (§28) and emits `ALERT_TRIGGERED` and
-`NOTIFICATION_CREATED`. `armed` and `lastTriggeredAt` are persisted with
-the notification (ADR-007 Deferred detail).
+`Implemented` (ADR-007 point 9): the server evaluates `PRICE` alerts with the
+condition `ABOVE` or `BELOW` on every tick; an alert fires when its condition
+changes from false to true and re-arms when the price moves back past the
+threshold by 0.5%. Each trigger creates a `WARNING` notification (§28) of
+type `ALERT_TRIGGERED` and, after the commit, emits `ALERT_TRIGGERED` and
+`NOTIFICATION_CREATED` to its owner. An alert whose condition is already true
+when it is created or edited does not fire until it re-arms. `armed` and
+`lastTriggeredAt` are persisted with the notification and are not part of the
+alert response. Other alert types are stored but not evaluated.
 
 ## List Alerts
 

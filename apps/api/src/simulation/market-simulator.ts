@@ -1,4 +1,5 @@
 import { publishQuietly } from "@trading/application";
+import type { AlertEvaluator } from "@trading/application";
 import type {
   Clock,
   Logger,
@@ -52,6 +53,11 @@ export interface MarketSimulatorDependencies {
   >;
   historicalPriceRepository: Pick<HistoricalPriceRepository, "getLatestByAssetId" | "create">;
   positionRepository: Pick<PositionRepository, "updateCurrentPriceByAssetId">;
+  /**
+   * Evaluates the alerts of the assets that ticked, once per tick and after their
+   * prices are stored (ADR-007 point 9). It never rejects, so it cannot stop a tick.
+   */
+  alertEvaluator?: AlertEvaluator;
   /** Defaults to a real timer; tests pass one they fire by hand. */
   scheduler?: Scheduler;
   /** Defaults to `EVENT_RETENTION`. */
@@ -99,6 +105,7 @@ export function createMarketSimulator(dependencies: MarketSimulatorDependencies)
     marketEventRepository,
     historicalPriceRepository,
     positionRepository,
+    alertEvaluator,
     scheduler = intervalScheduler,
     eventRetention = EVENT_RETENTION,
     pruneEveryTicks = PRUNE_EVERY_TICKS,
@@ -203,7 +210,8 @@ export function createMarketSimulator(dependencies: MarketSimulatorDependencies)
     }
   }
 
-  async function applyTick(tick: PriceTick): Promise<void> {
+  /** Stores and publishes one tick; false when it could not be stored. */
+  async function applyTick(tick: PriceTick): Promise<boolean> {
     try {
       const market = {
         assetId: tick.assetId,
@@ -228,12 +236,13 @@ export function createMarketSimulator(dependencies: MarketSimulatorDependencies)
         sequence: tick.sequence,
         errorName: errorName(error),
       });
-      return;
+      return false;
     }
 
     await publishQuietly(logger, "MARKET_PRICE_UPDATED", { assetId: tick.assetId }, () =>
       publisher.marketPriceUpdated(tick),
     );
+    return true;
   }
 
   async function pruneOldEvents(ticks: readonly PriceTick[]): Promise<void> {
@@ -270,9 +279,14 @@ export function createMarketSimulator(dependencies: MarketSimulatorDependencies)
       const ticks = current.tick();
       pendingCandles.push(...current.takeClosedCandles());
       await settleCandles(new Set(ticks.map((tick) => tick.assetId)));
+      const stored: PriceTick[] = [];
       for (const tick of ticks) {
-        await applyTick(tick);
+        if (await applyTick(tick)) {
+          stored.push(tick);
+        }
       }
+      // Only prices that were stored can fire an alert, so an alert never fires on a price the API does not hold.
+      await alertEvaluator?.evaluate(stored);
       await pruneOldEvents(ticks);
     } catch (error) {
       logger.error(LOG_EVENTS.simulationTickFailed, { errorName: errorName(error) });

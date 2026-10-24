@@ -18,6 +18,7 @@ import {
   PrismaWatchlistItemRepository,
 } from "@trading/database";
 import {
+  createAlertEvaluator,
   createAlertService,
   createAnalyticsService,
   createAssetService,
@@ -162,8 +163,10 @@ export function buildComposition(
     watchlistRepository: new PrismaWatchlistItemRepository(),
     assetService,
   });
+  const alertRepository = new PrismaAlertRepository();
   const alertService = createAlertService({
-    alertRepository: new PrismaAlertRepository(),
+    alertRepository,
+    marketPriceRepository,
     assetService,
     portfolioService,
   });
@@ -221,6 +224,14 @@ export function buildComposition(
     marketEventRepository: new PrismaMarketEventRepository(),
     historicalPriceRepository,
     positionRepository,
+    alertEvaluator: createAlertEvaluator({
+      alertRepository,
+      assetRepository,
+      unitOfWork,
+      realtimePublisher: publisher,
+      logger,
+      now: () => clock.now(),
+    }),
   });
   const simulationService = createSimulationService({ control: marketSimulator });
 

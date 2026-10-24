@@ -637,7 +637,7 @@ the trigger (ADR-007 point 9 and Deferred detail, `Planned (B5)`).
 
 # 22. Alert
 
-**Status:** `Implemented` — table `alerts`. Trigger state `Planned (B5)`.
+**Status:** `Implemented` — table `alerts`, with the trigger state.
 
 | Field | Type | Null | Default | Notes |
 | --- | --- | --- | --- | --- |
@@ -649,17 +649,23 @@ the trigger (ADR-007 point 9 and Deferred detail, `Planned (B5)`).
 | `condition` | `String` | no | — | open list |
 | `threshold` | `Float` | no | — | not `Money`: not every type is a currency amount |
 | `enabled` | `Boolean` | no | `true` | |
+| `armed` | `Boolean` | no | `true` | edge-trigger state; not in the API response |
+| `lastTriggeredAt` | `DateTime` | yes | — | when it last fired; not in the API response |
 | `createdAt` | `DateTime` | no | `now()` | |
 | `updatedAt` | `DateTime` | no | `@updatedAt` | |
 
 Enum `AlertType` (`alert_type`): `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION`,
 `VOLATILITY`.
 
-`Planned (B5)` per ADR-007 point 9 and Deferred detail: alerts are
-edge-triggered; `armed` and `lastTriggeredAt` are persisted in the same
-transaction as the notification, so a restart does not re-fire them;
-re-arming uses a hysteresis band or cooldown, and the initial state of an
-already-true alert is defined.
+`Implemented` per ADR-007 point 9 and Deferred detail: alerts are
+edge-triggered. Only `PRICE` alerts with an asset and the condition `ABOVE`
+or `BELOW` are evaluated, with a strict comparison. An armed alert fires when
+its condition turns true: `armed` becomes `false` and `lastTriggeredAt` is
+set in the same transaction as the notification, so a restart does not re-fire
+it. A fired alert re-arms when the price moves back past the threshold by 0.5%
+(hysteresis, no cooldown). A new alert, or one whose condition, threshold or
+`enabled` changes, starts disarmed when its condition is already true against
+the current price; the migration baselines the stored alerts the same way.
 
 Open detail (B5): which of `assetId`/`portfolioId` each `type` requires is not
 enforced by the schema; a `PRICE` threshold is a `Float` compared with a
