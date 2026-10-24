@@ -51,7 +51,10 @@ function openApiPath(path: string): string {
   return path.replace(/:([A-Za-z0-9_]+)/g, "{$1}");
 }
 
-function parametersOf(schema: ZodType, location: "path" | "query" | "header"): JsonObject[] {
+function parametersOf(
+  schema: ZodType,
+  location: "path" | "query" | "header" | "cookie",
+): JsonObject[] {
   const object = jsonSchema(schema, "input");
   const { properties = {}, required: requiredNames = [] } = object as {
     properties?: Record<string, JsonObject>;
@@ -86,6 +89,12 @@ function responsesOf(operation: ApiOperation): JsonObject {
         : { content: { "application/json": { schema: jsonSchema(schema, "output") } } }),
     },
   };
+  for (const other of operation.otherResponses ?? []) {
+    responses[String(other.status)] = {
+      description: other.description,
+      content: { "application/json": { schema: jsonSchema(other.schema, "output") } },
+    };
+  }
   for (const errorStatus of ERROR_STATUSES) {
     if (operation.errors.includes(errorStatus)) {
       responses[String(errorStatus)] = {
@@ -113,6 +122,7 @@ function operationObject(operation: ApiOperation): JsonObject {
     ...(operation.params === undefined ? [] : parametersOf(operation.params, "path")),
     ...(operation.query === undefined ? [] : parametersOf(operation.query, "query")),
     ...(operation.headers === undefined ? [] : parametersOf(operation.headers, "header")),
+    ...(operation.cookies === undefined ? [] : parametersOf(operation.cookies, "cookie")),
   ];
   return {
     operationId: operation.operationId,
