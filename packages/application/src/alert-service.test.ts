@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { AlertType, InvalidAlertError, PortfolioStatus } from "@trading/domain";
+import { AlertType, InvalidAlertError, Money, PortfolioStatus } from "@trading/domain";
 import type { Alert } from "@trading/domain";
 import type { Actor } from "./actor.js";
 import { createAlertService } from "./alert-service.js";
@@ -31,6 +31,8 @@ interface Options {
   ownedPortfolios?: string[];
   archivedPortfolios?: string[];
   permissions?: RolePermissions;
+  /** The current price of `a1`; omit it to build the service without a price source. */
+  currentPrice?: string | null;
 }
 
 function build(options: Options = {}) {
@@ -69,6 +71,18 @@ function build(options: Options = {}) {
     },
     assetService: { getAssetById },
     portfolioService: { getPortfolioById },
+    ...(options.currentPrice !== undefined
+      ? {
+          marketPriceRepository: {
+            getByAssetId: () =>
+              Promise.resolve(
+                options.currentPrice == null
+                  ? null
+                  : ({ price: Money.of(options.currentPrice, "USD") } as never),
+              ),
+          },
+        }
+      : {}),
     ...(options.permissions ? { permissions: options.permissions } : {}),
   });
 
@@ -213,5 +227,50 @@ describe("alert service", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(noWrite.updateAlert(actor, "al1", {})).rejects.toBeInstanceOf(ForbiddenError);
     await expect(noWrite.deleteAlert(actor, "al1")).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  describe("edge-trigger baseline", () => {
+    const request = { assetId: "a1", type: AlertType.PRICE, condition: "ABOVE", threshold: 100 };
+
+    it("creates a PRICE alert whose condition is already true disarmed", async () => {
+      const { service, create } = build({ currentPrice: "150" });
+      await service.createAlert(actor, request);
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ armed: false }));
+    });
+
+    it("creates an alert whose condition is false, or with no price yet, armed", async () => {
+      const below = build({ currentPrice: "90" });
+      await below.service.createAlert(actor, request);
+      expect(below.create).toHaveBeenCalledWith(expect.objectContaining({ armed: true }));
+
+      const noPrice = build({ currentPrice: null });
+      await noPrice.service.createAlert(actor, request);
+      expect(noPrice.create).toHaveBeenCalledWith(expect.objectContaining({ armed: true }));
+    });
+
+    it("creates an alert that is not evaluated armed", async () => {
+      const { service, create } = build({ currentPrice: "150" });
+      await service.createAlert(actor, { ...request, condition: "CROSSES" });
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ armed: true }));
+    });
+
+    it("computes the state again when the threshold changes", async () => {
+      const { service, update } = build({ currentPrice: "150" });
+      await service.updateAlert(actor, "al1", { threshold: 120 });
+      expect(update).toHaveBeenCalledWith("al1", { threshold: 120, armed: false });
+      await service.updateAlert(actor, "al1", { threshold: 200 });
+      expect(update).toHaveBeenLastCalledWith("al1", { threshold: 200, armed: true });
+    });
+
+    it("leaves the state alone without a price source or a definition change", async () => {
+      const noSource = build();
+      await noSource.service.updateAlert(actor, "al1", { threshold: 120 });
+      expect(noSource.update).toHaveBeenCalledWith("al1", { threshold: 120 });
+      expect(noSource.create).not.toHaveBeenCalled();
+
+      const unchanged = build({ currentPrice: "150" });
+      await unchanged.service.updateAlert(actor, "al1", {});
+      expect(unchanged.update).toHaveBeenCalledWith("al1", {});
+    });
   });
 });

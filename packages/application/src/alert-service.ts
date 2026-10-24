@@ -1,5 +1,5 @@
-import { validateNewAlert } from "@trading/domain";
-import type { Alert, AlertRepository, AlertType } from "@trading/domain";
+import { initialAlertArmed, priceAlertDirection, validateNewAlert } from "@trading/domain";
+import type { Alert, AlertRepository, AlertType, MarketPriceRepository } from "@trading/domain";
 import type { Actor } from "./actor.js";
 import type { AssetService } from "./asset-service.js";
 import { NotFoundError } from "./errors.js";
@@ -22,6 +22,11 @@ export interface AlertServiceDependencies {
     AlertRepository,
     "listByUserId" | "getById" | "create" | "update" | "delete"
   >;
+  /**
+   * The current price, to baseline the edge-trigger state of an alert that is
+   * created or edited (ADR-007 point 9). Without it the state is left as is.
+   */
+  marketPriceRepository?: Pick<MarketPriceRepository, "getByAssetId">;
   assetService: Pick<AssetService, "getAssetById">;
   portfolioService: Pick<PortfolioService, "getPortfolioById">;
   /** Role matrix; defaults to the application matrix. Tests inject a restricted one. */
@@ -35,10 +40,30 @@ export interface AlertServiceDependencies {
 export function createAlertService(dependencies: AlertServiceDependencies) {
   const {
     alertRepository,
+    marketPriceRepository,
     assetService,
     portfolioService,
     permissions = ROLE_PERMISSIONS,
   } = dependencies;
+
+  /**
+   * Whether an alert with this definition starts armed: a price condition that
+   * is already true against the current price starts disarmed, so it does not
+   * fire without a crossing (D4). Alerts that are not evaluated stay armed.
+   */
+  async function baselineArmed(
+    alert: Pick<Alert, "type" | "assetId" | "condition" | "threshold">,
+  ): Promise<boolean> {
+    const direction = priceAlertDirection(alert);
+
+    if (direction === null || alert.assetId === null || !marketPriceRepository) {
+      return true;
+    }
+
+    const current = await marketPriceRepository.getByAssetId(alert.assetId);
+
+    return initialAlertArmed(direction, alert.threshold, current?.price ?? null);
+  }
 
   /** 404 when the portfolio is not the actor's, 409 when it is archived (ADR-010 point 5). */
   async function assertPortfolioOpen(actor: Actor, portfolioId: string): Promise<void> {
@@ -103,7 +128,11 @@ export function createAlertService(dependencies: AlertServiceDependencies) {
 
     validateNewAlert(createInput);
 
-    return alertRepository.create(createInput);
+    const armed = marketPriceRepository
+      ? await baselineArmed({ ...createInput, assetId: createInput.assetId ?? null })
+      : undefined;
+
+    return alertRepository.create({ ...createInput, ...(armed !== undefined ? { armed } : {}) });
   }
 
   /**
@@ -123,7 +152,22 @@ export function createAlertService(dependencies: AlertServiceDependencies) {
       await assertPortfolioOpen(actor, alert.portfolioId);
     }
 
-    return alertRepository.update(alertId, input);
+    const changesDefinition =
+      input.condition !== undefined || input.threshold !== undefined || input.enabled !== undefined;
+
+    if (!marketPriceRepository || !changesDefinition) {
+      return alertRepository.update(alertId, input);
+    }
+
+    // Editing the definition starts a new edge: the state is computed again from the current price.
+    const armed = await baselineArmed({
+      type: alert.type,
+      assetId: alert.assetId,
+      condition: input.condition ?? alert.condition,
+      threshold: input.threshold ?? alert.threshold,
+    });
+
+    return alertRepository.update(alertId, { ...input, armed });
   }
 
   /** Deletes an alert; ownership is checked first, same rationale as update. */
