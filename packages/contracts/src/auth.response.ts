@@ -25,6 +25,10 @@ export const loginResponseSchema = z.object({
 });
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 
+/** Response shape for GET /api/v1/auth/me: the fresh user, with no session. */
+export const currentUserResponseSchema = z.object({ user: loginResponseSchema.shape.user });
+export type CurrentUserResponse = z.infer<typeof currentUserResponseSchema>;
+
 export interface LoginPresenterInput {
   user: { id: string; email: string; displayName: string; role: UserRole };
   accessToken: string;

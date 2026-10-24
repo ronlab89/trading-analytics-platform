@@ -221,4 +221,32 @@ describe("buildOpenApiDocument", () => {
     ).toEqual(expect.objectContaining({ schema: { type: "integer" } }));
     expect(responses["/api/v1/alerts/{alertId}"].get.responses["404"].headers).toBeUndefined();
   });
+
+  it("describes a cookie parameter and an answer outside the error envelope", () => {
+    const operation = build([
+      {
+        operationId: "probe",
+        method: "get",
+        path: "/api/v1/probe",
+        tag: "Probe",
+        summary: "Probe",
+        authenticated: false,
+        success: { status: 200, description: "Fine." },
+        errors: [],
+        cookies: z.object({ session: z.string() }),
+        otherResponses: [
+          { status: 503, description: "Not ready.", schema: z.object({ status: z.string() }) },
+        ],
+      },
+    ])["paths"]["/api/v1/probe"].get;
+
+    expect(operation.parameters).toEqual([
+      expect.objectContaining({ name: "session", in: "cookie", required: true }),
+    ]);
+    expect(operation.responses["503"].content["application/json"].schema.properties.status).toEqual(
+      {
+        type: "string",
+      },
+    );
+  });
 });

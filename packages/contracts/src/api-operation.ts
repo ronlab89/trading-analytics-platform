@@ -31,6 +31,8 @@ export interface ApiOperation {
   readonly params?: ZodType;
   readonly query?: ZodType;
   readonly headers?: ZodType;
+  /** Cookies the request reads; each key becomes a cookie parameter. */
+  readonly cookies?: ZodType;
   readonly body?: ZodType;
   /** Media type of `body`; JSON when omitted. */
   readonly bodyContentType?: string;
@@ -42,5 +44,11 @@ export interface ApiOperation {
     /** Omitted for a response with no body, such as a 204. */
     readonly schema?: ZodType;
   };
+  /** Answers that are neither the success nor the shared error envelope, such as a 503 health body. */
+  readonly otherResponses?: readonly {
+    readonly status: number;
+    readonly description: string;
+    readonly schema: ZodType;
+  }[];
   readonly errors: readonly ErrorStatus[];
 }
