@@ -702,7 +702,7 @@ Critical information must not exist only inside a toast.
 
 **Status:** `Planned (FE)`; active alerts count shown in the wireframe status bar
 
-Alerts are user-configured conditions of type `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION` or `VOLATILITY` (FR-053). Evaluation is `Planned (B5)`.
+Alerts are user-configured conditions of type `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION` or `VOLATILITY` (FR-053). Evaluation is `Implemented` (B5) for `PRICE` alerts only; the other types are `Deferred`.
 
 - A configured alert stays listed until the user deletes it; deletion requires confirmation (FR-061).
 - A triggered alert creates a notification (§32), which stays discoverable until read.

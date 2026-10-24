@@ -106,7 +106,7 @@ ADR-009 defers metrics. Distribution requires a new ADR.
 
 # 4. High-Level Architecture
 
-**Status:** `Implemented` (current packages); target packages `Planned (B0)` and `Planned (B5)`.
+**Status:** `Implemented` (current packages); target packages `Planned (B0)` and `Implemented` (B5).
 
 pnpm workspace (`pnpm-workspace.yaml`: `apps/*`, `packages/*`). No task
 runner; root scripts use `pnpm -r` and `tsc --build` with project
@@ -119,7 +119,7 @@ references to `packages/domain`, `packages/database` and `apps/api`.
 | `apps/api` | `@trading/api` | `Implemented` |
 | `packages/application` | `@trading/application` | `Planned (B0)` — ADR-001 |
 | `packages/contracts` | `@trading/contracts` | `Planned (B0)` — ADR-002; folder exists with `.gitkeep` only |
-| `@trading/market-sim` | `@trading/market-sim` | `Planned (B5)` — ADR-007 point 7; the package lives at `packages/market-sim` |
+| `@trading/market-sim` | `@trading/market-sim` | `Implemented` (B5) — ADR-007 point 7; the package lives at `packages/market-sim` |
 | `apps/web` | none | `Planned (FE)` — ADR-002 point 5, ADR-006 point 1; wireframe files only, not a workspace package |
 | `packages/config` | none | `Deferred` — `.gitkeep` only; no decision gives it content |
 
@@ -250,7 +250,7 @@ Target (ADR-001):
 
 Later additions to the same package: the `Logger` port (ADR-009 point 1,
 `Implemented`, B3.1), the CSV import use case (ADR-008, `Implemented` (B4)) and
-realtime subscription authorization (ADR-007 point 3, `Planned (B5)`).
+realtime subscription authorization (ADR-007 point 3, `Implemented` (B5)).
 
 ---
 
@@ -340,12 +340,12 @@ down it shows a stale-data indicator and refetches periodically.
 
 # 20. Real-Time Architecture
 
-**Status:** `Planned (B5)` — ADR-007.
+**Status:** `Implemented` (B5) — ADR-007.
 
 - Transport: WebSocket with the `ws` library, behind a transport port.
 - Channels: `market:{assetId}`, `portfolio:{portfolioId}`, `notifications`
   (per user), and `jobs:{jobId}` (ADR-008 point 11). Job events are
-  `Planned (B5)`: the job lifecycle lands in B4, but the events need this
+  `Implemented` (B5): the job lifecycle lands in B4, but the events need this
   B5 transport.
 - Every subscription is authorized in the application layer by permission
   and ownership.
@@ -354,13 +354,13 @@ down it shows a stale-data indicator and refetches periodically.
 - Limits: subscriptions per connection, inbound rate limit, heartbeat every
   30 seconds, bounded memory per connection.
 
-Today the API has no WebSocket server and no `ws` dependency.
+The API serves the WebSocket on its own HTTP server through the `ws` transport adapter (B5).
 
 ---
 
 # 21. Event Model
 
-**Status:** `Planned (B5)`, including job events (§20).
+**Status:** `Implemented` (B5), including job events (§20).
 
 | Event | Emitted when |
 | --- | --- |
@@ -377,7 +377,7 @@ removed (ADR-007 point 6).
 
 # 22. Real-Time State Updates
 
-**Status:** `Planned (B5)` — ADR-007 points 6, 12, 14.
+**Status:** `Implemented` (B5) — ADR-007 points 6, 12, 14.
 
 The client recomputes valuations from price events; the server does not
 push per-portfolio valuations on ticks. `MarketPrice.change` and
@@ -389,7 +389,7 @@ down, the UI shows stale data and refetches over HTTP.
 
 # 23. Real-Time Connection Lifecycle
 
-**Status:** `Planned (B5)` — ADR-007 points 2, 5, 11.
+**Status:** `Implemented` (B5) — ADR-007 points 2, 5, 11.
 
 ```text
 connect -> first message carries access token (closed if absent after 5 s)
@@ -544,13 +544,13 @@ and the position together.
 | Chronological holding check inside the unit | ADR-003 point 6 | `Implemented` (`replayPosition`) |
 | CSV apply in one unit that also sets `COMPLETED` | ADR-008 points 2, 5 | `Implemented` (B4.3) |
 | Idempotency record written in the mutation's unit | ADR-008 Deferred detail | `Implemented` (B4.4) |
-| Alert state and notification in one transaction | ADR-007 Deferred detail | `Planned (B5)` |
+| Alert state and notification in one transaction | ADR-007 Deferred detail | `Implemented` (B5) |
 
 ---
 
 # 31. Event-Driven Capabilities
 
-**Status:** `Planned (B5)` for in-process realtime emission; a message broker is `Deferred`.
+**Status:** `Implemented` (B5) for in-process realtime emission; a message broker is `Deferred`.
 
 Events are emitted in process to the realtime transport after the
 originating write commits (ADR-007 point 6). There is no broker or outbox
@@ -564,7 +564,7 @@ of ADR-007 point 5.
 
 # 32. Background Processing
 
-**Status:** `Implemented` (B4) for jobs; simulator ticks, rollover and backfill `Planned (B5)`.
+**Status:** `Implemented` (B4) for jobs; simulator ticks, rollover and backfill `Implemented` (B5).
 
 - Jobs (ADR-008): one use case, CSV transaction import; an in-process runner
   backed by a `jobs` table; input stored in the row; states `QUEUED`,
@@ -716,7 +716,7 @@ Rules to enforce with lint in B0 (ADR-001 point 1, ADR-002 point 1):
 
 # 44. Dependency Direction
 
-**Status:** `Implemented` (current graph); target graph `Planned (B0)` and `Planned (B5)`; web edge `Planned (FE)`.
+**Status:** `Implemented` (current graph); target graph `Planned (B0)` and `Implemented` (B5); web edge `Planned (FE)`.
 
 Current:
 
@@ -770,7 +770,7 @@ and ships no secrets.
 
 # 48. Demo Simulation Engine
 
-**Status:** `Planned (B5)` — ADR-007 point 7.
+**Status:** `Implemented` (B5) — ADR-007 point 7.
 
 `@trading/market-sim` is one engine for the API and the demo, with the modes
 and scenarios of `12-demo-mode-spec.md` §37-40.
@@ -779,7 +779,7 @@ and scenarios of `12-demo-mode-spec.md` §37-40.
 
 # 49. Simulation Determinism
 
-**Status:** `Planned (B5)` — ADR-007 points 7-8.
+**Status:** `Implemented` (B5) — ADR-007 points 7-8.
 
 Seeded pseudo-random generator and injected clock. In real mode the engine
 initializes from persisted `MarketPrice` and the highest `MarketEvent`
@@ -789,7 +789,7 @@ sequence per asset (ADR-007 Deferred detail).
 
 # 50. Data Flow Example — Transaction
 
-**Status:** `Implemented`, chronological check included; idempotency `Implemented` (B4.4); event `Planned (B5)`.
+**Status:** `Implemented`, chronological check included; idempotency `Implemented` (B4.4); event `Implemented` (B5).
 
 ```text
 POST /api/v1/portfolios/:portfolioId/transactions
@@ -807,7 +807,7 @@ commit (ADR-007 point 6).
 
 # 51. Data Flow Example — Real-Time Price
 
-**Status:** `Planned (B5)` — ADR-007.
+**Status:** `Implemented` (B5) — ADR-007.
 
 ```text
 simulator tick -> update MarketPrice + append MarketEvent

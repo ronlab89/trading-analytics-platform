@@ -125,7 +125,7 @@ Rules:
 3. `q(a, d) ≥ 0` for every `a` and `d`, guaranteed by ADR-003 point 6
    (chronological validation, `Implemented`). Therefore `V(d) ≥ 0`.
 4. The series ends at the last closed UTC day. Candles come from the seed
-   and from the simulator's daily closes (ADR-007 point 8, `Planned (B5)`).
+   and from the simulator's daily closes (ADR-007 point 8, `Implemented` (B5)).
 
 Edge cases:
 
@@ -478,7 +478,7 @@ currentDrawdown = −20%
 
 # 11. Daily Change (`1D`)
 
-**Status:** `Implemented` (`portfolio-daily-change.ts`); tick semantics `Planned (B5)`.  
+**Status:** `Implemented` (`portfolio-daily-change.ts`); tick semantics `Implemented` (B5).  
 **Decisions:** ADR-004 point 5; ADR-007 points 8 and 14.  
 **Requirements:** FR-025.
 
@@ -490,7 +490,7 @@ changePercent = changeValue / previousValue × 100     (0 when previousValue = 0
 
 Inputs: `Position.quantity` (§8 of `05-data-model.md`), `MarketPrice.change`
 and `previousPrice` (§18). `previousPrice` is the last closed daily candle
-(ADR-007, `Planned (B5)` under continuous ticking).
+(ADR-007, `Implemented` (B5) under continuous ticking).
 
 | Case | Expected (`Implemented`) |
 | --- | --- |

@@ -32,7 +32,7 @@ realtime provider (ADR-007 point 13).
 
 # 2. Realtime Technology
 
-**Status:** `Planned (B5)` (ADR-007 point 1)
+**Status:** `Implemented` (B5) (ADR-007 point 1)
 
 The server uses WebSocket through the `ws` library, behind a transport port
 so no other code depends on it. The WebSocket is served by the same HTTP
@@ -118,7 +118,7 @@ WebSocket Transport | In-process demo adapter
 
 # 5. Transport Abstraction
 
-**Status:** client port `Planned (FE)`; server transport port `Planned (B5)` (ADR-007 points 1 and 13)
+**Status:** client port `Planned (FE)`; server transport port `Implemented` (B5) (ADR-007 points 1 and 13)
 
 The client depends on a transport-independent port:
 
@@ -162,7 +162,7 @@ client transport states, not domain entities (`07-api-spec.md` §37).
 
 # 7. Connection Lifecycle
 
-**Status:** client transitions `Planned (FE)`; heartbeat and limits `Planned (B5)` (ADR-007 points 2, 11 and 15)
+**Status:** client transitions `Planned (FE)`; heartbeat and limits `Implemented` (B5) (ADR-007 points 2, 11 and 15)
 
 Client transitions:
 
@@ -184,7 +184,7 @@ Server rules (ADR-007 point 15):
 | Inbound messages per connection | 20 per second |
 | Inbound message size (`maxPayload`) | 64 KiB (65,536 bytes) |
 | Outbound buffer per connection | 1 MB |
-| Concurrent connections per authenticated user (not per IP) | 5, `Planned (B5)` (ADR-005 point 13, ADR-007 point 16); numeric value tuned in B5 |
+| Concurrent connections per authenticated user (not per IP) | 5, `Implemented` (B5) (ADR-005 point 13, ADR-007 point 16); numeric value tuned in B5 |
 
 - When the server closes a socket for exceeding a limit, it uses close
   code `4008` (§9). An excess connection beyond the per-user cap of 5 is
@@ -193,7 +193,7 @@ Server rules (ADR-007 point 15):
   2026-10-07).
 - The WebSocket `maxPayload` is 64 KiB (65,536 bytes) per inbound message,
   an initial value adjustable during B5 if a measured need appears
-  (ADR-007 Deferred detail, amended 2026-10-08, `Planned (B5)`). A larger
+  (ADR-007 Deferred detail, amended 2026-10-08, `Implemented` (B5)). A larger
   frame closes the connection, which is the behavior of the `ws` library.
   The close code for an oversize frame is an open detail of B5: the `ws`
   library closes with 1009 (message too big), and B5 adds a test that sends
@@ -235,7 +235,7 @@ The application never assumes the connection is immediately available.
 
 # 9. Authentication
 
-**Status:** `Planned (B5)` (ADR-007 points 2 and 15, ADR-005)
+**Status:** `Implemented` (B5) (ADR-007 points 2 and 15, ADR-005)
 
 - The first client message carries the access token; the token is never
   put in the URL.
@@ -265,7 +265,7 @@ Protocol (ADR-007 point 15), defined as Zod schemas in `@trading/contracts`:
 |---|---|
 | `4001` | Unauthenticated or invalid token, including the 5-second authentication timeout |
 | `4002` | Token expired without re-authentication |
-| `4008` | Limit exceeded (§7), including an excess connection beyond the per-user cap of 5 (`Planned (B5)`) |
+| `4008` | Limit exceeded (§7), including an excess connection beyond the per-user cap of 5 (`Implemented` (B5)) |
 | `1001` | Server going away |
 
 Open detail (B5): the `ACK` and `ERROR` field shapes and the set of `ERROR`
@@ -275,7 +275,7 @@ codes.
 
 # 10. Channel Model
 
-**Status:** `Planned (B5)` (ADR-007 point 3, ADR-008 point 11)
+**Status:** `Implemented` (B5) (ADR-007 point 3, ADR-008 point 11)
 
 | Channel | Scope | Authorization |
 |---|---|---|
@@ -304,7 +304,7 @@ Feature modules subscribe through the realtime client, never directly.
 
 # 11. Market Data Channel
 
-**Status:** `Planned (B5)` (ADR-007 points 3 and 7)
+**Status:** `Implemented` (B5) (ADR-007 points 3 and 7)
 
 `market:{assetId}` carries `MARKET_PRICE_UPDATED` (§16) from the shared
 simulator. The client subscribes only to the assets it currently shows, not
@@ -314,7 +314,7 @@ to every asset.
 
 # 12. Portfolio Channel
 
-**Status:** `Planned (B5)` (ADR-007 points 3 and 6)
+**Status:** `Implemented` (B5) (ADR-007 points 3 and 6)
 
 `portfolio:{portfolioId}` carries only `PORTFOLIO_UPDATED` (§18), emitted
 when holdings change after a transaction commits. Price-driven valuation
@@ -324,7 +324,7 @@ changes are not pushed; the client recomputes them from market events.
 
 # 13. Job Channel
 
-**Status:** `Planned (B5)` (ADR-008 point 11)
+**Status:** `Implemented` (B5) (ADR-008 point 11)
 
 `jobs:{jobId}` carries the CSV import job events (§20), so the UI follows
 progress without polling. A job can finish before the subscription exists;
@@ -339,7 +339,7 @@ The job lifecycle itself lands in B4 (ADR-008); its events are `Planned
 
 # 14. Event Envelope
 
-**Status:** `Planned (B5)` (ADR-007 points 4 and 5, ADR-002)
+**Status:** `Implemented` (B5) (ADR-007 points 4 and 5, ADR-002)
 
 ```json
 {
@@ -364,7 +364,7 @@ The job lifecycle itself lands in B4 (ADR-008); its events are `Planned
 
 # 15. Event Types
 
-**Status:** `Planned (B5)` (ADR-007 points 6 and 15, ADR-008 point 11)
+**Status:** `Implemented` (B5) (ADR-007 points 6 and 15, ADR-008 point 11)
 
 Catalog, version 1:
 
@@ -386,7 +386,7 @@ ADR-008 point 11). A new event requires a new decision.
 
 # 16. Market Price Event
 
-**Status:** `Planned (B5)` (ADR-007 points 6 and 14, ADR-002)
+**Status:** `Implemented` (B5) (ADR-007 points 6 and 14, ADR-002)
 
 ```json
 {
@@ -428,7 +428,7 @@ events (§16), and holdings changes from `PORTFOLIO_UPDATED` (§18).
 
 # 18. Portfolio Update Event
 
-**Status:** server event `Planned (B5)`; client reaction `Planned (FE)` (ADR-007 point 6)
+**Status:** server event `Implemented` (B5); client reaction `Planned (FE)` (ADR-007 point 6)
 
 ```json
 {
@@ -461,7 +461,7 @@ or `TRANSACTION_COMPLETED` event. Deposits and withdrawals do not exist
 
 # 20. Background Job Events
 
-**Status:** `Planned (B5)` (ADR-008 points 3, 6 and 11, ADR-007 point 15)
+**Status:** `Implemented` (B5) (ADR-008 points 3, 6 and 11, ADR-007 point 15)
 
 Events on `jobs:{jobId}` for CSV import jobs:
 
@@ -499,7 +499,7 @@ Events on `jobs:{jobId}` for CSV import jobs:
 
 # 21. Notification Events
 
-**Status:** server event `Planned (B5)`; client fetch `Planned (FE)` (ADR-007 point 9, ADR-010 point 9)
+**Status:** server event `Implemented` (B5); client fetch `Planned (FE)` (ADR-007 point 9, ADR-010 point 9)
 
 ```json
 {
@@ -520,7 +520,7 @@ through `07-api-spec.md` §28.
 
 # 22. Alert Events
 
-**Status:** `Planned (B5)` (ADR-007 points 9 and 15)
+**Status:** `Implemented` (B5) (ADR-007 points 9 and 15)
 
 ```json
 {
@@ -573,7 +573,7 @@ state and does not advance `lastProcessedSequence`.
 
 # 24. Event Ordering
 
-**Status:** server `Planned (B5)`; client `Planned (FE)` (ADR-007 point 5, NFR-018)
+**Status:** server `Implemented` (B5); client `Planned (FE)` (ADR-007 point 5, NFR-018)
 
 `sequence` is monotonic per channel. The client keeps one
 `lastProcessedSequence` per channel and applies an event only when:
@@ -757,7 +757,7 @@ No ADR selects Zustand; the library is chosen in a frontend-stage decision.
 
 # 35. Market Simulation
 
-**Status:** server simulator `Planned (B5)`; demo adapter `Planned (FE)` (ADR-007 points 7, 8 and 13)
+**Status:** server simulator `Implemented` (B5); demo adapter `Planned (FE)` (ADR-007 points 7, 8 and 13)
 
 There is no external market data provider. One engine, the pure package
 `@trading/market-sim`, produces all prices in both modes:
@@ -780,7 +780,7 @@ There is no external market data provider. One engine, the pure package
 
 # 36. Price Simulation
 
-**Status:** `Planned (B5)` (ADR-007 points 7 and 14, ADR-002)
+**Status:** `Implemented` (B5) (ADR-007 points 7 and 14, ADR-002)
 
 - Prices come from the seeded generator, never from an unseeded random
   source.
@@ -794,7 +794,7 @@ There is no external market data provider. One engine, the pure package
 
 # 37. Simulation Profiles
 
-**Status:** `Planned (B5)` (ADR-007 points 7 and 15)
+**Status:** `Implemented` (B5) (ADR-007 points 7 and 15)
 
 The engine implements the modes and scenarios of `12-demo-mode-spec.md`
 §37 and §39:
@@ -821,7 +821,7 @@ of §40.
 
 # 38. Simulation Timing
 
-**Status:** `Planned (B5)` (ADR-007 points 7, 8 and 15)
+**Status:** `Implemented` (B5) (ADR-007 points 7, 8 and 15)
 
 - Time comes from an injected clock, so tests and the demo can accelerate
   or freeze it (`12-demo-mode-spec.md` §40).
@@ -834,7 +834,7 @@ of §40.
 
 # 39. Simulation Determinism
 
-**Status:** `Planned (B5)`; demo `Planned (FE)` (ADR-007 point 7, NFR-045)
+**Status:** `Implemented` (B5); demo `Planned (FE)` (ADR-007 point 7, NFR-045)
 
 ```text
 seed + mode or scenario + initial state + clock -> same event sequence
@@ -849,7 +849,7 @@ series (NFR-045). After a server restart the engine resumes from persisted
 
 # 40. Simulation Lifecycle
 
-**Status:** `Planned (B5)` (ADR-007 points 8, 10 and 15)
+**Status:** `Implemented` (B5) (ADR-007 points 8, 10 and 15)
 
 ```text
 RUNNING <-> HALTED
@@ -874,7 +874,7 @@ ticking like `pause`, and which mode `start` resumes, are not decided
 
 # 41. Demo Simulation Controls
 
-**Status:** real-mode control `Planned (B5)` (ADR-007 points 10 and 15); demo controls `Deferred` (ADR-010 point 6)
+**Status:** real-mode control `Implemented` (B5) (ADR-007 points 10 and 15); demo controls `Deferred` (ADR-010 point 6)
 
 Real mode: each endpoint requires the `simulation:control` permission
 (`ADMIN` only, ADR-005):
@@ -1021,7 +1021,7 @@ format, defined with the envelope schema in `@trading/contracts`.
 
 # 48. Event Backpressure
 
-**Status:** client `Planned (FE)` (NFR-006); server limits `Planned (B5)` (ADR-007 point 11)
+**Status:** client `Planned (FE)` (NFR-006); server limits `Implemented` (B5) (ADR-007 point 11)
 
 Client:
 
@@ -1080,7 +1080,7 @@ Rendering        -> at most one render per animation frame
 
 # 51. Memory Management
 
-**Status:** client `Planned (FE)`; server per-connection bound `Planned (B5)` (ADR-007 point 11)
+**Status:** client `Planned (FE)`; server per-connection bound `Implemented` (B5) (ADR-007 point 11)
 
 Client:
 
@@ -1099,7 +1099,7 @@ when it overflows (expected: discard it and resynchronize again).
 
 # 52. Subscription Lifecycle
 
-**Status:** client `Planned (FE)`; server subscription handling `Planned (B5)` (ADR-007 points 3 and 11, FR-086)
+**Status:** client `Planned (FE)`; server subscription handling `Implemented` (B5) (ADR-007 points 3 and 11, FR-086)
 
 | Channel | Subscribed while |
 |---|---|
@@ -1146,7 +1146,7 @@ connection already holds (`ACK` or `ERROR`, §9).
 
 # 54. Realtime and Authentication Changes
 
-**Status:** client `Planned (FE)`; server rules `Planned (B5)` (ADR-007 point 2 and Deferred detail, ADR-005 points 6 and 9)
+**Status:** client `Planned (FE)`; server rules `Implemented` (B5) (ADR-007 point 2 and Deferred detail, ADR-005 points 6 and 9)
 
 | Event | Client | Server |
 |---|---|---|
@@ -1171,7 +1171,7 @@ network loss and goes to `RECONNECTING` (§7).
 
 # 55. Security Requirements
 
-**Status:** `Planned (B5)` (ADR-007 points 2, 3 and 11, ADR-005 points 3 and 12, FR-086, NFR-020, NFR-026)
+**Status:** `Implemented` (B5) (ADR-007 points 2, 3 and 11, ADR-005 points 3 and 12, FR-086, NFR-020, NFR-026)
 
 | Requirement | Section |
 |---|---|
@@ -1214,7 +1214,7 @@ Demo identity (role selector) -> Actor -> application-layer checks -> subscripti
 
 # 57. Realtime Error Handling
 
-**Status:** `Planned (FE)`; wire messages and close codes `Planned (B5)` (ADR-007 point 15)
+**Status:** `Planned (FE)`; wire messages and close codes `Implemented` (B5) (ADR-007 point 15)
 
 The realtime client maps transport and protocol errors to one normalized
 error, so feature modules never handle WebSocket objects (ADR-007 point 1):
@@ -1245,7 +1245,7 @@ RealtimeError {
 
 # 58. Observability
 
-**Status:** server logging `Planned (B5)` on the B3 `Logger` port (ADR-009 points 3-5, 9 and 11); client diagnostics `Planned (FE)`; metrics `Deferred` (ADR-009 point 10)
+**Status:** server logging `Implemented` (B5) on the B3 `Logger` port (ADR-009 points 3-5, 9 and 11); client diagnostics `Planned (FE)`; metrics `Deferred` (ADR-009 point 10)
 
 Server:
 
@@ -1278,7 +1278,7 @@ not flood `info` logs, and the final event names, aligned with
 
 # 59. Testing Requirements
 
-**Status:** server `Planned (B5)`; client `Planned (FE)` (NFR-004, NFR-005, NFR-006, NFR-018, NFR-045)
+**Status:** server `Implemented` (B5); client `Planned (FE)` (NFR-004, NFR-005, NFR-006, NFR-018, NFR-045)
 
 Tests use the injected clock and seeded engine, never wall time or
 unseeded randomness.
@@ -1342,7 +1342,7 @@ unseeded randomness.
 
 # 60. Realtime Acceptance Criteria
 
-**Status:** server `Planned (B5)`; client `Planned (FE)`
+**Status:** server `Implemented` (B5); client `Planned (FE)`
 
 The realtime layer is complete when every §59 test passes and:
 
@@ -1424,3 +1424,50 @@ addresses a real engineering problem:
 > How can a high-frequency event stream update only the state that matters, remain consistent when events arrive late or out of order, recover from connection failures, and degrade gracefully when realtime infrastructure is unavailable?
 
 That behavior is part of the product.
+
+---
+
+# 63. Server Measurement (B5)
+
+**Status:** `Implemented` (B5); client measurement `Planned (FE)` (NFR-004, NFR-005, NFR-006); ADR-009 metrics stay `Deferred` (ADR-009 point 10)
+
+What it measures: the server side of one tick, from `marketPriceUpdated` on
+the publisher to the message arriving at a client. One process holds the
+server and every client over real loopback sockets, on a single monotonic
+clock (`performance.now()`). It covers the hub, the gateway and `ws`; it does
+not cover the network, the database or the browser.
+
+Method (`apps/api/src/realtime/measure-realtime.ts`):
+
+```text
+pnpm --filter @trading/api exec tsx src/realtime/measure-realtime.ts <connections> <ticks> [intervalMs]
+```
+
+Every connection is a different user, authenticated with a real token and
+subscribed to `market:a1`. With an interval of `0` the publisher sends ticks
+as fast as the sockets drain (saturation); with `1000` it sends one tick per
+second, the rate of the simulator (§38).
+
+Result, taken on 2026-10-24 (Windows 11, Node.js v24.16.0, one run each, no
+warm-up run, so treat the figures as an order of magnitude):
+
+| Connections | Ticks | Interval | Delivered | p50 | p95 | p99 | max |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 10 | 500 | saturated | 5,000 of 5,000 | 2.3 ms | 5.5 ms | 8.8 ms | 13.0 ms |
+| 100 | 500 | saturated | 50,000 of 50,000 | 16.4 ms | 30.6 ms | 51.5 ms | 129.1 ms |
+| 200 | 500 | saturated | 100,000 of 100,000 | 37.0 ms | 80.7 ms | 109.7 ms | 152.0 ms |
+| 500 | 500 | saturated | 250,000 of 250,000 | 211.5 ms | 381.1 ms | 491.5 ms | 642.7 ms |
+| 100 | 20 | 1 s | 2,000 of 2,000 | 29.3 ms | 69.1 ms | 80.5 ms | 81.3 ms |
+| 500 | 20 | 1 s | 10,000 of 10,000 | 103.7 ms | 159.9 ms | 174.4 ms | 177.7 ms |
+
+Reading it:
+
+- Throughput saturates near 5,500 deliveries per second in one process; the
+  latency of a saturated run is queueing, not the cost of one delivery.
+- At the simulator's real rate (one tick per second for an asset), a tick
+  reaches 100 connections in about 30 ms at the median and 500 in about
+  100 ms. The version 1 target is a local demo with a handful of
+  connections (five per user, §7), far below that.
+- No event was lost or reordered in any run.
+- NFR-004 (100 ms) is measured on the client from receipt to the next frame
+  (NFR-004, FE5); this table is the server share of that path.

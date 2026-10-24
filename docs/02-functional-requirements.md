@@ -373,7 +373,7 @@ Deleting a portfolio archives it: history is preserved.
 ## FR-012 — Display Positions
 
 **Priority:** P0  
-**Status:** API `Implemented` (`GET .../positions`, overview); fees in `averageEntryPrice` `Implemented`; live `currentPrice` `Planned (B5)`; UI `Planned (FE)`  
+**Status:** API `Implemented` (`GET .../positions`, overview); fees in `averageEntryPrice` `Implemented`; live `currentPrice` `Implemented` (B5); UI `Planned (FE)`  
 **Decisions:** ADR-004 point 15; ADR-007 Deferred detail; `16-analytics-spec.md` §12
 
 Each position exposes asset, quantity, average entry price, current price,
@@ -463,7 +463,7 @@ no acceptance criteria of its own.
 ## FR-017 — Create Transaction
 
 **Priority:** P0  
-**Status:** `Implemented` (synchronous, atomic through `UnitOfWork`); position isolation under concurrency `Planned (B0)`; `Idempotency-Key` `Implemented` (B4.4); `PORTFOLIO_UPDATED` event `Planned (B5)`; UI `Planned (FE)`  
+**Status:** `Implemented` (synchronous, atomic through `UnitOfWork`); position isolation under concurrency `Planned (B0)`; `Idempotency-Key` `Implemented` (B4.4); `PORTFOLIO_UPDATED` event `Implemented` (B5); UI `Planned (FE)`  
 **Decisions:** ADR-001 Deferred detail; ADR-003 points 1, 2, 6; ADR-007 point 6; ADR-008 points 8 and 12
 
 A `BUY` or `SELL` is validated (FR-018), persisted, and its position is
@@ -573,7 +573,7 @@ the demo (ADR-001).
   404 and the UI shows "no price" instead of a value.
 - History returns daily candles between `from` and `to`.
 - `change` and `changePercent` are measured against the last closed daily
-  candle (ADR-007 point 14; under continuous ticking `Planned (B5)`).
+  candle (ADR-007 point 14; under continuous ticking `Implemented` (B5)).
 
 ---
 
@@ -611,7 +611,7 @@ the demo (ADR-001).
 ## FR-024 — Watchlist Price Updates
 
 **Priority:** P1  
-**Status:** server events `Planned (B5)`; client `Planned (FE)`  
+**Status:** server events `Implemented` (B5); client `Planned (FE)`  
 **Decisions:** ADR-007 points 3, 5, 6, 12, 13
 
 ### Acceptance criteria
@@ -956,7 +956,7 @@ exists.
 ## FR-044 — Receive Market Updates
 
 **Priority:** P1  
-**Status:** `Planned (B5)`; client `Planned (FE)`  
+**Status:** `Implemented` (B5); client `Planned (FE)`  
 **Decisions:** ADR-007 points 1, 4, 5, 6, 14
 
 ### Acceptance criteria
@@ -975,7 +975,7 @@ exists.
 ## FR-045 — Update Dependent State
 
 **Priority:** P1  
-**Status:** `Planned (B5)`; client recomputation `Planned (FE)`  
+**Status:** `Implemented` (B5); client recomputation `Planned (FE)`  
 **Decisions:** ADR-004 point 1; ADR-007 points 6, 9; `16-analytics-spec.md` §8
 
 ### Acceptance criteria
@@ -1025,7 +1025,7 @@ exists.
 ## FR-048 — Start Market Simulation
 
 **Priority:** P1  
-**Status:** engine and control `Planned (B5)`; demo controls `Planned (FE)`  
+**Status:** engine and control `Implemented` (B5); demo controls `Planned (FE)`  
 **Decisions:** ADR-005 point 2; ADR-007 points 7 and 10; `12-demo-mode-spec.md` §37-§40
 
 ### Acceptance criteria
@@ -1040,7 +1040,7 @@ exists.
 ## FR-049 — Simulated Price Events
 
 **Priority:** P1  
-**Status:** `Planned (B5)`  
+**Status:** `Implemented` (B5)  
 **Decisions:** ADR-007 points 7, 8, 14 and Deferred detail
 
 The simulator generates synthetic prices; it does not represent real market
@@ -1074,7 +1074,7 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-051 — Display Notifications
 
 **Priority:** P1  
-**Status:** API `Implemented` (`GET /api/v1/notifications`, `unreadOnly`); `NOTIFICATION_CREATED` `Planned (B5)`; UI `Planned (FE)`  
+**Status:** API `Implemented` (`GET /api/v1/notifications`, `unreadOnly`); `NOTIFICATION_CREATED` `Implemented` (B5); UI `Planned (FE)`  
 **Decisions:** ADR-007 points 3, 6, 9; ADR-010 point 9
 
 ### Acceptance criteria
@@ -1109,7 +1109,7 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-053 — Alert Conditions
 
 **Priority:** P2  
-**Status:** alert configuration `Implemented` (`/api/v1/alerts`, types `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION`, `VOLATILITY`); evaluation `Planned (B5)`  
+**Status:** alert configuration `Implemented` (`/api/v1/alerts`, types `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION`, `VOLATILITY`); evaluation `Implemented` (B5) for `PRICE` alerts (`ABOVE`, `BELOW`); other types `Deferred`  
 **Decisions:** ADR-007 point 9 and Deferred detail; ADR-010 point 9
 
 ### Acceptance criteria
@@ -1483,7 +1483,7 @@ without manual browser-storage manipulation.
 ## FR-077 — Synchronize Related Views
 
 **Priority:** P1  
-**Status:** client invalidation `Planned (FE)`; `PORTFOLIO_UPDATED` `Planned (B5)`  
+**Status:** client invalidation `Planned (FE)`; `PORTFOLIO_UPDATED` `Implemented` (B5)  
 **Decisions:** ADR-007 point 6
 
 ### Acceptance criteria
@@ -1567,7 +1567,7 @@ into a portfolio as a background job.
 ## FR-081 — Import Job Lifecycle
 
 **Priority:** P1  
-**Status:** `Implemented` (B4.2, B4.4); `jobs:{jobId}` events `Planned (B5)`; UI `Planned (FE)`  
+**Status:** `Implemented` (B4.2, B4.4); `jobs:{jobId}` events `Implemented` (B5); UI `Planned (FE)`  
 **Decisions:** ADR-008 points 3, 5, 6, 7, 9, 11 and Deferred detail; ADR-010 point 9
 
 ### Acceptance criteria
@@ -1699,7 +1699,7 @@ into a portfolio as a background job.
 ## FR-086 — Realtime Session and Subscriptions
 
 **Priority:** P1  
-**Status:** `Planned (B5)`  
+**Status:** `Implemented` (B5)  
 **Decisions:** ADR-007 points 2, 3, 11 and Deferred detail
 
 ### Acceptance criteria
@@ -1821,19 +1821,19 @@ This applies equally to the full stack and to the public demo.
 | FR-009 | `Implemented` (permission check, B2.2) | ADR-004 p12; ADR-005 p2 | B2, FE |
 | FR-010 | `Implemented` | `05` §43 | FE |
 | FR-011 | `Implemented` (archive); read-only `Planned (B0)` | ADR-010 p5 | B0, FE |
-| FR-012 | `Implemented`; `Planned (B5)` | ADR-004 p15; ADR-007 | B1, B5, FE |
+| FR-012 | `Implemented`; `Implemented` (B5) | ADR-004 p15; ADR-007 | B1, B5, FE |
 | FR-013 | `Implemented` | ADR-001 p6 | FE |
 | FR-014 | `Implemented` | ADR-003 p4; ADR-004 p15 | B1, FE |
 | FR-015 | Satisfied by FR-016 and FR-020 | ADR-010 p2 | — |
 | FR-016 | `Implemented` | ADR-003 p1 | FE |
-| FR-017 | `Implemented`; `Planned (B0)`, `Planned (B5)` | ADR-001; ADR-003; ADR-007 p6; ADR-008 p8, 12 | B0, B4, B5, FE |
+| FR-017 | `Implemented`; `Planned (B0)`, `Implemented` (B5) | ADR-001; ADR-003; ADR-007 p6; ADR-008 p8, 12 | B0, B4, B5, FE |
 | FR-018 | `Implemented`; `Planned (B0)` | ADR-003 p6; ADR-004 p2, 12 | B0, B1 |
 | FR-019 | `Implemented` | — | FE |
 | FR-020 | `Implemented`; `Planned (B7)` | — | B7, FE |
 | FR-021 | `Implemented`; parts `Deferred` | ADR-007 p14 | FE |
 | FR-022 | `Implemented` | `05` §17 | FE |
 | FR-023 | `Implemented` | — | FE |
-| FR-024 | `Planned (B5)` | ADR-007 p3, 5, 12, 13 | B5, FE |
+| FR-024 | `Implemented` (B5) | ADR-007 p3, 5, 12, 13 | B5, FE |
 | FR-025 | `Implemented` | ADR-004 p1-6, 14; `16` §2-8 | B1 |
 | FR-026 | `Implemented`; UI `Planned (FE)` | ADR-004 p1, 4, 7; `16` §3, §7 | B1, FE |
 | FR-027 | `Implemented`; sector `Deferred` | ADR-004 p12-13; `16` §13 | — |
@@ -1853,16 +1853,16 @@ This applies equally to the full stack and to the public demo.
 | FR-041 | `Deferred` | — | — |
 | FR-042 | `Implemented` | — | FE |
 | FR-043 | `Implemented` | — | FE |
-| FR-044 | `Planned (B5)` | ADR-007 p1, 4-6, 14 | B5, FE |
-| FR-045 | `Planned (B5)` | ADR-004 p1; ADR-007 p6, 9 | B5, FE |
+| FR-044 | `Implemented` (B5) | ADR-007 p1, 4-6, 14 | B5, FE |
+| FR-045 | `Implemented` (B5) | ADR-004 p1; ADR-007 p6, 9 | B5, FE |
 | FR-046 | `Planned (FE)` | ADR-007 p2, 11-12 | FE |
 | FR-047 | `Planned (FE)` | ADR-007 p2, 5 | FE |
-| FR-048 | `Planned (B5)` | ADR-005 p2; ADR-007 p7, 10 | B5, FE |
-| FR-049 | `Planned (B5)` | ADR-007 p7-8, 14 | B5 |
+| FR-048 | `Implemented` (B5) | ADR-005 p2; ADR-007 p7, 10 | B5, FE |
+| FR-049 | `Implemented` (B5) | ADR-007 p7-8, 14 | B5 |
 | FR-050 | `Deferred` | ADR-007 p8, ADR-010 p6 | — |
-| FR-051 | `Implemented`; `Planned (B5)` | ADR-007 p3, 6, 9; ADR-010 p9 | B5, FE |
+| FR-051 | `Implemented`; `Implemented` (B5) | ADR-007 p3, 6, 9; ADR-010 p9 | B5, FE |
 | FR-052 | `Implemented` | ADR-010 p3, 9 | FE |
-| FR-053 | `Implemented`; `Planned (B5)` | ADR-007 p9; ADR-010 p9 | B5, FE |
+| FR-053 | `Implemented`; `Implemented` (B5) | ADR-007 p9; ADR-010 p9 | B5, FE |
 | FR-054 | `Deferred` | — | — |
 | FR-055 | `Planned (FE)`; server sort `Deferred` | ADR-010 p4 | FE |
 | FR-056 | `Implemented` | ADR-002 p2 | FE |
@@ -1886,7 +1886,7 @@ This applies equally to the full stack and to the public demo.
 | FR-074 | `Implemented`; `Planned (B0)` | ADR-001; ADR-008 p2, 5 | B0, B4 |
 | FR-075 | `Implemented` | ADR-008 p6, 8 | B4, FE |
 | FR-076 | `Planned (FE)` | — | FE |
-| FR-077 | `Planned (FE)`; `Planned (B5)` | ADR-007 p6 | B5, FE |
+| FR-077 | `Planned (FE)`; `Implemented` (B5) | ADR-007 p6 | B5, FE |
 | FR-078 | `Planned (FE)` | — | FE |
 | FR-079 | `Planned (FE)` | — | FE |
 | FR-080 | `Implemented` | ADR-008 p1-2, 4, 9-10, 13; ADR-003 p6; ADR-004 p12 | B4, FE |
@@ -1895,7 +1895,7 @@ This applies equally to the full stack and to the public demo.
 | FR-083 | Backend `Implemented` (B2.4), its log events `Implemented` (B3.3); client `Planned (FE)` | ADR-005 p4-7, 9; ADR-009 p9 | B2, FE |
 | FR-084 | `Implemented` (B0, B2.1, B2.2) | ADR-005 p1-3, 10-12 | B0, B2 |
 | FR-085 | `Implemented` | ADR-004 p1, 4, 6-7; `16` §2, §5, §8 | B1 |
-| FR-086 | `Planned (B5)` | ADR-007 p2-3, 11 | B5 |
+| FR-086 | `Implemented` (B5) | ADR-007 p2-3, 11 | B5 |
 | FR-087 | `Implemented`; language validation `Planned (B0)`; UI `Planned (FE)` | ADR-010 p8, `05` §23 | B0, FE |
 
 ---

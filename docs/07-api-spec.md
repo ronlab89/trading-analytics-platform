@@ -39,7 +39,7 @@ point 5), `Planned (FE)`.
 | 7 | Filtering and sorting where required. | `Implemented` per endpoint |
 | 8 | `Idempotency-Key` where duplicates are dangerous (ADR-008 point 8). | `Implemented` on transaction creation and import creation (§13, §14, §39) |
 | 9 | Versioned contracts, additive changes only within a version (ADR-002 point 8); OpenAPI generated from the schemas (ADR-002 point 7). | `Implemented` for versioning; OpenAPI `Planned (B6)` |
-| 10 | Realtime events are separate from HTTP responses (`08-realtime-spec.md`). | `Planned (B5)` |
+| 10 | Realtime events are separate from HTTP responses (`08-realtime-spec.md`). | `Implemented` (B5) |
 
 Wire format (ADR-002 point 3), `Implemented`; enforced by the response schemas
 and presenters of `@trading/contracts`:
@@ -902,7 +902,7 @@ Returns 200 `{ "data": asset }`. Errors: 404 `NOT_FOUND`.
 
 ## Asset Price
 
-**Status:** `Implemented` (FR-021); change semantics against the last closed candle `Planned (B5)` (ADR-007 point 14)
+**Status:** `Implemented` (FR-021); change semantics against the last closed candle `Implemented` (B5) (ADR-007 point 14)
 
 ```text
 GET /api/v1/assets/:assetId/price
@@ -932,7 +932,7 @@ messages; assets have no ownership to protect).
 
 # 18. Historical Market Data
 
-**Status:** `Implemented` (FR-021); daily candle closing by the simulator `Planned (B5)` (ADR-007 point 8)
+**Status:** `Implemented` (FR-021); daily candle closing by the simulator `Implemented` (B5) (ADR-007 point 8)
 
 ```text
 GET /api/v1/assets/:assetId/history
@@ -957,7 +957,7 @@ another `interval`); 404 `NOT_FOUND` (asset). Intraday intervals
 
 # 19. Market Data Batch Endpoint
 
-**Status:** `Implemented`; realtime updates (FR-044) `Planned (B5)` (§31-§33)
+**Status:** `Implemented`; realtime updates (FR-044) `Implemented` (B5) (§31-§33)
 
 ```text
 GET /api/v1/market/prices?assetIds=id1,id2
@@ -1526,7 +1526,7 @@ watchlist (including a repeated removal).
 
 # 27. Alerts API
 
-**Status:** `Implemented` (configuration, FR-053); evaluation `Planned (B5)` (ADR-007 point 9); archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Implemented` (B2; ADR-005)
+**Status:** `Implemented` (configuration, FR-053); evaluation `Implemented` (B5) (ADR-007 point 9); archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Implemented` (B2; ADR-005)
 
 All endpoints require a Bearer token (§9) and are scoped to the caller:
 another user's alert is 404 `NOT_FOUND`. Alerts are managed in the Alerts
@@ -1626,7 +1626,7 @@ Returns 204. Errors: 404 `NOT_FOUND`.
 
 # 28. Notifications API
 
-**Status:** `Implemented` (FR-051, FR-052); notification creation `Planned (B5)` (ADR-007, ADR-010 point 9)
+**Status:** `Implemented` (FR-051, FR-052); notification creation `Implemented` (B5) (ADR-007, ADR-010 point 9)
 
 All endpoints require a Bearer token (§9) and are scoped to the caller:
 another user's notification is 404 `NOT_FOUND`. A notification is `unread`
@@ -1640,7 +1640,7 @@ point 3).
 | `POST /api/v1/notifications/read-all` | `Implemented` |
 
 There is no `POST /api/v1/notifications`: notifications come from system
-events only, and nothing creates them yet. `Planned (B5)` (ADR-010 point
+events only. `Implemented` (B4.3, B5) (ADR-010 point
 9, ADR-008 point 6): sources are triggered alerts (`WARNING`) and CSV import
 jobs reaching `COMPLETED` (`SUCCESS`), `FAILED` or `TIMED_OUT` (`ERROR`);
 `CANCELLED` jobs and connection changes create none. Creation emits `NOTIFICATION_CREATED` (§31).
@@ -1816,7 +1816,7 @@ answers 503 at once, runs no query, and the body has no `checks`:
 
 # 31. Realtime API
 
-**Status:** `Planned (B5)` (ADR-007)
+**Status:** `Implemented` (B5) (ADR-007)
 
 Realtime is separate from the HTTP API. The full protocol lives in
 `08-realtime-spec.md`; §31-§38 only summarize it.
@@ -1837,7 +1837,7 @@ Realtime is separate from the HTTP API. The full protocol lives in
 
 # 32. Realtime Event Envelope
 
-**Status:** `Planned (B5)` (ADR-007 point 4)
+**Status:** `Implemented` (B5) (ADR-007 point 4)
 
 Defined as Zod schemas in `@trading/contracts`; money follows ADR-002.
 
@@ -1860,7 +1860,7 @@ Payloads are specified in `08-realtime-spec.md`.
 
 # 33. Market Price Event
 
-**Status:** `Planned (B5)` (ADR-007 point 6)
+**Status:** `Implemented` (B5) (ADR-007 point 6)
 
 `MARKET_PRICE_UPDATED` on `market:{assetId}`. Prices and price changes are
 money in the ADR-002 wire format (`{ "amount": "<decimal string>",
@@ -1871,7 +1871,7 @@ Payload: `08-realtime-spec.md`.
 
 # 34. Portfolio Event
 
-**Status:** `Planned (B5)` (ADR-007 point 6)
+**Status:** `Implemented` (B5) (ADR-007 point 6)
 
 `PORTFOLIO_UPDATED` on `portfolio:{portfolioId}`, emitted only when holdings
 change (after a transaction commits). It does not carry the full portfolio;
@@ -1882,7 +1882,7 @@ the client refetches through HTTP. `TRANSACTION_CREATED`,
 
 # 35. Job Progress Event
 
-**Status:** `Planned (B5)` (ADR-008 point 11)
+**Status:** `Implemented` (B5) (ADR-008 point 11)
 
 `JOB_PROGRESS_UPDATED` and the other job events on `jobs:{jobId}`, for CSV
 import jobs. Job states are those of ADR-008 point 3.
@@ -1891,7 +1891,7 @@ import jobs. Job states are those of ADR-008 point 3.
 
 # 36. Notification Event
 
-**Status:** `Planned (B5)` (ADR-007 point 6)
+**Status:** `Implemented` (B5) (ADR-007 point 6)
 
 `NOTIFICATION_CREATED` on `notifications`, scoped to the authenticated user.
 The client fetches the notification through §28.
@@ -1900,7 +1900,7 @@ The client fetches the notification through §28.
 
 # 37. Realtime Connection Events
 
-**Status:** `Planned (B5)` (ADR-007 point 12)
+**Status:** `Implemented` (B5) (ADR-007 point 12)
 
 The client port exposes a normalized connection state (connected,
 reconnecting, disconnected). These are transport states, not domain
@@ -1912,7 +1912,7 @@ refetches through HTTP until it reconnects. State names are defined in
 
 # 38. Event Ordering
 
-**Status:** `Planned (B5)` (ADR-007 point 5)
+**Status:** `Implemented` (B5) (ADR-007 point 5)
 
 `sequence` is monotonic per channel. The client ignores events where:
 
@@ -2074,7 +2074,7 @@ resource
 | Login | `POST /api/v1/auth/login` | 5 attempts per 15 minutes |
 
 Exceeding a limit returns 429 `RATE_LIMITED` with the normalized error body. Health
-routes are not rate-limited. Realtime inbound limits are `Planned (B5)`
+routes are not rate-limited. Realtime inbound limits are `Implemented` (B5)
 (ADR-007 point 11).
 
 ---

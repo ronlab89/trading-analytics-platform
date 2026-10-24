@@ -149,7 +149,7 @@ Decided constraint: the access token lives in memory only (ADR-005 point 4).
 - Request and response schemas move to `@trading/contracts` in B0
   (ADR-002 points 1-2).
 - The realtime envelope is a Zod schema in `@trading/contracts`
-  (`Planned (B5)`, ADR-007 point 4).
+  (`Implemented` (B5), ADR-007 point 4).
 - Responses are validated in contract tests, not at runtime in production
   (ADR-002 point 6).
 
@@ -179,7 +179,7 @@ free to use and need no paid API (§49).
 Node.js, `engines.node >=24.0.0`. The API runs in development with `tsx`
 `4.23.13` (`tsx watch`) and is started with `node dist/index.js`. Background
 jobs run in the API process (`Implemented` (B4), ADR-008 point 4); the realtime
-server runs in it too (`Planned (B5)`, ADR-007).
+server runs in it too (`Implemented` (B5), ADR-007).
 
 Open detail (B7): the production build path is fixed in B7 (ADR-006 point 3).
 The pinned Node major (`24`, LTS) lives in `.nvmrc` and is reused by CI
@@ -236,7 +236,7 @@ Open detail (B6): whether and how the generated document is served.
 
 # 22. Realtime
 
-**Status:** `Planned (B5)` — ADR-007 point 1.
+**Status:** `Implemented` (B5) — ADR-007 point 1.
 
 ## WebSockets
 
@@ -387,7 +387,7 @@ Service Worker) is part of the design.
 
 # 32. Simulation Engine
 
-**Status:** `Planned (B5)` — ADR-007 point 7.
+**Status:** `Implemented` (B5) — ADR-007 point 7.
 
 `@trading/market-sim`: a pure, deterministic engine with a seeded
 pseudo-random generator and an injected clock, depending only on
@@ -465,7 +465,7 @@ pnpm workspaces (`apps/*`, `packages/*`). `packageManager` is
 
 # 38. Repository Structure
 
-**Status:** `Implemented` for the current tree; new packages `Planned (B0)` and `Planned (B5)`.
+**Status:** `Implemented` for the current tree; new packages `Planned (B0)` and `Implemented` (B5).
 
 ```text
 apps/
@@ -613,7 +613,7 @@ public demo. Nothing requires a paid service.
 
 # 47. External Financial APIs
 
-**Status:** `Implemented` (none used); simulator price source `Planned (B5)` — ADR-007; external provider `Deferred`.
+**Status:** `Implemented` (none used); simulator price source `Implemented` (B5) — ADR-007; external provider `Deferred`.
 
 The application depends on no financial data API. In both real and demo
 mode prices come from the simulator; seed data is `MOCK`.
@@ -711,8 +711,8 @@ ADR already names is added in that ADR's block.
 | CI | GitHub Actions | — | `Implemented` | ADR-006 point 10 |
 | Logging | pino, pino-pretty | 10.4.0, 13.2.0 | `Implemented` (B3.1) | ADR-009 point 2 |
 | Request logging | In-repo middleware over the `Logger` port; `pino-http` not adopted | — | `Implemented` (B3.2) | ADR-009 point 2 |
-| Realtime | ws | — | `Planned (B5)` | ADR-007 point 1 |
-| Simulation | `@trading/market-sim` | — | `Planned (B5)` | ADR-007 point 7 |
+| Realtime | ws | — | `Implemented` (B5) | ADR-007 point 1 |
+| Simulation | `@trading/market-sim` | — | `Implemented` (B5) | ADR-007 point 7 |
 | API docs | OpenAPI from Zod `toJSONSchema` | — | `Planned (B6)` | ADR-002 point 7 |
 | Infrastructure | API Dockerfile, `full` profile | — | `Planned (B7)` | ADR-006 point 4 |
 | Frontend build | Vite | — | `Planned (FE)` | ADR-006 point 8 |
@@ -748,7 +748,7 @@ technology under a port can change without changing product behavior.
 - CI runs without paid services (free for public repositories). `Implemented`
 - Sessions with refresh tokens and permission-based roles. `Implemented` (B0, B2)
 - Structured logging. `Implemented` (B3)
-- WebSocket realtime with the shared simulator. `Planned (B5)`
+- WebSocket realtime with the shared simulator. `Implemented` (B5)
 - Generated OpenAPI. `Planned (B6)`
 - Containerized production-like local run. `Planned (B7)`
 - The public demo runs entirely on in-process infrastructure. `Planned (FE)`

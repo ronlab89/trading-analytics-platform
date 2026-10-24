@@ -80,7 +80,7 @@ How each question is answered in version 1:
 | --- | --- | --- |
 | 2.1 What happened? | Structured JSON log events (§6-8) | `Implemented` (B3.1) for the logger and the error entries; request entries `Implemented` (B3.2) |
 | 2.2 Where did it happen? | `requestId` on responses and error bodies | `Implemented` |
-| | `requestId` on every log line of a request; `jobId`, `connectionId` (§9-10) | `requestId` `Implemented` (B3.2); `jobId` `Implemented` (B4.2), `connectionId` `Planned (B5)` (ADR-009 point 5) |
+| | `requestId` on every log line of a request; `jobId`, `connectionId` (§9-10) | `requestId` `Implemented` (B3.2); `jobId` `Implemented` (B4.2), `connectionId` `Implemented` (B5) (ADR-009 point 5) |
 | 2.3 Why did it happen? | Central error handler with safe responses (§12) | `Implemented` |
 | | Logging by error category, with the stack for internal errors | `Implemented` (B3.1) (ADR-009 point 6) |
 | 2.4 Is the system healthy? | `GET /health` and `GET /health/ready` | `Implemented` |
@@ -171,7 +171,7 @@ Code vs ADR:
 - The abstraction is the `Logger` interface in `@trading/application` (ADR-009 point 1). The API supplies a `pino` adapter and the demo a browser-console adapter, so application code logs without knowing where it runs. `@trading/application` itself does not exist yet; it is created in B0 (ADR-001 point 1), and the port is added in B3.
 - `@trading/domain` has no logging today and no ADR gives it a logger: it returns values or throws errors, and the application layer decides what to log (ADR-001).
 - The "Application/Domain" box assumes application services. Today services in `apps/api/src/services` call Prisma repositories directly (ADR-001 moves them in B0).
-- The "Background jobs" box is the in-process job runner of ADR-008 (`Implemented` (B4.2)). The "WebSocket" box is the realtime server of ADR-007 (`Planned (B5)`).
+- The "Background jobs" box is the in-process job runner of ADR-008 (`Implemented` (B4.2)). The "WebSocket" box is the realtime server of ADR-007 (`Implemented` (B5)).
 - "External / Mock infra" has no server-side counterpart: the API calls no external service. Mock infrastructure is the demo (`Planned (FE)`, ADR-010 point 6).
 - The "Metrics" branch is `Deferred` (ADR-009 point 10). Version 1 has logs and health checks only.
 
@@ -315,13 +315,13 @@ Code vs ADR:
 - The levels of `FORBIDDEN`, `RATE_LIMITED` and `DEPENDENCY_ERROR` are decided: `warn`, `warn` and `error` with the stack (ADR-009 point 6, amended 2026-10-07). `Implemented` (B3.1).
 - ADR-009 fixes no level for the startup, shutdown or simulator entries (§23, §56). The startup and shutdown entries log at `info` (decided in B3.4); the simulator entries stay an open detail (B5).
 - `TRACE` is not part of the decided levels. `pino` supports it, but no configuration uses it.
-- Some examples above belong to later stages. Retries: the job runner retries only on request (ADR-008 point 6, B4); HTTP client retries are decided in the frontend-stage ADR (ADR-006 point 11). Simulated failures and demo scenarios are demo features (`Planned (FE)`, ADR-010 point 6) and log through the browser-console adapter (ADR-009 point 1). WebSocket events are `Planned (B5)`; their per-event level is an open detail of `08-realtime-spec.md` §58.
+- Some examples above belong to later stages. Retries: the job runner retries only on request (ADR-008 point 6, B4); HTTP client retries are decided in the frontend-stage ADR (ADR-006 point 11). Simulated failures and demo scenarios are demo features (`Planned (FE)`, ADR-010 point 6) and log through the browser-console adapter (ADR-009 point 1). WebSocket events are `Implemented` (B5); their per-event level is an open detail of `08-realtime-spec.md` §58.
 
 ---
 
 # 7. Structured Log Schema
 
-**Status:** `Implemented` (B3.1, B3.2) for the fields of the API; `jobId` `Implemented` (B4.2) and `connectionId` `Planned (B5)` (ADR-009 points 3 and 5)
+**Status:** `Implemented` (B3.1, B3.2) for the fields of the API; `jobId` `Implemented` (B4.2) and `connectionId` `Implemented` (B5) (ADR-009 points 3 and 5)
 
 A common base schema should be used whenever possible.
 
@@ -412,14 +412,14 @@ The convention is a guide, not a fixed length: ADR-009 uses two segments (`job.f
 | --- | --- | --- |
 | `http.request.completed` | ADR-009 point 3 (request logs) | `Implemented` (B3.2) |
 | `http.request.failed` (every failed request, level by `errorCategory`), `health.database.unavailable` (readiness failure) | ADR-009 point 6 | `Implemented` (B3.1) |
-| `auth.login.succeeded`, `auth.login.failed`, `authz.denied` | ADR-009 point 9, `09-security-spec.md` §50 | `Implemented` (B3.3); `authz.denied` on role checks, and on realtime subscriptions `Planned (B5)` |
+| `auth.login.succeeded`, `auth.login.failed`, `authz.denied` | ADR-009 point 9, `09-security-spec.md` §50 | `Implemented` (B3.3); `authz.denied` on role checks, and on realtime subscriptions `Implemented` (B5) |
 | `auth.refresh.reuse_detected` | ADR-009 point 9, ADR-005 | Reuse detection `Implemented` (B2.4); the event `Implemented` (B3.3) |
 | `auth.logout` | ADR-009 point 9 (amended 2026-10-07) | Endpoint `Implemented` (B2.4); the event `Implemented` (B3.3) |
 | `app.startup.started`, `app.startup.completed` | ADR-009 point 11 (startup entries added 2026-10-07), mirroring the shutdown pair | `Implemented` (B3.4) |
 | `app.shutdown.started`, `app.shutdown.completed`, `app.shutdown.step_failed` | ADR-009 point 11, ADR-006 point 12; `step_failed` is a B3.4 addition for a step that fails | `Implemented` (B3.4) |
-| `simulation.started`, `simulation.paused`, `simulation.mode.changed` | ADR-009 point 11, ADR-007 point 15 | `Planned (B5)` |
+| `simulation.started`, `simulation.paused`, `simulation.mode.changed` | ADR-009 point 11, ADR-007 point 15 | `Implemented` (B5) |
 | `job.*` (transitions) | ADR-009 point 11, ADR-008 | `Implemented` (B4.2) |
-| `realtime.*` (connect, authenticate, close) | ADR-009 point 11, ADR-007, `08-realtime-spec.md` §58 | `Planned (B5)` |
+| `realtime.*` (connect, authenticate, close) | ADR-009 point 11, ADR-007, `08-realtime-spec.md` §58 | `Implemented` (B5) |
 | `demo.*` | ADR-010 point 6 | `Planned (FE)` |
 | `portfolio.*`, `position.*`, `transaction.*`, `analytics.*` | none yet | Illustrative; defined with each feature |
 
@@ -486,7 +486,7 @@ Code vs ADR:
 
 # 10. Operation Correlation
 
-**Status:** `jobId` `Implemented` (B4.2) and `connectionId` `Planned (B5)`, both on the B3 logger (ADR-009 point 5); a generic `operationId` `Deferred`
+**Status:** `jobId` `Implemented` (B4.2) and `connectionId` `Implemented` (B5), both on the B3 logger (ADR-009 point 5); a generic `operationId` `Deferred`
 
 A request ID is not always sufficient.
 
@@ -515,10 +515,10 @@ Code vs ADR: ADR-009 point 5 does not introduce a generic `operationId`. It uses
 | Work | Identifier | Status |
 | --- | --- | --- |
 | Background job (CSV import) | `jobId` (ADR-008) | `Implemented` (B4.2) |
-| Realtime connection | `connectionId` (ADR-007) | `Planned (B5)` |
+| Realtime connection | `connectionId` (ADR-007) | `Implemented` (B5) |
 | HTTP request | `requestId` (§9) | `Implemented`; in log lines `Implemented` (B3.2) |
 
-Several items in the list above are not asynchronous in version 1. Transactions stay synchronous (ADR-008 point 12) and analytics are computed inside the request, so `requestId` covers both; the reconstruction of the analytics series is timed separately (ADR-009 point 8). The only job in version 1 is the CSV import (ADR-008 point 1); there is no export job. Simulated market processing runs in the simulator (`Planned (B5)`, ADR-007). A generic `operationId` stays `Deferred` until a workflow needs one.
+Several items in the list above are not asynchronous in version 1. Transactions stay synchronous (ADR-008 point 12) and analytics are computed inside the request, so `requestId` covers both; the reconstruction of the analytics series is timed separately (ADR-009 point 8). The only job in version 1 is the CSV import (ADR-008 point 1); there is no export job. Simulated market processing runs in the simulator (`Implemented` (B5), ADR-007). A generic `operationId` stays `Deferred` until a workflow needs one.
 
 ---
 
@@ -810,7 +810,7 @@ Version 1 answers the same questions with log events and health checks:
 | --- | --- | --- |
 | Request behavior, errors, duration | `http.request.completed` with `durationMs`; error logs by category; slow-request `warn` (§6-8) | `Implemented` (B3.1 and B3.2) (ADR-009 points 2, 6 and 8) |
 | Database health | `GET /health/ready` (§22-23) | `Implemented` |
-| Realtime behavior | Connection lifecycle log events (§8) | `Planned (B5)` (ADR-009 point 11) |
+| Realtime behavior | Connection lifecycle log events (§8) | `Implemented` (B5) (ADR-009 point 11) |
 | Background jobs | Job transition log events (§8) | `Implemented` (B4.2) (ADR-009 point 11) |
 | Demo simulations | Browser-console adapter (ADR-009 point 1) | `Planned (FE)` |
 | Performance | §25-27 | Per section |
@@ -881,7 +881,7 @@ Code vs ADR: the version 1 counterpart of these counters is the event stream of 
 
 # 19. Realtime Metrics
 
-**Status:** `Deferred` (ADR-009 point 10); connection lifecycle logging `Planned (B5)` (ADR-009 point 11)
+**Status:** `Deferred` (ADR-009 point 10); connection lifecycle logging `Implemented` (B5) (ADR-009 point 11)
 
 The realtime layer requires specific instrumentation.
 
@@ -913,7 +913,7 @@ The implementation must avoid unbounded per-user or per-event metric dimensions.
 
 Code vs ADR:
 
-- No realtime server exists yet (ADR-007, `Planned (B5)`).
+- The realtime server is `Implemented` (B5, ADR-007).
 - In version 1 the server logs connection events with a `connectionId` (ADR-009 points 5 and 11): connect, authenticate and close. Event names and per-event logging are open in `08-realtime-spec.md` §58 (§8).
 - Close codes make closures diagnosable without counters: `4001` unauthenticated or invalid token, `4002` token expired, `4008` limit exceeded, `1001` server going away (ADR-007 point 15).
 - Reconnect attempts happen in the client (ADR-007 point 12); the server only sees new connections.
@@ -1183,7 +1183,7 @@ Code vs ADR:
 
 # 28. Realtime Debugging
 
-**Status:** server connection logging `Planned (B5)` (ADR-009 point 11, `08-realtime-spec.md` §58); client diagnostics `Planned (FE)`; a development realtime debug mode `Deferred` to the frontend-stage ADR (ADR-009 point 12)
+**Status:** server connection logging `Implemented` (B5) (ADR-009 point 11, `08-realtime-spec.md` §58); client diagnostics `Planned (FE)`; a development realtime debug mode `Deferred` to the frontend-stage ADR (ADR-009 point 12)
 
 The realtime subsystem should expose enough diagnostic information to understand connection behavior.
 
@@ -1217,15 +1217,15 @@ The list above mixes protocol messages, client states and log entries. What each
 
 | Item | Version 1 counterpart | Status |
 | --- | --- | --- |
-| `CONNECT`, `DISCONNECT`, `RECONNECT` | Client connection states `DISCONNECTED`, `CONNECTING`, `CONNECTED`, `RECONNECTING`, `FAILED` (`08-realtime-spec.md` §6); server connect and close log entries with a `connectionId` | Client `Planned (FE)`; server `Planned (B5)` |
-| `SUBSCRIBE` | Client message `SUBSCRIBE` (also `AUTHENTICATE`, `UNSUBSCRIBE`), answered by `ACK` or `ERROR` (ADR-007 point 15); a refused subscription is logged as `authz.denied` | `Planned (B5)` |
-| `ERROR` | `ERROR` reply with a `code`, or a close code `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | `Planned (B5)` |
+| `CONNECT`, `DISCONNECT`, `RECONNECT` | Client connection states `DISCONNECTED`, `CONNECTING`, `CONNECTED`, `RECONNECTING`, `FAILED` (`08-realtime-spec.md` §6); server connect and close log entries with a `connectionId` | Client `Planned (FE)`; server `Implemented` (B5) |
+| `SUBSCRIBE` | Client message `SUBSCRIBE` (also `AUTHENTICATE`, `UNSUBSCRIBE`), answered by `ACK` or `ERROR` (ADR-007 point 15); a refused subscription is logged as `authz.denied` | `Implemented` (B5) |
+| `ERROR` | `ERROR` reply with a `code`, or a close code `4001`, `4002`, `4008`, `1001` (ADR-007 point 15) | `Implemented` (B5) |
 | `SYNC` | Resynchronization through HTTP after a gap, a reconnect or an epoch change (ADR-007 point 5, `08-realtime-spec.md` §26) | `Planned (FE)` |
 | `EVENT_RECEIVED`, `EVENT_APPLIED` | Client-side processing; the client counts dropped (invalid) events (`08-realtime-spec.md` §58) | `Planned (FE)` |
 
 Code vs ADR:
 
-- No realtime code exists: no `ws` dependency and no socket server in `apps/api` (ADR-007, `Planned (B5)`).
+- The server side is `Implemented` (B5): `ws` behind the transport port in `apps/api` (ADR-007).
 - The example previously showed `price.updated`. Wire event types are `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`, `NOTIFICATION_CREATED`, `ALERT_TRIGGERED` and the three job events `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` (ADR-007 point 6, ADR-008 point 11). They are a different namespace from log event names (§8).
 - Server log event names and the level of per-event entries are open in `08-realtime-spec.md` §58 (B5), so continuous ticks (one per second, ADR-007 point 15) do not flood `info` logs.
 - The access token of an `AUTHENTICATE` message and payloads with user data are never logged (ADR-009 point 4 and Deferred detail, `08-realtime-spec.md` §58). The envelope `id` identifies an event in logs and diagnostics (`08-realtime-spec.md` §47).
@@ -1289,17 +1289,17 @@ What each item is in version 1:
 
 | Item | Version 1 counterpart | Status |
 | --- | --- | --- |
-| Current scenario | Scenario wire IDs `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY` (ADR-007 point 15) | Engine `Planned (B5)`; demo scenario control `Deferred` |
-| Simulation mode | Mode wire IDs `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH` (ADR-007 point 15) | Engine `Planned (B5)` |
-| Realtime simulation state | Real-mode lifecycle `RUNNING <-> HALTED`; `PAUSED` is only a mode ID (ADR-007 point 16, `08-realtime-spec.md` §40) | `Planned (B5)`; demo lifecycle `Deferred` |
-| Deterministic seed | Always present: the engine is seeded (ADR-007 point 7) | `Planned (B5)` |
+| Current scenario | Scenario wire IDs `STABLE_MARKET`, `BULLISH_SESSION`, `VOLATILE_SESSION`, `SHARP_DRAWDOWN`, `RECOVERY` (ADR-007 point 15) | Engine `Implemented` (B5); demo scenario control `Deferred` |
+| Simulation mode | Mode wire IDs `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH` (ADR-007 point 15) | Engine `Implemented` (B5) |
+| Realtime simulation state | Real-mode lifecycle `RUNNING <-> HALTED`; `PAUSED` is only a mode ID (ADR-007 point 16, `08-realtime-spec.md` §40) | `Implemented` (B5); demo lifecycle `Deferred` |
+| Deterministic seed | Always present: the engine is seeded (ADR-007 point 7) | `Implemented` (B5) |
 | Latency and failure profiles | Demo specifics (ADR-010 point 6) | `Deferred` |
 | Background jobs | The CSV import job and its state (ADR-008 points 3 and 13) | `Planned (FE)` |
 | Persistence state | Namespaced browser storage (ADR-006 point 7) | `Planned (FE)` |
 
 Code vs ADR:
 
-- `@trading/market-sim` does not exist yet (ADR-007 point 7, B5); the API and the demo will share it.
+- `@trading/market-sim` is `Implemented` (B5, ADR-007 point 7); the API uses it and the demo will share it.
 - An explicit demo diagnostics interface is deferred to the demo ADR (ADR-009 point 12, amended 2026-10-07; ADR-010 point 6); `12-demo-mode-spec.md` §75 lists the same items as optional. `Deferred`.
 
 ---
@@ -1339,7 +1339,7 @@ The tooling is decided: `pino` JSON lines on the API's stdout, `pino-pretty` in 
 | --- | --- | --- |
 | Request IDs in logs | `requestId` on every log line of a request (ADR-009 point 5) | `Implemented` (B3.2) |
 | Error events | Category logging (ADR-009 point 6) | `Implemented` (B3.1) as `http.request.failed` entries, level by category |
-| Realtime events | Connection lifecycle entries (§28) | `Planned (B5)` |
+| Realtime events | Connection lifecycle entries (§28) | `Implemented` (B5) |
 | Background jobs | Job transition entries (§20) | `Implemented` (B4.2) |
 | Demo simulations | Browser-console adapter (§29), not the API logs | `Planned (FE)` |
 | Health: API, Database | `GET /health`, `GET /health/ready` (§22-23) | `Implemented` |
@@ -1474,7 +1474,7 @@ This allows future distributed tracing to be introduced without changing domain 
 | Concept | Version 1 counterpart | Status |
 | --- | --- | --- |
 | Request ID | `requestId` (§9) | `Implemented`; in every log line `Implemented` (B3.2) |
-| Operation ID | `jobId`, `connectionId`; no generic `operationId` (§10) | `Implemented` (B4.2), `Planned (B5)`; `operationId` `Deferred` |
+| Operation ID | `jobId`, `connectionId`; no generic `operationId` (§10) | `Implemented` (B4.2), `Implemented` (B5); `operationId` `Deferred` |
 | Parent/child relationships | None decided. Whether a job's log entries also carry the `requestId` of the request that created it is decided in B4.2: the entries written while a request is served (`job.queued`, `job.cancelled`) carry its `requestId`, and the runner's entries do not | `Implemented` (B4.2) |
 | Duration | `durationMs` (ADR-009 point 3, §26) | `Implemented` (B3.2, B3.3) |
 | Service/module boundaries | `service` is adopted; `source` and `module` are not adopted in v1 (ADR-009 point 3, §7) | `service` `Implemented` (B3.1); `source`, `module` not adopted |
@@ -1832,7 +1832,7 @@ Code vs ADR:
 
 # 44. Observability and Security Events
 
-**Status:** `Implemented` (B3.3) for login, refresh reuse, logout and role checks; `authz.denied` on realtime subscriptions `Planned (B5)` (ADR-009 point 9, ADR-005 point 5, `09-security-spec.md` §50)
+**Status:** `Implemented` (B3.3) for login, refresh reuse, logout and role checks; `authz.denied` on realtime subscriptions `Implemented` (B5) (ADR-009 point 9, ADR-005 point 5, `09-security-spec.md` §50)
 
 Security-relevant events should be observable.
 
@@ -1866,7 +1866,7 @@ The list previously used other names. What each became:
 | `auth.login.failure` | `auth.login.failed`, at `warn`, no fields whatever the cause (`09-security-spec.md` §51) | `Implemented` (B3.3) |
 | `auth.logout` | `auth.logout`, at `info`, with `userId` only (ADR-009 point 9, amended 2026-10-07); the logout service returns the `userId` (ADR-005 point 6) | `Implemented` (B3.3) |
 | `auth.token.refresh.failure` | Only reuse of a rotated refresh token has an event, `auth.refresh.reuse_detected`, at `warn`, with `userId` and `familyId` (ADR-005 point 5); other refresh failures have none (ADR-009 point 9); the refresh service answers all of them with one 401 | `Implemented` (B3.3) |
-| `auth.authorization.denied` | `authz.denied`, at `warn`, with `userId`, `role` and `permission` | `Implemented` (B3.3) on role checks; `Planned (B5)` on realtime subscriptions |
+| `auth.authorization.denied` | `authz.denied`, at `warn`, with `userId`, `role` and `permission` | `Implemented` (B3.3) on role checks; `Implemented` (B5) on realtime subscriptions |
 
 Code vs ADR:
 
@@ -1914,7 +1914,7 @@ Code vs ADR:
 - The security events of §44 are the version 1 trail for security-relevant actions; they live in the operational log, so they are as transient as it is (§46).
 - Two audit examples have no counterpart in version 1: transactions are immutable, with no update or delete endpoint (ADR-003, `07-api-spec.md`), and roles come from the seed, with no role-change endpoint (ADR-005 point 10).
 - User-visible activity (the Activity view, notifications) is a product feature, not an audit record and not an operational log (ADR-009 Context).
-- "Websocket disconnected" is a realtime connection entry, `Planned (B5)` (§28).
+- "Websocket disconnected" is a realtime connection entry, `Implemented` (B5) (§28).
 
 ---
 
@@ -2005,7 +2005,7 @@ They should be used to identify issues rather than to create artificial benchmar
 Code vs ADR:
 
 - `GET /health` returns `status`, `service` and `timestamp`, not uptime or memory (`apps/api/src/controllers/health.controller.ts`).
-- The server will count WebSocket connections per user to enforce the cap of 5 (ADR-005 point 13, ADR-007 point 16, `Planned (B5)`). That count is an enforcement limit, not an exposed metric.
+- The server will count WebSocket connections per user to enforce the cap of 5 (ADR-005 point 13, ADR-007 point 16, `Implemented` (B5)). That count is an enforcement limit, not an exposed metric.
 
 ---
 
@@ -2025,7 +2025,7 @@ Examples of measurements that could be established:
 
 No baseline should be documented as a project result until it has actually been measured.
 
-Code vs ADR: no baseline has been measured. From B3, request and analytics-series durations appear as `durationMs` in log entries (ADR-009 points 3 and 8), which is enough to measure by hand. Realtime processing is `Planned (B5)` and frontend timing `Planned (FE)` (§27).
+Code vs ADR: no baseline has been measured. From B3, request and analytics-series durations appear as `durationMs` in log entries (ADR-009 points 3 and 8), which is enough to measure by hand. Realtime processing is `Implemented` (B5) and frontend timing `Planned (FE)` (§27).
 
 ---
 
@@ -2103,7 +2103,7 @@ How version 1 meets the list: logs go to stdout with no in-memory event store (A
 
 # 55. Realtime Event Sampling
 
-**Status:** not decided (open detail, B5, `08-realtime-spec.md` §58); product processing of every event `Planned (B5)` / `Planned (FE)`
+**Status:** not decided (open detail, B5, `08-realtime-spec.md` §58); product processing of every event `Implemented` (B5) / `Planned (FE)`
 
 High-frequency realtime events may require sampling for diagnostics.
 
@@ -2127,7 +2127,7 @@ Code vs ADR: the simulator ticks once per second (ADR-007 point 15). No ADR adop
 
 # 56. Demo Realtime Logging
 
-**Status:** real-mode simulator entries `Planned (B5)` (ADR-009 point 11); demo logging `Planned (FE)` through the browser-console `Logger` adapter (ADR-009 point 1); demo event names `Deferred` with the demo specifics (ADR-010 point 6)
+**Status:** real-mode simulator entries `Implemented` (B5) (ADR-009 point 11); demo logging `Planned (FE)` through the browser-console `Logger` adapter (ADR-009 point 1); demo event names `Deferred` with the demo specifics (ADR-010 point 6)
 
 Demo mode should make simulated realtime behavior understandable without flooding the console.
 
@@ -2145,9 +2145,9 @@ What each name maps to in the simulator lifecycle (`RUNNING <-> HALTED`, ADR-007
 
 | Name | Version 1 counterpart | Status |
 | --- | --- | --- |
-| `simulation.started` | `POST /api/v1/simulation/start`: `HALTED` -> `RUNNING` (ADR-009 point 11) | `Planned (B5)` |
-| `simulation.paused` | `POST /api/v1/simulation/pause`: `RUNNING` -> `HALTED`. The name follows the endpoint, not the lifecycle state; it is unrelated to the `PAUSED` mode wire ID (ADR-009 point 11) | `Planned (B5)` |
-| `simulation.mode.changed` | `PUT /api/v1/simulation/mode`; the name follows the endpoint (ADR-009 point 11, ADR-007 point 15) | `Planned (B5)` |
+| `simulation.started` | `POST /api/v1/simulation/start`: `HALTED` -> `RUNNING` (ADR-009 point 11) | `Implemented` (B5) |
+| `simulation.paused` | `POST /api/v1/simulation/pause`: `RUNNING` -> `HALTED`. The name follows the endpoint, not the lifecycle state; it is unrelated to the `PAUSED` mode wire ID (ADR-009 point 11) | `Implemented` (B5) |
+| `simulation.mode.changed` | `PUT /api/v1/simulation/mode`; the name follows the endpoint (ADR-009 point 11, ADR-007 point 15) | `Implemented` (B5) |
 | `simulation.resumed` | No separate transition: `start` from `HALTED` is the resume, so the name is not adopted (ADR-009 point 11) | Not adopted |
 | `simulation.stopped` | Real mode has no stop (ADR-007 point 15), so the name is not adopted for real mode; a demo stop or reset belongs to the demo ADR | Not adopted; demo stop `Deferred` (ADR-010 point 6) |
 | `simulation.error` | No ADR defines simulator errors; deferred until they are defined (ADR-009 point 11, Deferred detail) | `Deferred` (B5) |
@@ -2222,7 +2222,7 @@ ADR-009 point 11 lists the lifecycle events of version 1: startup, graceful shut
 | --- | --- | --- |
 | `database.recovered` | Readiness is stateless: each `GET /health/ready` runs `SELECT 1` (`apps/api/src/services/health.service.ts`) and nothing remembers the previous answer. A recovery entry needs that memory, which is a poller: there is no entry in v1 (ADR-009 point 11 and Deferred detail) | `Deferred` (B7); reconsidered when the API healthcheck exists |
 | `dependency.recovered` | PostgreSQL is the only dependency (§57), so this name would repeat `database.recovered` | Not adopted in v1 (ADR-009 point 11) |
-| `realtime.reconnected` | For the server a reconnect is a new connection with a new `connectionId` (ADR-009 point 5), logged as a connection event (ADR-009 point 11); it is not linked to the earlier connection in v1 (decided 2026-10-08, ADR-009 point 5), so entries are correlated by `userId`. The client exposes its reconnect attempts through its diagnostics (`08-realtime-spec.md` §58) | Server entry `Planned (B5)`; client diagnostics `Planned (FE)`; the name is not decided (`08-realtime-spec.md` §58) |
+| `realtime.reconnected` | For the server a reconnect is a new connection with a new `connectionId` (ADR-009 point 5), logged as a connection event (ADR-009 point 11); it is not linked to the earlier connection in v1 (decided 2026-10-08, ADR-009 point 5), so entries are correlated by `userId`. The client exposes its reconnect attempts through its diagnostics (`08-realtime-spec.md` §58) | Server entry `Implemented` (B5); client diagnostics `Planned (FE)`; the name is not decided (`08-realtime-spec.md` §58) |
 | `job.retry` | A retry sends the job back to `QUEUED` with `attempt` + 1, on request through `POST /api/v1/jobs/:jobId/retry` (ADR-008 points 6 and 9); no automatic retry is decided. It is a job transition, so ADR-009 point 11 covers it | Entry `job.queued` with the new `attempt` (`Implemented`, B4.2) |
 | Startup recovery of jobs (not in the list) | `PROCESSING` -> `FAILED` (`INTERRUPTED`) and `QUEUED` resumed on startup (ADR-008 point 5) | `Implemented` (B4.2) as `job.failed` with reason `INTERRUPTED` |
 | `demo.failure.recovered` | Simulated failures are a demo specific | `Deferred` (ADR-010 point 6) |
@@ -2290,7 +2290,7 @@ Where each group stands:
 | Errors | Route tests assert error codes, and the 404 test asserts `requestId` in the body (`apps/api/src/app.test.ts`). `error-handler.test.ts` covers the response and the `http.request.failed` entry of every branch (level, fields, stack only at `error`, nothing leaked in the response). No test covers the `X-Request-ID` header | Logging by category `Implemented` (B3.1) (ADR-009 point 6); the error handler tests belong to B3 (decided 2026-10-19) |
 | Metrics | None | `Deferred` (ADR-009 point 10) |
 | Health | No test covers `GET /health` or `GET /health/ready` | `Planned (B0)` as a health route test in the B0 set (ADR-001 point 8, ADR-009 point 13; NFR-051, §22) |
-| Realtime | None | Server `Planned (B5)`, client `Planned (FE)` (`08-realtime-spec.md` §59) |
+| Realtime | None | Server `Implemented` (B5), client `Planned (FE)` (`08-realtime-spec.md` §59) |
 | Demo | None | `Deferred` with the demo specifics, including failures and reset (ADR-010 point 6); tooling waits for the frontend-stage ADR (ADR-006 point 11) |
 
 Code vs ADR:
@@ -2406,7 +2406,7 @@ Code vs ADR:
 
 - No web app and no E2E tool exist. Playwright and the component test runner are chosen in the frontend-stage ADR (ADR-006 point 11); until then they stay `Deferred` and block nothing in B0-B7 (`10-testing-strategy.md` §53).
 - The API half of the first scenario (an invalid transaction returns a validation error) is covered today by route tests that assert `VALIDATION_ERROR` (`apps/api/src/routes/transactions.routes.test.ts`); the UI half is `Planned (FE)`.
-- The realtime scenario needs the server (`Planned (B5)`) and the client (`Planned (FE)`). The simulated disconnect is a client test that drops the socket through a transport test double (`08-realtime-spec.md` §42); a demo control for it is `Deferred` (ADR-010 point 6).
+- The realtime scenario needs the server (`Implemented` (B5)) and the client (`Planned (FE)`). The simulated disconnect is a client test that drops the socket through a transport test double (`08-realtime-spec.md` §42); a demo control for it is `Deferred` (ADR-010 point 6).
 - "Traceable during development" depends on `requestId` reaching the log lines, `Implemented` (B3.2).
 
 ---
@@ -2550,7 +2550,7 @@ What each step is in version 1:
 | 3. Perform an operation | `requestId` on every response and error body is `Implemented`. `durationMs` and `result` come from `http.request.completed`, `Implemented` (B3.2). A generic `operation` field is not an ADR-009 field (§7, §10) | `Implemented` (B3.2) |
 | 4. Inject a failure | A controlled demo failure is a demo specific | `Deferred` (ADR-010 point 6) |
 | 5. Inspect recovery | The demo failure is `Deferred`. A real retry-and-recovery chain exists for a CSV import job: `FAILED`, retry, `COMPLETED` (§58) | Demo `Deferred`; job chain `Implemented` (B4.2) |
-| 6. Demonstrate realtime | Server events `Planned (B5)`; client states and reconnect `Planned (FE)` (§28) | `Planned (B5)` / `Planned (FE)` |
+| 6. Demonstrate realtime | Server events `Implemented` (B5); client states and reconnect `Planned (FE)` (§28) | `Implemented` (B5) / `Planned (FE)` |
 | 7. Show health | `GET /health` and `GET /health/ready` (§22-23) answer in the real API (`Implemented`). The public demo is a static build with no backend (ADR-006 points 1 and 7), so it has no health endpoint | API `Implemented`; demo build has none |
 
 Code vs ADR: `12-demo-mode-spec.md` §89 and `10-testing-strategy.md` §64 cover the same demonstration from the demo and testing sides; the order here is a suggestion, not a requirement.
@@ -2584,7 +2584,7 @@ The repository should document:
 | How to inspect health | `GET /health` and `GET /health/ready`, specified in `07-api-spec.md` §30 | `Implemented`; also in `README.md` ("Run the API") |
 | How to inspect metrics | There are none in version 1 | `Deferred` (ADR-009 point 10) |
 | How to simulate failures | Demo failures are `Deferred` (ADR-010 point 6); client test faults are `Planned (FE)` (`08-realtime-spec.md` §43). On the API, stopping PostgreSQL makes readiness return 503 (§57) | Mixed, as listed |
-| How to inspect realtime events | Server connection entries `Planned (B5)`; client diagnostics `Planned (FE)` (§28) | `Planned (B5)` / `Planned (FE)` |
+| How to inspect realtime events | Server connection entries `Implemented` (B5); client diagnostics `Planned (FE)` (§28) | `Implemented` (B5) / `Planned (FE)` |
 | How to reproduce common failures | The troubleshooting table below (B3.5) covers the failures the API logs; the dependency failure was reproduced against an unreachable database. Demo failures stay `Deferred` | `Implemented` (B3.5) |
 
 Code vs ADR:
@@ -2736,7 +2736,7 @@ The core application should not need to know which provider is being used.
 | Safe error handling | Generic 500 body, detail in the server log only (`apps/api/src/middleware/error-handler.ts`) | `Implemented` |
 | Health checks | `GET /health`, `GET /health/ready` | `Implemented` |
 | Bounded metrics | No metrics | `Deferred` (ADR-009 point 10) |
-| Realtime diagnostics | Server connection entries; client diagnostics | `Planned (B5)` / `Planned (FE)` |
+| Realtime diagnostics | Server connection entries; client diagnostics | `Implemented` (B5) / `Planned (FE)` |
 | Configurable verbosity | `LOG_LEVEL` (ADR-009 point 7) | `Implemented` (B3.1) |
 
 Code vs ADR:
@@ -2840,7 +2840,7 @@ How version 1 meets the list:
 | Domain | Domain events where useful | None in v1: events reach realtime through the `RealtimePublisher` port of the application layer (ADR-007 point 17, decided 2026-10-08), and the `Logger` port sits in the application layer, so the domain package logs nothing | Decided: no domain events in v1 |
 | Infrastructure | Dependency errors and performance | Dependency errors reach the error handler; no query timing (§21) | Dependency error logging `Implemented` (B3.1); query timing `Deferred` (ADR-009 point 8) |
 | API | Request correlation, status, duration | `requestId` middleware (`Implemented`); `http.request.completed` with `durationMs` (ADR-009 points 2-3) | Correlation `Implemented`; request logs `Implemented` (B3.2) |
-| Realtime | Connection/event lifecycle | Connection entries with `connectionId` (ADR-009 points 5 and 11) | `Planned (B5)` |
+| Realtime | Connection/event lifecycle | Connection entries with `connectionId` (ADR-009 points 5 and 11) | `Implemented` (B5) |
 | Database | Connectivity and operation diagnostics | Readiness `SELECT 1` (`Implemented`); no operation diagnostics (§21) | Connectivity `Implemented`; operation timing and query logging `Deferred` (ADR-009 point 8) |
 | Demo infrastructure | Simulation lifecycle and failures | Browser-console adapter; lifecycle and failure names wait for the demo ADR (§29, §56) | `Planned (FE)`; names `Deferred` |
 | Observability layer | Logging, metrics, sanitization, correlation | `Logger` port, pino adapter and redaction; metrics are `Deferred` | `Implemented` (B3.1); metrics `Deferred` |
@@ -3003,7 +3003,7 @@ How each question is answered in version 1:
 | 7. Did the system recover? | Job entries sharing a `jobId` (§58). There is no database recovery entry in v1 (ADR-009 point 11); the name of the realtime reconnect entry is not decided (§58) | Jobs `Implemented` (B4.2); database recovery entry `Deferred` (B7); reconnect name not decided |
 | 8. What was the approximate operation duration? | `durationMs` on `http.request.completed`; the series reconstruction is timed separately (ADR-009 point 8) | Requests `Implemented` (B3.2); series reconstruction `Implemented` (B3.3) |
 | 9. Was a dependency involved? | PostgreSQL is the only dependency. Readiness reports it; a request that fails because of it returns 503 `DEPENDENCY_ERROR` (ADR-002 point 10) | Readiness `Implemented`; 503 `Implemented` (B0); log classification `Implemented` (B3.1) |
-| 10. Can the same failure be reproduced locally? | The project is local only (ADR-006), the database can be reseeded (`README.md`), the simulator is seeded (ADR-007 point 7, `Planned (B5)`), and PostgreSQL can be stopped. Scripted demo failures are `Deferred` (ADR-010 point 6) | Local reproduction `Implemented`; scripted failures `Deferred` |
+| 10. Can the same failure be reproduced locally? | The project is local only (ADR-006), the database can be reseeded (`README.md`), the simulator is seeded (ADR-007 point 7, `Implemented` (B5)), and PostgreSQL can be stopped. Scripted demo failures are `Deferred` (ADR-010 point 6) | Local reproduction `Implemented`; scripted failures `Deferred` |
 
 Code vs ADR:
 

@@ -222,7 +222,7 @@ can be cancelled. See FR-011.
 
 # 7. Positions
 
-**Status:** API `Implemented`; fees in average entry price `Implemented`; live current price `Planned (B5)`; UI `Planned (FE)`
+**Status:** API `Implemented`; fees in average entry price `Implemented`; live current price `Implemented` (B5); UI `Planned (FE)`
 
 Positions represent the user's current holdings. A position shows asset,
 quantity, average entry price, current price, current value, unrealized P/L,
@@ -257,7 +257,7 @@ model is in `05-data-model.md`.
 
 ## 8.1 Transaction Workflow
 
-**Status:** `Implemented` (validate, persist, recalculate position); `PORTFOLIO_UPDATED` event `Planned (B5)`; UI and demo `Planned (FE)`
+**Status:** `Implemented` (validate, persist, recalculate position); `PORTFOLIO_UPDATED` event `Implemented` (B5); UI and demo `Planned (FE)`
 
 ```text
 Open form
@@ -296,7 +296,7 @@ not require real market data (ADR-007). See FR-019, FR-020 and FR-021.
 
 # 10. Watchlist
 
-**Status:** API `Implemented` (add, remove); live price updates `Planned (B5)`; UI `Planned (FE)`
+**Status:** API `Implemented` (add, remove); live price updates `Implemented` (B5); UI `Planned (FE)`
 
 Users keep a watchlist of assets: they add and remove assets, see current
 simulated prices and price changes, and navigate to asset details. See
@@ -431,7 +431,7 @@ See FR-036 to FR-043. Duplicate is parked (FR-041).
 
 # 16. Real-Time Experience
 
-**Status:** `Planned (B5)`; client `Planned (FE)`
+**Status:** `Implemented` (B5); client `Planned (FE)`
 
 The platform pushes simulated market updates and the UI updates without a
 page refresh (ADR-007). On each price event the client recomputes position
@@ -445,7 +445,7 @@ and reconnection: FR-044, FR-046, FR-047 and FR-086.
 
 # 17. Market Simulation
 
-**Status:** engine and control `Planned (B5)`; demo controls `Planned (FE)`; demo isolation `Deferred`
+**Status:** engine and control `Implemented` (B5); demo controls `Planned (FE)`; demo isolation `Deferred`
 
 A deterministic market simulator (`@trading/market-sim`) reproduces a
 real-time system without paid market-data services; the API and the demo
@@ -458,7 +458,7 @@ FR-049 and FR-050.
 
 # 18. Notifications and Alerts
 
-**Status:** notifications API `Implemented` (list, unread filter, mark read, mark all read); alert configuration `Implemented`; alert evaluation and realtime notification events `Planned (B5)`; UI `Planned (FE)`
+**Status:** notifications API `Implemented` (list, unread filter, mark read, mark all read); alert configuration `Implemented`; alert evaluation (`PRICE` alerts, `ABOVE` and `BELOW`) and realtime notification events `Implemented` (B5); evaluation of the other alert types `Deferred`; UI `Planned (FE)`
 
 Notifications correspond to actual application events, never decoration. A
 notification is `unread` or `read`; there is no `dismissed` state (ADR-010
@@ -471,7 +471,7 @@ FR-053.
 
 # 19. States and Feedback
 
-**Status:** API states `Implemented` (empty results, error envelope); UI states `Planned (FE)`; connection states `Planned (B5)`; simulated timeouts and connection loss in the demo `Deferred`
+**Status:** API states `Implemented` (empty results, error envelope); UI states `Planned (FE)`; connection states `Implemented` (B5); simulated timeouts and connection loss in the demo `Deferred`
 
 Every major workflow defines its relevant states: loading (FR-057), empty
 (FR-058), error and retry (FR-059, FR-075), success (FR-060), confirmation

@@ -112,7 +112,7 @@ interaction on the seeded dataset.
 ## NFR-004 — Market Update Propagation
 
 **Priority:** P1  
-**Status:** `Planned (B5)` (server); `Planned (FE)` (client)
+**Status:** `Implemented` (B5) (server); `Planned (FE)` (client)
 
 ### Target
 
@@ -148,7 +148,7 @@ components render), plus a profiler check during continuous ticking.
 ## NFR-006 — Burst Handling
 
 **Priority:** P2  
-**Status:** `Planned (B5)` (server limits); `Planned (FE)` (client batching)
+**Status:** `Implemented` (B5) (server limits); `Planned (FE)` (client batching)
 
 ### Target
 
@@ -325,7 +325,7 @@ component tests for error and retry states.
 ## NFR-014 — Partial Failure Isolation
 
 **Priority:** P1  
-**Status:** `Planned (B5)` (server); `Planned (FE)` (client)
+**Status:** `Implemented` (B5) (server); `Planned (FE)` (client)
 
 ### Target
 
@@ -406,7 +406,7 @@ B4 state-transition tests for timeout; client tests with a delayed mock.
 ## NFR-018 — Real-Time Reconnection
 
 **Priority:** P1  
-**Status:** `Planned (B5)` (server); `Planned (FE)` (client)
+**Status:** `Implemented` (B5) (server); `Planned (FE)` (client)
 
 ### Target
 
@@ -1282,7 +1282,7 @@ demo module.
 
 **Priority:** P1  
 **Status:** real-mode seed `Implemented` (`packages/database/src/seed`);
-deterministic simulator `Planned (B5)` (ADR-007 point 7); demo dataset
+deterministic simulator `Implemented` (B5) (ADR-007 point 7); demo dataset
 `Deferred` (ADR-010 point 6)
 
 ### Target
