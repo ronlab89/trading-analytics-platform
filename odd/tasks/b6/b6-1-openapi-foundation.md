@@ -23,9 +23,9 @@ odd/tasks/b6/**
 
 ## Tasks
 
-- [ ] T1 `ApiOperation` type, the error component and the bearer security scheme.
-- [ ] T2 `buildOpenApiDocument` over `toJSONSchema` (check the target for OpenAPI 3.1 against the installed Zod), with the three sample operations.
-- [ ] T3 Tag `validate()` with its schema and source.
+- [x] T1 `ApiOperation` type (`api-operation.ts`), with the error statuses 400, 401, 403, 404, 409, 413, 429 and 500. Commit 026d354.
+- [x] T2 `buildOpenApiDocument` (`openapi.ts`) over `toJSONSchema` with the `draft-2020-12` target (Zod 4.6.5 also offers `openapi-3.0`, which would give 3.0.x). The bearer scheme and the `ErrorResponse` component are in the builder. Tested with sample operations for an item, a list with `meta`, a 204, a public operation with a body, and duplicates. Commit 026d354.
+- [x] T3 `validate()` returns the middleware with a `validation` property, and `validationOf(handler)` reads it. Commit in the same branch, `feat(api): expose the schema and source a validate() middleware checks`.
 
 ## Done when
 
@@ -40,3 +40,15 @@ None expected (new code in contracts; `validate()` only gains properties). Re-ch
 pnpm --filter @trading/contracts test, pnpm --filter @trading/api test (files that need no database), pnpm typecheck, pnpm lint.
 
 ## Log
+
+L1 Request: "Si lo apruebo, haz B6-1 completo tu mismo con los commits, las decisiones quedan aprobadas con tus recomendaciones y paras al terminar para hacer el PR, actualizar pr-body y me dejas los comandos necesarios"
+L2 Decisions taken with the recommendation:
+
+- D1 The document is OpenAPI 3.1.0 with JSON Schema `draft-2020-12`: the dialect 3.1 uses, so a nullable field is `type: ["number", "null"]`. The `$schema` key is stripped from every embedded schema.
+- D2 Requests use `io: "input"` (a field with a default is optional) and responses use `io: "output"`. `unrepresentable: "any"` so a schema Zod cannot express never throws while generating.
+- D3 An operation with no `security` entry is not allowed: private ones get `[{ bearerAuth: [] }]` and public ones get `[]`.
+- D4 The builder refuses a repeated `operationId` or method and path, so B6.2 and B6.3 cannot register an endpoint twice.
+- D5 The sample operations live in the test, not in the registry; the real registry starts in B6.2.
+- D6 `validate()` keeps its behavior; it only gains the `validation` property. The notifications list has no pagination query (only `unreadOnly`), which B6.2 and B6.3 must reflect when they describe it.
+- Checks: contracts 228 tests pass, `tsc` and ESLint are clean on `packages/contracts` and `apps/api/src/middleware`; `validate.test.ts` passes with the `.env.test.example` values; `params.routes.test.ts` needs the database and was not run.
+- Risk: none (new code in contracts; `validate()` only gains a property, and every route uses it, which the unit and route-level tests cover).
