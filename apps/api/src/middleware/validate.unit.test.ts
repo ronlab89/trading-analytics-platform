@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { Request, Response } from "express";
-import { validate } from "./validate.js";
+import { validate, validationOf } from "./validate.js";
 import type { AppError } from "../errors/app-error.js";
 
 describe("validate details", () => {
@@ -42,5 +42,30 @@ describe("validate details", () => {
     validate(schema, "params")(req, {} as Response, next2);
     expect(next2).toHaveBeenCalledWith();
     expect(req.validated?.params).toEqual({ portfolioId: "ok" });
+  });
+});
+
+describe("validationOf", () => {
+  it("returns the schema and source a validate() middleware checks", () => {
+    const schema = z.object({ id: z.string() });
+
+    expect(validationOf(validate(schema, "params"))).toEqual({ schema, source: "params" });
+  });
+
+  it("returns undefined for any other handler", () => {
+    expect(validationOf((): void => undefined)).toBeUndefined();
+    expect(validationOf("not a function")).toBeUndefined();
+    expect(validationOf(undefined)).toBeUndefined();
+  });
+
+  it("does not change what validate() does", () => {
+    const next = vi.fn();
+    validate(z.object({ n: z.coerce.number() }), "query")(
+      { query: { n: "3" } } as unknown as Request,
+      {} as Response,
+      next,
+    );
+
+    expect(next).toHaveBeenCalledWith();
   });
 });
