@@ -51,7 +51,7 @@ function openApiPath(path: string): string {
   return path.replace(/:([A-Za-z0-9_]+)/g, "{$1}");
 }
 
-function parametersOf(schema: ZodType, location: "path" | "query"): JsonObject[] {
+function parametersOf(schema: ZodType, location: "path" | "query" | "header"): JsonObject[] {
   const object = jsonSchema(schema, "input");
   const { properties = {}, required: requiredNames = [] } = object as {
     properties?: Record<string, JsonObject>;
@@ -67,10 +67,20 @@ function parametersOf(schema: ZodType, location: "path" | "query"): JsonObject[]
 }
 
 function responsesOf(operation: ApiOperation): JsonObject {
-  const { status, description, schema } = operation.success;
+  const { status, description, schema, headers } = operation.success;
   const responses: JsonObject = {
     [String(status)]: {
       description,
+      ...(headers === undefined
+        ? {}
+        : {
+            headers: Object.fromEntries(
+              Object.entries(headers).map(([name, text]) => [
+                name,
+                { description: text, schema: { type: "string" } },
+              ]),
+            ),
+          }),
       ...(schema === undefined
         ? {}
         : { content: { "application/json": { schema: jsonSchema(schema, "output") } } }),
@@ -80,6 +90,17 @@ function responsesOf(operation: ApiOperation): JsonObject {
     if (operation.errors.includes(errorStatus)) {
       responses[String(errorStatus)] = {
         description: ERROR_DESCRIPTIONS[errorStatus],
+        // The rate limiter answers 429 with a Retry-After header (standard headers, draft 7).
+        ...(errorStatus === 429
+          ? {
+              headers: {
+                "Retry-After": {
+                  description: "Seconds to wait before sending the request again.",
+                  schema: { type: "integer" },
+                },
+              },
+            }
+          : {}),
         content: { "application/json": { schema: { $ref: ERROR_REF } } },
       };
     }
@@ -91,6 +112,7 @@ function operationObject(operation: ApiOperation): JsonObject {
   const parameters = [
     ...(operation.params === undefined ? [] : parametersOf(operation.params, "path")),
     ...(operation.query === undefined ? [] : parametersOf(operation.query, "query")),
+    ...(operation.headers === undefined ? [] : parametersOf(operation.headers, "header")),
   ];
   return {
     operationId: operation.operationId,
@@ -105,7 +127,11 @@ function operationObject(operation: ApiOperation): JsonObject {
       : {
           requestBody: {
             required: true,
-            content: { "application/json": { schema: jsonSchema(operation.body, "input") } },
+            content: {
+              [operation.bodyContentType ?? "application/json"]: {
+                schema: jsonSchema(operation.body, "input"),
+              },
+            },
           },
         }),
     responses: responsesOf(operation),

@@ -27,13 +27,18 @@ export interface ApiOperation {
   readonly description?: string;
   /** Whether the route sits behind the bearer access token. */
   readonly authenticated: boolean;
-  /** Object schemas: each key becomes a path or query parameter. */
+  /** Object schemas: each key becomes a path, query or header parameter. */
   readonly params?: ZodType;
   readonly query?: ZodType;
+  readonly headers?: ZodType;
   readonly body?: ZodType;
+  /** Media type of `body`; JSON when omitted. */
+  readonly bodyContentType?: string;
   readonly success: {
     readonly status: number;
     readonly description: string;
+    /** Response headers the success answer sets, as name and description. */
+    readonly headers?: Readonly<Record<string, string>>;
     /** Omitted for a response with no body, such as a 204. */
     readonly schema?: ZodType;
   };
