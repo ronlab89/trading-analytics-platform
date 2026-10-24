@@ -22,10 +22,10 @@ odd/tasks/b5/**
 
 ## Tasks
 
-- [ ] T1 Fill the §59 gaps with integration tests against a real `ws` client.
-- [ ] T2 Take and record the performance measurement.
-- [ ] T3 Flip the `Planned (B5)` marks after checking each against the code; ADR-007 "Resolved in B5".
-- [ ] T4 Close B5 in the roadmap and PROGRESS.
+- [x] T1 Fill the §59 gaps with integration tests against a real `ws` client. B5.2 to B5.7 already covered most of §59; added to `realtime-delivery.test.ts` another user's job refused like an unknown one and a reconnect that gets nothing until it subscribes again (sequence continues, epoch kept), and `http-fallback.test.ts` (every screen endpoint mounted on an app with no socket, and `app.ts` imports nothing realtime). Commit 95e5df3.
+- [x] T2 Take and record the performance measurement. `measure-realtime.ts` (3119033); results and method in `08-realtime-spec.md` §63.
+- [x] T3 Flip the `Planned (B5)` marks after checking each against the code; ADR-007 "Resolved in B5". 378 marks became `Implemented` (B5); stale "no WebSocket code exists" prose rewritten; alert evaluation marks narrowed to `PRICE` alerts (other types `Deferred`). Commit f7d1cbf.
+- [x] T4 Close B5 in the roadmap and PROGRESS. In the f7d1cbf docs commit and the closing commit.
 
 ## Done when
 
@@ -40,3 +40,13 @@ None (tests and documentation only).
 pnpm docs:check, pnpm test.
 
 ## Log
+
+L1 Request: "haz todos los pasos de B5.8 tu mismo con los commits en cada paso sin atribucion, las decisiones quedan aprobadas con tus recomendaciones, al finalizar paras para que hagamos el PR"
+L2 Decisions taken with the recommendation:
+
+- D1 The measurement is a script in `apps/api/src/realtime/` (inside the allowed surfaces), not a test, so it never slows `pnpm test`. It runs saturated and at the simulator's real rate.
+- D2 The flip is `Planned (B5)` to `Implemented` (B5), the shape B4 used. Statements that no realtime code exists were rewritten.
+- D3 Alert evaluation covers `PRICE` `ABOVE`/`BELOW` only (B5.7 D1), so the marks that said "alert evaluation" say so and mark the other types `Deferred`.
+- D4 The measurement lives in a new `08-realtime-spec.md` §63, linked from ADR-007 "Resolved in B5"; ADR-009 metrics stay `Deferred`.
+- Checks: `pnpm docs:check` passes; the touched suites pass with the `.env.test.example` values. DB-backed suites were not run (no database in the session).
+- Risk: none (tests, a script and documentation).
