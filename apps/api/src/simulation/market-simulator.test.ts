@@ -8,7 +8,7 @@ import {
   InMemoryMarketPriceRepository,
   InMemoryPositionRepository,
 } from "@trading/persistence-memory";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMarketSimulator } from "./market-simulator.js";
 import type { MarketSimulator, MarketSimulatorDependencies } from "./market-simulator.js";
 import type { Scheduler } from "./scheduler.js";
@@ -445,6 +445,66 @@ describe("market simulator failures", () => {
     ]);
     expect(world.timer.isActive()).toBe(false);
     expect(simulator.pause()).toEqual({ state: "HALTED", mode: "NORMAL" });
+  });
+
+  it("retries a failed boot on start and begins to tick once it succeeds", async () => {
+    const world = await setup();
+    let failing = true;
+    const simulator = world.create({
+      assetRepository: {
+        list: (filter, page) =>
+          failing ? Promise.reject(new Error("db down")) : world.assets.list(filter, page),
+      },
+    });
+    await simulator.boot();
+    expect(world.timer.isActive()).toBe(false);
+
+    failing = false;
+    expect(simulator.start()).toEqual({ state: "RUNNING", mode: "NORMAL" });
+    await vi.waitFor(() => {
+      expect(world.timer.isActive()).toBe(true);
+    });
+    await world.timer.fire();
+
+    expect(await world.sequencesOf(world.ids[0] ?? "")).toEqual([1]);
+    expect(world.logged("simulation.started")).toHaveLength(1);
+    expect(world.logged("simulation.boot.failed")).toHaveLength(1);
+  });
+
+  it("retries a failed boot only once at a time and keeps failing quietly while the database is down", async () => {
+    const world = await setup();
+    let calls = 0;
+    const simulator = world.create({
+      assetRepository: {
+        list: () => {
+          calls += 1;
+          return Promise.reject(new Error("db down"));
+        },
+      },
+    });
+    await simulator.boot();
+    simulator.start();
+    simulator.start();
+    await vi.waitFor(() => {
+      expect(world.logged("simulation.boot.failed")).toHaveLength(2);
+    });
+
+    expect(calls).toBe(2);
+    expect(world.timer.isActive()).toBe(false);
+    expect(simulator.status()).toEqual({ state: "RUNNING", mode: "NORMAL" });
+  });
+
+  it("does not boot on start when no boot was ever attempted", async () => {
+    const world = await setup();
+    const simulator = world.create();
+
+    simulator.pause();
+    simulator.start();
+    await world.timer.fire();
+
+    expect(world.timer.isActive()).toBe(false);
+    expect(world.logged("simulation.started")).toHaveLength(1);
+    expect(world.captured.published).toEqual([]);
   });
 });
 

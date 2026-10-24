@@ -109,6 +109,8 @@ export function createMarketSimulator(dependencies: MarketSimulatorDependencies)
   let engine: MarketEngine | null = null;
   let timer: ScheduledTask | null = null;
   let stopped = false;
+  let booting = false;
+  let bootFailed = false;
   let ticking = false;
   let inFlight: Promise<void> = Promise.resolve();
   let ticksSincePrune = 0;
@@ -303,36 +305,47 @@ export function createMarketSimulator(dependencies: MarketSimulatorDependencies)
     timer = null;
   }
 
+  async function boot(): Promise<void> {
+    if (engine !== null || stopped || booting) {
+      return;
+    }
+    booting = true;
+    try {
+      const { assets, highestSequence } = await loadSeeds();
+      // The persisted position moves the seed, so a restart does not replay the same noise.
+      engine = createMarketEngine({
+        clock,
+        seed: `${BASE_SEED}:${String(highestSequence)}`,
+        assets,
+        mode,
+      });
+      pendingCandles.push(...engine.takeClosedCandles());
+      await settleCandles(new Set());
+      bootFailed = false;
+      if (state === "RUNNING") {
+        startTimer();
+        logger.info(LOG_EVENTS.simulationStarted, { mode, assetCount: assets.length });
+      }
+    } catch (error) {
+      engine = null;
+      bootFailed = true;
+      logger.error(LOG_EVENTS.simulationBootFailed, { errorName: errorName(error) });
+    } finally {
+      booting = false;
+    }
+  }
+
   return {
     status,
-
-    async boot() {
-      if (engine !== null || stopped) {
-        return;
-      }
-      try {
-        const { assets, highestSequence } = await loadSeeds();
-        // The persisted position moves the seed, so a restart does not replay the same noise.
-        engine = createMarketEngine({
-          clock,
-          seed: `${BASE_SEED}:${String(highestSequence)}`,
-          assets,
-          mode,
-        });
-        pendingCandles.push(...engine.takeClosedCandles());
-        await settleCandles(new Set());
-        if (state === "RUNNING") {
-          startTimer();
-          logger.info(LOG_EVENTS.simulationStarted, { mode, assetCount: assets.length });
-        }
-      } catch (error) {
-        engine = null;
-        logger.error(LOG_EVENTS.simulationBootFailed, { errorName: errorName(error) });
-      }
-    },
+    boot,
 
     start() {
-      if (state === "HALTED") {
+      if (engine === null && bootFailed) {
+        // A failed boot is retried here, so an ADMIN recovers without restarting the process;
+        // the boot starts the timer and logs `simulation.started` once it succeeds.
+        state = "RUNNING";
+        void boot();
+      } else if (state === "HALTED") {
         state = "RUNNING";
         startTimer();
         logger.info(LOG_EVENTS.simulationStarted, { mode });
