@@ -23,12 +23,19 @@ export interface Alert {
   readonly condition: string;
   readonly threshold: number;
   readonly enabled: boolean;
+  /**
+   * Edge-trigger state (ADR-007 point 9): an armed alert fires when its
+   * condition turns true and is disarmed until the condition clears
+   * (`calculations/price-alert.ts`).
+   */
+  readonly armed: boolean;
+  readonly lastTriggeredAt: Date | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
 
 export type CreateAlertInput = Pick<Alert, "userId" | "type" | "condition" | "threshold"> &
-  Partial<Pick<Alert, "assetId" | "portfolioId" | "enabled">>;
+  Partial<Pick<Alert, "assetId" | "portfolioId" | "enabled" | "armed">>;
 
 export class InvalidAlertError extends Error {
   constructor(message: string) {
