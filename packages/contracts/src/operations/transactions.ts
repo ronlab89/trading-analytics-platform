@@ -17,6 +17,8 @@ import {
 } from "../transaction.schema.js";
 import { idempotencyKeyHeaderSchema } from "./shared.js";
 
+const REPLAYED =
+  "`true` when the answer is the stored one of an earlier request with the same `Idempotency-Key`.";
 const JOB_LOCATION = "Where to follow the job: `/api/v1/jobs/{jobId}`.";
 
 /** Transactions, the CSV import and its jobs (07-api-spec.md §13-§14, ADR-008). */
@@ -67,6 +69,7 @@ export const transactionOperations: readonly ApiOperation[] = [
     success: {
       status: 201,
       description: "The transaction and the position it changed.",
+      headers: { "Idempotency-Replayed": REPLAYED },
       schema: dataEnvelope(createTransactionResponseSchema),
     },
     errors: [400, 401, 403, 404, 409, 429],
@@ -87,7 +90,7 @@ export const transactionOperations: readonly ApiOperation[] = [
     success: {
       status: 202,
       description: "The job that was queued.",
-      headers: { Location: JOB_LOCATION },
+      headers: { Location: JOB_LOCATION, "Idempotency-Replayed": REPLAYED },
       schema: dataEnvelope(jobResponseSchema),
     },
     errors: [400, 401, 403, 404, 409, 413, 429],
