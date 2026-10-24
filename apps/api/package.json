@@ -6,7 +6,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
+    "dev": "dotenv -e ../../.env -- tsx watch --conditions=@trading/source src/index.ts",
     "build": "tsc --build",
     "start": "dotenv -e ../../.env -- node dist/index.js",
     "typecheck": "tsc --noEmit",
