@@ -29,10 +29,19 @@ export const envSchema = z
         message:
           "CORS_ORIGIN must be a comma-separated list of http(s)://host[:port] origins; wildcards are not allowed.",
       }),
+    // ADR-002 point 7: serve the OpenAPI document and the Scalar viewer. Unset
+    // means on outside production and off in production.
+    API_DOCS_ENABLED: z.enum(["true", "false"]).optional(),
+    // Where the viewer loads its script from; unset uses Scalar's CDN.
+    API_DOCS_CDN_URL: z.url({ protocol: /^https?$/ }).optional(),
   })
   .transform((values) => ({
     ...values,
     LOG_LEVEL: values.LOG_LEVEL ?? DEFAULT_LOG_LEVEL[values.NODE_ENV],
+    API_DOCS_ENABLED:
+      values.API_DOCS_ENABLED === undefined
+        ? values.NODE_ENV !== "production"
+        : values.API_DOCS_ENABLED === "true",
   }));
 
 export type Env = z.infer<typeof envSchema>;
