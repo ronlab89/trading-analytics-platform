@@ -70,6 +70,24 @@ const createThing: ApiOperation = {
   errors: [400, 429],
 };
 
+const importCsv: ApiOperation = {
+  operationId: "importCsv",
+  method: "post",
+  path: "/api/v1/things/imports",
+  tag: "Things",
+  summary: "Import a CSV",
+  authenticated: true,
+  headers: z.object({ "Idempotency-Key": z.string().min(1).optional() }),
+  body: z.string(),
+  bodyContentType: "text/csv",
+  success: {
+    status: 202,
+    description: "Accepted.",
+    headers: { Location: "Where to follow the job." },
+  },
+  errors: [429],
+};
+
 const info = { title: "Trading API", version: "1.0.0" };
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -180,5 +198,27 @@ describe("buildOpenApiDocument", () => {
     expect(() => build([getAlert, { ...getAlert, operationId: "getAlertAgain" }])).toThrow(
       "Duplicate operation: GET /api/v1/alerts/:alertId",
     );
+  });
+
+  it("describes a header parameter, a body with another media type and a success header", () => {
+    const operation = build([importCsv])["paths"]["/api/v1/things/imports"].post;
+
+    expect(operation.parameters).toEqual([
+      expect.objectContaining({ name: "Idempotency-Key", in: "header", required: false }),
+    ]);
+    expect(Object.keys(operation.requestBody.content as object)).toEqual(["text/csv"]);
+    expect(operation.responses["202"].headers.Location).toEqual({
+      description: "Where to follow the job.",
+      schema: { type: "string" },
+    });
+  });
+
+  it("adds Retry-After to a 429 answer and to no other", () => {
+    const responses = build([importCsv, getAlert])["paths"];
+
+    expect(
+      responses["/api/v1/things/imports"].post.responses["429"].headers["Retry-After"],
+    ).toEqual(expect.objectContaining({ schema: { type: "integer" } }));
+    expect(responses["/api/v1/alerts/{alertId}"].get.responses["404"].headers).toBeUndefined();
   });
 });
