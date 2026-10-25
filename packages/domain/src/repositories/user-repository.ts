@@ -1,4 +1,4 @@
-import type { CreateUserInput, User } from "../entities/user";
+import type { CreateUserInput, User } from "../entities/user.js";
 
 /**
  * User repository contract.

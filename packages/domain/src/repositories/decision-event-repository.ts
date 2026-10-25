@@ -1,4 +1,4 @@
-import type { CreateDecisionEventInput, DecisionEvent } from "../entities/decision-event";
+import type { CreateDecisionEventInput, DecisionEvent } from "../entities/decision-event.js";
 
 /**
  * DecisionEvent repository contract.

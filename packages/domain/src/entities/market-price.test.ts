@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import { MarketDataSource } from "./enums";
-import { InvalidMarketPriceError, validateNewMarketPrice } from "./market-price";
+import { Money } from "../value-objects/money.js";
+import { MarketDataSource } from "./enums.js";
+import { InvalidMarketPriceError, validateNewMarketPrice } from "./market-price.js";
 
 const baseInput = {
   assetId: "asset_001",

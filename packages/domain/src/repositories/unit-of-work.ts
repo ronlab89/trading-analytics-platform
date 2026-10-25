@@ -1,9 +1,9 @@
-import type { AlertRepository } from "./alert-repository";
-import type { IdempotencyKeyRepository } from "./idempotency-key-repository";
-import type { JobRepository } from "./job-repository";
-import type { NotificationRepository } from "./notification-repository";
-import type { PositionRepository } from "./position-repository";
-import type { TransactionRepository } from "./transaction-repository";
+import type { AlertRepository } from "./alert-repository.js";
+import type { IdempotencyKeyRepository } from "./idempotency-key-repository.js";
+import type { JobRepository } from "./job-repository.js";
+import type { NotificationRepository } from "./notification-repository.js";
+import type { PositionRepository } from "./position-repository.js";
+import type { TransactionRepository } from "./transaction-repository.js";
 
 /**
  * Repositories that participate in a single atomic unit of work.

@@ -1,7 +1,7 @@
 import { Decimal } from "decimal.js";
 import { describe, expect, it } from "vitest";
-import { calculateReturnDrawdown } from "./return-drawdown";
-import type { DailyReturnPoint } from "./period-performance";
+import { calculateReturnDrawdown } from "./return-drawdown.js";
+import type { DailyReturnPoint } from "./period-performance.js";
 
 /** One point per day from 2026-01-02 (the baseline is 2026-01-01). */
 function series(rates: readonly (string | null)[]): DailyReturnPoint[] {

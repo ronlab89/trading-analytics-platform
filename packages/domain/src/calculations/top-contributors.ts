@@ -1,4 +1,4 @@
-import type { Money } from "../value-objects/money";
+import type { Money } from "../value-objects/money.js";
 
 /**
  * The largest contributor and the largest detractor of a period.

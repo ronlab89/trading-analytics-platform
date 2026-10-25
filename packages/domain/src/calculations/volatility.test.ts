@@ -1,9 +1,9 @@
 import { Decimal } from "decimal.js";
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import type { HistoricalPrice } from "../entities/historical-price";
-import { InsufficientDataError } from "./drawdown";
-import { calculateReturnVolatility, calculateVolatility } from "./volatility";
+import { Money } from "../value-objects/money.js";
+import type { HistoricalPrice } from "../entities/historical-price.js";
+import { InsufficientDataError } from "./drawdown.js";
+import { calculateReturnVolatility, calculateVolatility } from "./volatility.js";
 
 function buildPoint(day: number, close: number): HistoricalPrice {
   return {

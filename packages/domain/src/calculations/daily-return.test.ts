@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TransactionType } from "../entities/enums";
-import { CurrencyMismatchError, Money } from "../value-objects/money";
-import { buildDailyFlows, calculateDailyReturn } from "./daily-return";
-import type { DailyFlow, FlowEntry } from "./daily-return";
+import { TransactionType } from "../entities/enums.js";
+import { CurrencyMismatchError, Money } from "../value-objects/money.js";
+import { buildDailyFlows, calculateDailyReturn } from "./daily-return.js";
+import type { DailyFlow, FlowEntry } from "./daily-return.js";
 
 const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const usd = (amount: string) => Money.of(amount, "USD");

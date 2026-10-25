@@ -3,24 +3,34 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "@trading/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build tsconfig.build.json",
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "db:test:migrate": "dotenv -e ../../.env.test.local -- prisma migrate deploy",
-    "db:runtime-password": "dotenv -e ../../.env -- tsx prisma/set-runtime-password.ts",
-    "db:test:runtime-password": "dotenv -e ../../.env.test.local -- tsx prisma/set-runtime-password.ts",
-    "db:reset": "dotenv -e ../../.env -- tsx prisma/reset.ts",
-    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "db:runtime-password": "dotenv -e ../../.env -- tsx --conditions=@trading/source prisma/set-runtime-password.ts",
+    "db:test:runtime-password": "dotenv -e ../../.env.test.local -- tsx --conditions=@trading/source prisma/set-runtime-password.ts",
+    "db:reset": "dotenv -e ../../.env -- tsx --conditions=@trading/source prisma/reset.ts",
+    "db:seed": "dotenv -e ../../.env -- tsx --conditions=@trading/source prisma/seed.ts",
     "db:studio": "dotenv -e ../../.env -- prisma studio",
     "typecheck": "tsc --noEmit",
     "test": "dotenv -e ../../.env.test.local -- vitest run",
     "test:watch": "dotenv -e ../../.env.test.local -- vitest"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx --conditions=@trading/source prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

@@ -1,4 +1,4 @@
-import type { CreateJobInput, Job, JobStatus, TransitionJobInput } from "../entities/job";
+import type { CreateJobInput, Job, JobStatus, TransitionJobInput } from "../entities/job.js";
 
 /**
  * Job repository contract.

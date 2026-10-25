@@ -22,7 +22,7 @@
       "path": "../../packages/market-sim"
     },
     {
-      "path": "../../packages/database"
+      "path": "../../packages/database/tsconfig.build.json"
     },
     {
       "path": "../../packages/persistence-memory"

@@ -1,10 +1,10 @@
-import type { Portfolio } from "../entities/portfolio";
-import type { Position } from "../entities/position";
-import type { ScenarioChange } from "../entities/scenario";
-import type { Money } from "../value-objects/money";
-import { calculateAllocation } from "./allocation";
-import { type PortfolioMetrics, calculatePortfolioMetrics } from "./portfolio-metrics";
-import { applyScenarioChanges } from "./scenario-impact";
+import type { Portfolio } from "../entities/portfolio.js";
+import type { Position } from "../entities/position.js";
+import type { ScenarioChange } from "../entities/scenario.js";
+import type { Money } from "../value-objects/money.js";
+import { calculateAllocation } from "./allocation.js";
+import { type PortfolioMetrics, calculatePortfolioMetrics } from "./portfolio-metrics.js";
+import { applyScenarioChanges } from "./scenario-impact.js";
 
 /**
  * Scenario comparison.

@@ -1,4 +1,4 @@
-import { DecisionEventType } from "./enums";
+import { DecisionEventType } from "./enums.js";
 
 /**
  * DecisionEvent entity.

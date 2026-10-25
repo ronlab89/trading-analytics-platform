@@ -1,10 +1,10 @@
 import { Money, validateNewHistoricalPrice } from "@trading/domain";
 import type { HistoricalPrice } from "@trading/domain";
 import { describe, expect, it } from "vitest";
-import { utcDay, utcDayStart } from "./candles";
-import { createMarketEngine } from "./engine";
-import type { AssetSeed, MarketEngine, PriceTick } from "./engine";
-import { MarketMode } from "./mode";
+import { utcDay, utcDayStart } from "./candles.js";
+import { createMarketEngine } from "./engine.js";
+import type { AssetSeed, MarketEngine, PriceTick } from "./engine.js";
+import { MarketMode } from "./mode.js";
 
 /** A clock the test moves by hand. */
 function movableClock(start: string): { now: () => Date; set: (iso: string) => void } {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { NotificationSeverity } from "./enums";
-import { InvalidNotificationError, validateNewNotification } from "./notification";
+import { NotificationSeverity } from "./enums.js";
+import { InvalidNotificationError, validateNewNotification } from "./notification.js";
 
 const baseInput = {
   userId: "user_001",

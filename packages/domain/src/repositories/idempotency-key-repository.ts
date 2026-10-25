@@ -2,7 +2,7 @@ import type {
   CompleteIdempotencyKeyInput,
   ReserveIdempotencyKeyInput,
   ReserveIdempotencyKeyResult,
-} from "../entities/idempotency-key";
+} from "../entities/idempotency-key.js";
 
 /**
  * Idempotency key repository contract.

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TransactionType } from "../entities/enums";
-import { buildQuantityTimeline } from "./quantity-timeline";
-import type { QuantityEntry } from "./quantity-timeline";
-import { detectPositionEvents } from "./position-events";
+import { TransactionType } from "../entities/enums.js";
+import { buildQuantityTimeline } from "./quantity-timeline.js";
+import type { QuantityEntry } from "./quantity-timeline.js";
+import { detectPositionEvents } from "./position-events.js";
 
 const day = (n: number) => new Date(Date.UTC(2026, 2, n));
 

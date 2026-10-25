@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import type { Portfolio } from "../entities/portfolio";
-import type { Position } from "../entities/position";
-import { PortfolioStatus } from "../entities/enums";
-import { calculatePortfolioMetrics } from "./portfolio-metrics";
-import { calculateScenarioImpact } from "./scenario-impact";
-import { compareScenarioImpacts } from "./scenario-comparison";
+import { Money } from "../value-objects/money.js";
+import type { Portfolio } from "../entities/portfolio.js";
+import type { Position } from "../entities/position.js";
+import { PortfolioStatus } from "../entities/enums.js";
+import { calculatePortfolioMetrics } from "./portfolio-metrics.js";
+import { calculateScenarioImpact } from "./scenario-impact.js";
+import { compareScenarioImpacts } from "./scenario-comparison.js";
 
 function buildPortfolio(): Portfolio {
   return {

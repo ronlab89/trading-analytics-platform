@@ -1,5 +1,5 @@
-import type { Position } from "../entities/position";
-import type { Money } from "../value-objects/money";
+import type { Position } from "../entities/position.js";
+import type { Money } from "../value-objects/money.js";
 
 /**
  * Position metrics calculations.

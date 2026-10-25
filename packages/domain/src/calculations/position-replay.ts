@@ -1,7 +1,7 @@
-import { TransactionType } from "../entities/enums";
-import type { Transaction } from "../entities/transaction";
-import type { Money } from "../value-objects/money";
-import { InsufficientPositionQuantityError } from "./position-recalculation";
+import { TransactionType } from "../entities/enums.js";
+import type { Transaction } from "../entities/transaction.js";
+import type { Money } from "../value-objects/money.js";
+import { InsufficientPositionQuantityError } from "./position-recalculation.js";
 
 /**
  * Position replay.

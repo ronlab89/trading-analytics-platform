@@ -1,5 +1,5 @@
-import type { CreatePositionInput, Position } from "../entities/position";
-import type { Money } from "../value-objects/money";
+import type { CreatePositionInput, Position } from "../entities/position.js";
+import type { Money } from "../value-objects/money.js";
 
 /**
  * Position repository contract.

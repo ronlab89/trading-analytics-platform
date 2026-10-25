@@ -1,9 +1,9 @@
-import { Money } from "../value-objects/money";
-import { buildDailyFlows } from "./daily-return";
-import type { FlowEntry } from "./daily-return";
-import type { QuantityEntry, QuantityTimeline } from "./quantity-timeline";
-import { buildValueSeries } from "./value-series";
-import type { DailyValue, PriceCandle } from "./value-series";
+import { Money } from "../value-objects/money.js";
+import { buildDailyFlows } from "./daily-return.js";
+import type { FlowEntry } from "./daily-return.js";
+import type { QuantityEntry, QuantityTimeline } from "./quantity-timeline.js";
+import { buildValueSeries } from "./value-series.js";
+import type { DailyValue, PriceCandle } from "./value-series.js";
 
 /**
  * Attribution of a period's P/L to the assets that produced it.

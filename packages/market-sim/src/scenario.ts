@@ -1,4 +1,4 @@
-import type { PriceProfile } from "./mode";
+import type { PriceProfile } from "./mode.js";
 
 /**
  * Deterministic scenarios.

@@ -1,6 +1,6 @@
-import { AlertType } from "../entities/enums";
-import type { Alert } from "../entities/alert";
-import { Money } from "../value-objects/money";
+import { AlertType } from "../entities/enums.js";
+import type { Alert } from "../entities/alert.js";
+import { Money } from "../value-objects/money.js";
 
 /**
  * Edge-triggered price alerts.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createRandom } from "./random";
+import { createRandom } from "./random.js";
 
 function take(count: number, seed: string | number): number[] {
   const random = createRandom(seed);

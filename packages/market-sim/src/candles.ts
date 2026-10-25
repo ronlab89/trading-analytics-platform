@@ -1,7 +1,7 @@
 import type { HistoricalPrice, Money } from "@trading/domain";
-import type { PriceProfile } from "./mode";
-import { stepPrice } from "./price-step";
-import { createRandom } from "./random";
+import type { PriceProfile } from "./mode.js";
+import { stepPrice } from "./price-step.js";
+import { createRandom } from "./random.js";
 
 const DAY_MS = 86_400_000;
 

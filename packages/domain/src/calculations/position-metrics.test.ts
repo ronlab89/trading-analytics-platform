@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import type { Position } from "../entities/position";
-import { PositionMetricsCalculationError, calculatePositionMetrics } from "./position-metrics";
+import { Money } from "../value-objects/money.js";
+import type { Position } from "../entities/position.js";
+import { PositionMetricsCalculationError, calculatePositionMetrics } from "./position-metrics.js";
 
 function buildPosition(overrides: Partial<Position> = {}): Position {
   return {

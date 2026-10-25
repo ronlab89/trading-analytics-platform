@@ -1,9 +1,9 @@
 import { Decimal } from "decimal.js";
-import type { Portfolio } from "../entities/portfolio";
-import type { Position } from "../entities/position";
-import type { ScenarioChange } from "../entities/scenario";
-import type { Money } from "../value-objects/money";
-import { type PortfolioMetrics, calculatePortfolioMetrics } from "./portfolio-metrics";
+import type { Portfolio } from "../entities/portfolio.js";
+import type { Position } from "../entities/position.js";
+import type { ScenarioChange } from "../entities/scenario.js";
+import type { Money } from "../value-objects/money.js";
+import { type PortfolioMetrics, calculatePortfolioMetrics } from "./portfolio-metrics.js";
 
 /**
  * Scenario impact calculation.

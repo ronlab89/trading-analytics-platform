@@ -1,4 +1,4 @@
-import type { CreateNotificationInput, Notification } from "../entities/notification";
+import type { CreateNotificationInput, Notification } from "../entities/notification.js";
 
 /**
  * Notification repository contract.

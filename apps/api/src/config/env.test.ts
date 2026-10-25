@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { envSchema } from "./env.js";
 
-const base = { JWT_SECRET: "x".repeat(32) };
+const base = {
+  JWT_SECRET: "x".repeat(32),
+  DATABASE_URL: "postgresql://trading_runtime:secret@localhost:5432/trading_analytics_dev",
+};
 
 function parseCors(value?: string) {
   return envSchema.safeParse({ ...base, ...(value === undefined ? {} : { CORS_ORIGIN: value }) });
@@ -130,5 +133,46 @@ describe("envSchema API_DOCS_ENABLED", () => {
     expect(envSchema.safeParse({ ...base, API_DOCS_CDN_URL: "javascript:alert(1)" }).success).toBe(
       false,
     );
+  });
+});
+
+describe("envSchema DATABASE_URL", () => {
+  const { DATABASE_URL: _omitted, ...withoutUrl } = base;
+
+  it("is required", () => {
+    const result = envSchema.safeParse(withoutUrl);
+
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.issues.map((issue) => issue.path[0])).toContain(
+      "DATABASE_URL",
+    );
+  });
+
+  it.each(["postgresql://user:pw@db:5432/app", "postgres://user:pw@db:5432/app"])(
+    "accepts %s",
+    (value) => {
+      const result = envSchema.safeParse({ ...base, DATABASE_URL: value });
+
+      expect(result.success && result.data.DATABASE_URL).toBe(value);
+    },
+  );
+
+  it.each(["mysql://user:pw@db:3306/app", "http://db:5432/app", "not a url", ""])(
+    "rejects %j",
+    (value) => {
+      expect(envSchema.safeParse({ ...base, DATABASE_URL: value }).success).toBe(false);
+    },
+  );
+
+  it("names the variable in the error and never echoes the value", () => {
+    const result = envSchema.safeParse({
+      ...base,
+      DATABASE_URL: "mysql://user:hunter2@db:3306/app",
+    });
+
+    expect(result.success).toBe(false);
+    const message = JSON.stringify(!result.success && result.error.issues);
+    expect(message).toContain("DATABASE_URL");
+    expect(message).not.toContain("hunter2");
   });
 });

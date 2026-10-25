@@ -9,7 +9,7 @@ import {
   isJobTimeoutApplicable,
   isJobTransitionAllowed,
   validateNewJob,
-} from "./job";
+} from "./job.js";
 
 const valid = {
   userId: "user_1",

@@ -1,4 +1,4 @@
-import type { Alert, CreateAlertInput } from "../entities/alert";
+import type { Alert, CreateAlertInput } from "../entities/alert.js";
 
 /** The fields of an alert that can change after it was created. */
 export type AlertUpdate = Partial<

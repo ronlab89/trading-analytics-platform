@@ -343,9 +343,8 @@ Market Data extension (§3.5).
   in 4 `apps/api` files — root cause was `@trading/domain` missing from
   `apps/api/package.json` dependencies. Now imports by package name
   everywhere.
-  *Since then:* the production build path is still open: `@trading/domain`
-  and `@trading/database` point `main` at `src`; the fix is assigned to B7
-  (`BACKEND-ROADMAP.md`, §7 of this file).
+  *Since then:* the production build path was fixed in B7.1 (§7 of this
+  file).
 - Prisma Studio issue: **deliberately not fixed** — user uses TablePlus
   instead and has no need for it.
 
@@ -1060,13 +1059,13 @@ unassigned.
   earlier read as decided against, because the backend runs locally only; the
   ADR changed that. No continuous deployment and no coverage threshold. The CI
   test roles of ADR-005 point 13 are `Implemented` in B0.2.
-- **`apps/api` production build path is untested/likely broken** — B7
-  (ADR-006 point 3). `apps/api/package.json` has `"start": "dotenv -e
-  ../../.env -- node dist/index.js"`, but `@trading/domain`,
-  `@trading/database` (and the API itself) point `main`/`types` at
-  `./src/index.ts` (not compiled output), so the built API would not resolve
-  those packages in a real production run. Local `dev` (via `tsx watch`) is
-  the only mode actually used today.
+- **`apps/api` production build path** — fixed in B7.1 (ADR-006 point 3).
+  The packages imported each other's files without an extension and pointed
+  `main`/`types` at `./src/index.ts`, so the compiled `dist` could not load in
+  Node. Relative imports now carry `.js` (`NodeNext`), each package exposes
+  `dist` through `exports`, and the `@trading/source` condition keeps tests,
+  `tsx` and `tsc` reading `src`. CI starts the built API. The container image
+  and the `full` profile are B7.2 and B7.3.
 - **Concurrency on position recalculation** — B0 (ADR-001, FR-017), not B7:
   two simultaneous transactions against the same portfolio+asset could race
   between the read-then-write of the position inside the Unit of Work. The

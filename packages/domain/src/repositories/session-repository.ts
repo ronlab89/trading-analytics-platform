@@ -1,4 +1,4 @@
-import type { CreateSessionInput, RotateSessionInput, Session } from "../entities/session";
+import type { CreateSessionInput, RotateSessionInput, Session } from "../entities/session.js";
 
 /**
  * Session repository contract.

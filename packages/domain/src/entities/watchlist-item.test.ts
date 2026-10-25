@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidWatchlistItemError, validateNewWatchlistItem } from "./watchlist-item";
+import { InvalidWatchlistItemError, validateNewWatchlistItem } from "./watchlist-item.js";
 
 const baseInput = {
   userId: "user_001",

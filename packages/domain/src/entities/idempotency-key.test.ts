@@ -3,7 +3,7 @@ import {
   IDEMPOTENCY_KEY_MAX_LENGTH,
   InvalidIdempotencyKeyError,
   validateIdempotencyReservation,
-} from "./idempotency-key";
+} from "./idempotency-key.js";
 
 const valid = {
   userId: "user_1",

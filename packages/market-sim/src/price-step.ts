@@ -1,6 +1,6 @@
 import { Money } from "@trading/domain";
-import type { PriceProfile } from "./mode";
-import type { Random } from "./random";
+import type { PriceProfile } from "./mode.js";
+import type { Random } from "./random.js";
 
 /** The lowest price a tick can produce: a price never reaches zero or below (S3). */
 export const MIN_PRICE = "0.01";

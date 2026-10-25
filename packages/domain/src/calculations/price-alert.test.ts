@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { AlertType } from "../entities/enums";
-import { Money } from "../value-objects/money";
+import { AlertType } from "../entities/enums.js";
+import { Money } from "../value-objects/money.js";
 import {
   initialAlertArmed,
   isPriceConditionCleared,
   isPriceConditionMet,
   nextPriceAlertAction,
   priceAlertDirection,
-} from "./price-alert";
+} from "./price-alert.js";
 
 const usd = (amount: number) => Money.of(String(amount), "USD");
 

@@ -1,6 +1,6 @@
-import type { Asset, CreateAssetInput } from "../entities/asset";
-import type { AssetStatus, AssetType } from "../entities/enums";
-import type { Page, PageRequest } from "./pagination";
+import type { Asset, CreateAssetInput } from "../entities/asset.js";
+import type { AssetStatus, AssetType } from "../entities/enums.js";
+import type { Page, PageRequest } from "./pagination.js";
 
 /**
  * Filters supported when listing assets.

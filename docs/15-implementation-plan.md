@@ -333,7 +333,7 @@ Core business rules can be tested without React, Express, or PostgreSQL.
 | `Job` and `IdempotencyKey` (`05-data-model.md` §52 and §53) | In `schema.prisma` since B4.1; `Implemented` | B4 |
 | Seed workflow (`packages/database/prisma/seed.ts`, `src/seed`, `pnpm --filter @trading/database db:seed`) | `Implemented`, including the production guard (ADR-006 point 13) | none |
 | Local reset workflow: light reset by rerunning the seed, hard reset by `db:reset` (`prisma migrate reset`) | `Implemented`, including the production guard (`prisma/reset.ts`) | none |
-| Database connection (`packages/database/src/client.ts`, shared `prisma` client) | `Implemented`; `DATABASE_URL` validation at startup `Planned (B7)` | B7 |
+| Database connection (`packages/database/src/client.ts`, shared `prisma` client) | `Implemented`; `DATABASE_URL` validation at startup `Implemented` (B7.1) | none |
 | Separate runtime database role without DDL rights; only the migration role keeps them (ADR-005 point 13) | `Implemented` (migration `20261010120000_add_runtime_role`, role `trading_runtime`) | none |
 | Repository interfaces (`packages/domain/src/repositories`) | `Implemented` | none |
 | PostgreSQL repositories, mappers and `PrismaUnitOfWork` (`packages/database/src`) | `Implemented` | none |
@@ -394,7 +394,7 @@ start database
 | Middleware: helmet, CORS from `CORS_ORIGIN`, request ID, JSON body limit of 100 kb | `Implemented` | none |
 | Rate limiting: a general limiter (300 requests per 15 minutes) and a login limiter (5 per 15 minutes), disabled under `NODE_ENV=test` | `Implemented` | none |
 | `CORS_ORIGIN` accepts only `http(s)://host[:port]` and rejects `*` (ADR-006 point 13) | `Implemented` | none |
-| Configuration validation at startup (`config/env.ts`: `NODE_ENV`, `PORT`, `JWT_SECRET` of at least 32 characters, `JWT_EXPIRES_IN_SECONDS`, `CORS_ORIGIN`; exits on failure) | `Implemented`; `DATABASE_URL` is not validated, `Planned (B7)` | B7 |
+| Configuration validation at startup (`config/env.ts`: `NODE_ENV`, `PORT`, `JWT_SECRET` of at least 32 characters, `JWT_EXPIRES_IN_SECONDS`, `CORS_ORIGIN`; exits on failure) | `Implemented`, including `DATABASE_URL` (a PostgreSQL URL; B7.1) | none |
 | Request validation of body and query with Zod (`middleware/validate.ts`) | `Implemented` | none |
 | Request validation of route parameters (ADR-002 point 10) | `Implemented` (B0.4) | none |
 | Consistent error handling (`errors/app-error.ts`, `middleware/error-handler.ts`, envelope `{ error: { code, message, requestId, details? } }`) | `Implemented` | none |
@@ -1232,7 +1232,7 @@ without requiring a paid external monitoring service.
 | Targets: a local full stack for demonstrations and a public static demo of `apps/web`; no public backend (ADR-006 points 1 and 2) | `Reference` | none |
 | Minimal CI workflow (see §17), with no continuous deployment (ADR-006 points 10 and 11) | `Implemented` | none |
 | Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | seed guard and `CORS_ORIGIN` validation `Implemented`; `.nvmrc` reused by CI `Implemented`, by the Dockerfile `Planned (B7)` | B7 |
-| Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Planned (B7)` | B7 |
+| Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Implemented` (B7.1) | none |
 | Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Planned (B7)` | B7 |
 | Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT`, `JWT_EXPIRES_IN_SECONDS`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3.1, B3.2); it does not read `APP_MODE` and does not validate `DATABASE_URL`; the rest is `Planned (B7)` (`DATABASE_URL`) and `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
 | Web build-time values `VITE_APP_MODE` and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) | `Planned (FE0)` | FE0 |

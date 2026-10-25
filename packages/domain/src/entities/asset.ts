@@ -1,5 +1,5 @@
-import { AssetType } from "./enums";
-import type { AssetStatus } from "./enums";
+import { AssetType } from "./enums.js";
+import type { AssetStatus } from "./enums.js";
 
 /**
  * Asset entity.

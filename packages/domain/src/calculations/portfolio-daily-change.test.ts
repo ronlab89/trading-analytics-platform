@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import { MarketDataSource } from "../entities/enums";
-import type { MarketPrice } from "../entities/market-price";
-import type { Portfolio } from "../entities/portfolio";
-import type { Position } from "../entities/position";
-import { calculatePortfolioDailyChange } from "./portfolio-daily-change";
-import { InsufficientDataError } from "./drawdown";
+import { Money } from "../value-objects/money.js";
+import { MarketDataSource } from "../entities/enums.js";
+import type { MarketPrice } from "../entities/market-price.js";
+import type { Portfolio } from "../entities/portfolio.js";
+import type { Position } from "../entities/position.js";
+import { calculatePortfolioDailyChange } from "./portfolio-daily-change.js";
+import { InsufficientDataError } from "./drawdown.js";
 
 function makePortfolio(overrides: Partial<Portfolio> = {}): Portfolio {
   return {

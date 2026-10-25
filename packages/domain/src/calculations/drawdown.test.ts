@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import type { HistoricalPrice } from "../entities/historical-price";
-import { InsufficientDataError, calculateDrawdown } from "./drawdown";
+import { Money } from "../value-objects/money.js";
+import type { HistoricalPrice } from "../entities/historical-price.js";
+import { InsufficientDataError, calculateDrawdown } from "./drawdown.js";
 
 function buildPoint(
   timestamp: string,

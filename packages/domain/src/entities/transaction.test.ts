@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import { TransactionType } from "./enums";
-import { InvalidTransactionError, validateNewTransaction } from "./transaction";
+import { Money } from "../value-objects/money.js";
+import { TransactionType } from "./enums.js";
+import { InvalidTransactionError, validateNewTransaction } from "./transaction.js";
 
 const now = new Date("2026-06-15T12:00:00Z");
 

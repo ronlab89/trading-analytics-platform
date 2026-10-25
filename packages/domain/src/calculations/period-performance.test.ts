@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import type { DailyFlow } from "./daily-return";
-import { calculatePeriodPerformance } from "./period-performance";
-import type { DailyValue } from "./value-series";
+import { Money } from "../value-objects/money.js";
+import type { DailyFlow } from "./daily-return.js";
+import { calculatePeriodPerformance } from "./period-performance.js";
+import type { DailyValue } from "./value-series.js";
 
 const day = (n: number) => new Date(Date.UTC(2026, 2, n));
 const usd = (amount: string) => Money.of(amount, "USD");

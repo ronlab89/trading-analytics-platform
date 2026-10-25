@@ -1,4 +1,4 @@
-import type { UserRole } from "./enums";
+import type { UserRole } from "./enums.js";
 
 /**
  * User entity.

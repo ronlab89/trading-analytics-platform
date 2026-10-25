@@ -1,4 +1,4 @@
-import type { CreateMarketEventInput, MarketEvent } from "../entities/market-event";
+import type { CreateMarketEventInput, MarketEvent } from "../entities/market-event.js";
 
 /**
  * MarketEvent repository contract.

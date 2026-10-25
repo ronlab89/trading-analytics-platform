@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
+import { Money } from "../value-objects/money.js";
 import {
   InvalidMarketEventError,
   isStaleMarketEvent,
   validateNewMarketEvent,
-} from "./market-event";
+} from "./market-event.js";
 
 const baseInput = {
   assetId: "asset_001",

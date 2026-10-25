@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DecisionEventType } from "./enums";
-import { InvalidDecisionEventError, validateNewDecisionEvent } from "./decision-event";
+import { DecisionEventType } from "./enums.js";
+import { InvalidDecisionEventError, validateNewDecisionEvent } from "./decision-event.js";
 
 const baseInput = {
   decisionId: "decision_001",

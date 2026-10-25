@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRESET_PERIODS, resolvePeriodWindow } from "./period";
+import { PRESET_PERIODS, resolvePeriodWindow } from "./period.js";
 
 /** A UTC calendar date, as `YYYY-MM-DD`. */
 const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);

@@ -1,4 +1,4 @@
-import type { CreatePortfolioInput, Portfolio } from "../entities/portfolio";
+import type { CreatePortfolioInput, Portfolio } from "../entities/portfolio.js";
 
 /**
  * Portfolio repository contract.

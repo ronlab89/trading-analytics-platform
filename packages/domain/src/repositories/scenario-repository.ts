@@ -1,4 +1,4 @@
-import type { CreateScenarioInput, Scenario, ScenarioChange } from "../entities/scenario";
+import type { CreateScenarioInput, Scenario, ScenarioChange } from "../entities/scenario.js";
 
 /**
  * Scenario repository contract.

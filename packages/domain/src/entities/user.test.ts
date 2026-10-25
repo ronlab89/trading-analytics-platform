@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidUserError, validateNewUser } from "./user";
+import { InvalidUserError, validateNewUser } from "./user.js";
 
 describe("validateNewUser", () => {
   it("should accept a valid user input", () => {

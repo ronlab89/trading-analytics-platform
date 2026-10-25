@@ -1,8 +1,8 @@
-import type { Portfolio } from "../entities/portfolio";
-import type { Position } from "../entities/position";
-import type { MarketPrice } from "../entities/market-price";
-import { Money } from "../value-objects/money";
-import { InsufficientDataError } from "./drawdown";
+import type { Portfolio } from "../entities/portfolio.js";
+import type { Position } from "../entities/position.js";
+import type { MarketPrice } from "../entities/market-price.js";
+import { Money } from "../value-objects/money.js";
+import { InsufficientDataError } from "./drawdown.js";
 
 /**
  * Portfolio-level daily change calculation.

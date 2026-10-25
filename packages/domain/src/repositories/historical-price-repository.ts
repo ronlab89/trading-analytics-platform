@@ -1,4 +1,4 @@
-import type { CreateHistoricalPriceInput, HistoricalPrice } from "../entities/historical-price";
+import type { CreateHistoricalPriceInput, HistoricalPrice } from "../entities/historical-price.js";
 
 /**
  * HistoricalPrice repository contract.

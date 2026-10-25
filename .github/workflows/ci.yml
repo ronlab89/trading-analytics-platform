@@ -68,3 +68,18 @@ jobs:
       - run: pnpm --filter @trading/database db:test:runtime-password
       - run: pnpm test
       - run: pnpm build
+
+      # Proves the compiled output runs: plain `node` on `dist`, no tsx and no source
+      # condition (ADR-006 point 3). Readiness also needs the database to answer.
+      - name: Start the built API
+        run: |
+          node apps/api/dist/index.js > api.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://localhost:7001/health/ready; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "The built API did not become ready. Its log:"
+          cat api.log
+          exit 1

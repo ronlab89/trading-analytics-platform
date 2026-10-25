@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AlertType } from "./enums";
-import { InvalidAlertError, validateNewAlert } from "./alert";
+import { AlertType } from "./enums.js";
+import { InvalidAlertError, validateNewAlert } from "./alert.js";
 
 const baseInput = {
   userId: "user_001",

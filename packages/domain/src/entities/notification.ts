@@ -1,4 +1,4 @@
-import type { NotificationSeverity } from "./enums";
+import type { NotificationSeverity } from "./enums.js";
 
 /**
  * Notification entity.

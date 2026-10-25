@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { TransactionType } from "../entities/enums";
-import { CurrencyMismatchError, Money } from "../value-objects/money";
-import { buildQuantityTimeline } from "./quantity-timeline";
-import type { QuantityEntry } from "./quantity-timeline";
-import { buildValueSeries } from "./value-series";
-import type { PriceCandle } from "./value-series";
+import { TransactionType } from "../entities/enums.js";
+import { CurrencyMismatchError, Money } from "../value-objects/money.js";
+import { buildQuantityTimeline } from "./quantity-timeline.js";
+import type { QuantityEntry } from "./quantity-timeline.js";
+import { buildValueSeries } from "./value-series.js";
+import type { PriceCandle } from "./value-series.js";
 
 const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);
 

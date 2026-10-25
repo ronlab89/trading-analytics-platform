@@ -1,8 +1,8 @@
 import { Money } from "@trading/domain";
 import { describe, expect, it } from "vitest";
-import { MarketMode, modeProfile } from "./mode";
-import { MIN_PRICE, stepPrice } from "./price-step";
-import type { Random } from "./random";
+import { MarketMode, modeProfile } from "./mode.js";
+import { MIN_PRICE, stepPrice } from "./price-step.js";
+import type { Random } from "./random.js";
 
 /** A generator whose gaussian draw is fixed, to compute the expected price by hand. */
 function fixedGaussian(value: number): Random {

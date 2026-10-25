@@ -1,5 +1,5 @@
-import type { CreateDecisionInput, Decision } from "../entities/decision";
-import type { DecisionDirection } from "../entities/enums";
+import type { CreateDecisionInput, Decision } from "../entities/decision.js";
+import type { DecisionDirection } from "../entities/enums.js";
 
 /**
  * Decision repository contract.

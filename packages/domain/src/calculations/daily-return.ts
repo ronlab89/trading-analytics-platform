@@ -1,8 +1,8 @@
 import { Decimal } from "decimal.js";
-import type { Transaction } from "../entities/transaction";
-import { Money } from "../value-objects/money";
-import { TransactionType } from "../entities/enums";
-import { startOfUtcDay } from "./utc-date";
+import type { Transaction } from "../entities/transaction.js";
+import { Money } from "../value-objects/money.js";
+import { TransactionType } from "../entities/enums.js";
+import { startOfUtcDay } from "./utc-date.js";
 
 /**
  * Daily cash flows and daily return.

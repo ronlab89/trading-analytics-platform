@@ -1,4 +1,4 @@
-import type { HistoricalPrice } from "../entities/historical-price";
+import type { HistoricalPrice } from "../entities/historical-price.js";
 
 /**
  * Drawdown calculation.

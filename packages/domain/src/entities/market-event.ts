@@ -1,4 +1,4 @@
-import type { Money } from "../value-objects/money";
+import type { Money } from "../value-objects/money.js";
 
 /**
  * MarketEvent entity.

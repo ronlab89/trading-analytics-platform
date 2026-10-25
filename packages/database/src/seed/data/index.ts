@@ -1,5 +1,5 @@
-import { wipeDatabase } from "./wipe";
-import { createEmptySeedContext } from "./context";
+import { wipeDatabase } from "./wipe.js";
+import { createEmptySeedContext } from "./context.js";
 
 /**
  * Entry point for the DB seed workflow (Phase 2, Step 6).

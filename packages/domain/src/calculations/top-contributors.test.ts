@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../value-objects/money";
-import { pickTopContributors } from "./top-contributors";
-import type { SymbolContribution } from "./top-contributors";
+import { Money } from "../value-objects/money.js";
+import { pickTopContributors } from "./top-contributors.js";
+import type { SymbolContribution } from "./top-contributors.js";
 
 const item = (symbol: string, amount: string): SymbolContribution => ({
   assetId: `id-${symbol}`,

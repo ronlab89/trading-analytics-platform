@@ -1,7 +1,7 @@
-import { TransactionType } from "../entities/enums";
-import { Money } from "../value-objects/money";
-import { applyBuy, applySell, assertCanSell, sortByExecutedAt } from "./position-replay";
-import type { ReplayEntry, ReplayedPosition } from "./position-replay";
+import { TransactionType } from "../entities/enums.js";
+import { Money } from "../value-objects/money.js";
+import { applyBuy, applySell, assertCanSell, sortByExecutedAt } from "./position-replay.js";
+import type { ReplayEntry, ReplayedPosition } from "./position-replay.js";
 
 /**
  * Realized P/L.
