@@ -690,7 +690,7 @@ check.
 
 # 21. Injection Protection
 
-**Status:** `Implemented` (Prisma parameterized queries, `packages/database/src/repositories/`); wildcard escaping in asset search `Planned (B7)` (`BACKEND-ROADMAP.md` B7, `PROGRESS.md` §7)
+**Status:** `Implemented` (Prisma parameterized queries, `packages/database/src/repositories/`); wildcard escaping in asset search `Implemented` (B7.5; `PROGRESS.md` §7)
 
 | Vector | Control | Status |
 | --- | --- | --- |
@@ -698,7 +698,7 @@ check.
 | Command injection | The API spawns no processes or shells | `Implemented` (no surface) |
 | NoSQL injection | Not applicable: PostgreSQL only | — |
 | Header injection | `X-Request-ID` is echoed only when it matches the allowlist (§30); no other request value is written to a header | `Implemented` |
-| Pattern wildcards | Asset `search` passes `%` and `_` unescaped to Prisma `contains` | Known debt, `Planned (B7)` |
+| Pattern wildcards | Asset `search` escapes `%`, `_` and `\` before it reaches Prisma `contains`, so the term is plain text; the shared contract suite pins it for both repositories | `Implemented` (B7.5) |
 
 Rules:
 
