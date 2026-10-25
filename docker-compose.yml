@@ -7,8 +7,9 @@ services:
       POSTGRES_DB: ${DATABASE_NAME:-trading_analytics_dev}
       POSTGRES_USER: ${DATABASE_USER:-trading_user}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-trading_dev_password}
+      TZ: UTC
     ports:
-      - "${DATABASE_PORT:-5432}:5432"
+      - "127.0.0.1:${DATABASE_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
@@ -20,6 +21,47 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Profile "full": `docker compose --profile full up --build`. The seed never runs here.
+  migrate:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    restart: "no"
+    environment:
+      # Prisma resolves both variables of the datasource: the superuser migrates, the runtime role
+      # is the one whose password is set at the end.
+      MIGRATION_DATABASE_URL: postgresql://${DATABASE_USER:-trading_user}:${DATABASE_PASSWORD:-trading_dev_password}@postgres:5432/${DATABASE_NAME:-trading_analytics_dev}
+      DATABASE_URL: postgresql://trading_runtime:${RUNTIME_DB_PASSWORD:-trading_runtime_dev_password}@postgres:5432/${DATABASE_NAME:-trading_analytics_dev}
+      RUNTIME_DB_PASSWORD: ${RUNTIME_DB_PASSWORD:-trading_runtime_dev_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    image: trading-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      TZ: UTC
+      PORT: 7001
+      # The API connects as the data-only runtime role, through the Compose network name.
+      DATABASE_URL: postgresql://trading_runtime:${RUNTIME_DB_PASSWORD:-trading_runtime_dev_password}@postgres:5432/${DATABASE_NAME:-trading_analytics_dev}
+      # No default: an empty value makes the API refuse to start and say why.
+      JWT_SECRET: ${JWT_SECRET:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    ports:
+      - "127.0.0.1:${API_PORT:-7001}:7001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:

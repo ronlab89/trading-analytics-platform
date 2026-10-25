@@ -205,7 +205,7 @@ Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides t
 | Test variables supplied through the job `env`, not a generated `.env.test.local` (ADR-006 point 11) | `Implemented` | none |
 | `.nvmrc` as the single Node.js version source, reused by CI and the Dockerfile (ADR-006 point 13) | `Implemented` (`.nvmrc` pins Node 24 and `engines.node` is `>=24.0.0`); the Dockerfile reuses it through `ARG NODE_VERSION=24`, whose default must be kept equal to `.nvmrc` by hand (`Implemented`, B7.2) | none |
 | Docker Compose with PostgreSQL in the default profile (`docker-compose.yml`, `postgres:18`) | `Implemented`; detail in §7 | none |
-| API Dockerfile and the Compose `full` profile (ADR-006 point 4) | Dockerfile `Implemented` (B7.2); `full` profile `Planned (B7.3)`; detail in §7 | B7 |
+| API Dockerfile and the Compose `full` profile (ADR-006 point 4) | Dockerfile `Implemented` (B7.2); `full` profile `Implemented` (B7.3); detail in §7 | none |
 
 Code vs ADR:
 
@@ -326,7 +326,7 @@ Core business rules can be tested without React, Express, or PostgreSQL.
 | --- | --- | --- |
 | PostgreSQL through Docker Compose, default profile with PostgreSQL only (`docker-compose.yml`: `postgres:18`, named volume, healthcheck) | `Implemented` | none |
 | Docker: multi-stage API Dockerfile, non-root user, `apps/api/Dockerfile` (ADR-006 point 4) | `Implemented` (B7.2); `docker/` holds only `.gitkeep` | none |
-| Compose `full` profile: PostgreSQL, a one-shot `migrate` service and the API (ADR-006 point 4) | `Planned (B7)` | B7 |
+| Compose `full` profile: PostgreSQL, a one-shot `migrate` service and the API (ADR-006 point 4) | `Implemented` (B7.3) | none |
 | Migration tooling: Prisma (`packages/database/prisma`) | `Implemented` | none |
 | Initial schema and migrations (`schema.prisma`: 12 enums and 16 models; 10 migrations) | `Implemented` | none |
 | `Session` (refresh tokens, `05-data-model.md` §5.3) | `Implemented` in `schema.prisma` (B2.3, plus the successor column in B2.4) | B2 |
@@ -338,8 +338,8 @@ Core business rules can be tested without React, Express, or PostgreSQL.
 | Repository interfaces (`packages/domain/src/repositories`) | `Implemented` | none |
 | PostgreSQL repositories, mappers and `PrismaUnitOfWork` (`packages/database/src`) | `Implemented` | none |
 | In-memory repositories and `UnitOfWork` (ADR-001 point 7, `06-architecture.md` §12 and §13) | `Planned (B0)` | B0 |
-| Production migration path: `prisma migrate deploy` in the `migrate` service (ADR-006 points 4 and 5) | `Planned (B7)` | B7 |
-| `TZ=UTC` on the API and PostgreSQL containers; Prisma `connection_limit` (default until measured) | API image `TZ=UTC` `Implemented` (B7.2); PostgreSQL container `Planned (B7.3)`; `connection_limit` default | B7 |
+| Production migration path: `prisma migrate deploy` in the `migrate` service (ADR-006 points 4 and 5) | `Implemented` (B7.3) | none |
+| `TZ=UTC` on the API and PostgreSQL containers; Prisma `connection_limit` (default until measured) | API image and PostgreSQL container `TZ=UTC` `Implemented` (B7.2, B7.3); `connection_limit` stays at Prisma's default | none |
 
 Code vs ADR:
 
@@ -347,8 +347,8 @@ Code vs ADR:
 - `db:migrate` runs `prisma migrate dev`. The production path is `migrate deploy` (ADR-006 point 5), which exists only as `db:test:migrate` today.
 - The seed always wipes the database first. The seed and the hard reset (`db:reset`, `prisma/reset.ts`) refuse to run when `NODE_ENV=production` (ADR-006 point 13, `Implemented`).
 - The API, the seed and the test suites connect as the DML-only runtime role `trading_runtime` through `DATABASE_URL`; the Prisma CLI uses the migration role through `MIGRATION_DATABASE_URL` (ADR-005 point 13, `Implemented`).
-- The PostgreSQL port is published on every host interface, and binding it to `127.0.0.1` is still open (B7). Compose has no profiles yet, so the default profile and the future `full` profile share one file.
-- Migrations declare `TIMESTAMP(3)` columns without a time zone. The containers run with `TZ=UTC` (ADR-006 point 4): the API image `Implemented` (B7.2), the PostgreSQL container `Planned (B7.3)`.
+- The PostgreSQL port binds to `127.0.0.1` (`Implemented`, B7.3). The default profile and the `full` profile share one `docker-compose.yml`.
+- Migrations declare `TIMESTAMP(3)` columns without a time zone. The containers run with `TZ=UTC` (ADR-006 point 4): the API image `Implemented` (B7.2), the PostgreSQL container `Implemented` (B7.3).
 - The domain defines the repository interfaces and `@trading/database` implements them, as the objective requires. Domain logic does not import Prisma. The services in `apps/api` still import the Prisma repositories directly until the composition root of ADR-001 point 4 exists (B0).
 
 ### Objective
@@ -1237,7 +1237,7 @@ without requiring a paid external monitoring service.
 | Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT`, `JWT_EXPIRES_IN_SECONDS`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3.1, B3.2); it does not read `APP_MODE` and does not validate `DATABASE_URL`; the rest is `Planned (B7)` (`DATABASE_URL`) and `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
 | Web build-time values `VITE_APP_MODE` and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) | `Planned (FE0)` | FE0 |
 | Local full stack: a Docker Compose `full` profile with PostgreSQL and the API; the default profile keeps only PostgreSQL; `TZ=UTC` on both containers; the real-mode web app runs on the Vite dev server against the local API (ADR-006 points 4 and 8) | `Planned (B7)` | B7 |
-| Migration deployment: a one-shot `migrate` service in the `full` profile runs `prisma migrate deploy` after PostgreSQL is healthy, and the API starts after it completes (ADR-006 points 4 and 5 and Deferred detail) | `Planned (B7)` | B7 |
+| Migration deployment: a one-shot `migrate` service in the `full` profile runs `prisma migrate deploy` after PostgreSQL is healthy, and the API starts after it completes (ADR-006 points 4 and 5 and Deferred detail) | `Implemented` (B7.3) | none |
 | Health checks: `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` (ADR-006 point 4) | Endpoints `Implemented`; container healthcheck `Planned (B7)` | B7 |
 | Graceful shutdown: on `SIGTERM` or `SIGINT` the server stops accepting connections, readiness returns 503 with `status: "unavailable"` and no `checks`, in-flight requests drain for up to 10 seconds, Prisma closes, and the exit code is 1 only if the drain times out (ADR-006 point 12) | `Implemented` (B3.4) | B3 |
 | Smoke tests: one script that runs after `docker compose --profile full up`, with no frontend step (ADR-006 point 11) | `Planned (B7)` | B7 |
@@ -2269,7 +2269,7 @@ job ID
 | Checkout and install with the lockfile, in CI on a clean runner | `Implemented` | none |
 | Build: `pnpm build` compiles every package; running the built API is a separate step | Compile in CI `Implemented`; `node dist/index.js` `Planned (B7)` | B7 |
 | Database: PostgreSQL through Docker Compose | `Implemented` (default profile); `full` profile `Planned (B7)` | B7 |
-| Migrate: `prisma migrate deploy` through the one-shot `migrate` service | `Planned (B7)` | B7 |
+| Migrate: `prisma migrate deploy` through the one-shot `migrate` service | `Implemented` (B7.3) | none |
 | Seed: an explicit development command, never automatic, refusing to run when `NODE_ENV=production` | Command and production guard `Implemented` | none |
 | Start: API container with `node dist/index.js` | `Planned (B7)` | B7 |
 | Health: container healthcheck on `GET /health/ready` | Endpoint `Implemented`; healthcheck `Planned (B7)` | B7 |

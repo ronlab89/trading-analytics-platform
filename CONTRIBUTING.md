@@ -250,6 +250,13 @@ Every workspace package exposes its compiled `dist` through `exports`, and the
 packages and the API end in `.js` (`NodeNext`): `tsc` rejects a missing
 extension. `pnpm typecheck` builds the referenced projects first.
 
+The `full` Compose profile runs PostgreSQL, a one-shot `migrate` service and the API
+in containers: `docker compose --profile full up --build`. It reads `JWT_SECRET` from your
+`.env` (no default), plus the optional `RUNTIME_DB_PASSWORD` (the password given to the
+`trading_runtime` role; a local default applies), `API_PORT` and `CORS_ORIGIN`. Both published
+ports bind to `127.0.0.1`. After pulling this change, run `docker compose up -d` once to
+recreate a running PostgreSQL container with the new binding and `TZ=UTC`.
+
 The API image builds from the workspace root and reads its configuration from the
 environment only (it never copies `.env`):
 

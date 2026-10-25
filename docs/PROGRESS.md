@@ -1065,7 +1065,7 @@ unassigned.
   Node. Relative imports now carry `.js` (`NodeNext`), each package exposes
   `dist` through `exports`, and the `@trading/source` condition keeps tests,
   `tsx` and `tsc` reading `src`. CI starts the built API. The container image
-  is B7.2 and the `full` profile is B7.3.
+  is B7.2 and the `full` profile is B7.3 (both below).
 - **API container image** — `apps/api/Dockerfile`, B7.2 (ADR-006 point 4). Three stages built
   from the workspace root: `build` (full install, `prisma generate`, `pnpm build`, compiled
   tests removed), `deps` (`pnpm install --prod --ignore-scripts`) and `runtime` (Debian slim with
@@ -1074,6 +1074,14 @@ unassigned.
   `pnpm deploy` was rejected: it follows `files` in `@trading/database` and drops the generated
   client. Checked by hand against the local PostgreSQL: healthy, `docker stop` exits 0 after the
   shutdown logs. The Node version is `ARG NODE_VERSION=24`, kept equal to `.nvmrc` by hand.
+- **Compose `full` profile** — B7.3 (ADR-006 points 4 and 5). `migrate` is a one-shot
+  service built from the `migrate` target of the same Dockerfile (the build stage, which has the
+  Prisma CLI and `tsx`): it runs `prisma migrate deploy` as the superuser, then
+  `set-runtime-password.ts`, so `trading_runtime` can log in. `api` waits for it with
+  `service_completed_successfully` and connects as `trading_runtime` through the host name
+  `postgres`. Nothing seeds. PostgreSQL and the API publish on `127.0.0.1` only and run with
+  `TZ=UTC`. Checked from an empty volume in an isolated project: migrate exited 0, api healthy,
+  17 migrations applied, `trading_runtime` has a password, timezone `UTC`.
 - **Concurrency on position recalculation** — B0 (ADR-001, FR-017), not B7:
   two simultaneous transactions against the same portfolio+asset could race
   between the read-then-write of the position inside the Unit of Work. The

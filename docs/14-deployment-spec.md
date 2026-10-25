@@ -139,7 +139,7 @@ Code vs ADR:
 
 - `apps/web` holds only `WIREFRAME-PLAN.md` and `wireframe.html`; there is no React or Vite code. The frontend box is `Planned (FE)`, and the WebSocket path of the arrow is `Implemented` (B5).
 - Today the API runs on the host and reaches PostgreSQL through the published port on `localhost`.
-- ADR-006 point 4 settles "may provide the complete stack": the default Compose profile holds only PostgreSQL, and a `full` profile adds the one-shot `migrate` service and the API (`Planned (B7)`). No frontend container is decided (§5).
+- ADR-006 point 4 settles "may provide the complete stack": the default Compose profile holds only PostgreSQL, and a `full` profile adds the one-shot `migrate` service and the API (`Implemented`, B7.3). No frontend container is decided (§5).
 
 ---
 
@@ -199,22 +199,22 @@ It should support:
 | Capability | Status |
 |---|---|
 | Startup/shutdown | `Implemented`: `docker compose up -d` and `docker compose down` |
-| Service networking | `Planned (B7)`: one service exists today, so there is nothing to network |
-| Health dependencies | PostgreSQL healthcheck `Implemented` (`pg_isready`, 5 s interval, 5 retries); `depends_on` with `condition: service_healthy` on PostgreSQL, so that it accepts connections before `migrate deploy` runs (ADR-006, Deferred detail), and API `depends_on: migrate` with `condition: service_completed_successfully` (ADR-006 point 4); both `Planned (B7)` |
+| Service networking | `Implemented` (B7.3): the `full` profile services reach PostgreSQL by the service name `postgres` on the default Compose network |
+| Health dependencies | PostgreSQL healthcheck `Implemented` (`pg_isready`, 5 s interval, 5 retries); `depends_on` with `condition: service_healthy` on PostgreSQL, so that it accepts connections before `migrate deploy` runs (ADR-006, Deferred detail), and API `depends_on: migrate` with `condition: service_completed_successfully` (ADR-006 point 4); both `Implemented` (B7.3) |
 | Environment variables | `Implemented`: `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` and `DATABASE_PORT`, each with a default |
 | Persistent PostgreSQL volume | `Implemented`: named volume `trading-analytics-postgres-data`, mounted at `/var/lib/postgresql` |
 | Isolated database state | Per environment, `Implemented` by convention: `trading_analytics_dev` for development, and a separate `trading_analytics_test` on the same instance created by hand (`.env.test.example`) |
 | Development workflow | `Implemented`: the default profile is PostgreSQL only |
-| `full` profile | `Planned (B7)` (ADR-006 point 4): PostgreSQL, a one-shot `migrate` service and the API |
-| Container time zone | API image `Implemented` (B7.2: `TZ=UTC`); PostgreSQL container `Planned (B7.3)` (ADR-006 point 4; §60) |
+| `full` profile | `Implemented` (B7.3, ADR-006 point 4): PostgreSQL, a one-shot `migrate` service and the API; `docker compose --profile full up --build` |
+| Container time zone | API image `Implemented` (B7.2: `TZ=UTC`); PostgreSQL container `Implemented` (B7.3: `TZ=UTC`) (ADR-006 point 4; §60) |
 
 Conceptual structure:
 
 ```yaml
 services:
   postgres: # default profile, Implemented
-  migrate: # profile "full", one-shot (prisma migrate deploy), Planned (B7)
-  api: # profile "full", depends_on migrate (service_completed_successfully), Planned (B7)
+  migrate: # profile "full", one-shot (prisma migrate deploy, then the runtime-role password), Implemented (B7.3)
+  api: # profile "full", depends_on migrate (service_completed_successfully), Implemented (B7.3)
 ```
 
 Exact configuration belongs to implementation.
@@ -226,7 +226,8 @@ Code vs ADR:
 - The Compose fallback password (`trading_dev_password`) differs from the `.env.example` placeholder (`change_me_in_local_env`). With no `.env`, Compose still starts, with the fallback. Both are local-only values.
 - `DATABASE_URL` repeats the user, password, port and database of the four Compose variables and is edited by hand; nothing keeps them in step.
 - The container's user is a PostgreSQL superuser and acts as the migration role. The API connects at runtime as the data-only role `trading_runtime` (ADR-005 point 13, `Implemented`).
-- The port is published on every host interface (`${DATABASE_PORT:-5432}:5432`). Whether it binds to `127.0.0.1` is an open detail (B7), tracked in `09-security-spec.md` §36.
+- `Implemented` (B7.3): the port binds to loopback only (`127.0.0.1:${DATABASE_PORT:-5432}:5432`), and so does the API port (`127.0.0.1:${API_PORT:-7001}:7001`). An already running PostgreSQL container needs `docker compose up -d` to be recreated with the new binding and `TZ`.
+- The `migrate` service builds the `migrate` target of `apps/api/Dockerfile` (the build stage: Prisma CLI and `tsx`), runs `prisma migrate deploy` as the superuser and then `prisma/set-runtime-password.ts`, so `trading_runtime` can log in. Compose reads `RUNTIME_DB_PASSWORD` (default: a known local value, like the other `DATABASE_*` fallbacks) and `JWT_SECRET` (no default: an empty value makes the API refuse to start). The seed is never run by any service.
 
 ---
 
@@ -321,7 +322,7 @@ These are defaults, not architectural requirements.
 |---|---|---|
 | Frontend | 5173 | `Planned (FE)`: the Vite default; the API's `CORS_ORIGIN` default is `http://localhost:5173` (`env.ts`) |
 | Backend | 7001 | `Implemented`: `PORT`, default `7001` (`env.ts`, `.env.example`; ADR-006 point 8) |
-| Database | 5432 | `Implemented`: `DATABASE_PORT`, default `5432`, published on every host interface (`docker-compose.yml`) |
+| Database | 5432 | `Implemented`: `DATABASE_PORT`, default `5432`, published on `127.0.0.1` only (`docker-compose.yml`, B7.3) |
 
 Code vs ADR:
 
@@ -545,7 +546,7 @@ What `apps/api/src/index.ts` does today:
 | Initialize observability | The logger is built when `logging/logger.ts` loads; `app.startup.started` and `app.startup.completed` follow (ADR-009 point 11) | `Implemented` (B3.1, B3.4) |
 | Initialize database | The Prisma client is a shared singleton created when `@trading/database` is imported (`packages/database/src/client.ts`); no explicit connect, so no connection is attempted at startup | `Implemented` as implicit; explicit check `Planned (B7)` (`DATABASE_URL` validation, §12) |
 | Validate dependencies | Not present; readiness runs a `SELECT 1` on each `GET /health/ready` call | `Implemented` as a per-request check only |
-| Apply migrations | Manual (`db:migrate`, `db:test:migrate`); in the `full` profile, a one-shot `migrate` service runs `prisma migrate deploy` before the API container starts | `Planned (B7)` (ADR-006 points 4 and 5) |
+| Apply migrations | Manual (`db:migrate`, `db:test:migrate`); in the `full` profile, a one-shot `migrate` service runs `prisma migrate deploy` before the API container starts | `Implemented` (B7.3; ADR-006 points 4 and 5) |
 | Initialize application services | `createApp()` wires middleware, routes and services | `Implemented` |
 | Initialize HTTP server | `app.listen(env.PORT)`, then `[api] listening on port <n>` | `Implemented` |
 | Resume background jobs | `PROCESSING` jobs fail as `INTERRUPTED`, and `QUEUED` jobs resume | `Implemented` (B4.2) (ADR-008 point 5) |
@@ -555,7 +556,7 @@ What `apps/api/src/index.ts` does today:
 Code vs ADR:
 
 - The sequence is a target, and the table lists where the code departs from it. The API is ready to serve as soon as `listen` returns, with no gate on the database.
-- Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): `prisma migrate deploy` runs as a one-shot `migrate` service in the `full` profile, not in the API process or its entrypoint. The API service has `depends_on: migrate` with `condition: service_completed_successfully`, and the API container starts with `node dist/index.js` directly (§26). In the `full` profile, "startup applies migrations" (ADR-006 point 5) means this service. Its position relative to the PostgreSQL healthcheck is in §6 (ADR-006, Deferred detail).
+- Decided (ADR-006 point 4, amended 2026-10-07; `Implemented`, B7.3): `prisma migrate deploy` runs as a one-shot `migrate` service in the `full` profile, not in the API process or its entrypoint. The API service has `depends_on: migrate` with `condition: service_completed_successfully`, and the API container starts with `node dist/index.js` directly (§26). In the `full` profile, "startup applies migrations" (ADR-006 point 5) means this service. Its position relative to the PostgreSQL healthcheck is in §6 (ADR-006, Deferred detail).
 - Open (B3): the log level of the startup entry (no ADR sets it).
 
 ---
@@ -637,7 +638,7 @@ Deployment must define:
 | Item | Status |
 |---|---|
 | Database creation | Development database `Implemented` through `POSTGRES_DB` in Compose; the test database is created by hand (`CREATE DATABASE trading_analytics_test`, `.env.test.example`); a CI service container `Implemented` (ADR-006 point 10) |
-| Migrations | `Implemented` (§18); applied in the full stack by the one-shot `migrate` service `Planned (B7)` (ADR-006 points 4 and 5) |
+| Migrations | `Implemented` (§18); applied in the full stack by the one-shot `migrate` service `Implemented` (B7.3; ADR-006 points 4 and 5) |
 | Seeds | `Implemented` (§20); never automatic (ADR-006 point 5) |
 | Connection configuration | `Implemented`: `DATABASE_URL`, with `?schema=public`; startup validation `Planned (B7)` (§12); a runtime role separate from the migration role `Implemented` (ADR-005 point 13) |
 | Pool configuration | Prisma's defaults apply; in the `full` profile `connection_limit` stays at Prisma's default until measured, `Planned (B7)` (ADR-006, Deferred detail) |
@@ -961,13 +962,13 @@ Runtime stage
 |---|---|
 | Multi-stage build, decided rather than "considered" | `Planned (B7)` (ADR-006 point 4) |
 | Non-root execution, decided rather than "where practical" | `Planned (B7)` (ADR-006 point 4; `09-security-spec.md` §38) |
-| Predictable startup: PostgreSQL healthy before `migrate deploy`, and `migrate` completed before the API | `Planned (B7)`: `depends_on` with `condition: service_healthy` on PostgreSQL (ADR-006, Deferred detail); the API has `depends_on: migrate` with `condition: service_completed_successfully` (ADR-006 point 4) |
+| Predictable startup: PostgreSQL healthy before `migrate deploy`, and `migrate` completed before the API | `Implemented` (B7.3): `depends_on` with `condition: service_healthy` on PostgreSQL (ADR-006, Deferred detail); the API has `depends_on: migrate` with `condition: service_completed_successfully` (ADR-006 point 4) |
 | Health checks: PostgreSQL | `Implemented`: `pg_isready` in `docker-compose.yml` |
 | Health checks: API container | `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` `Planned (B7)` (ADR-006 point 4; §51) |
 | Graceful shutdown | `Implemented` (B3.4; §16; ADR-006 point 12); in the container it needs the direct `node dist/index.js` entrypoint below |
 | Reproducibility and minimal runtime dependencies | `Planned (B7)`; the Node version comes from `.nvmrc`, reused by the Dockerfile (ADR-006 point 13; §37); base-image pinning and the dependency split are open |
-| Time zone | `Planned (B7)`: the API and PostgreSQL containers run with `TZ=UTC` (ADR-006 point 4; §60) |
-| `full` Compose profile (PostgreSQL, the one-shot `migrate` service and the API) | `Planned (B7)` (ADR-006 point 4) |
+| Time zone | `Implemented` (B7.2 for the API, B7.3 for PostgreSQL): the containers run with `TZ=UTC` (ADR-006 point 4; §60) |
+| `full` Compose profile (PostgreSQL, the one-shot `migrate` service and the API) | `Implemented` (B7.3; ADR-006 point 4) |
 
 Code vs ADR:
 
@@ -1094,9 +1095,9 @@ A free development tier may be preferred, but the architecture remains provider-
 Code vs ADR:
 
 - The "Public/production-like" diagram does not apply: the production-like target is the same local PostgreSQL (ADR-006 points 1 and 4), so no application connects to a managed database.
-- Compose publishes PostgreSQL on `${DATABASE_PORT:-5432}` without a bind address, and the migrations run as the image's superuser, while the API and the tests connect as `trading_runtime`. A `127.0.0.1` binding is open (B7); the separate runtime role is `Implemented` (`09-security-spec.md` §36 and §38; ADR-005 point 13).
+- Compose publishes PostgreSQL on `127.0.0.1:${DATABASE_PORT:-5432}`, and the migrations run as the image's superuser, while the API and the tests connect as `trading_runtime`. The `127.0.0.1` binding is `Implemented` (B7.3); the separate runtime role is `Implemented` (`09-security-spec.md` §36 and §38; ADR-005 point 13).
 - The default Compose profile keeps only PostgreSQL (ADR-006 point 4).
-- Pool configuration: in the `full` profile `connection_limit` stays at Prisma's default until measured, `Planned (B7)` (ADR-006, Deferred detail; §17). The PostgreSQL container runs with `TZ=UTC` (ADR-006 point 4; §60).
+- Pool configuration: in the `full` profile `connection_limit` stays at Prisma's default until measured (`Implemented` as the default, B7.3; ADR-006, Deferred detail; §17). The PostgreSQL container runs with `TZ=UTC` (ADR-006 point 4; §60).
 
 ---
 
