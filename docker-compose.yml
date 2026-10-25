@@ -48,6 +48,8 @@ services:
       target: runtime
     image: trading-api
     restart: unless-stopped
+    # NFR-054: the stack must pass the smoke test under 512 MB.
+    mem_limit: 512m
     environment:
       NODE_ENV: production
       TZ: UTC
