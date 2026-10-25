@@ -36,7 +36,7 @@ It must support:
 Code vs ADR:
 
 - ADR-006 fixes the deployment model: exactly two targets, the local full stack and the public demo (§3). The backend is never hosted, so "production-like" means the local full stack and the "frontend/backend services" are not deployed separately.
-- Where each capability stands: PostgreSQL in Docker, environment configuration, migrations, seeds and health checks `Implemented`; observability `Implemented` (B3); CI `Implemented`; production build and the full-stack containers `Planned (B7)`; WebSocket `Implemented` (B5); the public demo `Planned (FE)`.
+- Where each capability stands: PostgreSQL in Docker, environment configuration, migrations, seeds and health checks `Implemented`; observability `Implemented` (B3); CI `Implemented`; production build and the full-stack containers `Implemented` (B7); WebSocket `Implemented` (B5); the public demo `Planned (FE)`.
 
 ---
 
@@ -77,7 +77,7 @@ Code vs ADR:
 | Local Development | Daily development | `Implemented`: PostgreSQL through Compose, API through `pnpm --filter @trading/api dev` (`apps/api/package.json`) |
 | Test / CI | Automated validation | Local test runs `Implemented` (`vitest`, `.env.test.local`); the GitHub Actions workflow `Implemented` (ADR-006 point 10) |
 | Demo | Public portfolio experience | `Planned (FE)`: static build of `apps/web` in demo mode under a subpath (ADR-006 points 1 and 7) |
-| Production-like | Deployment validation | `Planned (B7)`: the local full stack, `full` Compose profile with PostgreSQL, a one-shot `migrate` service and the API (ADR-006 points 1 and 4) |
+| Production-like | Deployment validation | `Implemented` (B7): the local full stack, `full` Compose profile with PostgreSQL, a one-shot `migrate` service and the API (ADR-006 points 1 and 4) |
 
 The same application artifacts should be reused whenever possible, with environment-specific configuration determining infrastructure.
 
@@ -101,7 +101,7 @@ Code vs ADR:
 - ADR-006 point 1 decides two targets only. "Local Development" and "Test / CI" are environments (ADR-006 point 8: `development`, `test` and local `production`), not deployment targets.
 - The two targets do not share one artifact. The demo is a static web build; the full stack is the API built with `node dist/index.js` plus PostgreSQL. What they share is the workspace packages (ADR-001, ADR-002).
 - Hosting, a managed database, a reverse proxy and public WSS are `Deferred`: hosting the backend needs a new ADR (ADR-006 point 2).
-- `pnpm build` runs `pnpm -r build` and every package has a `build` script, but the output does not run (ADR-006 context; `@trading/domain` and `@trading/database` set `main` to `./src/index.ts`). The production build is B7.
+- `pnpm build` runs `pnpm -r build` and every package has a `build` script, and the output runs with `node dist/index.js` since B7.1 (ADR-006 point 3): every package exposes `dist` through `exports`, and the `@trading/source` condition keeps tests and `tsx` on the sources.
 
 ---
 
@@ -176,7 +176,7 @@ Additional infrastructure must only be introduced when justified.
 Code vs ADR:
 
 - The three-service Compose of the original text is replaced by ADR-006 point 4: PostgreSQL in the default profile, PostgreSQL and the API in `full`.
-- Open (B7): whether a frontend container ever exists. Recommendation: not in v1, because the public demo is static and a local full-stack run can use the Vite dev server.
+- Decided in B7: no frontend container in v1, because the public demo is static and a local full-stack run can use the Vite dev server; the `full` profile holds PostgreSQL, `migrate` and the API only.
 
 ---
 
@@ -283,7 +283,7 @@ All PostgreSQL responsibilities are `Implemented` (`packages/database/prisma/sch
 
 # 8. Container Networking
 
-**Status:** `Planned (B7)`: only PostgreSQL is a container today
+**Status:** `Implemented` (B7.2, B7.3): PostgreSQL in the default profile; the `full` profile adds the `migrate` service and the API
 
 Containers should communicate through an internal network.
 
@@ -298,7 +298,7 @@ Docker-internal hostnames must never be exposed as browser configuration.
 Code vs ADR:
 
 - There is no container network yet. In the `full` profile only `api` to `postgres` applies; the `frontend` arrows belong to the browser, which reaches the published API port on the host (`Planned (FE)` for the client).
-- The rule on internal hostnames stays `Reference`. It matters in B7: an API run in a container reaches PostgreSQL by service name, and one run on the host by `localhost`, so `DATABASE_URL` differs between the two. How B7 supplies it is open.
+- The rule on internal hostnames stays `Reference`. It mattered in B7.3: an API run in a container reaches PostgreSQL by service name, and one run on the host by `localhost`, so `DATABASE_URL` differs between the two. Compose builds the container URL from the same `DATABASE_*` variables, with the host `postgres`; `.env` keeps `localhost` for the host.
 
 ---
 
@@ -396,7 +396,7 @@ The repository must document which variables are required for:
 | Local development (`.env`) | `DATABASE_URL`, `JWT_SECRET`; the rest have defaults. The Compose variables are optional | `Implemented` |
 | Tests (`.env.test.local`) | `DATABASE_URL` pointing at the separate test database, `NODE_ENV=test`, `JWT_SECRET` | `Implemented` |
 | Demo | No server variables. Build-time `VITE_APP_MODE=demo` and a base path; no secrets (ADR-006 point 7) | `Planned (FE)` |
-| Production-like (local `full` profile) | `NODE_ENV=development`, `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` if they differ from the defaults | `Planned (B7)` |
+| Production-like (local `full` profile) | Compose sets `NODE_ENV=production`, `DATABASE_URL` (as the runtime role, through the network name `postgres`), `PORT` and `TZ=UTC` on the `api` service; `.env` supplies `JWT_SECRET` (no default), `RUNTIME_DB_PASSWORD`, `API_PORT` and `CORS_ORIGIN`. The seed runs from the host with the development values | `Implemented` (B7.3) |
 
 Code vs ADR:
 
@@ -408,7 +408,7 @@ Code vs ADR:
 
 # 12. Configuration Validation
 
-**Status:** `Implemented` for the five variables `env.ts` validates; `DATABASE_URL` `Planned (B7)` (`09-security-spec.md` §43); the per-entry check of `CORS_ORIGIN` `Implemented` (ADR-006 point 13); `LOG_LEVEL`, `SLOW_REQUEST_THRESHOLD_MS` and `APP_MODE` join with their blocks
+**Status:** `Implemented` for the five variables `env.ts` validates; `DATABASE_URL` `Implemented` (B7.1, `09-security-spec.md` §43); the per-entry check of `CORS_ORIGIN` `Implemented` (ADR-006 point 13); `LOG_LEVEL`, `SLOW_REQUEST_THRESHOLD_MS` and `APP_MODE` join with their blocks
 
 Backend configuration must be validated at startup.
 
@@ -435,7 +435,7 @@ Code vs ADR:
 
 - `apps/api/src/config/env.ts` parses `process.env` with a `zod` schema when the module is first imported, and on failure prints the key and its message and calls `process.exit(1)`. `index.ts` imports it before `app.listen`, so an invalid value stops the process before it accepts traffic.
 - The message never carries the value, only the key and the rule (for example "JWT_SECRET must be at least 32 characters long."). The output goes through `console.error`, not the `Logger` of ADR-009 (B3).
-- Not validated today: `DATABASE_URL`. A missing or malformed value surfaces at the first query, so the API starts and `GET /health/ready` answers 503. Adding it to the schema is `Planned (B7)` (`09-security-spec.md` §43).
+- `DATABASE_URL` is validated at startup since B7.1: it must be a `postgresql://` or `postgres://` URL, and the error names the variable and never echoes the value (`09-security-spec.md` §43). `MIGRATION_DATABASE_URL` is read only by the Prisma CLI and is not validated by the API. A URL that parses but points at an unreachable database still lets the API start, and `GET /health/ready` answers 503.
 - `NODE_ENV=production` imposes no extra rule in the schema (for example a stricter `JWT_SECRET`). No ADR decides one.
 - Decided (ADR-006 point 13, amended 2026-10-07; `Implemented`): each `CORS_ORIGIN` entry must be a `http(s)://host[:port]` origin and `*` is rejected (§33). `NODE_ENV=production` also makes the seed and the hard database reset refuse to run (§20, §21); that guard is in the database scripts, not in the schema.
 
@@ -544,7 +544,7 @@ What `apps/api/src/index.ts` does today:
 |---|---|---|
 | Load and validate configuration | Importing `config/env.ts` parses the environment and exits on failure (§12) | `Implemented` |
 | Initialize observability | The logger is built when `logging/logger.ts` loads; `app.startup.started` and `app.startup.completed` follow (ADR-009 point 11) | `Implemented` (B3.1, B3.4) |
-| Initialize database | The Prisma client is a shared singleton created when `@trading/database` is imported (`packages/database/src/client.ts`); no explicit connect, so no connection is attempted at startup | `Implemented` as implicit; explicit check `Planned (B7)` (`DATABASE_URL` validation, §12) |
+| Initialize database | The Prisma client is a shared singleton created when `@trading/database` is imported (`packages/database/src/client.ts`); no explicit connect, so no connection is attempted at startup | `Implemented` as implicit; the URL is validated at startup (`Implemented`, B7.1, §12) and no explicit connect was added: readiness reports the connection |
 | Validate dependencies | Not present; readiness runs a `SELECT 1` on each `GET /health/ready` call | `Implemented` as a per-request check only |
 | Apply migrations | Manual (`db:migrate`, `db:test:migrate`); in the `full` profile, a one-shot `migrate` service runs `prisma migrate deploy` before the API container starts | `Implemented` (B7.3; ADR-006 points 4 and 5) |
 | Initialize application services | `createApp()` wires middleware, routes and services | `Implemented` |
@@ -640,8 +640,8 @@ Deployment must define:
 | Database creation | Development database `Implemented` through `POSTGRES_DB` in Compose; the test database is created by hand (`CREATE DATABASE trading_analytics_test`, `.env.test.example`); a CI service container `Implemented` (ADR-006 point 10) |
 | Migrations | `Implemented` (§18); applied in the full stack by the one-shot `migrate` service `Implemented` (B7.3; ADR-006 points 4 and 5) |
 | Seeds | `Implemented` (§20); never automatic (ADR-006 point 5) |
-| Connection configuration | `Implemented`: `DATABASE_URL`, with `?schema=public`; startup validation `Planned (B7)` (§12); a runtime role separate from the migration role `Implemented` (ADR-005 point 13) |
-| Pool configuration | Prisma's defaults apply; in the `full` profile `connection_limit` stays at Prisma's default until measured, `Planned (B7)` (ADR-006, Deferred detail) |
+| Connection configuration | `Implemented`: `DATABASE_URL`, with `?schema=public`; startup validation `Implemented` (B7.1, §12); a runtime role separate from the migration role `Implemented` (ADR-005 point 13) |
+| Pool configuration | Prisma's defaults apply; in the `full` profile `connection_limit` stays at Prisma's default until measured; nothing was measured and one API instance needs no tuning, so no value is set (`Implemented` by omission, B7.3; ADR-006, Deferred detail) |
 | Reset process | `Implemented` (§21) |
 | Production backup expectations | `Reference`: not applicable to a local environment; documented as such, not claimed (ADR-006 point 9) |
 
@@ -654,7 +654,7 @@ Code vs ADR:
 
 # 18. Database Migrations
 
-**Status:** `Implemented` with Prisma Migrate; CI `Implemented` (it runs `db:test:migrate` before the suites); application in the full stack by the `migrate` service `Planned (B7)`
+**Status:** `Implemented` with Prisma Migrate; CI `Implemented` (it runs `db:test:migrate` before the suites); application in the full stack by the `migrate` service `Implemented` (B7.3)
 
 Schema changes must be versioned.
 
@@ -686,7 +686,7 @@ Deployment
 | Checking migration state | Available through the Prisma CLI (`prisma migrate status`); no package script wraps it |
 | Controlled rollback | Removed: forward-fix only (ADR-006 point 6) |
 | `CI` step of the diagram | `Implemented` (ADR-006 point 10) |
-| `Deployment` step of the diagram | `Planned (B7)`: `prisma migrate deploy` runs in the one-shot `migrate` service of the `full` profile, before the API container starts (ADR-006 points 4 and 5); there is no hosted deployment |
+| `Deployment` step of the diagram | `Implemented` (B7.3): `prisma migrate deploy` runs in the one-shot `migrate` service of the `full` profile, before the API container starts (ADR-006 points 4 and 5); there is no hosted deployment |
 
 Code vs ADR:
 
@@ -716,7 +716,7 @@ Code vs ADR:
 
 - "Reviewed" is the pull request review; "tested" is the migration applied to the test database (`db:test:migrate`) before the suites run, and in CI `Implemented`. No automated check flags a destructive statement, and no ADR decides one.
 - Forward-only is ADR-006 point 6, so the last sentence is the rule, not an option.
-- Sequencing: the full stack applies migrations in the one-shot `migrate` service, which the API service waits for with `depends_on` and `service_completed_successfully` (ADR-006 points 4 and 5), and PostgreSQL health is awaited first (`Planned (B7)`, ADR-006 Deferred detail).
+- Sequencing: the full stack applies migrations in the one-shot `migrate` service, which the API service waits for with `depends_on` and `service_completed_successfully` (ADR-006 points 4 and 5), and PostgreSQL health is awaited first (`Implemented`, B7.3, ADR-006 Deferred detail).
 
 ---
 
@@ -786,7 +786,7 @@ Code vs ADR:
 - The diagram describes the hard reset. The light reset skips "Recreate schema" and "Run migrations".
 - Both commands act on the database named by `DATABASE_URL` in `.env` (`packages/database/package.json`). Nothing checks the database name. Both refuse to run when `NODE_ENV=production`; Prisma's confirmation on the hard reset is the other guard, and the seed has none. The `NODE_ENV=production` refusal for both is `Implemented` (ADR-006 point 13; §20). A check on the database name is not decided.
 - "Clearly separated from production operations" holds by construction: there is no production database (ADR-006 point 2), and the reset commands read `.env` while the tests read `.env.test.local`, so a reset never touches the test database unless both files point at the same one. A backup to restore from does not exist either (ADR-006 point 9).
-- The full stack never seeds on startup (ADR-006 point 5), so a demonstration that needs data runs the seed as an explicit command (`Planned (B7)` for the stack itself).
+- The full stack never seeds on startup (ADR-006 point 5), so a demonstration that needs data runs the seed as an explicit command (`Implemented` in B7.4 for the stack itself: `pnpm --filter @trading/database db:seed`, then `pnpm smoke`).
 
 ---
 
@@ -903,7 +903,7 @@ Code vs ADR:
 
 # 25. Backend Deployment
 
-**Status:** runnable artifact `Planned (B7)`; deployment to a host `Deferred` (ADR-006 point 2)
+**Status:** runnable artifact `Implemented` (B7); deployment to a host `Deferred` (ADR-006 point 2)
 
 The backend must be deployable as a standalone Node.js service or Docker container.
 
@@ -917,24 +917,24 @@ Development-only dependencies should not be required in production.
 
 | Item | Status |
 |---|---|
-| Compiled application: every package compiles to `dist` and exposes it through `exports`; the API runs with `node dist/index.js` | `Planned (B7)` (ADR-006 point 3) |
-| Standalone Node.js service on the author's machine | `Planned (B7)`: the `start` script of `apps/api` exists, but the output does not run today |
-| Docker container | `Planned (B7)`: the `full` Compose profile (§26; ADR-006 point 4) |
-| Production dependencies only | `Planned (B7)`; how they are separated is open |
+| Compiled application: every package compiles to `dist` and exposes it through `exports`; the API runs with `node dist/index.js` | `Implemented` (B7.1, ADR-006 point 3) |
+| Standalone Node.js service on the author's machine | `Implemented` (B7.1): the `start` script of `apps/api` runs the compiled output |
+| Docker container | `Implemented` (B7.2, B7.3): the `full` Compose profile (§26; ADR-006 point 4) |
+| Production dependencies only | `Implemented` (B7.2): the `deps` stage runs `pnpm install --prod --frozen-lockfile --ignore-scripts` and the runtime image copies only that tree and the compiled output |
 | Runtime configuration through environment variables | `Implemented` (§10, §12) |
 | Deployment to a hosting provider | `Deferred`; a new ADR is needed (ADR-006 point 2) |
 
 Code vs ADR:
 
 - `pnpm build` compiles the packages, but `@trading/domain` and `@trading/database` set `main` to `./src/index.ts` and the domain uses extensionless relative imports, so `node dist/index.js` cannot resolve them (ADR-006 context). `apps/api` sets `main` to `./src/index.ts` as well.
-- The `start` script loads `../../.env` through `dotenv-cli`, which suits a local run. How a container receives its variables is open (B7).
-- Open (B7): how production dependencies are separated from development ones in the image. Recommendation: decide it with the Dockerfile in B7 (ADR-006 point 3 leaves the details to B7).
+- The `start` script loads `../../.env` through `dotenv-cli`, which suits a local run. A container receives its variables from the Compose `environment` block and the image never copies `.env` (B7.2, B7.3).
+- Decided in B7.2: production dependencies are separated by the `deps` stage (`pnpm install --prod --frozen-lockfile --ignore-scripts`); `pnpm deploy` was rejected because `@trading/database` lists only `dist` in `files` and would drop the generated Prisma client.
 
 ---
 
 # 26. Backend Container
 
-**Status:** `Planned (B7)`; the PostgreSQL service and its healthcheck `Implemented`
+**Status:** `Implemented` (B7.2, B7.3): the PostgreSQL service and its healthcheck, the API image, the `migrate` service and the `api` service
 
 A production container should prioritize:
 
@@ -960,21 +960,21 @@ Runtime stage
 
 | Priority | Status |
 |---|---|
-| Multi-stage build, decided rather than "considered" | `Planned (B7)` (ADR-006 point 4) |
-| Non-root execution, decided rather than "where practical" | `Planned (B7)` (ADR-006 point 4; `09-security-spec.md` §38) |
+| Multi-stage build, decided rather than "considered" | `Implemented` (B7.2, ADR-006 point 4): `build`, `deps`, `migrate` and `runtime` stages |
+| Non-root execution, decided rather than "where practical" | `Implemented` (B7.2, `USER node`; ADR-006 point 4; `09-security-spec.md` §38) |
 | Predictable startup: PostgreSQL healthy before `migrate deploy`, and `migrate` completed before the API | `Implemented` (B7.3): `depends_on` with `condition: service_healthy` on PostgreSQL (ADR-006, Deferred detail); the API has `depends_on: migrate` with `condition: service_completed_successfully` (ADR-006 point 4) |
 | Health checks: PostgreSQL | `Implemented`: `pg_isready` in `docker-compose.yml` |
-| Health checks: API container | `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` `Planned (B7)` (ADR-006 point 4; §51) |
+| Health checks: API container | `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` `Implemented` (B7.2, ADR-006 point 4; §51) |
 | Graceful shutdown | `Implemented` (B3.4; §16; ADR-006 point 12); in the container it needs the direct `node dist/index.js` entrypoint below |
-| Reproducibility and minimal runtime dependencies | `Planned (B7)`; the Node version comes from `.nvmrc`, reused by the Dockerfile (ADR-006 point 13; §37); base-image pinning and the dependency split are open |
+| Reproducibility and minimal runtime dependencies | `Implemented` (B7.2): the Node major is the `NODE_VERSION` argument (`24`, the value of `.nvmrc`; ADR-006 point 13; §37), the install is frozen and production-only, and the base image is pinned to the Node major, not to a digest |
 | Time zone | `Implemented` (B7.2 for the API, B7.3 for PostgreSQL): the containers run with `TZ=UTC` (ADR-006 point 4; §60) |
 | `full` Compose profile (PostgreSQL, the one-shot `migrate` service and the API) | `Implemented` (B7.3; ADR-006 point 4) |
 
 Code vs ADR:
 
-- `docker-compose.yml` defines one service, `postgres` (`postgres:18`), with no profiles. `docker/` holds a `.gitkeep` only, and no Dockerfile exists.
-- Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the Dockerfile is `apps/api/Dockerfile`, built with the workspace root as the build context, since the image needs the workspace packages.
-- Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the API container starts with `node dist/index.js` directly, with no shell or package-manager wrapper, so `SIGTERM` reaches the process and the shutdown of ADR-006 point 12 runs. Migrations are not part of the entrypoint: the one-shot `migrate` service applies them (§15).
+- `docker-compose.yml` defines `postgres` (`postgres:18`) in the default profile, and the `migrate` and `api` services in the `full` profile. The API image is `apps/api/Dockerfile`; `docker/` holds a `.gitkeep` only.
+- Decided (ADR-006 point 4, amended 2026-10-07; `Implemented`, B7.2): the Dockerfile is `apps/api/Dockerfile`, built with the workspace root as the build context, since the image needs the workspace packages.
+- Decided (ADR-006 point 4, amended 2026-10-07; `Implemented`, B7.2): the API container starts with `node dist/index.js` directly, with no shell or package-manager wrapper, so `SIGTERM` reaches the process and the shutdown of ADR-006 point 12 runs. Migrations are not part of the entrypoint: the one-shot `migrate` service applies them (§15).
 - The Postgres port binding and the database roles are in `09-security-spec.md` §36 and §38 and ADR-005 point 13 (§30).
 
 ---
@@ -1293,16 +1293,16 @@ The Node.js version should target a current supported LTS release when implement
 | Item | Today | Status |
 |---|---|---|
 | Committed lockfile | `pnpm-lock.yaml` is tracked | `Implemented` |
-| Explicit Node.js version | `.nvmrc` pins Node 24 (the current LTS) and is the source of truth; `engines.node` is `>=24.0.0` in the root `package.json` and `@types/node` is `^24`, aligned to it (ADR-006 point 13). CI reads the Node version from it; the Dockerfile reuse is `Planned (B7)` | `Implemented`; Dockerfile reuse `Planned (B7)` |
+| Explicit Node.js version | `.nvmrc` pins Node 24 (the current LTS) and is the source of truth; `engines.node` is `>=24.0.0` in the root `package.json` and `@types/node` is `^24`, aligned to it (ADR-006 point 13). CI reads the Node version from it; the Dockerfile reuses it through the `NODE_VERSION` argument | `Implemented`; Dockerfile reuse `Implemented` (B7.2) |
 | Consistent package manager | `packageManager` is `pnpm@12.3.4`; `engines.pnpm` is `>=9.0.0` (`04-tech-stack.md` §37) | `Implemented` |
 | Deterministic commands | Root scripts `build`, `test`, `typecheck`, `lint`, `format:check` and `docs:check` | `Implemented` |
 | Install from the lockfile on a clean checkout | The GitHub Actions workflow (ADR-006 points 10 and 11) | `Implemented` |
 | Shared TypeScript configuration | `tsconfig.base.json`, extended by `apps/api`, `packages/domain` and `packages/database`; the root `tsconfig.json` references the three | `Implemented` |
-| Pinned container base images | The `full` profile does not exist yet; `docker-compose.yml` pins `postgres:18` to the major version. The Node.js base image follows `.nvmrc` (ADR-006 point 13) | `Planned (B7)`; how images are pinned is open |
+| Pinned container base images | `docker-compose.yml` pins `postgres:18` to the major version. The API image uses `node:${NODE_VERSION}-slim` with `NODE_VERSION=24`, the value of `.nvmrc` (ADR-006 point 13) | `Implemented` (B7.2) at the major version; digests are not used |
 
 Code vs ADR:
 
-- Decided (ADR-006 point 13, amended 2026-10-07) and carried out (`Implemented`): one `.nvmrc` is the single source for the Node.js version. It contains `24`, confirmed as an LTS release, and `engines.node` is `>=24.0.0`. CI reuses it; the Dockerfile reuse is `Planned (B7)` (§43, §59).
+- Decided (ADR-006 point 13, amended 2026-10-07) and carried out (`Implemented`): one `.nvmrc` is the single source for the Node.js version. It contains `24`, confirmed as an LTS release, and `engines.node` is `>=24.0.0`. CI reuses it; the Dockerfile reuses it through the `NODE_VERSION` argument (`Implemented`, B7.2; §43, §59).
 - Versions are aligned across packages (`Implemented`): `typescript` is `^6.0.3` everywhere, and `@types/node` is `^24` in the root, `apps/api` and `packages/database` (`packages/domain` has none), matching `.nvmrc` (ADR-006 point 13). `04-tech-stack.md` §2 records the same.
 - `engines.pnpm >=9.0.0` admits versions older than the `pnpm@12.3.4` that produced the lockfile. No ADR decides it. Open (B0): align it with `packageManager`.
 
@@ -1442,7 +1442,7 @@ Decided (ADR-006 points 10-11): one GitHub Actions workflow on pushes and pull r
 | Formatting | `pnpm format:check` | `Implemented` (ADR-006 point 11) |
 | Documentation check | `pnpm docs:check` | `Implemented` (ADR-006 point 11, amended 2026-10-07): closes the CI part of task T1.5 |
 | Unit and integration tests | `pnpm test` (`pnpm -r test`: the domain, database and API suites; the latter two against a PostgreSQL service container, migrated first, §42) | `Implemented` |
-| Build | `pnpm build` (`pnpm -r build`): proves the packages compile from a clean checkout; running the built API is B7 (ADR-006 point 11) | `Implemented` |
+| Build | `pnpm build` (`pnpm -r build`): proves the packages compile from a clean checkout, and CI starts the built API (B7.1; ADR-006 point 11) | `Implemented` |
 | Component, E2E and accessibility | Tools chosen in the frontend-stage ADR; they join the workflow once frontend code exists (ADR-006 point 11) | `Deferred` |
 | Artifact validation | No stage is decided (§44) | `Deferred` |
 | Coverage | No stage and no threshold in version 1 (ADR-006 point 11) | `Deferred` |
@@ -1492,7 +1492,7 @@ CI should define the items below. Variable names follow `apps/api/src/config/env
 
 | Item | Today or decided | Status |
 |---|---|---|
-| Node.js version | `.nvmrc` contains `24` (Node 24, the current LTS) and `engines.node` is `>=24.0.0`. Decided (ADR-006 point 13): the single `.nvmrc` is the source, read by the workflow and reused by the Dockerfile (§37, §59) | Pin `Implemented`; Dockerfile reuse `Planned (B7)` |
+| Node.js version | `.nvmrc` contains `24` (Node 24, the current LTS) and `engines.node` is `>=24.0.0`. Decided (ADR-006 point 13): the single `.nvmrc` is the source, read by the workflow and reused by the Dockerfile (§37, §59) | Pin `Implemented`; Dockerfile reuse `Implemented` (B7.2) |
 | Package manager | `packageManager` is `pnpm@12.3.4` in the root `package.json` | `Implemented`; used by the workflow (`pnpm/action-setup`) `Implemented` |
 | Test mode | `NODE_ENV=test` (`.env.test.example`); it disables rate limiting in the integration suite (`apps/api/src/middleware/rate-limit.ts`) | `Implemented` |
 | Database configuration | `DATABASE_URL` pointing at the service container (§42) | `Implemented` |
@@ -1517,9 +1517,9 @@ CI may produce the items below. Version 1 has no continuous deployment (ADR-006 
 
 | Artifact | Today or decided | Status |
 |---|---|---|
-| Backend build | `tsc --build` writes `dist` in each package. The API does not run from `dist` yet (ADR-006 point 3) | Compile `Implemented`; in CI `Implemented`; runnable `Planned (B7)` |
+| Backend build | `tsc --build` writes `dist` in each package. The API runs from `dist` with `node dist/index.js` (ADR-006 point 3) | Compile `Implemented`; in CI `Implemented` (it also starts the built API); runnable `Implemented` (B7.1) |
 | Frontend build | `apps/web` holds the wireframe only, with no `package.json` | `Planned (FE)` |
-| Docker image | Built on the author's machine by the `full` profile; CI builds and pushes no image (no registry, no deployment) | Local `Planned (B7)`; image build in CI `Deferred` |
+| Docker image | Built on the author's machine by the `full` profile; CI builds and pushes no image (no registry, no deployment) | Local `Implemented` (B7.2, B7.3); image build in CI `Deferred` |
 | Test reports | None kept: the suites print to the console and nothing is uploaded | `Deferred` |
 | Coverage reports | None: no coverage gate in version 1 (ADR-006 point 11) | `Deferred` |
 
@@ -1531,7 +1531,7 @@ Code vs ADR: the original list assumed a pipeline that produces and keeps artifa
 
 # 45. Deployment Pipeline
 
-**Status:** hosted deployment `Deferred` (ADR-006 points 2 and 10); local stack steps `Planned (B7)`; demo publishing `Planned (FE)`
+**Status:** hosted deployment `Deferred` (ADR-006 points 2 and 10); local stack steps `Implemented` (B7); demo publishing `Planned (FE)`
 
 A simple deployment flow, as originally written for a hosted backend:
 
@@ -1562,11 +1562,11 @@ What the two targets of ADR-006 point 1 have for each step:
 | Git push | CI runs on pushes and pull requests to `develop` and `main` (§41) | `Implemented` |
 | CI validation | §41 | `Implemented` |
 | Build | `pnpm build` compiles the packages; the web build of the demo is separate (§27) | Compile `Implemented`; in CI `Implemented` |
-| Package or artifact | The API image of the `full` profile (multi-stage, non-root), built on the author's machine; for the demo, a static build of `apps/web` | `Planned (B7)`; demo `Planned (FE)` |
-| Deploy | Local: `docker compose --profile full up`. Demo: published under a subpath of the portfolio site; the hosting and publishing mechanism are decided in the frontend-stage ADR (ADR-010 point 6). Backend: no host | Local `Planned (B7)`; demo mechanism `Deferred` (frontend-stage ADR); backend `Deferred` |
-| Database migration | `prisma migrate deploy` at the start of the run that starts the API (ADR-006 point 5, §15, §19) | `Planned (B7)` |
-| Health check | `GET /health` and `GET /health/ready` (§50) | `Implemented`; container healthcheck `Planned (B7)` (§51) |
-| Smoke test | §49 | `Planned (B7)` |
+| Package or artifact | The API image of the `full` profile (multi-stage, non-root), built on the author's machine; for the demo, a static build of `apps/web` | `Implemented` (B7.2); demo `Planned (FE)` |
+| Deploy | Local: `docker compose --profile full up`. Demo: published under a subpath of the portfolio site; the hosting and publishing mechanism are decided in the frontend-stage ADR (ADR-010 point 6). Backend: no host | Local `Implemented` (B7.3); demo mechanism `Deferred` (frontend-stage ADR); backend `Deferred` |
+| Database migration | `prisma migrate deploy` at the start of the run that starts the API (ADR-006 point 5, §15, §19) | `Implemented` (B7.3) |
+| Health check | `GET /health` and `GET /health/ready` (§50) | `Implemented`; container healthcheck `Implemented` (B7.2, §51) |
+| Smoke test | §49 | `Implemented` (B7.4) |
 
 Code vs ADR:
 
@@ -1578,7 +1578,7 @@ Code vs ADR:
 
 # 46. Deployment Ordering
 
-**Status:** `Reference`; each item's mechanism `Planned (B7)` or `Planned (FE)` (table below)
+**Status:** `Reference`; each item's mechanism `Implemented` (B7) or `Planned (FE)` (table below)
 
 Deployment must consider compatibility between:
 
@@ -1593,12 +1593,12 @@ Complex zero-downtime orchestration is not required for the initial project.
 
 | Compatibility | How it holds in version 1 | Status |
 |---|---|---|
-| Application and database schema | One API instance. The migration runs at the start of the run that starts the API (ADR-006 point 5), so the new code never meets an older schema. PostgreSQL health is awaited first (ADR-006, Deferred detail) | `Planned (B7)` |
+| Application and database schema | One API instance. The migration runs at the start of the run that starts the API (ADR-006 point 5), so the new code never meets an older schema. PostgreSQL health is awaited first (ADR-006, Deferred detail) | `Implemented` (B7.3) |
 | API contract | The shared schemas of `@trading/contracts` and the contract tests (ADR-002 points 3 and 6) | `Planned (B0)` |
 | Frontend version | The demo is a static build with the application running in process and no backend (ADR-006 point 7), so a deployed frontend never meets a different API version | `Planned (FE)` |
 | Migration compatibility during rollout | No old version runs against the new schema with a single instance that stops before the next one starts. Compatible, stepwise migrations remain good practice (§19) but no ADR requires them | `Reference` |
 
-Code vs ADR: the original text assumes several deployed components that can run side by side in different versions. ADR-006 point 2 removes hosting, so the only version skew left is between a developer's running API and the schema of their database; the migration applied at startup (`Planned (B7)`) closes it for the full stack, and `db:migrate` covers development.
+Code vs ADR: the original text assumes several deployed components that can run side by side in different versions. ADR-006 point 2 removes hosting, so the only version skew left is between a developer's running API and the schema of their database; the migration applied at startup (`Implemented`, B7.3) closes it for the full stack, and `db:migrate` covers development.
 
 ---
 
@@ -1610,7 +1610,7 @@ The original text asked for rollback to be considered separately for the applica
 
 ### Application
 
-No artifact is hosted, so there is none to redeploy (ADR-006 point 2). A faulty change is corrected by a new commit (a fix or a revert) and a new local run of the stack (`Planned (B7)`).
+No artifact is hosted, so there is none to redeploy (ADR-006 point 2). A faulty change is corrected by a new commit (a fix or a revert) and a new local run of the stack (`Implemented`, B7.3).
 
 ### Frontend
 
@@ -1631,7 +1631,7 @@ Code vs ADR:
 
 # 48. Deployment Verification
 
-**Status:** per step (table below); automated verification `Planned (B7)`; verification is manual today
+**Status:** per step (table below); automated verification `Implemented` (B7.4, `pnpm smoke`); the rest of the verification is manual
 
 A deployment is not successful merely because a process starts.
 
@@ -1658,10 +1658,10 @@ Applied to the local full stack and to the demo:
 | Step | Today | Status |
 |---|---|---|
 | Frontend loads | The demo page loads under its subpath. The smoke test of the full stack has no frontend step (ADR-006 point 11, additions of 2026-10-07; §49); whether a frontend container exists stays open (§7; B7) | Demo `Planned (FE)`; full stack: no frontend step |
-| API reachable | `GET /health` answers 200 while the process serves | Route `Implemented`; automated check `Planned (B7)` |
+| API reachable | `GET /health` answers 200 while the process serves | Route `Implemented`; automated check `Implemented` (B7.4) |
 | Database ready | `GET /health/ready` runs `SELECT 1`; PostgreSQL has its own `pg_isready` healthcheck | `Implemented` |
 | Authentication works | `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout` and `GET /api/v1/auth/me` exist | `Implemented` (B2.3, B2.4) (ADR-005) |
-| Core API flow works | For example `GET /api/v1/portfolios` with a token. The flow is not chosen (§49) | Routes `Implemented`; automated check `Planned (B7)` |
+| Core API flow works | For example `GET /api/v1/portfolios` with a token. The flow is the read of the seeded portfolios (§49) | Routes `Implemented`; automated check `Implemented` (B7.4) |
 | WebSocket connects | Connection test with a real `ws` client | `Implemented` (B5) (ADR-007) |
 | Health reports expected state | `status: "ok"` and `checks.database: "ok"` from `GET /health/ready` | `Implemented` |
 
@@ -1701,8 +1701,8 @@ How each applies:
 Code vs ADR:
 
 - No ADR defines the smoke test. `10-testing-strategy.md` has no smoke-test section, and `BACKEND-ROADMAP.md` B7 defers the definition to this section. `apps/api/src/app.test.ts` is a wiring test, not a deployment smoke test.
-- The smoke test belongs to the B7 definition of done (NFR-054 under a 512 MB container limit, NFR-055 from a clean checkout). CI does not run it (ADR-006 point 11: running the built API stays B7).
-- Decided (ADR-006 point 11, additions of 2026-10-07; `Implemented`, B7.4, `scripts/smoke.mjs`): the smoke test is one script run after `docker compose --profile full up`, with no frontend step. It covers the checks marked `Planned (B7)` in the table (2, 3, 4, 5 and 7; check 6 joins in B5). The flow of check 5 is the read of the seeded portfolios (B7.4).
+- The smoke test belongs to the B7 definition of done (NFR-054 under a 512 MB container limit, NFR-055 from a clean checkout). CI does not run it (B7.4, decision D3; ADR-006 point 11).
+- Decided (ADR-006 point 11, additions of 2026-10-07; `Implemented`, B7.4, `scripts/smoke.mjs`): the smoke test is one script run after `docker compose --profile full up`, with no frontend step. It covers checks 2, 3, 4, 5 and 7 of the table (check 6 joins in B5). The flow of check 5 is the read of the seeded portfolios (B7.4).
 - `Implemented` (B7.4): `pnpm smoke` runs `scripts/smoke.mjs` (Node and `fetch`, so it works on Windows, macOS and Linux). Steps: readiness, an unauthenticated request, login, a table read. It stops at the first failure, names the step and never prints the password or the token. It does not start, stop or seed the stack: the flow is `docker compose --profile full up -d --build`, then `pnpm --filter @trading/database db:seed`, then `pnpm smoke`. `SMOKE_API_URL`, `SMOKE_EMAIL`, `SMOKE_PASSWORD` and `SMOKE_READY_TIMEOUT_MS` override the defaults. CI does not run it. The 512 MB limit of NFR-054 is not measured by this script.
 
 ---
@@ -1742,7 +1742,7 @@ Code vs ADR:
 
 # 51. Container Health
 
-**Status:** PostgreSQL healthcheck `Implemented`; API container healthcheck `Planned (B7)`, probing `GET /health/ready` (ADR-006 point 4)
+**Status:** PostgreSQL healthcheck `Implemented`; API container healthcheck `Implemented` (B7.2), probing `GET /health/ready` (ADR-006 point 4)
 
 A container can be running while the application is unusable.
 
@@ -1765,14 +1765,14 @@ The deployment platform should use readiness information where supported.
 | Process running | `GET /health` (§50) | `Implemented` |
 | Application ready | `GET /health/ready` (§50) | `Implemented` |
 | PostgreSQL container | `pg_isready` every 5 s, 5 retries (`docker-compose.yml`) | `Implemented` |
-| API container | No Dockerfile and no `api` service exist | `Planned (B7)`; the healthcheck probes `GET /health/ready` (ADR-006 point 4) |
-| Use of the readiness signal | The only consumer decided is `depends_on` with `condition: service_healthy` for the API on PostgreSQL (ADR-006, Deferred detail) | `Planned (B7)` |
+| API container | The image has a `HEALTHCHECK` and the `api` service of the `full` profile uses it | `Implemented` (B7.2); the healthcheck probes `GET /health/ready` (ADR-006 point 4) |
+| Use of the readiness signal | The only consumer decided is `depends_on` with `condition: service_healthy` for the API on PostgreSQL (ADR-006, Deferred detail) | `Implemented` (B7.3) |
 
 Code vs ADR:
 
 - The platform is Docker Compose, not an orchestrator. Compose uses a healthcheck for `depends_on` and for display. It does not route traffic away from an unhealthy container, and `restart: unless-stopped` restarts a container only when its process exits, not when it turns unhealthy.
-- Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the container healthcheck probes `GET /health/ready`, so that `service_healthy` means the application can serve and a later poller can log recovery (ADR-009, Deferred detail).
-- Open (B7): the probe the runtime image provides. Recommendation: one that needs no extra package in the non-root image (image details are B7).
+- Decided (ADR-006 point 4, amended 2026-10-07; `Implemented`, B7.2): the container healthcheck probes `GET /health/ready`, so that `service_healthy` means the application can serve and a later poller can log recovery (ADR-009, Deferred detail).
+- Decided in B7.2: the image probes with `node -e` and `fetch`, so it needs no `curl` or `wget` and the final stage adds no shell for the entrypoint.
 
 ---
 
@@ -1797,7 +1797,7 @@ The seven names are examples, not decisions. Version 1 decides a startup pair (`
 | Moment | Today | Status |
 |---|---|---|
 | Configuration validated | On failure, `[api] invalid environment configuration:` and the messages per variable (never the values), then exit code 1 (`apps/api/src/config/env.ts`). Nothing on success | Failure `Implemented` as plain text, which stays: it is raised before the logger exists |
-| Database connected | No explicit connect (§15); the Prisma client connects on first use | No entry; explicit check `Planned (B7)` |
+| Database connected | No explicit connect (§15); the Prisma client connects on first use | No entry; the explicit check was not adopted: B7.1 validates `DATABASE_URL` and readiness reports the connection (§50) |
 | Application initialized | `createApp()` wires middleware and routes; no entry; none is decided | Not adopted (ADR-009 point 11) |
 | HTTP ready | `app.startup.completed` with the `port`, written when the server listens | `Implemented` (B3.4) |
 | WebSocket ready | The server accepts and authenticates a socket | `Implemented` (B5) |
@@ -1922,20 +1922,20 @@ Code vs ADR:
 
 # 57. Local Production-like Mode
 
-**Status:** per item (table below); the `full` profile `Planned (B7)` (ADR-006 point 4)
+**Status:** per item (table below); the `full` profile `Implemented` (B7.3, ADR-006 point 4)
 
 A production-like local mode should validate:
 
 | Validates | How | Status |
 |---|---|---|
-| Production builds | `node dist/index.js` from the compiled packages (ADR-006 point 3) | `Planned (B7)` |
-| Environment variables | `NODE_ENV=development` (not `production`, so the explicit `db:seed` step of the smoke test is not refused by the production guard; ADR-006 point 11), `DATABASE_URL`, `JWT_SECRET`, plus `PORT` and `CORS_ORIGIN` when they differ from the defaults (§11) | `Planned (B7)` |
-| Containers | The `full` profile: PostgreSQL and the API, multi-stage and non-root (ADR-006 point 4) | `Planned (B7)` |
-| Migrations | `prisma migrate deploy`, run by the one-shot `migrate` service before the API starts (ADR-006 points 4 and 5) | `Planned (B7)` |
-| Health checks | The routes exist (§50); the container healthcheck is `Planned (B7)` (§51) | Routes `Implemented` |
+| Production builds | `node dist/index.js` from the compiled packages (ADR-006 point 3) | `Implemented` (B7.1) |
+| Environment variables | Compose sets `NODE_ENV=production` on the `api` service; `.env` supplies `JWT_SECRET`, `RUNTIME_DB_PASSWORD`, `API_PORT` and `CORS_ORIGIN` (§11). The seed runs from the host with the development values, so the production guard of ADR-006 point 13 stays untouched | `Implemented` (B7.3) |
+| Containers | The `full` profile: PostgreSQL and the API, multi-stage and non-root (ADR-006 point 4) | `Implemented` (B7.2, B7.3) |
+| Migrations | `prisma migrate deploy`, run by the one-shot `migrate` service before the API starts (ADR-006 points 4 and 5) | `Implemented` (B7.3) |
+| Health checks | The routes exist (§50); the container healthcheck is `Implemented` (B7.2, §51) | `Implemented` |
 | Realtime | The local WebSocket server | `Implemented` (B5) |
-| Startup and shutdown | Graceful shutdown is `Implemented` (B3.4, §16); the startup order is `Planned (B7)` (§15) | `Implemented` (B3.4) and `Planned (B7)` |
-| Smoke test and limits | `docker compose --profile full up` from a clean checkout passes the smoke test under a 512 MB limit (NFR-054, NFR-055; §49) | `Planned (B7)` |
+| Startup and shutdown | Graceful shutdown is `Implemented` (B3.4, §16); the startup order is `Implemented` (B7.3, §15) | `Implemented` (B3.4, B7.3) |
+| Smoke test and limits | `docker compose --profile full up` from a clean checkout passes the smoke test under a 512 MB limit (NFR-054, NFR-055; §49) | `Implemented` (B7.4, B7.6) |
 
 Conceptually, following ADR-006 point 4:
 
@@ -1947,7 +1947,7 @@ Docker Compose, profile "full"
 
 Code vs ADR:
 
-- The original diagram listed a frontend build and a production configuration as services. ADR-006 point 4 decides PostgreSQL and the API only. Whether a frontend container exists is open (§6; B7), with the recommendation recorded there.
+- The original diagram listed a frontend build and a production configuration as services. ADR-006 point 4 decides PostgreSQL and the API only. There is no frontend container in v1 (§6).
 - `docker-compose.yml` has no `profiles` key and no `api` service. The default profile keeps only PostgreSQL for development.
 - This mode is the "local full stack" target of ADR-006 point 1, used for demonstrations; it is not a rehearsal of a hosted deployment, because none is planned.
 
@@ -1964,7 +1964,7 @@ The project should:
 | Commit lockfiles | `pnpm-lock.yaml` is tracked | `Implemented` |
 | Review dependency updates | Pull request review. No update bot is configured (NFR-024) | `Implemented` as review |
 | Remove unused packages | Manual; no automated check | `Reference` |
-| Run vulnerability checks when practical | Not in CI. A manual `pnpm audit --prod --audit-level=high` is a step of the B7 security checklist (NFR-024) | `Planned (B7)` |
+| Run vulnerability checks when practical | Not in CI. A manual `pnpm audit --prod --audit-level=high` is a step of the B7 security checklist (NFR-024) | `Implemented` (B7.6, manual) |
 | Keep production dependencies minimal | Principle of NFR-070. Dependencies come from the lockfile; install scripts are limited to Prisma and `esbuild` (`pnpm-workspace.yaml`, `allowBuilds`) | `Implemented` |
 
 No dependency should be added only for appearance.
@@ -1986,8 +1986,8 @@ Node.js and PostgreSQL versions must be explicitly documented and pinned for loc
 |---|---|---|
 | Node.js | `.nvmrc` contains `24` (Node 24, the current LTS) and `engines.node` is `>=24.0.0` (root `package.json`). `@types/node` is `^24` in the root, `apps/api` and `packages/database` (`packages/domain` has none). The author's machine runs v24.16.0 | Pin, range and `@types/node` `Implemented` (ADR-006 point 13) |
 | pnpm | `packageManager` is `pnpm@12.3.4`; `engines.pnpm` is `>=9.0.0` | `Implemented`; aligning `engines.pnpm` open (B0, §37) |
-| PostgreSQL | `postgres:18` in `docker-compose.yml` (`04-tech-stack.md`); a major-version pin | `Implemented`; a tighter pin open (B7) |
-| Compatibility of local, CI and the container | One Node line and one PostgreSQL major across the three | CI `Implemented`; image `Planned (B7)` |
+| PostgreSQL | `postgres:18` in `docker-compose.yml` (`04-tech-stack.md`); a major-version pin | `Implemented`; a tighter pin (a digest) was not adopted in B7 |
+| Compatibility of local, CI and the container | One Node line and one PostgreSQL major across the three | CI `Implemented`; image `Implemented` (B7.2) |
 
 The versions should be selected from currently supported releases when implementation begins. Implementation has begun: PostgreSQL, pnpm and the Node.js line (`24`, in `.nvmrc`) are fixed.
 
@@ -1995,7 +1995,7 @@ Local, CI and production-like environments should remain compatible.
 
 Code vs ADR:
 
-- Decided and carried out (ADR-006 point 13; `Implemented`, the same decision as §37 and §43): a single `.nvmrc` (`24`, the current LTS) is the source of truth, read by CI, with `engines.node` (`>=24.0.0`) and `@types/node` (`^24`) aligned to it. Reuse by the Dockerfile stays `Planned (B7)`.
+- Decided and carried out (ADR-006 point 13; `Implemented`, the same decision as §37 and §43): a single `.nvmrc` (`24`, the current LTS) is the source of truth, read by CI, with `engines.node` (`>=24.0.0`) and `@types/node` (`^24`) aligned to it. The Dockerfile reuses it through `NODE_VERSION` (`Implemented`, B7.2).
 - Local, CI and the container stay compatible because the three read the same `.nvmrc`, so a version change is one edit.
 - Open (B0): aligning `engines.pnpm` (`>=9.0.0`) with `packageManager` (`pnpm@12.3.4`); no ADR decides it (§37).
 
@@ -2017,14 +2017,14 @@ Recommended strategy:
 | Convert to user-local time in the UI | Timestamps show in the user's local zone; analytics days stay UTC dates (`11-ui-ux-spec.md`, ADR-010 point 9) | `Planned (FE)` |
 | Do not depend on the server-local time zone | No local-time accessor appears in the non-test code of `apps/api`, `packages/domain` or `packages/database` (`getHours`, `getDate`, `getFullYear`, `toLocale*`, `getTimezoneOffset`); the seed uses `getUTC*` and `setUTC*` | `Implemented` by inspection; no test enforces it |
 | One time source | One shared `Clock` port (ADR-001 point 8); the simulator clock uses it (ADR-007 point 7) | `Planned (B0)`; simulator `Implemented` (B5) |
-| Container time zone | Neither Compose nor a Dockerfile sets `TZ` today. Decided (ADR-006 point 4): the API and PostgreSQL containers run with `TZ=UTC` | `Planned (B7)` |
+| Container time zone | Decided (ADR-006 point 4): the API and PostgreSQL containers run with `TZ=UTC`, set in the Dockerfile and in Compose | `Implemented` (B7.2, B7.3) |
 
 This is important for trading data and historical analytics.
 
 Code vs ADR:
 
 - The code reads the system clock directly through `new Date()` in services and mappers (`10-testing-strategy.md` §49 lists them); the `Clock` port replaces those calls in B0.
-- The migrations also give columns `DEFAULT CURRENT_TIMESTAMP`. For a `TIMESTAMP` without a zone, a value written by that default takes the PostgreSQL session time zone, so UTC holds only where the database runs in UTC or Prisma supplies the value. Decided (ADR-006 point 4, amended 2026-10-07; `Planned (B7)`): the API and PostgreSQL containers of the `full` profile run with `TZ=UTC`. Whether any write relies on a database default remains a check for B0.
+- The migrations also give columns `DEFAULT CURRENT_TIMESTAMP`. For a `TIMESTAMP` without a zone, a value written by that default takes the PostgreSQL session time zone, so UTC holds only where the database runs in UTC or Prisma supplies the value. Decided (ADR-006 point 4, amended 2026-10-07; `Implemented`, B7.2 and B7.3): the API and PostgreSQL containers of the `full` profile run with `TZ=UTC`. Whether any write relies on a database default remains a check for B0.
 - Day boundaries in analytics are decided as UTC, while code that builds the series is not yet aligned (ADR-004 Deferred detail, B1).
 
 ---
@@ -2059,7 +2059,7 @@ Persistent file storage should be introduced through an infrastructure adapter i
 Code vs ADR:
 
 - The generate, deliver and cleanup flow is the original text. In version 1 it has nothing to apply to: an import is parsed, validated and stored in the database, and no file survives the request.
-- The API container of the `full` profile writes no file of its own: ADR-009 point 3 sends logs to stdout, with no log files (`Planned (B7)`). The PostgreSQL data lives in the named volume `trading-analytics-postgres-data`, which is the durable store (`docker-compose.yml`).
+- The API container of the `full` profile writes no file of its own: ADR-009 point 3 sends logs to stdout, with no log files (`Implemented`, B7.3). The PostgreSQL data lives in the named volume `trading-analytics-postgres-data`, which is the durable store (`docker-compose.yml`).
 - Decided and `Implemented` (B4.4) (ADR-008, Deferred detail): how the CSV reaches `POST /api/v1/portfolios/:portfolioId/imports`. `07-api-spec.md` §14 fixes neither multipart nor a JSON body, and the global JSON limit is 100 kB (`JSON_BODY_LIMIT` in `app.ts`), so a larger file would be rejected with 413. The CSV is the raw `text/csv` body, read by a route-level `express.text` with a 1 MB limit (ADR-008 point 10); the global limit is not raised.
 - Decided (ADR-008 point 4, amended 2026-10-07; `Implemented`, B4.2): the stored input is kept while the job can still be retried (`TIMED_OUT`, `CANCELLED`, and `FAILED` with `INTERRUPTED`, `APPLY_ERROR` or `APPLY_REJECTED`), and cleared for `COMPLETED` jobs and for `FAILED` with `VALIDATION_FAILED` or `PORTFOLIO_ARCHIVED`, which are not retryable (ADR-008 point 6, amended 2026-10-08).
 
@@ -2164,7 +2164,7 @@ Public traffic reaches only the static demo (ADR-006 points 1 and 2). No public 
 Code vs ADR:
 
 - This section overlaps §24, which keeps the exposure view; this one keeps the traffic view. They agree: the demo has no credentials and no server.
-- The real-mode API is reachable only on the author's machine. Treating its traffic as untrusted still applies to a demonstration on a shared network: CORS is limited to `CORS_ORIGIN`, the limiters apply (`09-security-spec.md` §26) and the business routes need an access token (`authenticate`, ADR-005). `Planned (B7)` covers the unbound PostgreSQL port (§6).
+- The real-mode API is reachable only on the author's machine. Treating its traffic as untrusted still applies to a demonstration on a shared network: CORS is limited to `CORS_ORIGIN`, the limiters apply (`09-security-spec.md` §26) and the business routes need an access token (`authenticate`, ADR-005). The PostgreSQL and API ports are bound to `127.0.0.1` (`Implemented`, B7.3, §6).
 - `Deferred` (frontend-stage ADR): the numeric bound on the demo's retained history is decided in that ADR with the other demo specifics (ADR-010 point 6; ADR-006 point 7), as §24 already records.
 
 ---
@@ -2197,7 +2197,7 @@ These limits protect both local and public deployments.
 | Realtime history | `MarketEvent` retention is bounded, the limit fixed in B5 (ADR-007 point 8); the client keeps no event history (`08-realtime-spec.md` §51) | `Implemented` (B5); client `Planned (FE)` |
 | Demo history | No bound is decided (§24) | `Deferred` |
 | Database query limits | No statement timeout or row cap is configured; Prisma's pool timeout applies (§66) | `Deferred` |
-| API container memory | 512 MB in the `full` profile (NFR-054) | `Planned (B7)` |
+| API container memory | 512 MB in the `full` profile (NFR-054) | `Implemented` (B7.6, `mem_limit: 512m`) |
 
 Code vs ADR:
 
@@ -2234,7 +2234,7 @@ Code vs ADR:
 - One API process, one pool, one local database: the default stays far below the PostgreSQL limit, which is why no ADR sets a value. The defaults come from the Prisma 6 documentation, and the installed version is `^6.0.0` (`packages/database/package.json`).
 - The test suites of `apps/api` and `packages/database` each create their own client and pool against the test database. Running both together adds their pools to the total, still well below the limit.
 - Decided (ADR-006, Deferred detail; B7): `connection_limit` of the `full` profile stays at Prisma's default until measured. Revisit if the API ever runs as several instances (§67), because each instance would open its own pool.
-- The migration command (`prisma migrate deploy`, B7) opens its own short-lived connection and is not part of the runtime pool.
+- The migration command (`prisma migrate deploy`, B7.3) opens its own short-lived connection and is not part of the runtime pool.
 
 ---
 
@@ -2495,10 +2495,10 @@ For the local stack the first step is a rebuild, because no backup exists (§73)
 |---|---|---|
 | Restore database | Recreate it from the repository: start PostgreSQL and run `pnpm --filter @trading/database db:reset`, which reapplies every migration and reseeds | `Implemented` for development |
 | Run compatible application | The commit that matches the migrations; there are no down migrations, so recovery goes forward (ADR-006 point 6, §47) | `Reference` |
-| Validate migrations | `prisma migrate deploy`, run by the one-shot `migrate` service before the API starts in the full stack | `Planned (B7)` (ADR-006 points 4 and 5) |
-| Start services | `docker compose --profile full up` | `Planned (B7)` |
+| Validate migrations | `prisma migrate deploy`, run by the one-shot `migrate` service before the API starts in the full stack | `Implemented` (B7.3; ADR-006 points 4 and 5) |
+| Start services | `docker compose --profile full up` | `Implemented` (B7.3) |
 | Health checks | `GET /health` and `GET /health/ready` (§50) | `Implemented` |
-| Smoke tests | The B7 smoke test (§49) | `Planned (B7)` |
+| Smoke tests | The B7 smoke test (§49) | `Implemented` (B7.4) |
 
 Code vs ADR:
 
@@ -2533,7 +2533,7 @@ Check:
 
 - environment variables: an invalid value stops the process with `[api] invalid environment configuration:`, the key and the rule, and exit code 1 (`apps/api/src/config/env.ts`, §12). `JWT_SECRET` needs at least 32 characters
 - Node.js version: `.nvmrc` pins `24` and `engines.node` is `>=24.0.0` (`Implemented`, ADR-006 point 13, §59)
-- build output: `pnpm --filter @trading/api start` runs `node dist/index.js`, which does not work until the production build exists (`Planned (B7)`); use `pnpm --filter @trading/api dev` (`tsx watch`) meanwhile
+- build output: `pnpm --filter @trading/api start` runs `node dist/index.js`, the compiled output, so run `pnpm build` first (`Implemented`, B7.1); `pnpm --filter @trading/api dev` (`tsx watch`) needs no build
 - migration state: apply migrations with `pnpm --filter @trading/database db:migrate` (development); `db:reset` rebuilds the database from scratch
 - the port: `PORT` (default 7001) may already be in use
 - logs: one JSON line per event on stdout, including the startup entries (§52, `Implemented`, B3.1, B3.4)
@@ -2615,13 +2615,13 @@ Code vs ADR:
 
 - `README.md` lists `pnpm install` and `pnpm typecheck` as setup, says the API is "not started yet" and has no environment, API or health step. `CONTRIBUTING.md` documents none of these either. Both are stale and are aligned in T5.2.
 - The `db:migrate` and `db:seed` scripts load `.env` through `dotenv-cli` (`packages/database/package.json`), so the environment file and its `DATABASE_URL` belong before step "Run migrations".
-- The development flow runs the API on the host, against the PostgreSQL container's published port. The all-containers flow is the `full` profile (§57, `Planned (B7)`).
+- The development flow runs the API on the host, against the PostgreSQL container's published port. The all-containers flow is the `full` profile (§57, `Implemented`, B7.3).
 
 ---
 
 # 77. Production Setup
 
-**Status:** local full stack `Planned (B7)`; demo publishing `Planned (FE)`; hosted steps `Deferred` (ADR-006 point 2)
+**Status:** local full stack `Implemented` (B7); demo publishing `Planned (FE)`; hosted steps `Deferred` (ADR-006 point 2)
 
 Production-like deployment should follow:
 
@@ -2650,18 +2650,18 @@ Run smoke tests
 | Step | Local full stack or demo | Status |
 |---|---|---|
 | Provision infrastructure | Docker on the author's machine; no hosting, managed database or reverse proxy (§29, §30, §32) | Local `Implemented`; hosted `Deferred` |
-| Configure secrets | The git-ignored `.env`, with `NODE_ENV=development`, `DATABASE_URL`, `JWT_SECRET` and the optional `PORT` and `CORS_ORIGIN` (§11, §13) | `Planned (B7)` |
-| Build artifacts | `pnpm build` and the API image; the compiled output must run with `node dist/index.js` (ADR-006 points 3 and 4) | `Planned (B7)` |
-| Run migrations | `prisma migrate deploy` in the one-shot `migrate` service, before the API starts (ADR-006 points 4 and 5) | `Planned (B7)` |
-| Start backend | `docker compose --profile full up` (§57) | `Planned (B7)` |
+| Configure secrets | The git-ignored `.env`, with `NODE_ENV=development`, `DATABASE_URL`, `JWT_SECRET` and the optional `PORT` and `CORS_ORIGIN` (§11, §13) | `Implemented` (B7.3) |
+| Build artifacts | `pnpm build` and the API image; the compiled output runs with `node dist/index.js` (ADR-006 points 3 and 4) | `Implemented` (B7.1, B7.2) |
+| Run migrations | `prisma migrate deploy` in the one-shot `migrate` service, before the API starts (ADR-006 points 4 and 5) | `Implemented` (B7.3) |
+| Start backend | `docker compose --profile full up` (§57) | `Implemented` (B7.3) |
 | Deploy frontend | Publish the static demo build under the portfolio subpath; how it reaches the host is decided in the frontend-stage ADR (ADR-010 point 6; §22) | `Planned (FE)`; mechanism `Deferred` |
-| Verify health | `GET /health` and `GET /health/ready` (§48, §50) | Routes `Implemented`; the procedure `Planned (B7)` |
+| Verify health | `GET /health` and `GET /health/ready` (§48, §50) | Routes `Implemented`; the procedure `Implemented` (B7.4) |
 | Verify realtime | Connect to the local WebSocket server (§72) | `Implemented` (B5) |
-| Run smoke tests | The B7 smoke test, from a clean checkout (§49, NFR-055) | `Planned (B7)` |
+| Run smoke tests | The B7 smoke test, from a clean checkout (§49, NFR-055) | `Implemented` (B7.4) |
 
 Code vs ADR:
 
-- The sequence is the original text. Its "provision" and "deploy" steps presume a hosted backend, which ADR-006 point 2 removes. None of the steps run today: there is no `full` profile, no Dockerfile and no runnable production build (ADR-006 context).
+- The sequence is the original text. Its "provision" and "deploy" steps presume a hosted backend, which ADR-006 point 2 removes. Locally, the `full` profile covers the build, migrate, start, health and smoke steps (B7.2 to B7.4; §57, §48).
 - Order matters between migration and start: the Compose healthcheck dependency (`condition: service_healthy`) keeps `migrate deploy` from running before PostgreSQL accepts connections (ADR-006, Deferred detail, B7).
 - The seed does not appear in this sequence, because it never runs automatically (ADR-006 point 5).
 
@@ -2707,8 +2707,8 @@ Before deployment:
 Each item ends with its status and, where it is not built, the block or stage that delivers it. Checked items are those whose behavior exists today.
 
 - [ ] Production frontend build succeeds. (`Planned (FE)`: no web code exists)
-- [ ] Production backend build succeeds. (`pnpm build` compiles every package with `tsc --build`, but the output does not run, so the item stays open: running it is `Planned (B7)`; building in CI is `Implemented`, ADR-006 points 3 and 11)
-- [ ] Development dependencies excluded where appropriate. (`Planned (B7)`: the multi-stage image, ADR-006 point 4)
+- [x] Production backend build succeeds. (`pnpm build` compiles every package with `tsc --build` and the output runs with `node dist/index.js` (`Implemented`, B7.1); CI builds and starts it, ADR-006 points 3 and 11)
+- [x] Development dependencies excluded where appropriate. (`Implemented`, B7.2: the runtime stage of the multi-stage image copies only the production install, ADR-006 point 4)
 - [ ] Static assets optimized. (`Planned (FE)`, §69)
 - [x] Required indexes exist. (`Implemented`: `@@index` and `@@unique` declarations in `packages/database/prisma/schema.prisma`; whether they cover every query is not reviewed, `05-data-model.md`)
 - [x] Pagination limits enforced. (`Implemented`: `pageSize` at most 100 on the paginated lists, §65)
@@ -2776,14 +2776,14 @@ What each row is in version 1:
 | Test | Today or decided | Status |
 |---|---|---|
 | Unit | The domain suite runs with `vitest` (`packages/domain`). Application-service tests with in-memory fakes join with the application layer (ADR-001 point 7) | Domain `Implemented`; application services `Planned (B0)`; in CI `Implemented` |
-| Integration | The API route tests (`apps/api/src/routes/*.routes.test.ts`, supertest) and the `@trading/database` suite run against the test database (`.env.test.local`). `analytics`, `positions`, `assets` and `market` have no route test file yet (`10-testing-strategy.md` §59). In CI the database is a PostgreSQL service container (§42). The demo has no backend, and no integration suite runs against the `full` stack: the smoke test (§49) is its check | Local partly `Implemented`; missing route tests `Planned (B0)` (ADR-001 point 8); in CI `Implemented`; production-like through the smoke test `Planned (B7)` |
+| Integration | The API route tests (`apps/api/src/routes/*.routes.test.ts`, supertest) and the `@trading/database` suite run against the test database (`.env.test.local`). `analytics`, `positions`, `assets` and `market` have no route test file yet (`10-testing-strategy.md` §59). In CI the database is a PostgreSQL service container (§42). The demo has no backend, and no integration suite runs against the `full` stack: the smoke test (§49) is its check | Local partly `Implemented`; missing route tests `Planned (B0)` (ADR-001 point 8); in CI `Implemented`; production-like through the smoke test `Implemented` (B7.4) |
 | E2E | No frontend code exists. The component runner, Playwright and the accessibility tool are chosen in the frontend-stage ADR and join the CI workflow once frontend code exists (ADR-006 point 11). The critical flows are in `10-testing-strategy.md` §33-34. The `full` stack has no frontend container (§7), so what an E2E run targets there is open | `Planned (FE)`; tools `Deferred`; production-like open (B7) |
-| Migrations | `db:migrate` (`prisma migrate dev`) locally and `db:test:migrate` (`prisma migrate deploy`) for the test database, both in `packages/database/package.json`. CI migrates its service container before the suites (§42). The `full` profile runs `prisma migrate deploy` at startup (ADR-006 point 5). The demo has no database | Local `Implemented`; CI `Implemented`; production-like `Planned (B7)`; demo not applicable |
-| Health | `GET /health` and `GET /health/ready` (§50). No route test exists yet (ADR-001 point 8). The API container healthcheck is §51. The demo is a static build with no health endpoint (`13-observability-spec.md` §65) | Routes `Implemented`; route test `Planned (B0)`; container healthcheck `Planned (B7)`; demo not applicable |
+| Migrations | `db:migrate` (`prisma migrate dev`) locally and `db:test:migrate` (`prisma migrate deploy`) for the test database, both in `packages/database/package.json`. CI migrates its service container before the suites (§42). The `full` profile runs `prisma migrate deploy` in the one-shot `migrate` service before the API starts (ADR-006 point 5). The demo has no database | Local `Implemented`; CI `Implemented`; production-like `Implemented` (B7.3); demo not applicable |
+| Health | `GET /health` and `GET /health/ready` (§50). No route test exists yet (ADR-001 point 8). The API container healthcheck is §51. The demo is a static build with no health endpoint (`13-observability-spec.md` §65) | Routes `Implemented`; route test `Planned (B0)`; container healthcheck `Implemented` (B7.2); demo not applicable |
 | Realtime | Server tests with the WebSocket server (ADR-007); client states and reconnect in the web app. The demo uses the in-process adapter behind the same client port (ADR-007 point 13) | Server `Implemented` (B5); client and demo `Planned (FE)` |
 | Demo simulation | One engine, `@trading/market-sim`, serves the API and the demo, with a seeded generator and an injected clock (ADR-007 point 7). The demo specifics wait for the frontend-stage ADR (ADR-010 point 6) | Engine `Implemented` (B5); demo `Planned (FE)` |
-| Production build | `pnpm build` runs `tsc --build` in each package and passes today, but its output does not run (ADR-006 context). CI runs `pnpm build` to prove a clean checkout compiles (ADR-006 point 11). Running `node dist/index.js` is B7. The web build of the demo is separate (§27) | Compile `Implemented`; in CI `Implemented`; runnable `Planned (B7)`; web build `Planned (FE)` |
-| Smoke tests | One script run after `docker compose --profile full up`, with no frontend step (ADR-006 point 11, additions of 2026-10-07; §49). CI does not run it, because running the built API stays B7 (ADR-006 point 11) | Full stack `Planned (B7)`; demo `Planned (FE)` |
+| Production build | `pnpm build` runs `tsc --build` in each package and its output runs with `node dist/index.js` (B7.1). CI runs `pnpm build` and starts the built API (ADR-006 point 11). The web build of the demo is separate (§27) | Compile `Implemented`; in CI `Implemented`; runnable `Implemented` (B7.1); web build `Planned (FE)` |
+| Smoke tests | One script run after `docker compose --profile full up`, with no frontend step (ADR-006 point 11, additions of 2026-10-07; §49). CI does not run it (B7.4, decision D3; ADR-006 point 11) | Full stack `Implemented` (B7.4); demo `Planned (FE)` |
 
 Code vs ADR:
 
@@ -2818,15 +2818,15 @@ The architecture is acceptable when:
 |---|---|---|
 | 1 | Partly `Implemented` | `README.md` documents Compose, the seed and the reset; it does not document starting the API, the environment files or the health routes. Per-environment documentation is `Planned (B0)` (§11) and the repository documentation is T5.2 (§76) |
 | 2 | `Implemented` | `docker-compose.yml`: `postgres:18`, a named volume and a `pg_isready` healthcheck (§6, §30) |
-| 3 | `Implemented` | Committed Prisma migrations in `packages/database/prisma/migrations/`; applied from a clean checkout in CI `Implemented` and at startup of the `full` profile `Planned (B7)` (§18) |
-| 4 | Backend compile `Implemented`; runnable backend `Planned (B7)`; frontend `Planned (FE)` | `pnpm build` compiles every package but the output does not run (ADR-006 point 3); `apps/web` has no `package.json` (§44) |
-| 5 | `Implemented` | `apps/api/src/config/env.ts` and the `.env*` files (§10-§12); `DATABASE_URL` is not validated there (`Planned (B7)`) |
+| 3 | `Implemented` | Committed Prisma migrations in `packages/database/prisma/migrations/`; applied from a clean checkout in CI `Implemented` and by the `migrate` service of the `full` profile `Implemented` (B7.3, §18) |
+| 4 | Backend compile `Implemented`; runnable backend `Implemented` (B7.1); frontend `Planned (FE)` | `pnpm build` compiles every package and the output runs (ADR-006 point 3); `apps/web` has no `package.json` (§44) |
+| 5 | `Implemented` | `apps/api/src/config/env.ts` and the `.env*` files (§10-§12); `DATABASE_URL` is validated there since B7.1 |
 | 6 | `Implemented` by convention | `.env`, `.env.local` and `.env.*.local` are git-ignored and only `*.example` files are tracked; no scanner exists (§78) |
 | 7 | `Implemented`; shutdown behavior `Implemented` (B3.4) | `GET /health` and `GET /health/ready` (NFR-051, §50); readiness returns 503 while shutting down (ADR-006 point 12) |
 | 8 | `Implemented` (B5) locally; hosted `Deferred` | The supported environment is the local full stack, over `ws://` (§31, §34). Public WSS needs a hosted backend, which ADR-006 point 2 excludes |
 | 9 | `Planned (FE)` | The demo is a static build with no backend and no secrets (ADR-006 point 7); NFR-052 and NFR-067 |
 | 10 | `Implemented` | The workflow of §41 installs from the lockfile; ADR-006 point 10 |
-| 11 | `Planned (B7)` | The `full` profile (ADR-006 point 4, §57); NFR-055 measures it by `docker compose --profile full up` passing the smoke test from a clean checkout |
+| 11 | `Implemented` (B7) | The `full` profile (ADR-006 point 4, §57); NFR-055 measures it by `docker compose --profile full up` passing the smoke test from a clean checkout |
 | 12 | `Implemented` (B3) for logs; health `Implemented` | Request IDs, structured logs, startup and shutdown entries are `Implemented` (B3.1 to B3.4, §52, §80) |
 | 13 | `Reference` | Forward-fix only (ADR-006 point 6, §47). "Documented" means that statement; no rollback procedure exists or is promised |
 | 14 | `Implemented` by absence | No hosting provider is named and no vendor-specific code exists in `apps/` or `packages/`; the demo sits under the author's portfolio site (§28, §87) |
@@ -2847,7 +2847,7 @@ Code vs ADR:
 Each item ends with its status and, where it is not built, the block or stage that delivers it. Checked items are those whose behavior exists, or that are decided, today. The checklist is not closed ahead of its blocks.
 
 ### Local
-- [ ] Docker setup implemented. (Partly: the `postgres` service `Implemented`; the `full` profile and the API Dockerfile `Planned (B7)`, §5, §6)
+- [x] Docker setup implemented. (`Implemented`: the `postgres` service, the `full` profile and the API Dockerfile, B7.2 and B7.3, §5, §6)
 - [x] PostgreSQL reproducible. (`Implemented`: `postgres:18`, named volume, healthcheck)
 - [ ] frontend starts. (`Planned (FE)`: no web code exists)
 - [x] backend starts. (`Implemented`: `pnpm --filter @trading/api dev`, §76)
@@ -2862,7 +2862,7 @@ Each item ends with its status and, where it is not built, the block or stage th
 
 ### Build
 - [ ] frontend production build works. (`Planned (FE)`, §27)
-- [ ] backend production build works. (The compile `Implemented`; running the output `Planned (B7)`, §79)
+- [x] backend production build works. (`Implemented`: the compile and the run of the output, B7.1; the image, B7.2, §79)
 - [x] lockfile committed. (`Implemented`: `pnpm-lock.yaml`; `--frozen-lockfile` in CI `Implemented`)
 - [x] runtime versions documented. (`Implemented`: `.nvmrc` pins `24`, `engines.node` is `>=24.0.0` and `packageManager` is pinned in `package.json`, ADR-006 point 13, §59)
 
@@ -2876,11 +2876,11 @@ Each item ends with its status and, where it is not built, the block or stage th
 
 ### Deployment
 - [x] frontend target defined. (Defined: the static demo build under a subpath of the portfolio site, ADR-006 points 1 and 7; the publishing mechanism is `Deferred` to the frontend-stage ADR, ADR-010 point 6, §45)
-- [x] backend target defined. (Defined: the local full stack, ADR-006 points 1 and 4; its container `Planned (B7)`)
+- [x] backend target defined. (Defined: the local full stack, ADR-006 points 1 and 4; its container `Implemented`, B7.2 and B7.3)
 - [x] database target defined. (Defined: local PostgreSQL in Compose; managed PostgreSQL `Deferred`, ADR-006 point 2, §30)
 - [x] secrets strategy documented. (`Reference`: §13 and §78; no hosted secret store, ADR-006 point 2)
-- [x] health checks available. (`Implemented`, §50; the API container healthcheck `Planned (B7)`, §51)
-- [x] smoke tests defined. (Defined: one script after `docker compose --profile full up`, no frontend step, ADR-006 point 11, §49; the script itself `Planned (B7)`, and the flow of its check 5 is chosen in B7)
+- [x] health checks available. (`Implemented`, §50; the API container healthcheck `Implemented`, B7.2, §51)
+- [x] smoke tests defined. (Defined: one script after `docker compose --profile full up`, no frontend step, ADR-006 point 11, §49; the script itself `Implemented`, B7.4, and its check 5 reads the seeded portfolios)
 
 ### Realtime
 - [ ] endpoint configurable. (`Implemented` (B5): the server path is fixed, proposed `/ws` and confirmed in B5, with no `WEBSOCKET_PATH` variable (ADR-007 point 1); the client URL is the build-time `VITE_WS_URL`, proposed name (ADR-006 point 8), §72, §14)
@@ -2897,7 +2897,7 @@ Each item ends with its status and, where it is not built, the block or stage th
 ### Operations
 - [ ] graceful shutdown works. (`Implemented` (B3.4) for the server and the database; jobs `Implemented` (B4.2); realtime `Implemented` (B5), §16)
 - [ ] startup failures are observable. (Partly: an invalid environment prints a message and exits with code 1 (`Implemented`); the structured startup entries `Implemented` (B3.4), ADR-009 point 11, §52)
-- [x] deployment verification documented. (`Reference`: §48; the automated check `Planned (B7)`)
+- [x] deployment verification documented. (`Reference`: §48; the automated check `Implemented`, B7.4)
 - [ ] troubleshooting documented. (Partly: §75; the developer workflow `Implemented` (B3.5, `13-observability-spec.md` §66) and the `README.md` entries are pending (T5.2))
 
 Code vs ADR:
@@ -3154,10 +3154,10 @@ This reduces the difference between “the code builds” and “the deployed sy
 |---|---|---|
 | Build | `pnpm build`; in CI to prove a clean checkout compiles (ADR-006 point 11) | Compile `Implemented`; in CI `Implemented` |
 | Test | `pnpm test`: the domain, database and API suites (§41, `10-testing-strategy.md` §53) | Local `Implemented`; in CI `Implemented` |
-| Package | The multi-stage, non-root API image (ADR-006 point 4); for the demo, the static build of `apps/web` | `Planned (B7)`; demo `Planned (FE)` |
-| Run | `docker compose --profile full up`, with `node dist/index.js` in the container (ADR-006 points 3 and 4) | `Planned (B7)` |
-| Health | `GET /health` and `GET /health/ready`; the container healthcheck (§50, §51) | Routes `Implemented`; healthcheck `Planned (B7)` |
-| Smoke | The check of §49, run after the stack starts | `Planned (B7)` |
+| Package | The multi-stage, non-root API image (ADR-006 point 4); for the demo, the static build of `apps/web` | `Implemented` (B7.2); demo `Planned (FE)` |
+| Run | `docker compose --profile full up`, with `node dist/index.js` in the container (ADR-006 points 3 and 4) | `Implemented` (B7.3) |
+| Health | `GET /health` and `GET /health/ready`; the container healthcheck (§50, §51) | Routes `Implemented`; healthcheck `Implemented` (B7.2) |
+| Smoke | The check of §49, run after the stack starts | `Implemented` (B7.4) |
 
 Code vs ADR:
 
@@ -3188,7 +3188,7 @@ Application behavior remains conceptually aligned.
 | Persistence | PostgreSQL through Prisma | In-memory repositories with namespaced browser storage (ADR-006 point 7); the data layers and reset are not decided | `Planned (FE)`; layers `Deferred` |
 | Realtime | WebSocket server (`ws`) | An in-process adapter fed by the same `@trading/market-sim` engine (ADR-007 point 13) | `Implemented` (B5); demo `Planned (FE)` |
 | Identity | Login with a JWT (ADR-005) | A demo identity with a `Viewer`, `Trader` and `Admin` selector (ADR-005 point 11) | `Planned (FE)` |
-| Infrastructure | Local `full` stack | A static build under a subpath, no backend, no secrets | `Planned (B7)`; demo `Planned (FE)` |
+| Infrastructure | Local `full` stack | A static build under a subpath, no backend, no secrets | `Implemented` (B7); demo `Planned (FE)` |
 
 Code vs ADR:
 
@@ -3217,13 +3217,13 @@ This communicates engineering maturity without unnecessary cloud complexity.
 
 | Step | Version 1 counterpart | Status |
 |---|---|---|
-| 1. Start local services | `docker compose up -d` for PostgreSQL; the `full` profile adds the API | Default profile `Implemented`; `full` `Planned (B7)` |
+| 1. Start local services | `docker compose up -d` for PostgreSQL; the `full` profile adds the API | Default profile `Implemented`; `full` `Implemented` (B7.3) |
 | 2. Show frontend, backend and PostgreSQL | Backend and PostgreSQL run today; the frontend is the web app | Backend and database `Implemented`; frontend `Planned (FE)` |
-| 3. Run or inspect migrations | `db:migrate`, `db:test:migrate` or `prisma migrate deploy`; run by the `migrate` service in the `full` profile (§18) | `Implemented`; the `migrate` service `Planned (B7)` |
+| 3. Run or inspect migrations | `db:migrate`, `db:test:migrate` or `prisma migrate deploy`; run by the `migrate` service in the `full` profile (§18) | `Implemented`; the `migrate` service `Implemented` (B7.3) |
 | 4. Open health endpoint | `GET /health` and `GET /health/ready` (§50) | `Implemented` |
 | 5. Demonstrate realtime | Server events and the client states and reconnect | `Implemented` (B5) and `Planned (FE)` |
 | 6. Trigger an observable operation | `X-Request-ID` on a response is `Implemented`; the log line with `requestId`, duration and result is `http.request.completed` (`13-observability-spec.md` §65) | `Implemented` (B3.2) |
-| 7. Show production build | `pnpm build` compiles every package today; running `node dist/index.js` and the image are B7 | Compile `Implemented`; run `Planned (B7)` |
+| 7. Show production build | `pnpm build` compiles every package; `node dist/index.js` runs the output and the image wraps it | Compile `Implemented`; run `Implemented` (B7.1, B7.2) |
 | 8. Explain how the architecture maps to public deployment | The only public deployment is the demo; the backend is never public (ADR-006 points 1 and 2). The mapping is the two targets of §95 and the adapters of §87 | `Reference` |
 | 9. Demonstrate Demo Mode as an infrastructure substitution | The demo build next to the local full stack, on the same use cases; there is no runtime switch because `APP_MODE` is fixed at build time (`10-testing-strategy.md` §64) | `Planned (FE)` |
 
@@ -3305,7 +3305,7 @@ The application remains focused on domain behavior and communicates with its env
 Code vs ADR:
 
 - The chain is a set of environments, not a pipeline. CI validates and deploys nothing (ADR-006 point 10), and the demo and the production-like local stack are two separate targets (ADR-006 point 1), not consecutive stages.
-- "Production-like environment" is the local `full` stack (`Planned (B7)`); no hosted production environment exists (ADR-006 point 2).
+- "Production-like environment" is the local `full` stack (`Implemented`, B7); no hosted production environment exists (ADR-006 point 2).
 - The principle is the one enforced in §88 and §87: the domain reads no environment, and the ports isolate the infrastructure.
 
 ---
@@ -3341,13 +3341,13 @@ The deployment strategy demonstrates:
 
 | Quality | How version 1 demonstrates it | Status |
 |---|---|---|
-| Reproducibility | A clean checkout installs from the lockfile and builds; the full stack starts with one command | CI `Implemented`; stack `Planned (B7)` |
-| Containerization | PostgreSQL in Compose today; a multi-stage, non-root API image in the `full` profile (ADR-006 point 4) | PostgreSQL `Implemented`; image `Planned (B7)` |
-| Environment separation | `development`, `test` and local `production`, plus the demo build (ADR-006 point 8) | `Implemented` for the first two; `production` `Planned (B7)`; demo `Planned (FE)` |
-| Database migrations | Prisma Migrate; `migrate deploy` in the one-shot `migrate` service; forward-fix only (ADR-006 points 5 and 6) | Migrations `Implemented`; the `migrate` service `Planned (B7)` |
+| Reproducibility | A clean checkout installs from the lockfile and builds; the full stack starts with one command | CI `Implemented`; stack `Implemented` (B7.3) |
+| Containerization | PostgreSQL in Compose today; a multi-stage, non-root API image in the `full` profile (ADR-006 point 4) | PostgreSQL `Implemented`; image `Implemented` (B7.2) |
+| Environment separation | `development`, `test` and local `production`, plus the demo build (ADR-006 point 8) | `Implemented` for the first two; `production` `Implemented` (B7.3); demo `Planned (FE)` |
+| Database migrations | Prisma Migrate; `migrate deploy` in the one-shot `migrate` service; forward-fix only (ADR-006 points 5 and 6) | Migrations `Implemented`; the `migrate` service `Implemented` (B7.3) |
 | Secure configuration | Validated environment, secrets outside source control, no secret in the demo build (§12, §13, ADR-006 point 7) | `Implemented` for the API; demo `Planned (FE)` |
 | CI | One workflow on pushes and pull requests to `develop` and `main`, also running `pnpm docs:check`, no continuous deployment (ADR-006 points 10 and 11) | `Implemented` |
-| Health checks | `GET /health`, `GET /health/ready`, the container healthcheck (§50, §51) | Routes `Implemented`; container `Planned (B7)` |
+| Health checks | `GET /health`, `GET /health/ready`, the container healthcheck (§50, §51) | Routes `Implemented`; container `Implemented` (B7.2) |
 | Realtime deployment | A local `ws://` server in the API process, on the API's port and a fixed path (ADR-007 point 1); public WSS is `Deferred` (§31, §34) | `Implemented` (B5); public `Deferred` |
 | Graceful shutdown | `SIGTERM` and `SIGINT`, a 10-second drain, readiness 503, exit code 1 if the drain expires and 0 otherwise (ADR-006 point 12, §16) | `Implemented` (B3.4) |
 | Production awareness | Forward-fix, no backups claimed, one instance, the explicit exclusions of §84 | `Reference` |
@@ -3358,7 +3358,7 @@ without introducing infrastructure whose complexity is not justified by the proj
 Code vs ADR:
 
 - The original diagram had a "Production" target with "Real adapters", PostgreSQL, WebSocket and "external infra", fed by deployable artifacts from CI. ADR-006 removes all of it: there is no hosted target, CI publishes no artifact, and the two targets do not share one artifact (§3). The diagram above is the model of ADR-006 points 1-4 and 10.
-- The local full stack and the demo are `Planned`: today only PostgreSQL in Compose, the API in development mode and the local checks exist. The model describes the end of B7 and the frontend stage, not the present.
+- The local full stack is `Implemented` (B7); the demo is `Planned (FE)`. The model describes the end of the frontend stage, so the demo part is not the present.
 
 ---
 

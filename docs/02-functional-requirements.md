@@ -1829,7 +1829,7 @@ This applies equally to the full stack and to the public demo.
 | FR-017 | `Implemented`; `Planned (B0)`, `Implemented` (B5) | ADR-001; ADR-003; ADR-007 p6; ADR-008 p8, 12 | B0, B4, B5, FE |
 | FR-018 | `Implemented`; `Planned (B0)` | ADR-003 p6; ADR-004 p2, 12 | B0, B1 |
 | FR-019 | `Implemented` | — | FE |
-| FR-020 | `Implemented`; `Planned (B7)` | — | B7, FE |
+| FR-020 | `Implemented` (wildcard escaping in B7.5) | — | B7, FE |
 | FR-021 | `Implemented`; parts `Deferred` | ADR-007 p14 | FE |
 | FR-022 | `Implemented` | `05` §17 | FE |
 | FR-023 | `Implemented` | — | FE |

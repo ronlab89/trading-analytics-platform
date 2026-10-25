@@ -10,7 +10,7 @@ and 12 and new point 13, approved by the user from the
 approved by the user on 2026-10-08 from the `15-implementation-plan.md`
 reconciliation)
 **Implemented in:** CI and configuration safety before or in roadmap block
-B0; build and containers in B7; graceful shutdown and startup entries in B3;
+B0; build and containers in B7 (B7.1 to B7.4, closed 2026-10-25); graceful shutdown and startup entries in B3;
 frontend build configuration and demo hosting in the frontend phase
 
 ## Context
@@ -50,12 +50,13 @@ Other facts:
    the backend later requires a new ADR.
 3. **Production build.** Every workspace package compiles to `dist` and
    exposes it through `exports`. The API runs with `node dist/index.js`.
-   Implementation details are settled in B7.
+   Implementation details were settled in B7.1 (see the implementation
+   record below).
 4. **Containers.** A multi-stage API Dockerfile running as a non-root user.
    Docker Compose gains a `full` profile (PostgreSQL and API) for the
    production-like local run. The default profile keeps only PostgreSQL for
    development. (Amended 2026-10-07, approved by the user from the
-   `14-deployment-spec.md` reconciliation; `Planned (B7)`:)
+   `14-deployment-spec.md` reconciliation; `Implemented` in B7.2 and B7.3:)
    - **Migration service.** `prisma migrate deploy` runs as a one-shot
      `migrate` service in the `full` profile. The API service has
      `depends_on: migrate` with `condition: service_completed_successfully`
@@ -132,9 +133,10 @@ Other facts:
         migration roles of ADR-005 point 13 (§42).
       - **Smoke test.** One smoke-test script runs after
         `docker compose --profile full up`, with no frontend step (§49).
-        `Planned (B7)`, with the `full` profile.
+        `Implemented` in B7.4 (`pnpm smoke`), with the `full` profile.
       - **Smoke test data** (added 2026-10-08, approved by the user, from the
-        `15-implementation-plan.md` reconciliation, §37; `Planned (B7)`). The
+        `15-implementation-plan.md` reconciliation, §37; `Implemented` in B7.4, see
+        the amendment in the implementation record below). The
         `full` stack is local-only, so it runs with `NODE_ENV` set to a value
         other than `production` (`development`; "production-like" describes
         the build and containers, not the environment variable). The smoke
@@ -216,11 +218,58 @@ specified and tested in the listed block.
 
 | Item | Resolution | Block |
 |---|---|---|
-| In the `full` Compose profile the `migrate` service may run before PostgreSQL accepts connections. | The `migrate` service has `depends_on` PostgreSQL with `condition: service_healthy`; the API then waits for `migrate` with `service_completed_successfully` (point 4). | B7 |
-| `connection_limit` of the Prisma connection pool in the `full` profile. | Stays at Prisma's default until measured. | B7 |
+| In the `full` Compose profile the `migrate` service may run before PostgreSQL accepts connections. | The `migrate` service has `depends_on` PostgreSQL with `condition: service_healthy`; the API then waits for `migrate` with `service_completed_successfully` (point 4). Done in B7.3. | B7 |
+| `connection_limit` of the Prisma connection pool in the `full` profile. | Stays at Prisma's default until measured. Nothing was measured and no value is set (B7.3). | B7 |
 | Rate limits in development. | Stay on. Restarting the API clears the counters. | B0 |
-| How the `full` stack obtains data for the smoke test while the seed never runs automatically (point 5) and refuses `NODE_ENV=production` (point 13). | Point 11, "Smoke test data" (added 2026-10-08): the stack runs with `NODE_ENV` other than `production`, and the smoke script runs `db:seed` explicitly. Tests: the smoke script seeds before it logs in, and running the seed with `NODE_ENV=production` is still refused (point 13). | B7 |
+| How the `full` stack obtains data for the smoke test while the seed never runs automatically (point 5) and refuses `NODE_ENV=production` (point 13). | Point 11, "Smoke test data" (added 2026-10-08): the stack runs with `NODE_ENV` other than `production`, and the smoke script runs `db:seed` explicitly. Tests: the smoke script seeds before it logs in, and running the seed with `NODE_ENV=production` is still refused (point 13). In B7.4 the seed is a separate command run before `pnpm smoke`, from the host; see the amendment in the implementation record. | B7 |
 | Point 12 covers the HTTP server and the database. The shutdown steps of `14-deployment-spec.md` §16 for background jobs and realtime connections are not decided there. | Added to the shutdown sequence when the job runner (ADR-008) and the realtime server (ADR-007) exist. | B4, B5 |
+
+## Implementation record (B7)
+
+Recorded when B7 closed (2026-10-25). It states what was built for points 3,
+4, 5 and 11 and the decisions taken on the way; the points above stay as
+decided, except where a line below says otherwise.
+
+- **Build path (point 3, B7.1).** Relative imports end in `.js` and the
+  packages use `NodeNext`, so `tsc` rejects a missing extension and no bundler
+  is needed. Each package exposes `dist` through `exports`; the custom
+  condition `@trading/source` points tests, `tsx` and `tsc` at the sources.
+  `@trading/database` builds with `tsconfig.build.json` (`rootDir: src`).
+  `DATABASE_URL` is validated at startup. CI builds the packages and starts
+  the built API against the service container, checking `GET /health/ready`.
+- **Image (point 4, B7.2).** `apps/api/Dockerfile` has the stages `build`,
+  `deps`, `migrate` and `runtime`, built from the workspace root. The runtime
+  stage is `node:24-slim` (the `NODE_VERSION` argument, the value of `.nvmrc`)
+  plus `openssl`, runs as `node` with `TZ=UTC`, carries no compiled tests and
+  no `.env`, and starts with `node dist/index.js`. The healthcheck is a
+  `node -e` `fetch` of `GET /health/ready`, so no `curl` is needed. The
+  production tree comes from `pnpm install --prod --frozen-lockfile
+  --ignore-scripts`: `pnpm deploy` was rejected because `@trading/database`
+  lists only `dist` in `files` and would drop the generated client.
+- **Profile (points 4 and 5, B7.3).** The `full` profile adds the one-shot
+  `migrate` service (the `migrate` image target, which runs
+  `prisma migrate deploy` and then sets the runtime role password) and the
+  `api` service. The chain is PostgreSQL healthy, then `migrate` completed,
+  then `api`. The API connects as `trading_runtime` through the network name
+  `postgres`. Both published ports bind to `127.0.0.1`. `JWT_SECRET` has no
+  default; the database passwords keep local defaults. `connection_limit` is
+  left at Prisma's default.
+- **Smoke test (point 11, B7.4).** `scripts/smoke.mjs`, run as `pnpm smoke`,
+  checks readiness, an unauthenticated request (401), the login of the seeded
+  user and a read of the seeded portfolios. It does not start the stack or run
+  the seed: the flow is `docker compose --profile full up`, the seed, then
+  `pnpm smoke`. CI does not run it.
+- **Amendment to "Smoke test data" (point 11).** The `api` service of the
+  `full` profile runs with `NODE_ENV=production`, and the seed runs from the
+  host with the development values of `.env`. The production guard of point 13
+  is therefore untouched, as the decision required, but the stack does not run
+  with `NODE_ENV` set to `development`. This was recorded in B7.7 from what
+  B7.3 and B7.4 built; it is not a new decision.
+- **Hardening (B7.5, B7.6).** The assets search escapes `%`, `_` and `\`. The
+  final security pass is `odd/tasks/b7/b7-6-security-pass.md`: three advisories
+  fixed, `mem_limit: 512m` on the `api` service (NFR-054) and a test that pins
+  the security headers. `deepmerge-ts` (GHSA-ggr8-5vv4-36mx) stays `Deferred`:
+  it is reached only through the Prisma CLI config and its fix needs Prisma 7.
 
 ## Related
 

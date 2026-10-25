@@ -1645,7 +1645,7 @@ Version 1 sets no coverage threshold and CI has no coverage gate (ADR-006 point 
 
 # 56. Test Environments
 
-**Status:** development and test `Implemented`; local production-like stack `Planned (B7)`; demo `Planned (FE)` (ADR-006 points 1 and 8)
+**Status:** development and test `Implemented`; local production-like stack `Implemented` (B7); demo `Planned (FE)` (ADR-006 points 1 and 8)
 
 The project should distinguish:
 
@@ -1679,7 +1679,7 @@ ADR-006 point 8 names three environments, `development`, `test` and local `produ
 | Development | Local API against the default Docker Compose profile (PostgreSQL only) | `Implemented` |
 | Test | Local PostgreSQL test database from `.env.test.local` (`.env.test.example`); in CI, a PostgreSQL service container | `Implemented` locally; CI `Implemented` |
 | Demo | Static build of `apps/web` with `APP_MODE=demo` (`VITE_APP_MODE`), no backend calls, served under a subpath (ADR-006 point 7) | `Planned (FE)` |
-| Production-like | Compose `full` profile (PostgreSQL and the built API, `node dist/index.js`) on the author's machine | `Planned (B7)` |
+| Production-like | Compose `full` profile (PostgreSQL and the built API, `node dist/index.js`) on the author's machine | `Implemented` (B7.3, B7.4) |
 
 There is no hosted or optional deployment environment: hosting the backend needs a new ADR (ADR-006 point 2).
 

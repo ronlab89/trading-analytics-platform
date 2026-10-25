@@ -13,10 +13,10 @@ specification: the SDD (`00`-`16`) stays the source of truth for behavior,
 `PROGRESS.md` records what is done and why, and this file says what is
 left, in what order, and when each block counts as closed.
 
-**Last updated:** 2026-10-24 (B6 closed; reconciled with ADR-001 to ADR-010)
-**Status:** B0, B1, B2, B3, B4, B5 and B6 are done (B0.1 to B0.7 on 2026-10-16; B1.1 to
+**Last updated:** 2026-10-25 (B7 closed; reconciled with ADR-001 to ADR-010)
+**Status:** B0, B1, B2, B3, B4, B5, B6 and B7 are done (B0.1 to B0.7 on 2026-10-16; B1.1 to
 B1.7 on 2026-10-17; B2.1 to B2.5 on 2026-10-18; B3.1 to B3.5 on 2026-10-19 and
-2026-10-20; B4.1 to B4.5 on 2026-10-21; B5.1 to B5.8 on 2026-10-21 to 2026-10-24; B6.1 to B6.6 on 2026-10-24). The next block is B7.
+2026-10-20; B4.1 to B4.5 on 2026-10-21; B5.1 to B5.8 on 2026-10-21 to 2026-10-24; B6.1 to B6.6 on 2026-10-24; B7.1 to B7.7 on 2026-10-25). The backend is done and the next stage is the frontend (FE0).
 **Decision behind it:** the user chose to finish the backend completely
 before starting the frontend. This is a deliberate override of the phase
 order in `15-implementation-plan.md` §4, which alternated backend and
@@ -672,12 +672,12 @@ position-recalculation race is fixed in B0 (ADR-001).
 
 **Deferred detail assigned to B7**
 
-| Item | Source |
-|---|---|
-| The `migrate` service has `depends_on` PostgreSQL with `condition: service_healthy`, and the API waits for `migrate` with `service_completed_successfully` | ADR-006 |
-| `connection_limit` of the Prisma pool in the `full` profile stays at Prisma's default until measured | ADR-006 |
-| The smoke script seeds before it logs in, and running the seed with `NODE_ENV=production` is still refused | ADR-006 |
-| No database recovery entry (and no `dependency.recovered`) because readiness is stateless; reconsidered when the API healthcheck exists | ADR-009 |
+| Item | Source | Outcome |
+|---|---|---|
+| The `migrate` service has `depends_on` PostgreSQL with `condition: service_healthy`, and the API waits for `migrate` with `service_completed_successfully` | ADR-006 | Done in B7.3 (`docker-compose.yml`) |
+| `connection_limit` of the Prisma pool in the `full` profile stays at Prisma's default until measured | ADR-006 | Done in B7.3: no value is set and nothing was measured |
+| The smoke script seeds before it logs in, and running the seed with `NODE_ENV=production` is still refused | ADR-006 | Done in B7.4 with a change: the seed is a separate command run before `pnpm smoke` (decision D2), and the guard is untouched; see the ADR-006 implementation record |
+| No database recovery entry (and no `dependency.recovered`) because readiness is stateless; reconsidered when the API healthcheck exists | ADR-009 | Decided again in B7.6: still no entry (`13-observability-spec.md` §58) |
 
 **Done when:** a production build runs from a clean checkout in a
 container, the smoke test passes against the `full` profile, and the
@@ -749,7 +749,7 @@ must exist before starting them:
   the demo specifics); the frontend blocks FE0 to FE6 are defined in
   `15-implementation-plan.md` §4.3. `apps/web` holds only the wireframe, and
   `@trading/domain` still points `main` and `types` at `src/index.ts` until
-  the production build path is fixed in B7.
+  the production build path was fixed in B7.1; `apps/web` still has no package.
 
 ---
 
@@ -796,4 +796,4 @@ must exist before starting them:
 | B4 Background jobs and idempotency | Done (2026-10-21: B4.1 job and idempotency storage, B4.2 service and runner, B4.3 CSV import, B4.4 endpoints and `Idempotency-Key`, B4.5 docs and close) |
 | B5 Realtime | Done (2026-10-24: B5.1 contracts, B5.2 WebSocket server, B5.3 channels and subscriptions, B5.4 job, portfolio and notification events, B5.5 market engine, B5.6 simulator in the server, B5.7 alerts, B5.8 tests, measurement, docs and close) |
 | B6 API documentation and contract | Done (2026-10-24: B6.1 operation type and document builder, B6.2 core operations, B6.3 remaining operations, B6.4 drift test, B6.5 viewer and `API_DOCS_ENABLED`, B6.6 docs and close) |
-| B7 Deployment readiness and hardening | Not started |
+| B7 Deployment readiness and hardening | Done (2026-10-25: B7.1 production build path and `DATABASE_URL` validation, B7.2 API image, B7.3 `full` Compose profile, B7.4 smoke test, B7.5 search wildcards, B7.6 final security pass and its fixes, B7.7 docs and close) |
