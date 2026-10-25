@@ -65,6 +65,13 @@ docker compose --profile full up --build
 
 The default `docker compose up -d` still starts PostgreSQL alone. The seed is never run for you.
 
+Smoke test of that stack (readiness, login with the seeded user, a read of the seeded portfolios):
+
+```bash
+pnpm --filter @trading/database db:seed
+pnpm smoke
+```
+
 ## Local Database
 
 PostgreSQL runs via Docker Compose. Two levels of reset are available,

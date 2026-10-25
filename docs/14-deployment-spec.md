@@ -1674,7 +1674,7 @@ Code vs ADR:
 
 # 49. Smoke Tests
 
-**Status:** full stack `Planned (B7)` as one script with no frontend step (ADR-006 point 11); demo `Planned (FE)`; the content of check 5 is a B7 detail
+**Status:** full stack `Implemented` (B7.4) as one script, `pnpm smoke`, with no frontend step (ADR-006 point 11); demo `Planned (FE)`
 
 Minimum smoke tests should verify:
 
@@ -1691,18 +1691,19 @@ How each applies:
 | Check | Full stack | Demo |
 |---|---|---|
 | 1. Frontend accessibility | No frontend step in the full-stack smoke test (ADR-006 point 11, additions of 2026-10-07); a frontend container stays open (§7; B7) | Page loads under the subpath: `Planned (FE)`; tool `Deferred` (frontend-stage ADR) |
-| 2. API health | `GET /health` and `GET /health/ready` return 200: `Planned (B7)`. The script runs `db:seed` as an explicit step before the login check; the `full` stack is local and runs with `NODE_ENV` other than `production` (ADR-006 point 5 and its 2026-10-08 smoke-test clarification) | Not applicable: no backend |
-| 3. Authentication | `POST /api/v1/auth/login` returns a token: `Planned (B7)` | In-process login: `Planned (FE)` |
-| 4. Authenticated request | `GET /api/v1/auth/me` or `GET /api/v1/portfolios` with the token: `Planned (B7)` | `Planned (FE)` |
-| 5. Primary portfolio flow | Not chosen; a read of the seeded portfolio is the smallest candidate: `Planned (B7)`, flow chosen in B7 | `Planned (FE)` |
+| 2. API health | `GET /health/ready` returns 200: `Implemented` (B7.4); the script waits for it for up to 60 s. `db:seed` is an explicit command run before the script, and it is refused when `NODE_ENV=production`, so it runs from the host or from the `migrate` service, never in the API container (ADR-006 point 5 and its 2026-10-08 smoke-test clarification) | Not applicable: no backend |
+| 3. Authentication | `POST /api/v1/auth/login` returns a token: `Implemented` (B7.4); the seeded demo user | In-process login: `Planned (FE)` |
+| 4. Authenticated request | `GET /api/v1/auth/me` or `GET /api/v1/portfolios` with the token: `Implemented` (B7.4) | `Planned (FE)` |
+| 5. Primary portfolio flow | Chosen (B7.4): the read of the seeded portfolios, `GET /api/v1/portfolios` with the token, which fails when there are no rows. Readiness only proves `SELECT 1`, so this is the step that proves the migrations were applied and the seed ran: `Implemented` | `Planned (FE)` |
 | 6. Realtime connection | `Implemented` (B5); added to the smoke test when the WebSocket server exists | `Planned (FE)` |
-| 7. Expected error handling | One request that returns the standard error envelope, for example `401` without a token: `Planned (B7)` | `Planned (FE)` |
+| 7. Expected error handling | One request that returns the standard error envelope, `401` with `error.code` `UNAUTHORIZED` for `GET /api/v1/portfolios` without a token: `Implemented` (B7.4) | `Planned (FE)` |
 
 Code vs ADR:
 
 - No ADR defines the smoke test. `10-testing-strategy.md` has no smoke-test section, and `BACKEND-ROADMAP.md` B7 defers the definition to this section. `apps/api/src/app.test.ts` is a wiring test, not a deployment smoke test.
 - The smoke test belongs to the B7 definition of done (NFR-054 under a 512 MB container limit, NFR-055 from a clean checkout). CI does not run it (ADR-006 point 11: running the built API stays B7).
-- Decided (ADR-006 point 11, additions of 2026-10-07; `Planned (B7)`, with the `full` profile): the smoke test is one script run after `docker compose --profile full up`, with no frontend step. It covers the checks marked `Planned (B7)` in the table (2, 3, 4, 5 and 7; check 6 joins in B5). The flow of check 5 is chosen in B7.
+- Decided (ADR-006 point 11, additions of 2026-10-07; `Implemented`, B7.4, `scripts/smoke.mjs`): the smoke test is one script run after `docker compose --profile full up`, with no frontend step. It covers the checks marked `Planned (B7)` in the table (2, 3, 4, 5 and 7; check 6 joins in B5). The flow of check 5 is the read of the seeded portfolios (B7.4).
+- `Implemented` (B7.4): `pnpm smoke` runs `scripts/smoke.mjs` (Node and `fetch`, so it works on Windows, macOS and Linux). Steps: readiness, an unauthenticated request, login, a table read. It stops at the first failure, names the step and never prints the password or the token. It does not start, stop or seed the stack: the flow is `docker compose --profile full up -d --build`, then `pnpm --filter @trading/database db:seed`, then `pnpm smoke`. `SMOKE_API_URL`, `SMOKE_EMAIL`, `SMOKE_PASSWORD` and `SMOKE_READY_TIMEOUT_MS` override the defaults. CI does not run it. The 512 MB limit of NFR-054 is not measured by this script.
 
 ---
 

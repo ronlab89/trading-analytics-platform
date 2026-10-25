@@ -28,10 +28,10 @@ odd/tasks/b7/**
 
 ## Tasks
 
-- [ ] T1 RED: a small test of the script's step runner (a failing step stops the run and names itself).
-- [ ] T2 The script: readiness wait, seed step, login, table-reading route.
-- [ ] T3 Run it against the B7.3 stack, including one forced failure (stop the API) to see the message.
-- [ ] T4 Docs: `14` §49 marks and README commands.
+- [x] T1 RED: a small test of the script's step runner (a failing step stops the run and names itself).
+- [x] T2 The script: readiness wait, seed step, login, table-reading route.
+- [x] T3 Run it against the B7.3 stack, including one forced failure (stop the API) to see the message.
+- [x] T4 Docs: `14` §49 marks and README commands.
 
 ## Done when
 
@@ -48,3 +48,5 @@ The three-command flow on a clean volume; the forced failure; pnpm lint; pnpm te
 ## Log
 
 L1 Request: as B7.1 (the task files for B7).
+L3 Done 2026-10-25. D1 to D3 approved as recommended. S2 says the script runs `db:seed`; D2 says it documents three commands. D2 won: `up`, `db:seed`, `smoke`, so the script stays free of child processes and `pnpm` on Windows. Its messages point at the seed command when the login is refused or no rows come back.
+L4 T1 and T2 share one commit: the RED (module not found) was observed first, the 11 tests then pass and `pnpm test:scripts` runs 42 in total. Verified in an isolated project (`-p b74`, removed afterwards): fail at `login` before the seed, pass (4 steps) after it, fail at `readiness` with the API stopped. The seed ran through `docker compose run migrate` because Compose reads the user's `.env` for the runtime password, which the assistant does not read; the documented host command is `pnpm --filter @trading/database db:seed`.
