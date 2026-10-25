@@ -101,6 +101,19 @@ export function assetRepositoryContract(
       expect(await symbolsOf({ search: `${tag}-none` })).toEqual([]);
     });
 
+    // `%`, `_` and `\` are LIKE wildcards or escapes in PostgreSQL; the term is plain text.
+    it.each([
+      { character: "%", literal: "100% growth", lookalike: "100x growth" },
+      { character: "_", literal: "a_b", lookalike: "axb" },
+      { character: "\\", literal: "c\\d", lookalike: "cd" },
+    ])("matches '$character' in the search literally", async ({ literal, lookalike }) => {
+      await context.repository.create(input("LIT", { name: `Fund ${tag} ${literal}` }));
+      await context.repository.create(input("LOOK", { name: `Fund ${tag} ${lookalike}` }));
+
+      expect(await symbolsOf({ search: `${tag} ${literal}` })).toEqual([`${tag}-LIT`]);
+      expect(await symbolsOf({ search: `${tag} ${lookalike}` })).toEqual([`${tag}-LOOK`]);
+    });
+
     it("lists ordered by symbol, paginates and reports the unpaged total", async () => {
       for (const suffix of ["C", "A", "B"]) {
         await context.repository.create(input(suffix));

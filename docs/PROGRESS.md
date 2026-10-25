@@ -1096,13 +1096,14 @@ unassigned.
   The `UnitOfWork` contract will guarantee isolation for position updates,
   with a concurrent test (two `SELL` of 6 on a holding of 10: exactly one
   succeeds).
-- **The assets search filter does not escape SQL wildcard characters**
-  (`%`, `_`) — B7 (roadmap B7 "Known debts"). Only
-  `packages/database/src/repositories/prisma-asset-repository.ts:32-33` has a
-  `contains` filter; the transactions list has no free-text search
-  (ADR-010 point 2), so this debt is assets only. Low severity (no injection
-  risk, Prisma parameterizes the query; worst case is a slightly wrong
-  match), but not yet verified or fixed.
+- **The assets search filter escapes SQL wildcard characters** — fixed in B7.5
+  (roadmap B7 "Known debts"). Prisma passes the `contains` term into an `ILIKE` pattern
+  unescaped, so `%` matched everything, `_` any character and `\` acted as the escape.
+  `prisma-asset-repository.ts` now escapes `\`, `%` and `_` before the term reaches
+  `contains`. Only assets has a `contains` filter; the transactions list has no free-text
+  search (ADR-010 point 2). The in-memory repository already matched literally; the
+  shared contract suite now pins both. There was no injection risk, since Prisma
+  parameterizes the query.
 - **Graceful shutdown** — `Implemented` in B3.4 (ADR-006 point 12):
   `index.ts` wires `lifecycle/shutdown.ts` and `lifecycle/bootstrap.ts`. B4 and
   B5 join the shutdown sequence when the job runner and the realtime

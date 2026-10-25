@@ -11,6 +11,14 @@ import { prisma } from "../client.js";
 import { toDomainAsset, toPrismaCreateInput } from "../mappers/asset-mapper.js";
 
 /**
+ * Prisma passes the `contains` term into a PostgreSQL `ILIKE` pattern unescaped, so `%` and `_`
+ * would act as wildcards and `\` as the escape character. A search term is plain text.
+ */
+function escapeLikeTerm(term: string): string {
+  return term.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
+/**
  * Prisma-backed implementation of `AssetRepository`.
  * See prisma-portfolio-repository.ts for the shared rationale.
  *
@@ -29,8 +37,8 @@ export class PrismaAssetRepository implements AssetRepository {
       ...(filter.search !== undefined
         ? {
             OR: [
-              { symbol: { contains: filter.search, mode: "insensitive" } },
-              { name: { contains: filter.search, mode: "insensitive" } },
+              { symbol: { contains: escapeLikeTerm(filter.search), mode: "insensitive" } },
+              { name: { contains: escapeLikeTerm(filter.search), mode: "insensitive" } },
             ],
           }
         : {}),

@@ -545,7 +545,7 @@ the demo (ADR-001).
 ## FR-020 — Asset Search
 
 **Priority:** P1  
-**Status:** `Implemented` (`search` parameter); wildcard escaping `Planned (B7)` (`BACKEND-ROADMAP.md` §4); UI `Planned (FE)`  
+**Status:** `Implemented` (`search` parameter); wildcard escaping `Implemented` (B7.5: `%`, `_` and `\` match literally); UI `Planned (FE)`  
 **Decisions:** —
 
 ### Acceptance criteria

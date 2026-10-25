@@ -697,7 +697,7 @@ the §33 checklist.
 | Alignment of the `typescript` and `@types/node` versions across packages | B0 (`Implemented` in B0.1) |
 | Event ordering tiebreaker beyond `timestamp` | B5 (events created in bursts) |
 | `ScenarioRepository.updateChanges` has no production caller | decide when the demo adapters are written |
-| Wildcard escaping in the assets search | B7 |
+| Wildcard escaping in the assets search | B7 (done in B7.5) |
 | Position recalculation race | B0 (ADR-001) |
 
 ---

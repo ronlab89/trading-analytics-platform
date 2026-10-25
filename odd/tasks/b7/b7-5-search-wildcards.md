@@ -21,9 +21,9 @@ odd/tasks/b7/**
 
 ## Tasks
 
-- [ ] T1 RED: contract case, then a Prisma case, where searching `%` or `_` returns only assets whose name or symbol contains that literal character.
-- [ ] T2 Escape the term before it reaches `contains`, in one helper next to the repository. T1 of this task confirms how the current filter builds its query and whether Prisma passes the backslash escape through to PostgreSQL `ILIKE`.
-- [ ] T3 Docs: the `Planned (B7)` mark in `02` and the roadmap item.
+- [x] T1 RED: contract case, then a Prisma case, where searching `%` or `_` returns only assets whose name or symbol contains that literal character.
+- [x] T2 Escape the term before it reaches `contains`, in one helper next to the repository. T1 of this task confirms how the current filter builds its query and whether Prisma passes the backslash escape through to PostgreSQL `ILIKE`.
+- [x] T3 Docs: the `Planned (B7)` mark in `02` and the roadmap item.
 
 ## Done when
 
@@ -40,3 +40,4 @@ pnpm --filter @trading/database test (needs the test database); pnpm --filter @t
 ## Log
 
 L1 Request: as B7.1 (the task files for B7).
+L2 Done 2026-10-25. RED observed: the new contract case failed 3 of 12 on the Prisma adapter (one per character) and passed on the in-memory one, which uses `includes`. Prisma does not escape the `contains` term, so `escapeLikeTerm` (in `prisma-asset-repository.ts`) prefixes `\`, `%` and `_` with a backslash, PostgreSQL's default `LIKE` escape. After it: Prisma 12 of 12, `persistence-memory` 314, `database` 206, typecheck and lint pass. Only the asset repository uses `contains` (`prisma-portfolio-repository.ts` only mentions the word in a comment), so no other caller changes. The test and the fix share one commit.
