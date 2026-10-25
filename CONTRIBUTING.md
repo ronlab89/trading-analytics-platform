@@ -250,6 +250,13 @@ Every workspace package exposes its compiled `dist` through `exports`, and the
 packages and the API end in `.js` (`NodeNext`): `tsc` rejects a missing
 extension. `pnpm typecheck` builds the referenced projects first.
 
+The API image builds from the workspace root and reads its configuration from the
+environment only (it never copies `.env`):
+
+```bash
+docker build -f apps/api/Dockerfile -t trading-api .
+```
+
 `pnpm lint:fix` and `pnpm format` apply fixes. `pnpm docs:check` verifies the
 documentation structure (references, code fences, ADR sections), not its content.
 The Husky `pre-commit` hook runs `lint-staged` (ESLint and Prettier on staged files).

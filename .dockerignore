@@ -1,0 +1,14 @@
+# Keep local artefacts out of the build context: the image builds its own.
+**/node_modules
+**/dist
+**/generated
+**/*.tsbuildinfo
+
+# Secrets and environment files.
+.env*
+
+.git
+.husky
+.github
+**/coverage
+pr-body.md

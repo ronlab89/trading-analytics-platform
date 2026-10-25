@@ -30,10 +30,10 @@ odd/tasks/b7/**
 
 ## Tasks
 
-- [ ] T1 Build stage: install with the lockfile, `prisma generate`, `pnpm build`.
-- [ ] T2 Runtime stage: production tree, non-root user, `TZ=UTC`, entrypoint, healthcheck.
-- [ ] T3 `.dockerignore` and a manual check: `docker build`, `docker run` against the local PostgreSQL, `docker stop` shows the graceful shutdown log.
-- [ ] T4 Docs: `14-deployment-spec.md` marks, README line to build the image.
+- [x] T1 Build stage: install with the lockfile, `prisma generate`, `pnpm build`.
+- [x] T2 Runtime stage: production tree, non-root user, `TZ=UTC`, entrypoint, healthcheck.
+- [x] T3 `.dockerignore` and a manual check: `docker build`, `docker run` against the local PostgreSQL, `docker stop` shows the graceful shutdown log.
+- [x] T4 Docs: `14-deployment-spec.md` marks, README line to build the image.
 
 ## Done when
 
@@ -51,3 +51,6 @@ docker build; docker run with a real `DATABASE_URL`; docker inspect shows the us
 
 L1 Request: as B7.1 (the task files for B7).
 L2 Docker was not run by the assistant while writing this plan; D1 to D3 wait for approval and T1 verifies them.
+L3 Done 2026-10-25. D1-D3 approved as recommended, with one change to D3: `pnpm deploy` drops `packages/database/generated` (`files` lists only `dist`), so the runtime tree is `pnpm install --prod --frozen-lockfile --ignore-scripts` plus the built `dist` and `generated`.
+L4 Compiled `*.test.*` files are deleted from every `dist` in the build stage (S6). `.dockerignore` landed with T1 because the build stage needs it. Verified: docker build; healthy; user `node`, `TZ=UTC`; `docker stop` exit 0 with `app.shutdown.started` and `app.shutdown.completed`. The dev DB lacks the `alerts.armed` migration, so the simulator logs errors; the image is not the cause.
+L5 `ARG NODE_VERSION=24` mirrors `.nvmrc` by hand; CI does not pass it yet.

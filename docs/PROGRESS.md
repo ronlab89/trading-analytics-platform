@@ -1065,7 +1065,15 @@ unassigned.
   Node. Relative imports now carry `.js` (`NodeNext`), each package exposes
   `dist` through `exports`, and the `@trading/source` condition keeps tests,
   `tsx` and `tsc` reading `src`. CI starts the built API. The container image
-  and the `full` profile are B7.2 and B7.3.
+  is B7.2 and the `full` profile is B7.3.
+- **API container image** — `apps/api/Dockerfile`, B7.2 (ADR-006 point 4). Three stages built
+  from the workspace root: `build` (full install, `prisma generate`, `pnpm build`, compiled
+  tests removed), `deps` (`pnpm install --prod --ignore-scripts`) and `runtime` (Debian slim with
+  OpenSSL, user `node`, `TZ=UTC`, `ENTRYPOINT ["node", "dist/index.js"]` with no shell). The
+  healthcheck is a `node` one-liner on `GET /health/ready`, so the image needs no `curl`.
+  `pnpm deploy` was rejected: it follows `files` in `@trading/database` and drops the generated
+  client. Checked by hand against the local PostgreSQL: healthy, `docker stop` exits 0 after the
+  shutdown logs. The Node version is `ARG NODE_VERSION=24`, kept equal to `.nvmrc` by hand.
 - **Concurrency on position recalculation** — B0 (ADR-001, FR-017), not B7:
   two simultaneous transactions against the same portfolio+asset could race
   between the read-then-write of the position inside the Unit of Work. The

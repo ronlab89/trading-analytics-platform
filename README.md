@@ -55,6 +55,8 @@ Check that it is up: `GET /health` (liveness) and `GET /health/ready` (readiness
 when PostgreSQL is not reachable). Environment notes and troubleshooting are in
 [`CONTRIBUTING.md`](./CONTRIBUTING.md) sections 9 and 10.
 
+Container image of the API: `docker build -f apps/api/Dockerfile -t trading-api .` (workspace root as context).
+
 ## Local Database
 
 PostgreSQL runs via Docker Compose. Two levels of reset are available,
