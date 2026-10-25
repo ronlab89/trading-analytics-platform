@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { once } from "node:events";
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
 import { API_OPERATIONS } from "@trading/contracts";
@@ -21,13 +24,28 @@ function nonceOf(policy: string): string {
 
 describe("the OpenAPI document and the viewer when the docs are on", () => {
   const app = createApp({ docsEnabled: true });
+  let server: Server;
+  let baseUrl: string;
+
+  // The document is about 170 kB. On Windows, supertest (a new listener per request) intermittently
+  // stalled for 5 s or reset the connection while reading it, so these two tests use one listener.
+  beforeAll(async () => {
+    server = app.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    baseUrl = `http://127.0.0.1:${String((server.address() as AddressInfo).port)}`;
+  });
+
+  afterAll(async () => {
+    server.close();
+    await once(server, "close");
+  });
 
   it("serves the document generated from the operations", async () => {
-    const response = await request(app).get("/openapi.json");
-    const document = response.body as Document;
+    const response = await fetch(`${baseUrl}/openapi.json`);
+    const document = (await response.json()) as Document;
 
     expect(response.status).toBe(200);
-    expect(response.type).toBe("application/json");
+    expect(response.headers.get("content-type")).toContain("application/json");
     expect(document.openapi).toBe("3.1.0");
     expect(Object.values(document.paths).flatMap((item) => Object.keys(item))).toHaveLength(
       API_OPERATIONS.length,
@@ -35,8 +53,8 @@ describe("the OpenAPI document and the viewer when the docs are on", () => {
   });
 
   it("declares the bearer token as the security scheme, with no credential in the document", async () => {
-    const response = await request(app).get("/openapi.json");
-    const document = response.body as Document;
+    const response = await fetch(`${baseUrl}/openapi.json`);
+    const document = (await response.json()) as Document;
 
     expect(document.components.securitySchemes).toEqual({
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
