@@ -1583,7 +1583,7 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 | Missing and malformed token return 401 | `Implemented` (`auth.routes.test.ts`) |
 | Login rate limit returns 429 with the error envelope | `Implemented` (`rate-limit.test.ts`) |
 | Expired token, wrong algorithm, unknown role return 401 | `Implemented` (`token.service.test.ts`, `authenticate.test.ts`) |
-| Startup fails with a missing or short `JWT_SECRET` | `Implemented` (rule in `env.ts`; checked by hand in B7.3, no automated test) (NFR-019, NFR-023) |
+| Startup fails with a missing or short `JWT_SECRET` | `Implemented` (`apps/api/src/config/env.test.ts`) (NFR-019, NFR-023) |
 | Refresh rotation, reuse detection, parallel refresh, lost response | `Implemented` (`refresh.service.test.ts`, `auth.refresh.routes.test.ts`) (ADR-005 Deferred detail) |
 | Logout revokes the family; refresh and logout without the custom header are rejected | `Implemented` (`logout.service.test.ts`, `require-client-header.test.ts`, `auth.refresh.routes.test.ts`) (NFR-028) |
 | Cookie attributes (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path`) | `Implemented` (`auth.routes.test.ts`, `auth.refresh.routes.test.ts`) (NFR-028) |

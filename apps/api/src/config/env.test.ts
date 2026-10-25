@@ -176,3 +176,33 @@ describe("envSchema DATABASE_URL", () => {
     expect(message).not.toContain("hunter2");
   });
 });
+
+describe("envSchema JWT_SECRET", () => {
+  const { JWT_SECRET: _omitted, ...withoutSecret } = base;
+
+  it("is required", () => {
+    const result = envSchema.safeParse(withoutSecret);
+
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.issues.map((issue) => issue.path[0])).toContain(
+      "JWT_SECRET",
+    );
+  });
+
+  it.each(["", "x".repeat(31)])("rejects the secret %j", (value) => {
+    expect(envSchema.safeParse({ ...base, JWT_SECRET: value }).success).toBe(false);
+  });
+
+  it("accepts exactly 32 characters", () => {
+    expect(envSchema.safeParse({ ...base, JWT_SECRET: "x".repeat(32) }).success).toBe(true);
+  });
+
+  it("names the variable in the error and never echoes the value", () => {
+    const result = envSchema.safeParse({ ...base, JWT_SECRET: "short-secret-value" });
+
+    expect(result.success).toBe(false);
+    const message = JSON.stringify(!result.success && result.error.issues);
+    expect(message).toContain("JWT_SECRET");
+    expect(message).not.toContain("short-secret-value");
+  });
+});

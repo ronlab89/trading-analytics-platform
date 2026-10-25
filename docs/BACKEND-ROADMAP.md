@@ -748,8 +748,8 @@ must exist before starting them:
   accessibility tool, the HTTP client timeout and retry, test tooling and
   the demo specifics); the frontend blocks FE0 to FE6 are defined in
   `15-implementation-plan.md` §4.3. `apps/web` holds only the wireframe, and
-  `@trading/domain` still points `main` and `types` at `src/index.ts` until
-  the production build path was fixed in B7.1; `apps/web` still has no package.
+  `@trading/domain` pointed `main` and `types` at `src/index.ts` until the
+  production build path was fixed in B7.1. `apps/web` still has no package.
 
 ---
 
