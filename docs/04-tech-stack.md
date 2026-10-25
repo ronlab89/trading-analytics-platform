@@ -181,9 +181,9 @@ Node.js, `engines.node >=24.0.0`. The API runs in development with `tsx`
 jobs run in the API process (`Implemented` (B4), ADR-008 point 4); the realtime
 server runs in it too (`Implemented` (B5), ADR-007).
 
-Open detail (B7): the production build path is fixed in B7 (ADR-006 point 3).
+The production build path was fixed in B7.1 (ADR-006 point 3).
 The pinned Node major (`24`, LTS) lives in `.nvmrc` and is reused by CI
-(`Implemented`); the Dockerfile reuses it too (`Planned (B7)`, ADR-006
+(`Implemented`); the Dockerfile reuses it too (`Implemented`, B7.2, ADR-006
 point 13).
 
 ---
@@ -319,7 +319,7 @@ locally: there is no hosted database (ADR-006 point 2).
 `packages/database/prisma/schema.prisma` (`prisma-client-js` generator,
 output `packages/database/generated/client`). Migrations use
 `prisma migrate dev` in development and `prisma migrate deploy` for tests;
-startup migrations are `Planned (B7)` (ADR-006 point 5). The seed runs only
+the `full` profile applies them in the one-shot `migrate` service (`Implemented`, B7.3, ADR-006 point 5). The seed runs only
 on demand (`pnpm --filter @trading/database db:seed`).
 
 Domain code never imports Prisma; repositories isolate it (§29).
@@ -505,11 +505,11 @@ with `workspace:*`.
 
 # 40. Docker
 
-**Status:** PostgreSQL service `Implemented`; API image and `full` profile `Planned (B7)` — ADR-006 point 4.
+**Status:** PostgreSQL service `Implemented`; API image and `full` profile `Implemented` (B7.2, B7.3) — ADR-006 point 4.
 
 `docker-compose.yml` runs PostgreSQL 18 with a named volume and a
 `pg_isready` health check; credentials and port come from `DATABASE_*`
-variables with development defaults. B7 adds a multi-stage, non-root API
+variables with development defaults. B7 added a multi-stage, non-root API
 Dockerfile (`apps/api/Dockerfile`, built with the workspace root as context)
 and a `full` profile (PostgreSQL, a one-shot `migrate` service and the API);
 the default profile keeps only PostgreSQL. The API container starts with
@@ -724,7 +724,7 @@ ADR already names is added in that ADR's block.
 | Realtime | ws | — | `Implemented` (B5) | ADR-007 point 1 |
 | Simulation | `@trading/market-sim` | — | `Implemented` (B5) | ADR-007 point 7 |
 | API docs | OpenAPI from Zod `toJSONSchema` | — | `Implemented` (B6) | ADR-002 point 7 |
-| Infrastructure | API Dockerfile, `full` profile | — | `Planned (B7)` | ADR-006 point 4 |
+| Infrastructure | API Dockerfile, `full` profile | — | `Implemented` (B7) | ADR-006 point 4 |
 | Frontend build | Vite | — | `Planned (FE)` | ADR-006 point 8 |
 | Frontend | UI library, styling, components, animation, server and client state, tables, forms, charts | — | `Deferred` | §4, §7-13, §16 |
 | Testing | Component and end-to-end tooling | — | `Deferred` | §33 |
@@ -760,7 +760,7 @@ technology under a port can change without changing product behavior.
 - Structured logging. `Implemented` (B3)
 - WebSocket realtime with the shared simulator. `Implemented` (B5)
 - Generated OpenAPI. `Implemented` (B6)
-- Containerized production-like local run. `Planned (B7)`
+- Containerized production-like local run. `Implemented` (B7)
 - The public demo runs entirely on in-process infrastructure. `Planned (FE)`
 - No required paid API exists. `Implemented`
 
@@ -778,5 +778,5 @@ configuration are listed.
 | Boundary math and data edges | Two TypeScript and two `@types/node` lines resolved in one workspace. | Aligned to one line each (§2). `Implemented` |
 | Boundary math and data edges | Domain quantities are `number` while analytics need `Decimal`. | Open detail (B1), §28.1. |
 | Partial failure | Invalid or missing configuration. | API exits at startup with the invalid keys (§42). `Implemented` |
-| Crash and restart | API starting before PostgreSQL accepts connections in the `full` profile. | `depends_on` with `service_healthy` (ADR-006 Deferred detail, B7). |
+| Crash and restart | API starting before PostgreSQL accepts connections in the `full` profile. | `depends_on` with `service_healthy` (`Implemented`, B7.3; ADR-006 Deferred detail). |
 | Retries and duplicates | Non-reproducible installs. | Lockfile installs locally and in CI (§2, §41). |

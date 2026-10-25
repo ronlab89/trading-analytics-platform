@@ -37,7 +37,7 @@ frontend stage follows the backend blocks.
 
 ### 2.1 Demonstrate Software Engineering Skills
 
-**Status:** backend `Implemented` and `Planned (B0-B7)`; frontend `Planned (FE)`.
+**Status:** backend `Implemented` (B0 to B7); frontend `Planned (FE)`.
 
 The repository must give evidence of: system and API design, domain
 modeling, authentication and authorization, validation, error handling,
@@ -117,7 +117,7 @@ come from the seed; roles are `VIEWER`, `TRADER` and `ADMIN` (ADR-005,
 | CSV transaction import (background jobs) and idempotency | `Implemented` (B4) | ADR-008 |
 | Realtime prices and events, shared market simulator | `Implemented` (B5) | ADR-007 |
 | Generated OpenAPI document | `Implemented` (B6) | ADR-002 point 7 |
-| Production-like containerized local run | `Planned (B7)` | ADR-006 |
+| Production-like containerized local run | `Implemented` (B7) | ADR-006 |
 | Web app, dashboard UI, charts, public demo | `Planned (FE)` | ADR-001, ADR-002, ADR-006 |
 
 ### 5.2 Explicitly Out of Scope
@@ -208,7 +208,7 @@ Runs locally only (ADR-006 point 1):
 - Application layer and shared contracts. `Planned (B0)`
 - Background jobs in process. `Implemented` (B4)
 - WebSocket realtime. `Implemented` (B5)
-- API container and `full` Compose profile. `Planned (B7)`
+- API container and `full` Compose profile. `Implemented` (B7)
 - Web app in real mode. `Planned (FE)`
 
 The stack is in `04-tech-stack.md`; the structure in `06-architecture.md`.
@@ -392,9 +392,9 @@ measured results and recorded decisions; no placeholder claims.
 | 2 | Public demo fully functional on simulated infrastructure. | `Planned (FE)` |
 | 3 | Primary workflows end to end in the demo. | `Planned (FE)` |
 | 4 | Validation, error, loading, success, empty and transitional states. | API `Implemented`; UI `Planned (FE)` |
-| 5 | Full stack runs locally. | API and database `Implemented`; containerized run `Planned (B7)` |
+| 5 | Full stack runs locally. | API and database `Implemented`; containerized run `Implemented` (B7) |
 | 6 | Architecture documented. | `Implemented` |
-| 7 | Security implemented and documented. | foundation `Implemented`; sessions `Implemented` (B2); hardening `Planned (B7)` |
+| 7 | Security implemented and documented. | foundation `Implemented`; sessions `Implemented` (B2); hardening `Implemented` (B7) |
 | 8 | Relevant automated tests, run in CI. | tests `Implemented`; CI `Implemented` |
 | 9 | Performance measured, not estimated. | slow-request and analytics timing `Implemented` (B3.2, B3.3) (ADR-009 point 8); UI `Planned (FE)` |
 | 10 | Defensible in a technical interview. | `Implemented` through the ADRs |

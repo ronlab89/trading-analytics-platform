@@ -780,7 +780,7 @@ startup (§8).
 
 # 25. HTTP Security Headers
 
-**Status:** API `Implemented` (`helmet()` defaults and `app.disable("x-powered-by")` in `apps/api/src/app.ts`; NFR-025); header test `Planned (B7)` (`BACKEND-ROADMAP.md` B7); demo host headers `Deferred` (ADR-006 point 2)
+**Status:** API `Implemented` (`helmet()` defaults and `app.disable("x-powered-by")` in `apps/api/src/app.ts`; NFR-025); header test `Implemented` (B7.6, `apps/api/src/app.headers.test.ts`); demo host headers `Deferred` (ADR-006 point 2)
 
 `helmet` runs first in the middleware stack, so every response carries
 its default headers, including error and 429 responses:
@@ -1121,9 +1121,8 @@ Code today: the Compose file publishes PostgreSQL on host port
 `${DATABASE_PORT:-5432}` without a bind address, so it listens on every
 host interface, not only `localhost`.
 
-> Open detail (B7): whether the Compose port binds to `127.0.0.1` only.
-> ADR-006 point 4 keeps PostgreSQL in the default profile; the binding is a
-> hardening detail of that profile.
+> Decided in B7.3: the PostgreSQL port and the API port bind to `127.0.0.1`
+> only, in both profiles (`docker-compose.yml`).
 
 ---
 
@@ -1147,20 +1146,22 @@ Code today: `docker-compose.yml` carries development defaults for
 any value in `.env` overrides. They protect a local-only database
 (ADR-006 point 1) and are not secrets of a deployed system.
 
-> Open detail (B7): whether the `full` Compose profile (ADR-006 point 4)
-> keeps these committed defaults or requires the values from `.env`.
+> Decided in B7.3: the `full` profile keeps the committed local defaults for
+> the database passwords (the ports are bound to `127.0.0.1`) and requires
+> `JWT_SECRET` from `.env`, with no default; an empty value stops the API
+> with a message.
 
 ---
 
 # 38. Least Privilege
 
-**Status:** environment separation `Implemented` (`packages/database/package.json`, `PROGRESS.md` §2.3); non-root API container `Planned (B7)` (ADR-006 point 4); separate runtime database role `Implemented` (ADR-005 point 13)
+**Status:** environment separation `Implemented` (`packages/database/package.json`, `PROGRESS.md` §2.3); non-root API container `Implemented` (B7.2, ADR-006 point 4); separate runtime database role `Implemented` (ADR-005 point 13)
 
 | Concern | Today | Target |
 | --- | --- | --- |
 | Development vs test data | Separate databases: `.env` for development, `.env.test.local` for tests (`db:test:migrate`, `test` scripts) | `Implemented` |
-| Development vs local production | One local stack (ADR-006 points 1 and 8) | `production` values set in the `full` profile, `Planned (B7)` |
-| API process | Runs as the developer's user | Non-root user in the multi-stage Dockerfile (ADR-006 point 4), `Planned (B7)` |
+| Development vs local production | One local stack (ADR-006 points 1 and 8) | `production` values set in the `full` profile, `Implemented` (B7.3) |
+| API process | Runs as the developer's user | Non-root user in the multi-stage Dockerfile (ADR-006 point 4), `Implemented` (B7.2) |
 | Database role | The API, the seed and the test suites connect as `trading_runtime`, a role with data access only; the migration role (the Compose `POSTGRES_USER`, a superuser) keeps DDL and runs the Prisma CLI | `Implemented` |
 
 Code today: the API, the seed and the tests connect as `trading_runtime`
@@ -1275,14 +1276,14 @@ runs automatically (ADR-006 point 5).
 
 # 43. Secrets Management
 
-**Status:** `Implemented` (`apps/api/src/config/env.ts`, `.gitignore`; NFR-023); `DATABASE_URL` startup validation `Planned (B7)`; demo build `Planned (FE)` (ADR-006 point 7)
+**Status:** `Implemented` (`apps/api/src/config/env.ts`, `.gitignore`; NFR-023); `DATABASE_URL` startup validation `Implemented` (B7.1, `env.ts`); demo build `Planned (FE)` (ADR-006 point 7)
 
 Secrets come from environment configuration only.
 
 | Variable | Secret | Validation | Status |
 | --- | --- | --- | --- |
 | `JWT_SECRET` | Yes | At least 32 characters; otherwise the API exits with code 1 | `Implemented` |
-| `DATABASE_URL` | Yes | Read by Prisma; not part of the API schema | Startup check `Planned (B7)` |
+| `DATABASE_URL` | Yes | Read by Prisma; not part of the API schema | Startup check `Implemented` (B7.1) |
 | `PORT`, `JWT_EXPIRES_IN_SECONDS`, `CORS_ORIGIN`, `NODE_ENV` | No | Zod schema with defaults | `Implemented` |
 | `APP_MODE` / `VITE_APP_MODE` | No | `real` or `demo` (ADR-006 point 8) | `Planned (FE)` |
 
@@ -1298,21 +1299,21 @@ Code today: `env.ts` does not validate `DATABASE_URL`. A missing or
 malformed value surfaces at the first query, through readiness, instead
 of at startup as NFR-023 requires for required secrets.
 
-> Open detail (B7): adding `DATABASE_URL` to the startup schema, with the
+> Decided in B7.1: `DATABASE_URL` is part of the startup schema, with the
 > canonical variable list of ADR-006 point 8.
 
 ---
 
 # 44. Dependency Security
 
-**Status:** lockfile and build-script allowlist `Implemented` (`pnpm-lock.yaml`, `pnpm-workspace.yaml`); frozen-lockfile install in CI `Implemented` (ADR-006 point 10); audit `Planned (B7)` (NFR-024)
+**Status:** lockfile and build-script allowlist `Implemented` (`pnpm-lock.yaml`, `pnpm-workspace.yaml`); frozen-lockfile install in CI `Implemented` (ADR-006 point 10); audit `Implemented` (B7.6; one advisory `Deferred`, `14-deployment-spec.md` §78; NFR-024)
 
 | Control | Mechanism | Status |
 | --- | --- | --- |
 | Reproducible installs | `pnpm-lock.yaml` committed; `packageManager` pinned in `package.json` | `Implemented` |
 | Install scripts | `allowBuilds` in `pnpm-workspace.yaml` lists the only packages allowed to run build scripts (Prisma, esbuild) | `Implemented` |
 | Clean-checkout install | One GitHub Actions workflow installs with the lockfile (ADR-006 point 10) | `Planned (B0)` |
-| Vulnerability check | `pnpm audit --prod --audit-level=high` reports 0 high or critical advisories, or each is recorded with a reason (NFR-024) | `Planned (B7)` |
+| Vulnerability check | `pnpm audit --prod --audit-level=high` reports 0 high or critical advisories, or each is recorded with a reason (NFR-024) | `Implemented` (B7.6, manual run; `deepmerge-ts` recorded as `Deferred`) |
 
 Dependencies are actively maintained, come from the npm registry, are
 reviewed before they are added (§45), and are kept reasonably current.
@@ -1432,8 +1433,8 @@ line logs `errorName` only; `env.ts` logs failing keys only. No line writes
 request headers or bodies. The error `message` of an unexpected error is
 not filtered: a database failure logged the driver message, which names the
 database host and port (no password). That is a connection target in a
-local log; it is reconsidered in B7 before any hosted log (ADR-009
-point 4: redaction is by field name, not by message text).
+local log; B7.6 reviewed it and left it as is, since no hosted log exists (ADR-006
+point 2; ADR-009 point 4: redaction is by field name, not by message text).
 
 ---
 
@@ -1582,7 +1583,7 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 | Missing and malformed token return 401 | `Implemented` (`auth.routes.test.ts`) |
 | Login rate limit returns 429 with the error envelope | `Implemented` (`rate-limit.test.ts`) |
 | Expired token, wrong algorithm, unknown role return 401 | `Implemented` (`token.service.test.ts`, `authenticate.test.ts`) |
-| Startup fails with a missing or short `JWT_SECRET` | `Planned (B7)` (NFR-019, NFR-023) |
+| Startup fails with a missing or short `JWT_SECRET` | `Implemented` (rule in `env.ts`; checked by hand in B7.3, no automated test) (NFR-019, NFR-023) |
 | Refresh rotation, reuse detection, parallel refresh, lost response | `Implemented` (`refresh.service.test.ts`, `auth.refresh.routes.test.ts`) (ADR-005 Deferred detail) |
 | Logout revokes the family; refresh and logout without the custom header are rejected | `Implemented` (`logout.service.test.ts`, `require-client-header.test.ts`, `auth.refresh.routes.test.ts`) (NFR-028) |
 | Cookie attributes (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path`) | `Implemented` (`auth.routes.test.ts`, `auth.refresh.routes.test.ts`) (NFR-028) |
@@ -1620,12 +1621,12 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 
 | Case | Status |
 | --- | --- |
-| `helmet` headers present, no `X-Powered-By` | `Planned (B7)` (§25) |
+| `helmet` headers present, no `X-Powered-By` | `Implemented` (`app.headers.test.ts`, B7.6) (§25) |
 | Unexpected errors return the generic 500 without internals | `Implemented` (B3.1, `error-handler.test.ts`) |
-| Readiness with the database down exposes no driver error | `Planned (B7)` (security checklist) |
+| Readiness with the database down exposes no driver error | `Implemented` (`health.unavailable.routes.test.ts`) (security checklist) |
 | Redaction of every field in §49 | `Implemented` (B3.1, ADR-009 point 13) |
-| `git ls-files` lists no `.env` file except examples | `Planned (B7)` (NFR-023) |
-| Dependency audit | `Planned (B7)` (NFR-024) |
+| `git ls-files` lists no `.env` file except examples | `Implemented` (manual check in B7.6, `odd/tasks/b7/b7-6-security-pass.md`) (NFR-023) |
+| Dependency audit | `Implemented` (manual run in B7.6) (NFR-024) |
 | No unsanitized HTML in `apps/web`; no token in browser storage | `Planned (FE)` (NFR-027, NFR-028) |
 
 > Open detail (B0): request schemas use Zod's default object parsing,
@@ -1651,7 +1652,7 @@ Security is complete for version 1 when:
 | 6 | Client state cannot bypass authorization | `Implemented` (server checks); client `Planned (FE)` |
 | 7 | Every body, query and path parameter is validated | Body and query `Implemented`; path `Planned (B0)` |
 | 8 | Database access stays behind the backend repositories | `Implemented` |
-| 9 | Secrets stay server-side, are validated at startup and are never tracked | `Implemented`; `DATABASE_URL` check `Planned (B7)` |
+| 9 | Secrets stay server-side, are validated at startup and are never tracked | `Implemented`; `DATABASE_URL` check `Implemented` (B7.1) |
 | 10 | Errors expose no internals and do not reveal another user's resources | `Implemented` |
 | 11 | CORS allows only `CORS_ORIGIN`, with credentials for the refresh cookie | `Implemented`; credentials `Implemented` (B2.4) |
 | 12 | Realtime sockets authenticate by message and channels are authorized | `Implemented` (B5) |
@@ -1660,7 +1661,7 @@ Security is complete for version 1 when:
 | 15 | Security events of §50 are emitted | `Implemented` (B3.3); the realtime `authz.denied` `Implemented` (B5) |
 | 16 | Session data is cleared on logout and role switch | `Planned (FE)` |
 | 17 | Demo data is synthetic and the demo build contains no secrets | Seed `Implemented`; build `Planned (FE)` |
-| 18 | The dependency audit shows no unrecorded high or critical advisory | `Planned (B7)` |
+| 18 | The dependency audit shows no unrecorded high or critical advisory | `Implemented` (B7.6) |
 | 19 | Every row of §55 has an automated test | Partial; see §55 |
 
 ---

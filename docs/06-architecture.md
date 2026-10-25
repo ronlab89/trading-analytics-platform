@@ -175,7 +175,7 @@ Already decided, to apply in the frontend stage:
   in-process adapter fed by `@trading/market-sim` (ADR-007 point 13).
 
 Open detail (FE): workspace location and package name of
-`apps/web`, and how it consumes workspace packages before B7 builds them
+`apps/web`, and how it consumes workspace packages, now that B7.1 builds them
 (`BACKEND-ROADMAP.md` §6).
 
 ---
@@ -584,7 +584,7 @@ of ADR-007 point 5.
 
 # 34. Database Strategy
 
-**Status:** `Implemented`; startup migrations `Planned (B7)`.
+**Status:** `Implemented`; migrations in the `full` profile through the `migrate` service `Implemented` (B7.3).
 
 - PostgreSQL 18 via `docker-compose.yml`; Prisma 6 schema and migrations in
   `packages/database/prisma/`.
@@ -643,7 +643,7 @@ authenticates and builds the `Actor`.
 
 # 38. Security Boundary
 
-**Status:** `Implemented`; cookie CSRF header `Implemented` (B2.4); hardening checklist `Planned (B7)`.
+**Status:** `Implemented`; cookie CSRF header `Implemented` (B2.4); hardening checklist `Implemented` (B7.6).
 
 `x-powered-by` disabled, `helmet`, CORS restricted to `CORS_ORIGIN`, a
 general rate limit (300 requests per 15 minutes) after health routes, a
@@ -880,7 +880,7 @@ horizontal scaling or separate workers require a new ADR.
 
 # 58. Deployment Architecture
 
-**Status:** `Implemented` (local development); production build and containers `Planned (B7)`; demo hosting `Planned (FE)` — ADR-006 points 1, 7.
+**Status:** `Implemented` (local development); production build and containers `Implemented` (B7); demo hosting `Planned (FE)` — ADR-006 points 1, 7.
 
 Today: `docker-compose.yml` runs PostgreSQL only; the API runs with
 `tsx watch`. The production build does not run: `@trading/domain`,

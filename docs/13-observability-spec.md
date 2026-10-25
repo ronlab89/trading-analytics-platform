@@ -1345,7 +1345,7 @@ The tooling is decided: `pino` JSON lines on the API's stdout, `pino-pretty` in 
 | Health: API, Database | `GET /health`, `GET /health/ready` (§22-23) | `Implemented` |
 | Development diagnostics | Browser console, network panel, application diagnostics (§39-40) | `Planned (FE)` |
 
-Code vs ADR: logs are read where the API process runs: the terminal in development, or the container output under the Docker Compose `full` profile (ADR-006 point 4, `Planned (B7)`). There are no log files (ADR-009 point 3).
+Code vs ADR: logs are read where the API process runs: the terminal in development, or the container output under the Docker Compose `full` profile (ADR-006 point 4, `Implemented` in B7.3). There are no log files (ADR-009 point 3).
 
 ---
 
@@ -1924,7 +1924,7 @@ Code vs ADR:
 
 Because the project is designed for local/free infrastructure, retention should remain simple.
 
-Logs are one JSON line per event on stdout (ADR-009 point 3). The API writes no log file, so it never appends to an unbounded file and keeps no retention of its own. Retention belongs to whatever reads stdout: the developer's terminal, or the container output under the Docker Compose `full` profile (ADR-006 point 4, `Planned (B7)`).
+Logs are one JSON line per event on stdout (ADR-009 point 3). The API writes no log file, so it never appends to an unbounded file and keeps no retention of its own. Retention belongs to whatever reads stdout: the developer's terminal, or the container output under the Docker Compose `full` profile (ADR-006 point 4, `Implemented` in B7.3).
 
 Container environments treat stdout/stderr as the primary log stream.
 
@@ -2433,7 +2433,7 @@ The decided workflow is one GitHub Actions workflow on pushes and pull requests 
 | Tests pass | `pnpm test`: the domain, database and API suites, the latter two against a PostgreSQL service container | `Planned (B0)` |
 | Linting passes | `pnpm lint` | `Planned (B0)` |
 | Type checking passes | `pnpm typecheck` | `Planned (B0)` |
-| Production builds succeed | `pnpm build` proves the packages compile from a clean checkout; running the built API is B7 (ADR-006 point 11) | `Planned (B0)` |
+| Production builds succeed | `pnpm build` proves the packages compile from a clean checkout, and CI starts the built API (B7.1; ADR-006 point 11) | `Planned (B0)` |
 | Observability code adds no unsafe dependency | No audit or license step in v1 (ADR-009 point 2, NFR-070; ADR-006 points 10-11 define none). The dependencies are `pino` and `pino-pretty` (ADR-009 point 2, amended 2026-10-19), installed from the lockfile | Not adopted in v1 |
 | Logging configuration is valid | `apps/api/src/config/env.ts` validates the environment at startup and the process exits on invalid values; `LOG_LEVEL` is validated there too (B3.1, §38). No dedicated CI step is decided | `Implemented` (B3.1) |
 
@@ -2578,7 +2578,7 @@ The repository should document:
 | Item | Version 1 | Status |
 | --- | --- | --- |
 | How to start the application | `pnpm --filter @trading/api dev` runs `tsx watch` (`apps/api/package.json`). `README.md` documents setup, the local database and "Run the API" | `Implemented`; the workflow below (B3.5) |
-| Where logs appear | The stdout of the API process (ADR-009 point 3); container output under the Compose `full` profile (ADR-006 point 4, B7) | `Implemented` (B3.1); container output `Planned (B7)` |
+| Where logs appear | The stdout of the API process (ADR-009 point 3); container output under the Compose `full` profile (ADR-006 point 4, B7) | `Implemented` (B3.1); container output `Implemented` (B7.3) |
 | How to change the log level | `LOG_LEVEL` (ADR-009 point 7, §38) | `Implemented` (B3.1) |
 | How to enable debug mode | `LOG_LEVEL=debug`, already the development default; `ENABLE_DEBUG_LOGGING` is not adopted (ADR-009 point 2). A development realtime debug mode is deferred to the frontend-stage ADR (ADR-009 point 12, §28) | `Implemented` (B3.1); realtime debug mode `Deferred` |
 | How to inspect health | `GET /health` and `GET /health/ready`, specified in `07-api-spec.md` §30 | `Implemented`; also in `README.md` ("Run the API") |

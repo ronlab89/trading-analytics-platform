@@ -150,7 +150,7 @@ Code vs ADR:
 | 11 Demo Mode | `@trading/market-sim` `Implemented` (B5) | `Planned (FE4)` |
 | 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
 | 13 Observability | logger and security events `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
-| 14 Deployment | local full stack `Planned (B7)`; CI `Implemented` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
+| 14 Deployment | local full stack `Implemented` (B7); CI `Implemented` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
 | 15 UX, accessibility and performance refinement | B5 (server-side performance measurement after realtime exists, §32) | `Planned (FE5)` |
 | 16 Portfolio case study | none | `Planned (FE6)` |
 
@@ -1231,17 +1231,17 @@ without requiring a paid external monitoring service.
 | --- | --- | --- |
 | Targets: a local full stack for demonstrations and a public static demo of `apps/web`; no public backend (ADR-006 points 1 and 2) | `Reference` | none |
 | Minimal CI workflow (see §17), with no continuous deployment (ADR-006 points 10 and 11) | `Implemented` | none |
-| Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | seed guard and `CORS_ORIGIN` validation `Implemented`; `.nvmrc` reused by CI `Implemented`, by the Dockerfile `Planned (B7)` | B7 |
+| Configuration safety: the seed and the hard database reset refuse to run when `NODE_ENV=production`; `CORS_ORIGIN` accepts only `http(s)://host[:port]` origins and rejects `*`; a single `.nvmrc` reused by CI and the Dockerfile (ADR-006 point 13) | seed guard and `CORS_ORIGIN` validation `Implemented`; `.nvmrc` reused by CI `Implemented`, by the Dockerfile `Implemented` (B7.2) | B7 |
 | Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Implemented` (B7.1) | none |
-| Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Planned (B7)` | B7 |
-| Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT`, `JWT_EXPIRES_IN_SECONDS`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3.1, B3.2); it does not read `APP_MODE` and does not validate `DATABASE_URL`; the rest is `Planned (B7)` (`DATABASE_URL`) and `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
+| Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Implemented` (B7.2) | B7 |
+| Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT`, `JWT_EXPIRES_IN_SECONDS`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3.1, B3.2); it validates `DATABASE_URL` since B7.1 and does not read `APP_MODE`; the rest is `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
 | Web build-time values `VITE_APP_MODE` and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) | `Planned (FE0)` | FE0 |
-| Local full stack: a Docker Compose `full` profile with PostgreSQL and the API; the default profile keeps only PostgreSQL; `TZ=UTC` on both containers; the real-mode web app runs on the Vite dev server against the local API (ADR-006 points 4 and 8) | `Planned (B7)` | B7 |
+| Local full stack: a Docker Compose `full` profile with PostgreSQL and the API; the default profile keeps only PostgreSQL; `TZ=UTC` on both containers; the real-mode web app runs on the Vite dev server against the local API (ADR-006 points 4 and 8) | `Implemented` (B7.3) | B7 |
 | Migration deployment: a one-shot `migrate` service in the `full` profile runs `prisma migrate deploy` after PostgreSQL is healthy, and the API starts after it completes (ADR-006 points 4 and 5 and Deferred detail) | `Implemented` (B7.3) | none |
-| Health checks: `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` (ADR-006 point 4) | Endpoints `Implemented`; container healthcheck `Planned (B7)` | B7 |
+| Health checks: `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` (ADR-006 point 4) | Endpoints `Implemented`; container healthcheck `Implemented` (B7.2) | B7 |
 | Graceful shutdown: on `SIGTERM` or `SIGINT` the server stops accepting connections, readiness returns 503 with `status: "unavailable"` and no `checks`, in-flight requests drain for up to 10 seconds, Prisma closes, and the exit code is 1 only if the drain times out (ADR-006 point 12) | `Implemented` (B3.4) | B3 |
 | Smoke tests: one script that runs after `docker compose --profile full up`, with no frontend step (ADR-006 point 11) | `Implemented` (B7.4) | none |
-| Deployment documentation: the documented steps that start and verify the local full stack | `Planned (B7)` | B7 |
+| Deployment documentation: the documented steps that start and verify the local full stack | `Implemented` (B7.7) | B7 |
 | Public demo build: a static build of `apps/web` in demo mode, no backend calls, no secrets, namespaced browser storage, configurable base path, SPA fallback, and its publication (ADR-006 point 7) | `Planned (FE4)` | FE4 |
 | Demo hosting, the base path value, the SPA fallback mechanism and the numeric bound of the demo simulation | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
 | Hosted backend, managed database, reverse proxy, public HTTPS and WSS, backups | `Deferred`; a hosted backend needs a new ADR (ADR-006 points 2 and 9) | none |
@@ -1250,7 +1250,7 @@ without requiring a paid external monitoring service.
 
 Code vs ADR:
 
-- The production build does not run today: `@trading/domain` and `@trading/database` set `main` to `./src/index.ts`, and the domain uses extensionless relative imports that `node dist/index.js` cannot resolve (ADR-006 Context). Fixing it is the B7 build item. `pnpm build` runs `pnpm -r build`; CI runs it from B0 to prove the packages compile, and running the built API stays in B7.
+- The production build did not run before B7.1: `@trading/domain` and `@trading/database` set `main` to `./src/index.ts`, and the domain used extensionless relative imports that `node dist/index.js` could not resolve (ADR-006 Context). B7.1 fixed it (`.js` extensions, `NodeNext`, `exports` with `dist`). `pnpm build` runs `pnpm -r build`; CI runs it from B0 and, since B7.1, starts the built API.
 - `.github/` holds `PULL_REQUEST_TEMPLATE.md` and `workflows/ci.yml`, `.nvmrc` pins Node 24, `docker/` holds only `.gitkeep`, there is no `apps/api/Dockerfile`, and `docker-compose.yml` defines no `full` profile. The seed wipes the database with no production guard.
 - The original "production frontend build" is split in two. The demo build is the only public frontend artifact (`Planned (FE4)`). The real-mode web app is not built for production in version 1 and runs on the Vite dev server (ADR-006 point 8).
 - The original "deployment documentation" assumed a hosted target. It now documents only the local full stack, and states that backups are not applicable to a local environment (ADR-006 point 9).
@@ -1509,7 +1509,7 @@ How the original nodes map to the blocks:
 | Demo | Engine in B5 (with the application layer from B0); demo mode in FE4 | `Implemented` (B5), `Planned (FE4)` |
 | Testing | Spread across the blocks from B0; component, E2E and accessibility checks in FE5 | `Planned (B0)`, `Planned (FE5)` |
 | Observability | Backend B3; browser `Logger` adapter FE0 | `Implemented` (B3), `Planned (FE0)` |
-| Deployment | Local full stack B7; demo build and publication FE4 | `Planned (B7)`, `Planned (FE4)` |
+| Deployment | Local full stack B7; demo build and publication FE4 | `Implemented` (B7), `Planned (FE4)` |
 | Case Study | FE6 | `Planned (FE6)` |
 
 Code vs ADR:
@@ -2088,7 +2088,7 @@ unless measured and documented.
 
 Code vs ADR:
 
-- The review is not one checklist at the end. Each mechanism is tested in the block that builds it, and `09-security-spec.md` §55 lists the test per mechanism. The items marked `Planned (B7)` are the hardening work that closes the list before the backend counts as done (§4.1).
+- The review is not one checklist at the end. Each mechanism is tested in the block that builds it, and `09-security-spec.md` §55 lists the test per mechanism. The hardening work that closed the list before the backend counted as done ran in B7.6 (`odd/tasks/b7/b7-6-security-pass.md`, §4.1).
 - Public hosting, TLS and WSS are out of scope in version 1 (ADR-006 point 2), so transport security items are `Deferred` with the hosted backend. The public demo has no backend and no secrets (ADR-006 point 7).
 - Client-side items (the access token held in memory only, ADR-005 point 4, and the refresh flow) are `Planned (FE)` and join the frontend blocks that build them.
 
@@ -2267,12 +2267,12 @@ job ID
 | Step | Status | Block |
 | --- | --- | --- |
 | Checkout and install with the lockfile, in CI on a clean runner | `Implemented` | none |
-| Build: `pnpm build` compiles every package; running the built API is a separate step | Compile in CI `Implemented`; `node dist/index.js` `Planned (B7)` | B7 |
-| Database: PostgreSQL through Docker Compose | `Implemented` (default profile); `full` profile `Planned (B7)` | B7 |
+| Build: `pnpm build` compiles every package; running the built API is a separate step | Compile in CI `Implemented`; `node dist/index.js` `Implemented` (B7.1) | B7 |
+| Database: PostgreSQL through Docker Compose | `Implemented` (default profile); `full` profile `Implemented` (B7.3) | B7 |
 | Migrate: `prisma migrate deploy` through the one-shot `migrate` service | `Implemented` (B7.3) | none |
 | Seed: an explicit development command, never automatic, refusing to run when `NODE_ENV=production` | Command and production guard `Implemented` | none |
-| Start: API container with `node dist/index.js` | `Planned (B7)` | B7 |
-| Health: container healthcheck on `GET /health/ready` | Endpoint `Implemented`; healthcheck `Planned (B7)` | B7 |
+| Start: API container with `node dist/index.js` | `Implemented` (B7.2) | B7 |
+| Health: container healthcheck on `GET /health/ready` | Endpoint `Implemented`; healthcheck `Implemented` (B7.2) | B7 |
 | Smoke: one script after `docker compose --profile full up`, with no frontend step | `Implemented` (B7.4) | none |
 | Demo build from a clean checkout (static, no secrets) | `Planned (FE4)` | FE4 |
 | No hidden developer-machine state: one `.nvmrc`, environment values supplied through the CI job `env` and not generated | `Implemented` | none |
@@ -2281,7 +2281,7 @@ Code vs ADR:
 
 - The original sequence is kept, with two changes. CI covers checkout to build (and the test suites) from B0; the full sequence through smoke runs on the local stack from B7. The deployment is local only, so there is no "deploy" step.
 - The seed and the smoke test pull in opposite directions: ADR-006 point 5 says the seed never runs automatically, and point 13 says it refuses to run when `NODE_ENV=production`, while the `full` profile is a production-like run that the smoke test logs in to. Decided 2026-10-08 (ADR-006 point 11, "Smoke test data"): the `full` stack is local-only and runs with `NODE_ENV` other than `production`, and the smoke test runs `db:seed` as an explicit step of its script, never automatically; points 5 and 13 stay valid.
-- The clean-checkout path for install, check and build is proven by the first green CI run; the `Dockerfile` and the `full` profile do not exist yet (`Planned (B7)`, §19).
+- The clean-checkout path for install, check and build is proven by the first green CI run; the `Dockerfile` and the `full` profile came with B7.2 and B7.3 (`Implemented`, §19).
 
 Original text:
 
@@ -2430,7 +2430,7 @@ Omissions must be intentional.
 | Criterion | Status | Block |
 | --- | --- | --- |
 | Core domain is implemented | `Implemented` (`packages/domain`); portfolio performance and risk `Implemented` | B1 |
-| Backend is functional | `Planned (B7)`: the backend counts as done when B0 to B7 are closed (§4.1) | B7 |
+| Backend is functional | `Implemented`: B0 to B7 are closed (§4.1) | B7 |
 | Frontend is functional | `Planned (FE5)`: `apps/web` holds only a wireframe | FE5 |
 | Authentication works | Login, `me`, refresh and logout `Implemented` (B2) | B2 |
 | RBAC works | `Implemented` (B2.1, B2.2); the permission mechanism `Implemented` (B0) (ADR-005) | B0, B2 |
@@ -2441,7 +2441,7 @@ Omissions must be intentional.
 | Demo Mode works | `Planned (FE4)`; needs B0 (in-memory repositories) and B5 (simulation engine) | FE4 |
 | Tests cover primary flows | Domain, database and API route tests `Implemented`; mandatory application and contract tests `Planned (B0)`; component, E2E and accessibility checks `Planned (FE5)`; no coverage percentage is set (ADR-006 point 11) | B0, FE5 |
 | Observability is available | `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | B3 |
-| Deployment is reproducible | CI from a clean checkout `Implemented`; production build, `full` profile and smoke test `Planned (B7)`; hosted deployment `Deferred` (ADR-006 point 2) | B7 |
+| Deployment is reproducible | CI from a clean checkout `Implemented`; production build, `full` profile and smoke test `Implemented` (B7); hosted deployment `Deferred` (ADR-006 point 2) | B7 |
 | Documentation is sufficient | `Planned (FE6)` for the case study; the SDD set is kept aligned by `pnpm docs:check` and the maintenance rule of `docs/README.md` | FE6 |
 
 Code vs ADR:
@@ -2575,7 +2575,7 @@ The portfolio project is complete when a reviewer can:
 | Realtime: why WebSockets | ADR-007 | `Implemented` (B5) |
 | Demo: why mock adapters instead of a static prototype | ADR-001 and ADR-006 point 7: the demo runs the same application layer in process over in-memory repositories | `Planned (FE4)` |
 | Authentication: why JWT and RBAC | ADR-005 (15-minute JWT, roles and permissions) | Login `Implemented`; roles `Implemented` (B2.1) |
-| Deployment: why Docker and a simple topology | ADR-006 (two targets, no public backend) | Compose default profile `Implemented`; `full` profile `Planned (B7)` |
+| Deployment: why Docker and a simple topology | ADR-006 (two targets, no public backend) | Compose default profile `Implemented`; `full` profile `Implemented` (B7.3) |
 | Testing: why multiple test layers | ADR-001 point 7, ADR-002 point 6, ADR-006 point 11 | Layers in part `Implemented`; frontend layers `Planned (FE5)` |
 | Scalability: what changes when the system grows | §46 | `Planned (FE6)` |
 
@@ -2857,14 +2857,14 @@ Do not present security features as complete until they have actually been imple
 | --- | --- | --- |
 | Clone and install: `pnpm install` (`packageManager` is `pnpm@12.3.4`; `engines.node` is `>=24.0.0`) | `Implemented`; a single `.nvmrc` as the version source `Implemented` (ADR-006 point 13) | none |
 | Configure: `.env.example` and `.env.test.example` copied to local, gitignored files | `Implemented`, including `CORS_ORIGIN` validation | none |
-| Docker Compose for PostgreSQL (default profile) | `Implemented`; `full` profile with API and `migrate` `Planned (B7)` | B7 |
+| Docker Compose for PostgreSQL (default profile) | `Implemented`; `full` profile with API and `migrate` `Implemented` (B7.3) | B7 |
 | Migrate and seed: `pnpm --filter @trading/database db:seed` and `db:reset` | `Implemented`, including the refusal when `NODE_ENV=production` | none |
-| Run the API | `Implemented` as a development command; the production start `node dist/index.js` `Planned (B7)` | B7 |
+| Run the API | `Implemented` as a development command; the production start `node dist/index.js` `Implemented` (B7.1) | B7 |
 | Quality commands: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm build`, `pnpm docs:check` | `Implemented`; all of them in CI `Implemented` | none |
 | `README.md`: prerequisites, commands, environment variables, database reset, tests | Database reset and setup `Implemented`; the status section states the real state (slice H) and the file has the steps to start the API and check `GET /health/ready`; tests and `pnpm docs:check` are listed in `CONTRIBUTING.md` §9, which the README links; `LOG_LEVEL` arrives with the logger in B3 | none |
 | `CONTRIBUTING.md`: setup, CI wording, troubleshooting | `Implemented` (slice I): branching, commits and pull requests, setup and quality commands (§9), CI wording (§2) and troubleshooting (§10); the CI itself is `Implemented` | none |
-| Build and deployment documentation | `Planned (B7)` | B7 |
-| Troubleshooting | `Planned (B7)` | B7 |
+| Build and deployment documentation | `Implemented` (B7.7) | B7 |
+| Troubleshooting | `Implemented` (B7.7) | B7 |
 
 Code vs ADR:
 
@@ -2918,8 +2918,8 @@ Documentation should cover:
 | Development | `CONTRIBUTING.md` | `Implemented` (slice I): the gaps listed in §38 and §49 are closed; the CI wording describes a CI that is `Implemented` | none |
 | Testing | `docs/10-testing-strategy.md` | `Implemented` | none |
 | Demo | `docs/12-demo-mode-spec.md` | `Implemented`; the demo specifics are `Deferred` to the frontend-stage ADR | FE4 |
-| Deployment | `docs/14-deployment-spec.md` | Spec `Implemented`; run instructions `Planned (B7)` | B7 |
-| Troubleshooting | None yet | `Planned (B7)` | B7 |
+| Deployment | `docs/14-deployment-spec.md` | Spec `Implemented`; run instructions `Implemented` (B7.7) | B7 |
+| Troubleshooting | `CONTRIBUTING.md` §10 | `Implemented` (B7.7) | B7 |
 | Case Study | Not written | `Planned (FE6)` | FE6 |
 
 Rules in force:
@@ -3009,13 +3009,13 @@ Do not silently diverge from the documented architecture.
 | Item | Status | Block |
 | --- | --- | --- |
 | Repository, TypeScript, tooling | `Implemented` (pnpm workspace, TypeScript project references, ESLint, Prettier, Husky); minimal CI `Implemented` (ADR-006 point 10; `.github/workflows/ci.yml`); runtime database role `Implemented`; application layer `Planned (B0)` | B0 |
-| Docker and PostgreSQL | `Implemented` for the default Compose profile (PostgreSQL); the `full` profile and the API Dockerfile `Planned (B7)` (ADR-006 point 4) | B7 |
+| Docker and PostgreSQL | `Implemented` for the default Compose profile (PostgreSQL); the `full` profile and the API Dockerfile `Implemented` (B7.2, B7.3; ADR-006 point 4) | B7 |
 | Migrations | `Implemented` (Prisma); runtime database role `Implemented` | none |
 | Domain foundation | `Implemented` (`packages/domain`); the application layer and `@trading/contracts` `Planned (B0)` (ADR-001, ADR-002) | B0 |
 
 Code vs ADR:
 
-- "Clean setup works" is proven from a clean checkout by the first green CI run, and the `README.md` status section and API start step are `Implemented` (§49). The `Dockerfile` and `full` profile steps stay `Planned (B7)`.
+- "Clean setup works" is proven from a clean checkout by the first green CI run, and the `README.md` status section and API start step are `Implemented` (§49). The `Dockerfile` and `full` profile steps are `Implemented` (B7.2, B7.3).
 - "Domain tests work" is `Implemented`: `packages/domain` has a `test` script (`vitest run`).
 - This milestone closes the Phase 0 to 3 work of §4.2 plus the B0 additions; it does not add product behavior.
 
@@ -3252,19 +3252,19 @@ primary product and recovery flows are tested
 
 ## 58. Milestone 7 — Deployment
 
-**Status:** `Planned (B7)` for the local full stack; `Planned (FE4)` for the demo build; hosting is `Deferred`
+**Status:** `Implemented` (B7) for the local full stack; `Planned (FE4)` for the demo build; hosting is `Deferred`
 
 **Owning blocks:** Backend: B0 (CI), B3 (graceful shutdown), B7 (production build, Docker, smoke test). Frontend: FE4 (demo build). Decisions: ADR-006 points 1 to 6, 10 to 13.
 
 | Item | Status | Block |
 | --- | --- | --- |
-| Production builds | `dist` per package exists for the current packages (`pnpm build`); the exports map and `node dist/index.js` `Planned (B7)` (ADR-006 point 3) | B7 |
-| Docker | `apps/api/Dockerfile` does not exist; multi-stage non-root image and `full` profile `Planned (B7)` | B7 |
+| Production builds | `dist` per package exists for the current packages (`pnpm build`); the exports map and `node dist/index.js` `Implemented` (B7.1; ADR-006 point 3) | B7 |
+| Docker | `apps/api/Dockerfile` is a multi-stage non-root image, and the `full` profile uses it `Implemented` (B7.2, B7.3) | B7 |
 | Environment configuration | `.env.example` `Implemented`; `CORS_ORIGIN` validation and production guard `Implemented` | none |
-| Deployment | local full stack `Planned (B7)`; hosting, managed database, proxy and public WSS `Deferred` (ADR-006 point 2) | B7 |
-| Health | `Implemented`; healthcheck in the container `Planned (B7)`; shutdown behavior `Implemented` (B3.4) | B3, B7 |
-| Smoke tests | one script after `docker compose --profile full up`, no frontend step `Planned (B7)` | B7 |
-| Deployment documentation | `Planned (B7)` | B7 |
+| Deployment | local full stack `Implemented` (B7); hosting, managed database, proxy and public WSS `Deferred` (ADR-006 point 2) | B7 |
+| Health | `Implemented`; healthcheck in the container `Implemented` (B7.2); shutdown behavior `Implemented` (B3.4) | B3, B7 |
+| Smoke tests | one script after `docker compose --profile full up`, no frontend step `Implemented` (B7.4) | B7 |
+| Deployment documentation | `Implemented` (B7.7) | B7 |
 
 Code vs ADR:
 
@@ -3348,10 +3348,10 @@ without unsupported claims
 | Unit and integration tests | `pnpm test` (`pnpm -r test`: domain, database, API; the last two need `.env.test.local` and a PostgreSQL test database) | `Implemented`; in CI with a PostgreSQL service `Implemented`, using the runtime and migration roles of ADR-005 point 13 | none |
 | Build | `pnpm build` (`pnpm -r build`) | `Implemented`; in CI `Implemented` | none |
 | E2E | none | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
-| Docker build, Docker startup | `docker compose --profile full up` | `Planned (B7)`; no `apps/api/Dockerfile` or `full` profile exists | B7 |
-| Migrations, seed | `prisma migrate deploy` through the `migrate` service; the seed stays an explicit development command | `Planned (B7)` for the service; seed `Implemented` as a command | B7 |
-| Health checks | `GET /health/ready` | `Implemented` as a route; the container healthcheck `Planned (B7)` | B7 |
-| Smoke tests | one script after `docker compose --profile full up`, no frontend step | `Planned (B7)` | B7 |
+| Docker build, Docker startup | `docker compose --profile full up` | `Implemented` (B7.2, B7.3) | B7 |
+| Migrations, seed | `prisma migrate deploy` through the `migrate` service; the seed stays an explicit development command | `Implemented` (B7.3) for the service; seed `Implemented` as a command | B7 |
+| Health checks | `GET /health/ready` | `Implemented` as a route; the container healthcheck `Implemented` (B7.2) | B7 |
+| Smoke tests | one script after `docker compose --profile full up`, no frontend step | `Implemented` (B7.4) | B7 |
 
 Code vs ADR:
 
@@ -3525,7 +3525,7 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | --- | --- | --- |
 | 01 Repository | `Implemented` | none |
 | 02 Tooling | `Implemented` (pnpm workspace, TypeScript, ESLint, Prettier, Husky); minimal CI `Implemented` (ADR-006 point 10) | none |
-| 03 Docker | `Implemented` for the default Compose profile (PostgreSQL); `full` profile and API Dockerfile `Planned (B7)` | B7 |
+| 03 Docker | `Implemented` for the default Compose profile (PostgreSQL); `full` profile and API Dockerfile `Implemented` (B7.2, B7.3) | B7 |
 | 04 PostgreSQL | `Implemented` | none |
 | 05 Migrations | `Implemented` (Prisma); runtime database role `Implemented` | none |
 | 06 Domain model | `Implemented` (`packages/domain`); analytics additions `Implemented` | B1 |
@@ -3552,9 +3552,9 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 27 Accessibility validation | `Planned (FE5)` | FE5 |
 | 28 Security review | B2 auth-focused review; B7 final pass with the §33 checklist (decided 2026-10-08) | B2, B7 |
 | 29 Performance measurement | B5 after realtime exists, frontend side in FE5 (decided 2026-10-08); no metrics exist (ADR-009 point 10) | B5, FE5 |
-| 30 Production build | backend `Planned (B7)` (ADR-006 point 3); demo build `Planned (FE4)` | B7, FE4 |
-| 31 Deployment | local full stack `Planned (B7)`; demo publication `Planned (FE4)`; hosted deployment `Deferred` (ADR-006 point 2) | B7, FE4 |
-| 32 Smoke tests | `Planned (B7)` | B7 |
+| 30 Production build | backend `Implemented` (B7.1; ADR-006 point 3); demo build `Planned (FE4)` | B7, FE4 |
+| 31 Deployment | local full stack `Implemented` (B7); demo publication `Planned (FE4)`; hosted deployment `Deferred` (ADR-006 point 2) | B7, FE4 |
+| 32 Smoke tests | `Implemented` (B7.4) | B7 |
 | 33 Documentation | kept current in every pull request (`docs/README.md`, maintenance rule); `Implemented` as a practice | every block |
 | 34 Case study | `Planned (FE6)` | FE6 |
 | 35 Interview preparation | `Planned (FE6)` | FE6 |
@@ -3740,9 +3740,9 @@ The portfolio should demonstrate:
 | Realtime | Server `Implemented` (B5) (ADR-007 points 1 to 5 and 12); client and resynchronization `Planned (FE3)`; simulated realtime in Demo Mode `Planned (FE4)` | `Implemented` (B5); `Planned (FE3)` | B5, FE3, FE4 |
 | Operations | CSV import jobs, progress, failure, retry, cancellation and timeout (ADR-008 points 3, 6 and 7) `Implemented` (B4); screens `Planned (FE3)` | `Implemented` (B4) | B4, FE3 |
 | Testing | Named mandatory tests, not a percentage (ADR-001 point 7, ADR-002 point 6, ADR-006 point 11): domain, database and API `Implemented`; application and contract tests `Planned (B0)`; component and accessibility checks `Planned (FE5)`; E2E tooling `Deferred` to the frontend-stage ADR and E2E checks `Planned (FE5)`; Demo Mode scenarios `Planned (FE5)` | `Implemented` in part; `Planned (B0)`; `Planned (FE5)` | every block, FE5 |
-| Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Implemented` (B0, B2.2); roles and sessions `Implemented` (B2) (ADR-005); production configuration guard `Implemented` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part (the B2 auth review is recorded in `odd/tasks/b2/b2-5-close.md`); the B7 pass `Planned (B7)` | B0, B2 |
+| Security | CORS, `helmet`, a request body limit and a rate limiter `Implemented`; permissions in the application layer `Implemented` (B0, B2.2); roles and sessions `Implemented` (B2) (ADR-005); production configuration guard `Implemented` (ADR-006 point 13); the security review of §57 (B2 auth-focused, B7 final pass) | `Implemented` in part (the B2 auth review is recorded in `odd/tasks/b2/b2-5-close.md`); the B7 pass `Implemented` (B7.6, `odd/tasks/b7/b7-6-security-pass.md`) | B0, B2, B7 |
 | Observability | Request IDs and health routes `Implemented`; structured logs, redaction, security events and the startup and shutdown entries `Implemented` (B3, ADR-009); job lifecycle events `Implemented` (B4.2), realtime lifecycle events `Implemented` (B5); metrics `Deferred` (ADR-009 point 10) | `Implemented` (B3); B5 pending | B3, B4, B5 |
-| Deployment | Minimal CI `Implemented` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Planned (B7)`; demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Implemented`; `Planned (B7)`; `Planned (FE4)` | B7, FE4 |
+| Deployment | Minimal CI `Implemented` (ADR-006 point 10); production build, Docker `full` profile, migrations through the `migrate` service, environment documentation and smoke test `Implemented` (B7); demo build `Planned (FE4)`; hosted deployment `Deferred`; see §60 | `Implemented`; `Planned (FE4)` | B7, FE4 |
 | Demo | No paid infrastructure (ADR-007); reset, simulated latency and failure scenarios (ADR-010 point 6); in-process adapters (ADR-001, ADR-007 point 13); see §56 | `Planned (FE4)` | B5, FE4 |
 | Portfolio | Case study, architecture visuals, tradeoffs and walkthrough; measured outcomes only when measured; see §42 and §59 | `Planned (FE6)` | FE6 |
 

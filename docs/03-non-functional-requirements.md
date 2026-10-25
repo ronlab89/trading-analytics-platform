@@ -567,8 +567,8 @@ variable.
 ## NFR-024 — Dependency Security
 
 **Priority:** P1  
-**Status:** `Planned (B7)` (security checklist, `14-deployment-spec.md`
-§78)
+**Status:** `Implemented` (B7.6: `pnpm audit --prod --audit-level=high` ran, three advisories fixed,
+`deepmerge-ts` `Deferred`; `14-deployment-spec.md` §78)
 
 ### Target
 
@@ -582,7 +582,7 @@ automated update bot is configured; the audit is a manual checklist step.
 
 ### Measurement
 
-Audit output attached to the B7 checklist.
+Audit output attached to the B7 checklist (`odd/tasks/b7/b7-6-security-pass.md`).
 
 ---
 
@@ -1162,7 +1162,7 @@ origin.
 ## NFR-054 — Resource Efficiency
 
 **Priority:** P1  
-**Status:** `Planned (B7)` (resource limits in the security checklist)
+**Status:** `Implemented` (B7.6: `mem_limit: 512m` on the `api` service; resource limits in the security checklist)
 
 ### Target
 
@@ -1180,7 +1180,7 @@ B7 smoke test passes under the configured container limit.
 ## NFR-055 — Deployment Reproducibility
 
 **Priority:** P1  
-**Status:** `Planned (B7)` (build and containers); minimal CI
+**Status:** `Implemented` (B7: build, containers and smoke test); minimal CI
 `Implemented` (ADR-006)
 
 ### Target
@@ -1555,7 +1555,7 @@ Each evolution path needs a new adapter and an ADR, not a domain rewrite.
 | `pnpm docs:check` | Manual | `Implemented` |
 | Lockfile install, typecheck, lint, domain, database and API suites on pushes and pull requests to `develop` and `main` | GitHub Actions | `Planned (B0)` (ADR-006 point 10) |
 | Application import boundary rule | `pnpm lint` | `Planned (B0)` (ADR-001 point 1) |
-| Security checklist; smoke test under container limits | B7 | `Planned (B7)` |
+| Security checklist; smoke test under container limits | B7 | `Implemented` (B7.4, B7.6) |
 | Accessibility, performance and end-to-end checks of the web app and demo | Frontend stage | `Planned (FE)` |
 
 ### Release criteria
