@@ -2676,19 +2676,19 @@ Before public deployment:
 ADR-006 point 2 hosts no backend, so "public deployment" means two things: publishing the static demo build, and running the local full stack for a demonstration. Items that need a hosted backend are `Deferred`. Each item ends with its status and, where it is not built, the block or stage that delivers it. `09-security-spec.md` holds the detail and NFR-024 cites this list. Checked items are those whose behavior exists in the repository today.
 
 - [x] No secrets committed. (`Implemented` by convention: `.env`, `.env.local` and `.env.*.local` are git-ignored and only the `*.example` files are tracked; no secret scanner exists, and CI itself is `Implemented`, §13)
-- [x] Production JWT secret configured. (`Implemented` as a rule: `JWT_SECRET` has no default and needs at least 32 characters, `apps/api/src/config/env.ts`; supplying a real value in the `full` profile is `Planned (B7)`)
-- [ ] Database credentials protected. (Partly: `.env` is ignored, but the Compose fallback password is a known local value, the port is published on every host interface. The API connects as the data-only role `trading_runtime` (`Implemented`); binding open in B7, §6)
+- [x] Production JWT secret configured. (`Implemented` as a rule: `JWT_SECRET` has no default and needs at least 32 characters, `apps/api/src/config/env.ts`; the `full` profile reads it from `.env` with no default, and an empty value stops the API with a message, B7.3)
+- [x] Database credentials protected. (`Implemented`, B7.3 and B7.6: `.env` is ignored, the API connects as the data-only role `trading_runtime`, and PostgreSQL and the API publish on `127.0.0.1` only. The Compose fallback password is a known local value, which is acceptable for a local stack)
 - [x] CORS restricted. (`Implemented`: `CORS_ORIGIN`, default `http://localhost:5173`, `apps/api/src/app.ts`)
 - [ ] HTTPS enabled. (`Deferred`: the local stack uses plain HTTP and `ws://`; the demo's HTTPS comes from the portfolio host, `Planned (FE)`, §28, §34)
-- [ ] Debug mode disabled. (No debug switch exists. `LOG_LEVEL` defaults to `info` in production (`Implemented`, B3.1); `ENABLE_DEBUG_LOGGING` is not adopted, §10)
+- [x] Debug mode disabled. (`Implemented`: no debug switch exists, `LOG_LEVEL` defaults to `info` in production (B3.1) and the `full` profile runs the API with `NODE_ENV=production`; `ENABLE_DEBUG_LOGGING` is not adopted, §10)
 - [x] Stack traces hidden. (`Implemented`: the error handler returns a generic 500 body and logs the error name only, `apps/api/src/middleware/error-handler.ts`)
 - [x] Health output sanitized. (`Implemented`: fixed fields and `ok` or `unavailable`, `apps/api/src/controllers/health.controller.ts`, §50)
 - [x] Metrics restricted if exposed. (Satisfied by absence: no metrics and no `/metrics` endpoint, `Deferred`, ADR-009 point 10)
-- [ ] Admin operations protected. (the `Actor` permission mechanism and the roles of ADR-005 are `Implemented` (B0, B2.1, B2.2); the only admin-only permission, `simulation:control`, has no operation to protect until `Implemented` (B5))
+- [x] Admin operations protected. (`Implemented`: the `Actor` permission mechanism and the roles of ADR-005 (B0, B2.1, B2.2); the only admin-only permission, `simulation:control`, is asserted in the simulation service (B5), reviewed in B2.5 and B7.6)
 - [x] Rate limits considered. (`Implemented`, §63)
-- [ ] Resource limits configured. (Partly: body size and pagination `Implemented`; CSV and job limits `Implemented` (B4), realtime limits `Implemented` (B5); the 512 MB container limit `Planned (B7)`, §65, NFR-054)
+- [ ] Resource limits configured. (Partly: body size and pagination `Implemented`; CSV and job limits `Implemented` (B4), realtime limits `Implemented` (B5); the 512 MB container limit `Does not meet` in B7.6 (finding F3, task T6 of `odd/tasks/b7/b7-6-security-pass.md`), §65, NFR-054)
 - [ ] Demo data isolated. (`Planned (FE)`: the demo has no backend and no database, §24, §56)
-- [ ] Dependencies reviewed. (Lockfile and review `Implemented`; the manual `pnpm audit --prod --audit-level=high` step `Planned (B7)`, §58)
+- [ ] Dependencies reviewed. (Lockfile and frozen installs `Implemented`; the manual `pnpm audit --prod --audit-level=high` ran in B7.6 and found 4 advisories, finding F1, task T4 of `odd/tasks/b7/b7-6-security-pass.md`, §58)
 
 Code vs ADR:
 
@@ -2739,7 +2739,7 @@ The backend items close in B3, except where a tag names another block. Frontend 
 - [x] error logging. (`Implemented`: the `http.request.failed` entry from the error handler, B3.1, ADR-009 point 6)
 - [x] health endpoint. (`Implemented`, §50)
 - [x] readiness checks. (`Implemented`, §50; 503 with `status: "unavailable"` and no `checks` while shutting down `Implemented`, B3.4, ADR-006 point 12; the route test `Planned (B0)`, ADR-001 point 8)
-- [x] database health. (`Implemented`: `SELECT 1` through the shared client; a recovery entry is `Deferred` until a poller exists, B7, `13-observability-spec.md` §58)
+- [x] database health. (`Implemented`: `SELECT 1` through the shared client; version 1 has no recovery entry because readiness is stateless, decided again in B7.6, `13-observability-spec.md` §58)
 - [ ] realtime lifecycle diagnostics. (`Implemented` (B5) on the server and `Planned (FE)` on the client; names open, ADR-009 point 11)
 - [ ] background job diagnostics. (`Implemented` (B4.2): see `13-observability-spec.md` §75)
 - [ ] metrics where implemented. (`Deferred`: none exist, ADR-009 point 10)
