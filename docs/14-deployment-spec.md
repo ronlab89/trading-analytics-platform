@@ -170,7 +170,7 @@ Additional infrastructure must only be introduced when justified.
 | Item | Status |
 |---|---|
 | `postgres` container | `Implemented` (`docker-compose.yml`, image `postgres:18`) |
-| `backend` container: multi-stage API Dockerfile, non-root user | `Planned (B7)` (ADR-006 point 4); no Dockerfile exists, and `docker/` holds only `.gitkeep` |
+| `backend` container: multi-stage API Dockerfile, non-root user | `Implemented` (B7.2, `apps/api/Dockerfile`): build, production-dependencies and runtime stages, `node` user, built with the workspace root as context. `docker/` still holds only `.gitkeep` |
 | `frontend` container | `Deferred`: ADR-006 does not decide one; the frontend ships as a static demo build |
 
 Code vs ADR:
@@ -206,7 +206,7 @@ It should support:
 | Isolated database state | Per environment, `Implemented` by convention: `trading_analytics_dev` for development, and a separate `trading_analytics_test` on the same instance created by hand (`.env.test.example`) |
 | Development workflow | `Implemented`: the default profile is PostgreSQL only |
 | `full` profile | `Planned (B7)` (ADR-006 point 4): PostgreSQL, a one-shot `migrate` service and the API |
-| Container time zone | `Planned (B7)`: the API and PostgreSQL containers run with `TZ=UTC` (ADR-006 point 4; §60) |
+| Container time zone | API image `Implemented` (B7.2: `TZ=UTC`); PostgreSQL container `Planned (B7.3)` (ADR-006 point 4; §60) |
 
 Conceptual structure:
 
@@ -612,7 +612,7 @@ Code vs ADR:
 - Decided (ADR-006 point 12, exit code; `Implemented`, B3.4): if the 10-second drain expires, the remaining connections are closed and the process exits with code 1; otherwise it exits with code 0. The 10 seconds is a constant (`DRAIN_TIMEOUT_MS`), not an environment variable. While draining, idle keep-alive connections are closed every 50 ms, because an idle one would hold the server open until the timeout.
 - Decided (ADR-006 point 12, readiness body; `Implemented`, B3.4): while the API is shutting down, the 503 body of `GET /health/ready` is `status: "unavailable"` with no `checks` (§50), and no database query runs. `GET /health` stays 200.
 - Decided (B3.4): the two shutdown entries log at `info`, `app.shutdown.started` with the `signal` and `app.shutdown.completed` with the `exitCode` and, when a step failed, `failedSteps`. A failed step also logs `app.shutdown.step_failed` at `error` with the `step` name and `errorName`; no message, so no secret reaches the log.
-- Not tested with a real signal: the tests emit the signals on an injected source, because on Windows `SIGTERM` ends the process without running handlers. The container is Linux (B7).
+- Not tested with a real signal: the tests emit the signals on an injected source, because on Windows `SIGTERM` ends the process without running handlers. The container is Linux: B7.2 checked it by hand, and `docker stop` on the image logs `app.shutdown.started` with `SIGTERM` and `app.shutdown.completed` with exit code 0. An automated check is the smoke test (B7.4).
 - Decided (ADR-008 point 5): a `PROCESSING` import interrupted by shutdown is marked `FAILED` with reason `INTERRUPTED` on the next startup and stays retryable; §54 repeats it.
 - Open (B5): where the realtime close sits in the sequence (the close code is `1001`, ADR-007 point 15).
 
