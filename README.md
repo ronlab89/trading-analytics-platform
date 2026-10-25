@@ -17,17 +17,18 @@ Work in progress; development is backend-first. The repository holds:
   portfolios, positions, transactions, decisions, scenarios, assets, market, analytics,
   overview, watchlist, alerts, notifications, preferences).
 
-Not built yet: token refresh and logout, the application layer and shared contracts, background
-jobs, realtime, CI and the web app (`apps/web` holds only a wireframe). The remaining backend
-work is planned as blocks B0 to B7, followed by the frontend stage; the order and the
+The backend is done (blocks B0 to B7): auth with refresh and logout, the application layer and
+shared contracts, analytics, background jobs, realtime, OpenAPI, CI, and a production image with
+a `full` Compose profile and a smoke test. Not built yet: the web app (`apps/web` holds only a
+wireframe) and the public demo, planned as the frontend stage; the order and the
 phase-to-block mapping are in
 [`docs/15-implementation-plan.md`](./docs/15-implementation-plan.md) section 4.1.
 [`docs/PROGRESS.md`](./docs/PROGRESS.md) is a working log that is being updated.
 
 ## Requirements
 
-- Node.js >= 22
-- pnpm >= 9 (via corepack)
+- Node.js >= 24 (`.nvmrc`)
+- pnpm 12 (via corepack; `packageManager` in `package.json` pins the version)
 
 ## Setup
 
