@@ -1240,7 +1240,7 @@ without requiring a paid external monitoring service.
 | Migration deployment: a one-shot `migrate` service in the `full` profile runs `prisma migrate deploy` after PostgreSQL is healthy, and the API starts after it completes (ADR-006 points 4 and 5 and Deferred detail) | `Implemented` (B7.3) | none |
 | Health checks: `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` (ADR-006 point 4) | Endpoints `Implemented`; container healthcheck `Planned (B7)` | B7 |
 | Graceful shutdown: on `SIGTERM` or `SIGINT` the server stops accepting connections, readiness returns 503 with `status: "unavailable"` and no `checks`, in-flight requests drain for up to 10 seconds, Prisma closes, and the exit code is 1 only if the drain times out (ADR-006 point 12) | `Implemented` (B3.4) | B3 |
-| Smoke tests: one script that runs after `docker compose --profile full up`, with no frontend step (ADR-006 point 11) | `Planned (B7)` | B7 |
+| Smoke tests: one script that runs after `docker compose --profile full up`, with no frontend step (ADR-006 point 11) | `Implemented` (B7.4) | none |
 | Deployment documentation: the documented steps that start and verify the local full stack | `Planned (B7)` | B7 |
 | Public demo build: a static build of `apps/web` in demo mode, no backend calls, no secrets, namespaced browser storage, configurable base path, SPA fallback, and its publication (ADR-006 point 7) | `Planned (FE4)` | FE4 |
 | Demo hosting, the base path value, the SPA fallback mechanism and the numeric bound of the demo simulation | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
@@ -2273,7 +2273,7 @@ job ID
 | Seed: an explicit development command, never automatic, refusing to run when `NODE_ENV=production` | Command and production guard `Implemented` | none |
 | Start: API container with `node dist/index.js` | `Planned (B7)` | B7 |
 | Health: container healthcheck on `GET /health/ready` | Endpoint `Implemented`; healthcheck `Planned (B7)` | B7 |
-| Smoke: one script after `docker compose --profile full up`, with no frontend step | `Planned (B7)` | B7 |
+| Smoke: one script after `docker compose --profile full up`, with no frontend step | `Implemented` (B7.4) | none |
 | Demo build from a clean checkout (static, no secrets) | `Planned (FE4)` | FE4 |
 | No hidden developer-machine state: one `.nvmrc`, environment values supplied through the CI job `env` and not generated | `Implemented` | none |
 

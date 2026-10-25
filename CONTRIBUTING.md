@@ -66,7 +66,7 @@ CI is `Implemented` (ADR-006 points 10 and 11): one GitHub Actions workflow,
 - `pnpm lint`
 - `pnpm format:check`
 - `pnpm docs:check`
-- `pnpm test:scripts` (the fixture tests of `scripts/check-docs.mjs`)
+- `pnpm test:scripts` (the fixture tests of `scripts/check-docs.mjs` and the tests of `scripts/smoke.mjs`)
 - `pnpm test` (the domain, database and API suites; the latter two run against a
   PostgreSQL service container)
 - `pnpm build`
@@ -256,6 +256,12 @@ in containers: `docker compose --profile full up --build`. It reads `JWT_SECRET`
 `trading_runtime` role; a local default applies), `API_PORT` and `CORS_ORIGIN`. Both published
 ports bind to `127.0.0.1`. After pulling this change, run `docker compose up -d` once to
 recreate a running PostgreSQL container with the new binding and `TZ=UTC`.
+
+`pnpm smoke` checks a running `full` stack: readiness, an anonymous request refused with
+`401`, the login of the seeded user and a read of the seeded portfolios. Run the seed first
+(`pnpm --filter @trading/database db:seed`); it never runs on its own. The script stops at the
+first failing step and names it. `SMOKE_API_URL` points it at another port (default
+`http://127.0.0.1:7001`, or `API_PORT`).
 
 The API image builds from the workspace root and reads its configuration from the
 environment only (it never copies `.env`):

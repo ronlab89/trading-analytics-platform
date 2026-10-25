@@ -1082,6 +1082,13 @@ unassigned.
   `postgres`. Nothing seeds. PostgreSQL and the API publish on `127.0.0.1` only and run with
   `TZ=UTC`. Checked from an empty volume in an isolated project: migrate exited 0, api healthy,
   17 migrations applied, `trading_runtime` has a password, timezone `UTC`.
+- **Smoke test** — B7.4 (ADR-006 point 11). `pnpm smoke` (`scripts/smoke.mjs`, Node and `fetch`)
+  checks a running `full` stack in four steps: readiness, an anonymous request refused with `401`,
+  login with the seeded user and a read of the seeded portfolios; the last one is what shows the
+  migrations ran, because readiness only proves `SELECT 1`. It stops at the first failure and
+  names the step, and it neither starts nor seeds the stack: `up`, `db:seed`, `smoke` are three
+  commands (decision D2). Checked from an empty volume: it fails at `login` before the seed with a
+  hint to run it, passes after, and fails at `readiness` with the API stopped. CI does not run it.
 - **Concurrency on position recalculation** — B0 (ADR-001, FR-017), not B7:
   two simultaneous transactions against the same portfolio+asset could race
   between the read-then-write of the position inside the Unit of Work. The
