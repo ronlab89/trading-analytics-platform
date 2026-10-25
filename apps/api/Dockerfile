@@ -58,6 +58,16 @@ COPY packages/persistence-memory/package.json packages/persistence-memory/
 # root `prepare` runs husky, a dev dependency, and the client is generated in the build stage.
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
+# --- migrate: one-shot job of the Compose `full` profile (ADR-006 point 4) ---
+# Reuses the build stage because it needs the Prisma CLI and `tsx`, which the runtime image leaves
+# out. It applies the migrations, then sets the password of the runtime role (which never lands in
+# a migration file). The API image runs neither.
+FROM build AS migrate
+ENV PATH="/repo/packages/database/node_modules/.bin:${PATH}"
+USER node
+WORKDIR /repo/packages/database
+CMD ["sh", "-c", "prisma migrate deploy && tsx --conditions=@trading/source prisma/set-runtime-password.ts"]
+
 # --- runtime: no package manager invoked, no dev dependencies, no sources ---
 FROM node:${NODE_VERSION}-slim AS runtime
 
