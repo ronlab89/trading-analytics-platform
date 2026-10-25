@@ -2182,7 +2182,7 @@ The only dependency is PostgreSQL.
 | Readiness reflects the dependency | `GET /health/ready` returns 503 with `checks.database: "unavailable"` | `Implemented` (`apps/api/src/controllers/health.controller.ts`) |
 | Errors are logged | Readiness writes one entry, `health.database.unavailable`, with `requestId` and `errorName`; other requests log `http.request.failed` | `Implemented` on the `Logger` port (B3.1, ADR-009 point 6) |
 | Appropriate error responses | A request that fails because the database is unreachable gets 503 `DEPENDENCY_ERROR` | `Implemented` (B0; ADR-002 point 10, `07-api-spec.md`), logged at `error` with the stack (B3.1, ADR-009 point 6) |
-| Recovery is observable | Readiness is checked on every call, so it returns 200 again once the database answers; no entry records the recovery | No recovery entry in v1 (ADR-009 point 11); `Deferred` until a poller exists (B7, §58) |
+| Recovery is observable | Readiness is checked on every call, so it returns 200 again once the database answers; no entry records the recovery | No recovery entry in v1 (ADR-009 point 11); the decision was restated in B7.6 once the image healthcheck existed: Docker is the poller and shows the transition in `docker compose ps`, and the application keeps no memory of the previous answer (§58) |
 | No unnecessary crash | A failed query is handled per request by the error handler; there are no handlers for uncaught errors; the only process-level handlers are the `SIGTERM` and `SIGINT` shutdown | Startup logging (`app.startup.started`, `app.startup.completed`) and graceful shutdown (ADR-006 point 12) with `app.shutdown.started` and `app.shutdown.completed` `Implemented` (B3.4, ADR-009 point 11) |
 | Demo dependency failures | Simulated failures are a demo specific | `Deferred` (ADR-010 point 6) |
 
@@ -2192,7 +2192,7 @@ Code vs ADR: readiness answers 503 while the API is shutting down (ADR-006 point
 
 # 58. Recovery Observability
 
-**Status:** per item (table below); a database recovery entry `Deferred` until a poller exists (B7, ADR-009 point 11)
+**Status:** per item (table below); a database recovery entry is not adopted in version 1 (ADR-009 point 11; restated in B7.6)
 
 Recovery events are as important as failures.
 
@@ -2233,7 +2233,7 @@ Code vs ADR:
 - The five names above were examples, not ADR names (§8). Only the job entries are covered by a decision in kind (ADR-009 point 11); their names are working names until B4 (§43).
 - Recovery is implicit today: the failure lines stop and the next readiness call returns 200 (§57). No entry says that the database came back, and none is added in v1.
 - A job's lifecycle can be followed through the entries that share its `jobId` (§10): `job.failed`, the retry entry, `job.started`, `job.completed`. Whether those entries carry `attempt` is open (§43, B4). For the database the failure-to-success chain stays incomplete in v1 by decision, and for a realtime connection until the name of the reconnect entry is decided (`08-realtime-spec.md` §58).
-- A database recovery entry (and `dependency.recovered`) needs a poller, because readiness is stateless. It is reconsidered when the API healthcheck exists (B7; ADR-009 Deferred detail).
+- A database recovery entry (and `dependency.recovered`) needs a poller, because readiness is stateless. It was reconsidered in B7.6, when the API healthcheck existed, and stays out of version 1: the Docker healthcheck is the poller and records the transition (ADR-009 Deferred detail).
 
 ---
 

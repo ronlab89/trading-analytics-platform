@@ -2075,15 +2075,15 @@ unless measured and documented.
 | --- | --- | --- |
 | Authentication | Login, `me`, refresh, logout and sessions `Implemented` (B2) | B2 |
 | Authorization | Ownership checks `Implemented`; `Actor` and permission checks `Implemented` (B0); roles and 403 `Implemented` (B2.1, B2.2) | B0, B2 |
-| Input validation | Body, query and headers `Implemented`; route parameters `Planned (B0)`; CSV `Implemented` (B4); WebSocket messages `Implemented` (B5) | B0, B4, B5 |
+| Input validation | Body, query and headers `Implemented`; route parameters `Implemented` (B0; every one of the 36 parameter routes validates `params`, counted in B7.6); CSV `Implemented` (B4); WebSocket messages `Implemented` (B5) | none |
 | CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Implemented`; credentials for the refresh cookie `Implemented` (B2.4) | B2 |
-| Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Planned (B7)`; the seed and reset production guard `Implemented` | B7 |
+| Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Implemented` (B7.1); the seed and reset production guard `Implemented`; reviewed in B7.6 | none |
 | Rate limiting | HTTP `Implemented`; realtime limits `Implemented` (B5) | B5 |
-| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Implemented` (B4); WebSocket limits `Implemented` (B5) | B4, B5 |
+| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Implemented` (B4); WebSocket limits `Implemented` (B5); the 512 MB container limit does not exist yet (B7.6 finding F3, task T6) | B7 |
 | Error exposure | `Implemented`; redaction in logs `Implemented` (B3.1) | B3 |
 | File handling | CSV import `Implemented` (B4); the only file accepted is the CSV import body (`text/csv`, 1 MB) | B4 |
-| Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; audit `Planned (B7)` | B7 |
-| Security headers | `helmet` `Implemented`; header test `Planned (B7)` | B7 |
+| Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; the audit ran in B7.6 and found 4 advisories (finding F1, task T4) | B7 |
+| Security headers | `helmet` `Implemented` and probed in B7.6; the header test is finding F2 (task T5) | B7 |
 | Runtime database role | `Implemented` | none |
 
 Code vs ADR:
