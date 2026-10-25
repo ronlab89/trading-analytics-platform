@@ -23,9 +23,9 @@ odd/tasks/b7/**
 - [x] T1 Walk §33 and §78 read-only and write the review table in this file.
 - [x] T2 Present the findings; each becomes its own task (T4 to T6 below) with an owner.
 - [x] T3 Docs: the recovery-entry decision, the backups statement, and the checklist ticked with evidence in `14`.
-- [ ] T4 (F1) Raise the vulnerable dependencies to their patched versions and rerun the audit. Branch `fix/b7-6-hardening`, after this review is merged.
-- [ ] T5 (F2) RED then GREEN: an API test that pins the security headers. Same branch.
-- [ ] T6 (F3) `mem_limit: 512m` on the `api` service, measured with the smoke test and `docker stats`. Same branch.
+- [x] T4 (F1) Raise the vulnerable dependencies to their patched versions and rerun the audit. Branch `fix/b7-6-hardening`, after this review is merged. Commit `47269c3`.
+- [x] T5 (F2) RED then GREEN: an API test that pins the security headers. Same branch. Commit `f2a12f3`.
+- [x] T6 (F3) `mem_limit: 512m` on the `api` service, measured with the smoke test and `docker stats`. Same branch. Commit `3708266`.
 
 ## Review results
 
@@ -96,3 +96,5 @@ Each verdict cites a file or a command that was run; pnpm docs:check.
 
 L1 Request: as B7.1 (the task files for B7).
 L2 Done 2026-10-25 for T1 to T3. The pass read code and ran commands (audit, an in-process header probe, counts per route file); it did not repeat B2.5. Three findings, none fixed in this branch because the allowed surfaces here are docs only; the fixes are T4 to T6 on `fix/b7-6-hardening`. `Does not meet` stays visible in the checklist until they land.
+
+L3 Done 2026-10-25 for T4 to T6 on `fix/b7-6-hardening`. T4: `zod` 4.6.7, `body-parser` 2.4.0 and `proxy-addr` 2.0.8; the audit now reports one high advisory, `deepmerge-ts` 7.1.5 (GHSA-ggr8-5vv4-36mx) through `@prisma/client>prisma>@prisma/config`. It is `Deferred`: the fix needs Prisma 7 (a major bump) and the package is reached only when the Prisma CLI loads its config, never from a request. T5: the header test failed (RED) when `helmet()` was removed and passes with it; removing `app.disable("x-powered-by")` alone does not fail it because helmet also drops that header. T6: in an isolated Compose project the smoke test passed (4 steps) with the API at about 47 MiB of 512 MiB, `OOMKilled` false and the container healthy. One earlier run hit the smoke login timeout while the machine was short on memory; the server logged `auth.login.succeeded`, and the rerun passed.

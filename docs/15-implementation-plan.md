@@ -2079,11 +2079,11 @@ unless measured and documented.
 | CORS | Origin allow-list `Implemented`; origin format validation and the `*` rejection `Implemented`; credentials for the refresh cookie `Implemented` (B2.4) | B2 |
 | Secrets | Environment separation and gitignored files `Implemented`; `DATABASE_URL` validation `Implemented` (B7.1); the seed and reset production guard `Implemented`; reviewed in B7.6 | none |
 | Rate limiting | HTTP `Implemented`; realtime limits `Implemented` (B5) | B5 |
-| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Implemented` (B4); WebSocket limits `Implemented` (B5); the 512 MB container limit does not exist yet (B7.6 finding F3, task T6) | B7 |
+| Resource limits | JSON body limit of 100 kB `Implemented`; CSV size and rows `Implemented` (B4); WebSocket limits `Implemented` (B5); the 512 MB container limit is set on the `api` service and measured with the smoke test `Implemented` (B7.6 finding F3, task T6) | B7 |
 | Error exposure | `Implemented`; redaction in logs `Implemented` (B3.1) | B3 |
 | File handling | CSV import `Implemented` (B4); the only file accepted is the CSV import body (`text/csv`, 1 MB) | B4 |
-| Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; the audit ran in B7.6 and found 4 advisories (finding F1, task T4) | B7 |
-| Security headers | `helmet` `Implemented` and probed in B7.6; the header test is finding F2 (task T5) | B7 |
+| Dependency security | Lockfile `Implemented`; frozen-lockfile install in CI `Implemented`; the audit ran in B7.6 and found 4 advisories; 3 are fixed (finding F1, task T4) and `deepmerge-ts` is `Deferred` until Prisma 7 | B7 |
+| Security headers | `helmet` `Implemented` and probed in B7.6; a test pins them on success and error answers `Implemented` (B7.6 finding F2, task T5) | B7 |
 | Runtime database role | `Implemented` | none |
 
 Code vs ADR:

@@ -2686,9 +2686,9 @@ ADR-006 point 2 hosts no backend, so "public deployment" means two things: publi
 - [x] Metrics restricted if exposed. (Satisfied by absence: no metrics and no `/metrics` endpoint, `Deferred`, ADR-009 point 10)
 - [x] Admin operations protected. (`Implemented`: the `Actor` permission mechanism and the roles of ADR-005 (B0, B2.1, B2.2); the only admin-only permission, `simulation:control`, is asserted in the simulation service (B5), reviewed in B2.5 and B7.6)
 - [x] Rate limits considered. (`Implemented`, §63)
-- [ ] Resource limits configured. (Partly: body size and pagination `Implemented`; CSV and job limits `Implemented` (B4), realtime limits `Implemented` (B5); the 512 MB container limit `Does not meet` in B7.6 (finding F3, task T6 of `odd/tasks/b7/b7-6-security-pass.md`), §65, NFR-054)
+- [x] Resource limits configured. (Body size and pagination `Implemented`; CSV and job limits `Implemented` (B4), realtime limits `Implemented` (B5); the `api` service has `mem_limit: 512m` in Compose and the smoke test passes under it with about 47 MiB in use, `Implemented` in B7.6 (finding F3, task T6 of `odd/tasks/b7/b7-6-security-pass.md`), §65, NFR-054)
 - [ ] Demo data isolated. (`Planned (FE)`: the demo has no backend and no database, §24, §56)
-- [ ] Dependencies reviewed. (Lockfile and frozen installs `Implemented`; the manual `pnpm audit --prod --audit-level=high` ran in B7.6 and found 4 advisories, finding F1, task T4 of `odd/tasks/b7/b7-6-security-pass.md`, §58)
+- [x] Dependencies reviewed. (Lockfile and frozen installs `Implemented`; `pnpm audit --prod --audit-level=high` ran in B7.6 and found 4 advisories, 3 fixed by the patched versions of `zod`, `body-parser` and `proxy-addr` (finding F1, task T4 of `odd/tasks/b7/b7-6-security-pass.md`); `deepmerge-ts` stays `Deferred` because it is reached only through the Prisma CLI config and its fix needs Prisma 7, §58)
 
 Code vs ADR:
 
