@@ -40,10 +40,10 @@ odd/tasks/b7/**
 
 ## Tasks
 
-- [ ] T1 `migrate` service with the health dependency and the runtime-password step.
-- [ ] T2 `api` service: build context, URLs, `TZ`, healthcheck, `depends_on` migrate, profile `full`.
-- [ ] T3 Port binding (D2), the lines the user adds to `.env.example`, and a manual run: `docker compose --profile full up --build`.
-- [ ] T4 Docs: `14` marks and README commands for the two profiles.
+- [x] T1 `migrate` service with the health dependency and the runtime-password step.
+- [x] T2 `api` service: build context, URLs, `TZ`, healthcheck, `depends_on` migrate, profile `full`.
+- [x] T3 Port binding (D2), the lines the user adds to `.env.example`, and a manual run: `docker compose --profile full up --build`.
+- [x] T4 Docs: `14` marks and README commands for the two profiles.
 
 ## Done when
 
@@ -61,3 +61,6 @@ docker compose config for both profiles; docker compose --profile full up from a
 
 L1 Request: as B7.1 (the task files for B7).
 L2 The roadmap and ADR-006 (points 4 and 5, amended 2026-10-07) agree: `migrate` is a separate one-shot service, not part of the entrypoint. The earlier note that placed `migrate deploy` in the entrypoint was stale.
+L3 Done 2026-10-25. D1 to D3 approved as recommended. `migrate` is a Dockerfile target (`FROM build`) instead of the production tree, because the runtime image has no Prisma CLI or `tsx`; the runtime-password step runs in the same `sh -c` after `prisma migrate deploy`.
+L4 Verified in an isolated project (`-p b73`, own volume and ports, then removed): migrate exited 0, api healthy, 17 migrations applied, `trading_runtime` has a password, timezone `UTC`, `/health/ready` 200, no error logs, PostgreSQL published on 127.0.0.1. Row counts of the seed were not queried; no service runs the seed.
+L5 `.env.example` is blocked for the assistant: the user may add `RUNTIME_DB_PASSWORD` and `API_PORT` there; both have defaults in Compose.

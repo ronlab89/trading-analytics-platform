@@ -57,6 +57,14 @@ when PostgreSQL is not reachable). Environment notes and troubleshooting are in
 
 Container image of the API: `docker build -f apps/api/Dockerfile -t trading-api .` (workspace root as context).
 
+The whole stack in containers (PostgreSQL, migrations, API), with `JWT_SECRET` set in `.env`:
+
+```bash
+docker compose --profile full up --build
+```
+
+The default `docker compose up -d` still starts PostgreSQL alone. The seed is never run for you.
+
 ## Local Database
 
 PostgreSQL runs via Docker Compose. Two levels of reset are available,
