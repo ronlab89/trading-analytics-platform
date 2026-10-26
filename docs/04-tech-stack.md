@@ -60,10 +60,14 @@ tooling configuration (`eslint.config.js`) and repository scripts
 
 ## 4.1 React
 
-**Status:** `Deferred` — no ADR decides the frontend rendering library (`06-architecture.md` §7).
+**Status:** `Planned (FE)` — ADR-011 points 1 and 6 (Proposed).
 
-`apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md`. The frontend
-library is chosen in the frontend stage.
+React 19, built with Vite (§5). Routing is React Router, including
+role-protected routes (ADR-005) and the configurable base path (ADR-006
+point 7). Strings are in `en` and `es` through react-i18next (ADR-011
+point 16, ADR-010 point 8).
+
+`apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md`.
 
 ---
 
@@ -92,27 +96,40 @@ explicit `any` (§34). Resolved versions: see §2.
 
 # 7. Styling
 
-**Status:** `Deferred` — no ADR decides it.
+**Status:** `Planned (FE)` — ADR-011 point 2 (Proposed).
+
+Tailwind CSS is the only styling layer. Hand-written CSS is allowed only
+where Tailwind cannot express the rule.
 
 ---
 
 # 8. UI Components
 
-**Status:** `Deferred` — no ADR decides it.
+**Status:** `Planned (FE)` — ADR-011 point 3 (Proposed).
+
+shadcn/ui on Radix UI primitives, copied into the repository and styled with
+Tailwind.
 
 ---
 
 # 9. Animation
 
-**Status:** `Deferred` — no ADR decides the library. Respecting
-`prefers-reduced-motion` is an accessibility requirement
-(`03-non-functional-requirements.md`), not a library choice.
+**Status:** `Planned (FE)` — ADR-011 point 10 (Proposed).
+
+CSS and Tailwind transitions and keyframes only; no animation library.
+Respecting `prefers-reduced-motion` is an accessibility requirement
+(`03-non-functional-requirements.md`).
 
 ---
 
 # 10. Server State
 
-**Status:** `Deferred` — no ADR decides it (`06-architecture.md` §17).
+**Status:** `Planned (FE)` — ADR-011 points 4 and 15 (Proposed).
+
+TanStack Query. The HTTP client times out after 15 seconds; reads are retried
+up to 2 times with exponential backoff after a network error, a timeout, or a
+502, 503 or 504 response; 4xx responses and writes are not retried, except a
+creation with an `Idempotency-Key` (ADR-008 point 8).
 
 Decided constraint: the UI reads DTOs only through the `TradingClient` port
 (ADR-002 point 5), whatever caching library is chosen.
@@ -121,7 +138,10 @@ Decided constraint: the UI reads DTOs only through the `TradingClient` port
 
 # 11. Client State
 
-**Status:** `Deferred` — no ADR decides it (`06-architecture.md` §17).
+**Status:** `Planned (FE)` — ADR-011 point 5 (Proposed).
+
+Zustand, for state that is not server data. Server data is never copied into
+a store.
 
 Decided constraint: the access token lives in memory only (ADR-005 point 4).
 
@@ -129,13 +149,18 @@ Decided constraint: the access token lives in memory only (ADR-005 point 4).
 
 # 12. Tables
 
-**Status:** `Deferred` — no ADR decides it.
+**Status:** `Planned (FE)` — ADR-011 point 8 (Proposed).
+
+TanStack Table with the shadcn Table component for markup.
 
 ---
 
 # 13. Forms
 
-**Status:** `Deferred` — no ADR decides it.
+**Status:** `Planned (FE)` — ADR-011 point 9 (Proposed).
+
+React Hook Form with Zod, reusing `@trading/contracts` schemas where one
+exists. The backend stays authoritative (ADR-005 point 3).
 
 ---
 
@@ -167,8 +192,10 @@ presenters map domain objects to DTOs. Today only request types exist, in
 
 # 16. Charts and Data Visualization
 
-**Status:** `Deferred` — no ADR decides the chart library. Any choice must be
-free to use and need no paid API (§49).
+**Status:** `Planned (FE)` — ADR-011 point 7 (Proposed).
+
+Recharts. The charts hold no financial calculation. It is free to use and
+needs no paid API (§49).
 
 ---
 
@@ -407,7 +434,7 @@ Open detail (B5): the package path (`06-architecture.md` §48).
 
 # 33. Testing Stack
 
-**Status:** `Implemented` for unit and API integration tests; component and end-to-end tooling `Deferred`.
+**Status:** `Implemented` for unit and API integration tests; component, end-to-end and accessibility tooling `Planned (FE)` — ADR-011 points 11-13 (Proposed).
 
 ## Vitest
 
@@ -421,8 +448,10 @@ Database and API suites run against a test PostgreSQL database loaded from
 
 ## Component and end-to-end tests
 
-No ADR decides the component-testing library or the end-to-end runner.
-Test levels and scope are in `10-testing-strategy.md`.
+Components are tested with Vitest and React Testing Library, end-to-end flows
+with Playwright, and accessibility with axe-core through `vitest-axe` and
+`@axe-core/playwright` (ADR-011 points 11-13). Test levels and scope are in
+`10-testing-strategy.md`.
 
 ---
 
@@ -726,8 +755,12 @@ ADR already names is added in that ADR's block.
 | API docs | OpenAPI from Zod `toJSONSchema` | — | `Implemented` (B6) | ADR-002 point 7 |
 | Infrastructure | API Dockerfile, `full` profile | — | `Implemented` (B7) | ADR-006 point 4 |
 | Frontend build | Vite | — | `Planned (FE)` | ADR-006 point 8 |
-| Frontend | UI library, styling, components, animation, server and client state, tables, forms, charts | — | `Deferred` | §4, §7-13, §16 |
-| Testing | Component and end-to-end tooling | — | `Deferred` | §33 |
+| Frontend | React, React Router | — | `Planned (FE)` | ADR-011 points 1, 6 |
+| Frontend | Tailwind CSS, shadcn/ui on Radix UI | — | `Planned (FE)` | ADR-011 points 2, 3 |
+| Frontend | TanStack Query, Zustand | — | `Planned (FE)` | ADR-011 points 4, 5 |
+| Frontend | TanStack Table, React Hook Form, Recharts | — | `Planned (FE)` | ADR-011 points 7-9 |
+| Frontend | react-i18next | — | `Planned (FE)` | ADR-011 point 16 |
+| Testing | Vitest with React Testing Library, Playwright, axe-core | — | `Planned (FE)` | ADR-011 points 11-13 |
 | Observability | Metrics | — | `Deferred` | ADR-009 point 10 |
 
 Type-only packages (`@types/*`) follow their runtime packages and are not

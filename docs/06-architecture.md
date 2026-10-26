@@ -173,6 +173,9 @@ Already decided, to apply in the frontend stage:
   one refresh and retry (ADR-005, Consequences).
 - Realtime goes through a client-side port with a WebSocket adapter and an
   in-process adapter fed by `@trading/market-sim` (ADR-007 point 13).
+- The stack is React 19 with Vite, Tailwind, shadcn/ui on Radix, TanStack
+  Query for server state, Zustand for client state, React Router, Recharts,
+  TanStack Table and React Hook Form with Zod (ADR-011 points 1-9, Proposed).
 
 Open detail (FE): workspace location and package name of
 `apps/web`, and how it consumes workspace packages, now that B7.1 builds them
@@ -188,7 +191,7 @@ Open detail (FE): workspace location and package name of
 
 # 9. Shared Layer
 
-**Status:** `Implemented` as workspace packages; frontend shared UI `Deferred`.
+**Status:** `Implemented` as workspace packages; frontend shared UI `Planned (FE)` — shadcn/ui components copied into `apps/web` (ADR-011 point 3, Proposed).
 
 Code shared between runtimes lives in workspace packages, never in an app:
 `@trading/domain` today; `@trading/application`, `@trading/contracts` and
@@ -313,7 +316,11 @@ process (§6.1).
 
 # 17. State Management Strategy
 
-**Status:** `Deferred` — frontend; no ADR decides it; see §7.
+**Status:** `Planned (FE)` — ADR-011 points 4 and 5 (Proposed); see §7.
+
+TanStack Query owns server data behind the `TradingClient` port. Zustand holds
+only state that is not server data (UI state, filters, session, simulator
+controls); server data is never copied into a store.
 
 ---
 
@@ -677,7 +684,10 @@ through `AsyncLocalStorage`, `jobId` on jobs and `connectionId` on sockets;
 
 # 41. Routing Architecture
 
-**Status:** `Deferred` — frontend; no ADR decides it; API routing is in §24-26.
+**Status:** `Planned (FE)` — ADR-011 point 6 (Proposed); API routing is in §24-26.
+
+React Router, with role-protected routes (ADR-005) and the configurable base
+path (ADR-006 point 7).
 
 ---
 
@@ -859,13 +869,19 @@ adds a slow-request warning and separate timing of the analytics series
 
 # 55. Rendering Strategy
 
-**Status:** `Deferred` — frontend; no ADR decides it.
+**Status:** `Planned (FE)` — ADR-011 point 1 (Proposed).
+
+React 19 rendered on the client, built with Vite as a static bundle
+(ADR-006).
 
 ---
 
 # 56. Chart Architecture
 
-**Status:** `Deferred` — frontend; no ADR decides it.
+**Status:** `Planned (FE)` — ADR-011 point 7 (Proposed).
+
+Recharts. Charts hold no financial calculation; values come from the API or
+the application layer (`04-tech-stack.md` §16).
 
 ---
 

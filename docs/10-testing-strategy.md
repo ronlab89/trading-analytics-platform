@@ -61,7 +61,7 @@ Version 1 has no coverage threshold (ADR-006 point 11), and no coverage provider
 
 # 3. Testing Pyramid
 
-**Status:** unit and integration levels `Implemented` (backend); component and E2E levels `Planned (FE)`; their tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11)
+**Status:** unit and integration levels `Implemented` (backend); component and E2E levels `Planned (FE)`; their tooling decided in ADR-011 points 11-13 (Proposed)
 
 The project should follow:
 
@@ -91,7 +91,7 @@ Most tests should exist at the unit and component levels.
 
 A smaller number of integration and E2E tests should validate complete system behavior.
 
-Current shape, by file count: domain unit tests 28 files, database repository tests 17 files, API HTTP integration tests 14 files. The backend therefore leans on integration tests more than the pyramid asks, because application services do not exist as a separate layer yet (§6, ADR-001 point 7). The names "Playwright", "React" and "Testing Library" in this document are working assumptions: component and end-to-end tooling is decided in the frontend-stage ADR and stays `Deferred` until then (ADR-006 point 11, `04-tech-stack.md` §33).
+Current shape, by file count: domain unit tests 28 files, database repository tests 17 files, API HTTP integration tests 14 files. The backend therefore leans on integration tests more than the pyramid asks, because application services do not exist as a separate layer yet (§6, ADR-001 point 7). Component and end-to-end tooling is decided in ADR-011 points 11-13 (Proposed): Vitest with React Testing Library, Playwright, and axe-core (`04-tech-stack.md` §33).
 
 ---
 
@@ -287,9 +287,9 @@ Examples:
 
 # 10. Component Testing
 
-**Status:** `Planned (FE)`; tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11)
+**Status:** `Planned (FE)`; tooling decided in ADR-011 point 11 (Proposed)
 
-Testing Library should be used for React component behavior.
+Vitest with React Testing Library is used for React component behavior.
 
 Tests should simulate user behavior rather than internal implementation details.
 
@@ -309,7 +309,7 @@ confirm
 
 The test should verify the resulting user-visible behavior.
 
-No `apps/web` code or component test setup exists (`apps/web` holds only wireframe files). React and Testing Library are the intended choice; the component test runner and React Testing Library are decided in the frontend-stage ADR (ADR-006 point 11).
+No `apps/web` code or component test setup exists (`apps/web` holds only wireframe files). The component test runner and React Testing Library are decided in ADR-011 point 11 (Proposed).
 
 ---
 
@@ -667,7 +667,7 @@ What the tests assert, through the realtime transport test double (`08-realtime-
 - A burst of 100 events in 1 s is applied in at most one render per animation frame (NFR-006); the new price is visible within 100 ms of receipt (NFR-004, §40).
 - Update highlights are disabled under reduced motion (`08-realtime-spec.md` §49, NFR-032).
 
-The component test tooling is `Deferred` to the frontend-stage ADR (ADR-006 point 11).
+The component test tooling is decided in ADR-011 point 11 (Proposed).
 
 ---
 
@@ -806,7 +806,7 @@ Code vs ADR: dismissal is removed from version 1; a notification is only `unread
 
 # 27. Table Testing
 
-**Status:** `Planned (FE)`; table library `Deferred` (`04-tech-stack.md` §12)
+**Status:** `Planned (FE)`; table library TanStack Table (`04-tech-stack.md` §12, ADR-011 point 8, Proposed)
 
 TanStack Table implementations should test:
 
@@ -831,7 +831,7 @@ TanStack Table is a candidate, not a decision (`04-tech-stack.md` §12). Scope l
 
 # 28. Chart Testing
 
-**Status:** calculated values `Implemented` in domain tests (§7); chart tests `Planned (FE)`; chart library `Deferred` (`04-tech-stack.md` §16)
+**Status:** calculated values `Implemented` in domain tests (§7); chart tests `Planned (FE)`; chart library Recharts (`04-tech-stack.md` §16, ADR-011 point 7, Proposed)
 
 Charts should be tested primarily through:
 
@@ -975,9 +975,9 @@ At minimum:
 
 # 32. End-to-End Testing
 
-**Status:** `Planned (FE)`; tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11)
+**Status:** `Planned (FE)`; tooling decided in ADR-011 point 12 (Proposed)
 
-Playwright will be used for critical user journeys.
+Playwright is used for critical user journeys.
 
 E2E tests should run against a realistic application environment.
 
@@ -995,7 +995,7 @@ Database / Mock Infrastructure
 
 depending on the test environment.
 
-No frontend and no E2E suite exist. Playwright is a working assumption, not a decision: the frontend-stage ADR picks the E2E tool (ADR-006 point 11). There is no public backend (ADR-006 point 2), so the two E2E environments are the local production stack (browser → web → API → PostgreSQL) and the static demo, where the application layer runs in the browser on in-memory repositories (ADR-001, ADR-006 point 7) and there is no API.
+No frontend and no E2E suite exist. Playwright is the E2E tool (ADR-011 point 12, Proposed). There is no public backend (ADR-006 point 2), so the two E2E environments are the local production stack (browser → web → API → PostgreSQL) and the static demo, where the application layer runs in the browser on in-memory repositories (ADR-001, ADR-006 point 7) and there is no API.
 
 ---
 
@@ -1159,7 +1159,7 @@ Today the API and database tests create their own data through `apps/api/src/tes
 
 # 36. Accessibility Testing
 
-**Status:** `Planned (FE)` (NFR-029 to NFR-032); scanning tool `Deferred` to the frontend-stage ADR (ADR-006 point 11, `04-tech-stack.md` §33)
+**Status:** `Planned (FE)` (NFR-029 to NFR-032); scanning tool axe-core, through `vitest-axe` in component tests and `@axe-core/playwright` in E2E tests (ADR-011 point 13, Proposed; `04-tech-stack.md` §33)
 
 Accessibility is part of product quality.
 

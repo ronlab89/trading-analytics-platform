@@ -174,9 +174,9 @@ Code vs ADR: phases 5 to 11 and 14 to 16 were written before the ADRs, and their
 
 Screen assignment (decided 2026-10-08): no new blocks. Each screen without a block goes to the existing block of the API it depends on, so FE2, FE3 and FE4 do not overlap: the Dashboard, Markets, watchlist, decisions and scenarios screens to FE2; the Alerts tab under Markets to FE3 with the notifications; the preferences and language screens to FE0 (ADR-010 point 8 fixes the language). A screen that needs a session (preferences) runs once FE1 delivers it; FE0 owns its build.
 
-Libraries (confirmed 2026-10-08): TanStack Query, TanStack Table, Zustand, the form validation approach, and the component and E2E tooling stay `Deferred` and are decided together in the frontend-stage ADR, before FE0 starts.
+Libraries (decided 2026-10-26, ADR-011, `Proposed`): TanStack Query, TanStack Table, Zustand, React Hook Form with Zod, the component and E2E tooling and the accessibility tool.
 
-Open before FE0 starts: the frontend-stage ADR. It settles what no ADR decides today: routing, state, rendering and charts, shared UI, the accessibility tool, the HTTP client timeout and retry (ADR-006 point 11), the frontend test tooling, and the demo specifics (ADR-010 point 6).
+Open before FE0 starts: ADR-011 is `Proposed` and becomes `Accepted` when its pending UX input closes (the new wireframe). The demo specifics (ADR-010 point 6) stay open and are needed before FE4.
 
 ---
 
@@ -550,14 +550,16 @@ Backend authorization check
 
 | Deliverable | Status | Block |
 | --- | --- | --- |
-| Frontend-stage ADR: routing, state, rendering library, charts, shared UI, accessibility tool, HTTP client timeout and retry, frontend test tooling, demo specifics (ADR-010 point 6, ADR-006 point 11) | Open: not written | before FE0 |
+| Frontend-stage ADR: routing, state, rendering library, charts, shared UI, accessibility tool, HTTP client timeout and retry, frontend test tooling (ADR-011, ADR-006 point 11) | `Proposed` (2026-10-26); accepted when its pending UX input closes | before FE0 |
+| Demo specifics: data layers, reset, simulated latency, scripted failures, hosting (ADR-010 point 6) | Open: not written; needs the new wireframe | before FE4 |
 | `apps/web` workspace (package, scripts, build); `apps/web` holds `wireframe.html`, `WIREFRAME-PLAN.md` and `.gitkeep` | `Planned (FE0)` | FE0 |
 | Vite as the build tool (ADR-006 point 8) | `Planned (FE0)` | FE0 |
-| React as the rendering library | `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §4) | FE0 |
+| React 19 as the rendering library (ADR-011 point 1) | `Planned (FE0)` | FE0 |
 | TypeScript for `apps/web` | `Planned (FE0)` | FE0 |
-| Tailwind CSS, shadcn/ui, shared UI structure and design tokens | `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §7 and §8) | FE0 |
-| Routing | `Deferred` to the frontend-stage ADR | FE0 |
-| Server state (TanStack Query), client state (Zustand "where justified"), forms (React Hook Form) | `Deferred` to the frontend-stage ADR (`04-tech-stack.md` §10, §11 and §13) | FE0 |
+| Tailwind CSS and shadcn/ui on Radix (ADR-011 points 2 and 3) | `Planned (FE0)` | FE0 |
+| Shared UI structure and design tokens | `Deferred` until the new wireframe is shared (ADR-011, Pending UX input) | FE0 |
+| Routing: React Router (ADR-011 point 6) | `Planned (FE0)` | FE0 |
+| Server state (TanStack Query), client state (Zustand), forms (React Hook Form with Zod), HTTP client timeout and retry (ADR-011 points 4, 5, 9 and 15) | `Planned (FE0)` (`04-tech-stack.md` §10, §11 and §13) | FE0 |
 | Request and response types (DTOs) consumed from `@trading/contracts` (ADR-002 point 5) | `Planned (FE0)`; the package is `Planned (B0)` | FE0 |
 | Feature structure (the `src/` layout below) | `Deferred` to the frontend-stage ADR (`06-architecture.md` §7 and §8) | FE0 |
 | `TradingClient` port with the HTTP adapter over `@trading/contracts` (ADR-002 point 5); the in-process adapter is FE4 | `Planned (FE0)` | FE0 |
