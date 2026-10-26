@@ -12,6 +12,7 @@
     { "path": "./packages/persistence-memory" },
     { "path": "./packages/market-sim" },
     { "path": "./packages/database/tsconfig.build.json" },
-    { "path": "./apps/api" }
+    { "path": "./apps/api" },
+    { "path": "./apps/web" }
   ]
 }

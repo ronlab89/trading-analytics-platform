@@ -60,20 +60,21 @@ tooling configuration (`eslint.config.js`) and repository scripts
 
 ## 4.1 React
 
-**Status:** `Planned (FE)` — ADR-011 points 1 and 6 (Proposed).
+**Status:** React `Implemented` (FE0.1, `react` `19.3.1`) — ADR-011 point 1 (Proposed); routing `Planned (FE)` — ADR-011 point 6.
 
 React 19, built with Vite (§5). Routing is React Router, including
 role-protected routes (ADR-005) and the configurable base path (ADR-006
 point 7). Strings are in `en` and `es` through react-i18next (ADR-011
 point 16, ADR-010 point 8).
 
-`apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md`.
+`apps/web` is the `@trading/web` workspace with an empty Vite shell
+(`Implemented`, FE0.1).
 
 ---
 
 # 5. Frontend Build Tool
 
-**Status:** `Planned (FE)` — ADR-006 points 1, 7 and 8.
+**Status:** `Implemented` (FE0.1, `vite` `8.3.5`) — ADR-006 points 1, 7 and 8; base path and demo build `Planned (FE)`.
 
 The public demo is a static build of `apps/web`, served under a configurable
 base path, and the web build reads `VITE_APP_MODE` (ADR-006 point 8). Vite is
@@ -754,8 +755,9 @@ ADR already names is added in that ADR's block.
 | Simulation | `@trading/market-sim` | — | `Implemented` (B5) | ADR-007 point 7 |
 | API docs | OpenAPI from Zod `toJSONSchema` | — | `Implemented` (B6) | ADR-002 point 7 |
 | Infrastructure | API Dockerfile, `full` profile | — | `Implemented` (B7) | ADR-006 point 4 |
-| Frontend build | Vite | — | `Planned (FE)` | ADR-006 point 8 |
-| Frontend | React, React Router | — | `Planned (FE)` | ADR-011 points 1, 6 |
+| Frontend build | Vite, `@vitejs/plugin-react` | 8.3.5, 6.1.2 | `Implemented` (FE0.1) | ADR-006 point 8 |
+| Frontend | React | 19.3.1 | `Implemented` (FE0.1) | ADR-011 point 1 |
+| Frontend | React Router | — | `Planned (FE)` | ADR-011 point 6 |
 | Frontend | Tailwind CSS, shadcn/ui on Radix UI | — | `Planned (FE)` | ADR-011 points 2, 3 |
 | Frontend | TanStack Query, Zustand | — | `Planned (FE)` | ADR-011 points 4, 5 |
 | Frontend | TanStack Table, React Hook Form, Recharts | — | `Planned (FE)` | ADR-011 points 7-9 |

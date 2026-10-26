@@ -189,7 +189,7 @@ Open before FE0 starts: ADR-011 is `Proposed` and becomes `Accepted` when its pe
 | Deliverable | Status | Block |
 | --- | --- | --- |
 | Git repository and `.gitignore` (excludes `.env`, `.env.*.local`, build output and `pr-body.md`) | `Implemented` | none |
-| Repository structure: pnpm workspace over `apps/*` and `packages/*` (`pnpm-workspace.yaml`) | `Implemented`; `packages/contracts`, `packages/config` and `docker/` hold only `.gitkeep`, and `apps/web` holds only the wireframe | none |
+| Repository structure: pnpm workspace over `apps/*` and `packages/*` (`pnpm-workspace.yaml`) | `Implemented`; `packages/contracts`, `packages/config` and `docker/` hold only `.gitkeep`, and `apps/web` holds the Vite shell (FE0.1) | none |
 | Package manager and committed lockfile (`packageManager` `pnpm@12.3.4`, `pnpm-lock.yaml`) | `Implemented` | none |
 | TypeScript (`tsconfig.base.json`, root `tsconfig.json` with references to `packages/domain`, `packages/database` and `apps/api`, `pnpm typecheck`) | `Implemented` | none |
 | Alignment of the `typescript` and `@types/node` versions across packages | `Implemented` (B0.1; `typescript` is `^6.0.3` everywhere and `@types/node` is `^24`) | none |
@@ -552,10 +552,10 @@ Backend authorization check
 | --- | --- | --- |
 | Frontend-stage ADR: routing, state, rendering library, charts, shared UI, accessibility tool, HTTP client timeout and retry, frontend test tooling (ADR-011, ADR-006 point 11) | `Proposed` (2026-10-26); accepted when its pending UX input closes | before FE0 |
 | Demo specifics: data layers, reset, simulated latency, scripted failures, hosting (ADR-010 point 6) | Open: not written; needs the new wireframe | before FE4 |
-| `apps/web` workspace (package, scripts, build); `apps/web` holds `wireframe.html`, `WIREFRAME-PLAN.md` and `.gitkeep` | `Planned (FE0)` | FE0 |
-| Vite as the build tool (ADR-006 point 8) | `Planned (FE0)` | FE0 |
-| React 19 as the rendering library (ADR-011 point 1) | `Planned (FE0)` | FE0 |
-| TypeScript for `apps/web` | `Planned (FE0)` | FE0 |
+| `apps/web` workspace (package `@trading/web`, scripts, build); `apps/web` holds the Vite shell, `WIREFRAME-PLAN.md` and the ignored `wireframe.html` | `Implemented` (FE0.1) | FE0 |
+| Vite as the build tool (ADR-006 point 8) | `Implemented` (FE0.1) | FE0 |
+| React 19 as the rendering library (ADR-011 point 1) | `Implemented` (FE0.1) | FE0 |
+| TypeScript for `apps/web`, covered by the root `typecheck` | `Implemented` (FE0.1) | FE0 |
 | Tailwind CSS and shadcn/ui on Radix (ADR-011 points 2 and 3) | `Planned (FE0)` | FE0 |
 | Shared UI structure and design tokens | `Deferred` until the new wireframe is shared (ADR-011, Pending UX input) | FE0 |
 | Routing: React Router (ADR-011 point 6) | `Planned (FE0)` | FE0 |
@@ -3096,7 +3096,7 @@ observable runtime
 
 | Item | Status | Block |
 | --- | --- | --- |
-| Frontend shell | `Planned (FE0)`; `apps/web` holds only `WIREFRAME-PLAN.md` and `wireframe.html` | FE0 |
+| Frontend shell | `Planned (FE0)`; `apps/web` holds the empty Vite shell (FE0.1); the app shell is next | FE0 |
 | Authentication UI | `Planned (FE1)`; needs B2 | FE1 |
 | Portfolios, positions, transactions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
 | Dashboard and analytics | allocation and attribution endpoints `Implemented`; performance and risk endpoints `Implemented`; views `Planned (FE2)` | B1, FE2 |
