@@ -39,6 +39,9 @@ Every choice was made by the user on 2026-10-26.
    states why.
 3. **Components.** shadcn/ui on Radix UI primitives. Components are copied
    into the repository and owned by it, then styled with Tailwind.
+   *Clarified on 2026-10-26 in FE0.2:* the shadcn CLI defaults to the Base UI
+   primitives (`base-nova`), not Radix. The project uses the `radix-vega`
+   style (`--base radix`), which depends on the `radix-ui` package.
 4. **Server state.** TanStack Query for fetching, caching, invalidation and
    retries. It sits behind the `TradingClient` port (ADR-002 point 5), so the
    demo adapter feeds the same hooks.
@@ -55,6 +58,9 @@ Every choice was made by the user on 2026-10-26.
    the UI and the backend stays authoritative (ADR-005 point 3).
 10. **Animation.** CSS and Tailwind only (transitions and keyframes). Motion
     is not adopted. Every animation respects `prefers-reduced-motion`.
+    *Clarified on 2026-10-26 in FE0.2:* `tw-animate-css`, the CSS-only
+    Tailwind plugin the shadcn components use for open and close transitions,
+    is allowed; it ships no JavaScript.
 11. **Component tests.** Vitest with React Testing Library, using the same
     runner as the other workspaces.
 12. **End-to-end tests.** Playwright, covering the critical flows of

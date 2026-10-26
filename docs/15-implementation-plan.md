@@ -556,8 +556,8 @@ Backend authorization check
 | Vite as the build tool (ADR-006 point 8) | `Implemented` (FE0.1) | FE0 |
 | React 19 as the rendering library (ADR-011 point 1) | `Implemented` (FE0.1) | FE0 |
 | TypeScript for `apps/web`, covered by the root `typecheck` | `Implemented` (FE0.1) | FE0 |
-| Tailwind CSS and shadcn/ui on Radix (ADR-011 points 2 and 3) | `Planned (FE0)` | FE0 |
-| Shared UI structure and design tokens | `Deferred` until the new wireframe is shared (ADR-011, Pending UX input) | FE0 |
+| Tailwind CSS and shadcn/ui on Radix (ADR-011 points 2 and 3) | `Implemented` (FE0.2) | FE0 |
+| Shared UI structure and design tokens | `Deferred` until the new wireframe is shared (ADR-011, Pending UX input); neutral shadcn placeholder tokens are in place | FE0 |
 | Routing: React Router (ADR-011 point 6) | `Planned (FE0)` | FE0 |
 | Server state (TanStack Query), client state (Zustand), forms (React Hook Form with Zod), HTTP client timeout and retry (ADR-011 points 4, 5, 9 and 15) | `Planned (FE0)` (`04-tech-stack.md` §10, §11 and §13) | FE0 |
 | Request and response types (DTOs) consumed from `@trading/contracts` (ADR-002 point 5) | `Planned (FE0)`; the package is `Planned (B0)` | FE0 |
