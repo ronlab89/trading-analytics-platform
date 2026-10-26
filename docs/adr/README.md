@@ -20,6 +20,7 @@ an accepted ADR, the SDD document is wrong and is corrected.
 | [008](0008-background-jobs-csv-import.md) | Background Jobs, Scoped to CSV Transaction Import, and Idempotency | Accepted | B4 (input retention, CSV transport) |
 | [009](0009-observability-scope.md) | Observability Scope — Structured, Correlated, Safe Logging | Accepted | B3 (startup and shutdown entries; `auth.logout` with B2, simulator entries with B5) |
 | [010](0010-v1-product-scope-clarifications.md) | Version 1 Product Scope Clarifications | Accepted | B0, B1, FE (demo hosting deferrals) |
+| [011](0011-frontend-stack.md) | Frontend Stack and Test Tooling | Proposed | FE |
 
 Blocks (B0-B7) are defined in [`../BACKEND-ROADMAP.md`](../BACKEND-ROADMAP.md).
 
