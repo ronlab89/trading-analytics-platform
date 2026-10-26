@@ -735,8 +735,7 @@ Library-agnostic server-state cache rules:
   refetches it (invalidation), per §32.
 - Resynchronization (§26) refetches the affected entries.
 
-No ADR selects TanStack Query; the library is chosen in a frontend-stage
-decision.
+ADR-011 point 4 selects TanStack Query (Proposed).
 
 ---
 
@@ -751,7 +750,7 @@ Library-agnostic client-state rules:
   state store separate from the server-state cache.
 - Server data is never duplicated into that store.
 
-No ADR selects Zustand; the library is chosen in a frontend-stage decision.
+ADR-011 point 5 selects Zustand (Proposed).
 
 ---
 
