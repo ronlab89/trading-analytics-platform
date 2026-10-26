@@ -177,9 +177,9 @@ Already decided, to apply in the frontend stage:
   Query for server state, Zustand for client state, React Router, Recharts,
   TanStack Table and React Hook Form with Zod (ADR-011 points 1-9, Proposed).
 
-Open detail (FE): workspace location and package name of
-`apps/web`, and how it consumes workspace packages, now that B7.1 builds them
-(`BACKEND-ROADMAP.md` §6).
+The workspace is `apps/web`, package `@trading/web` (`Implemented`, FE0.1).
+Open detail (FE): how it consumes the workspace packages, now that B7.1 builds
+them (`BACKEND-ROADMAP.md` §6); settled with the `TradingClient` in FE0.5.
 
 ---
 

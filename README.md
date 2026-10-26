@@ -19,8 +19,9 @@ Work in progress; development is backend-first. The repository holds:
 
 The backend is done (blocks B0 to B7): auth with refresh and logout, the application layer and
 shared contracts, analytics, background jobs, realtime, OpenAPI, CI, and a production image with
-a `full` Compose profile and a smoke test. Not built yet: the web app (`apps/web` holds only a
-wireframe) and the public demo, planned as the frontend stage; the order and the
+a `full` Compose profile and a smoke test. The web app is started (`apps/web` is a Vite and React 19 workspace with
+an empty shell, FE0.1); its screens and the public demo are planned as the
+frontend stage; the order and the
 phase-to-block mapping are in
 [`docs/15-implementation-plan.md`](./docs/15-implementation-plan.md) section 4.1.
 [`docs/PROGRESS.md`](./docs/PROGRESS.md) is a working log that is being updated.
@@ -114,7 +115,7 @@ pnpm --filter @trading/database db:studio
 
 ```text
 apps/
-  web/        # Frontend: only a wireframe so far; the app is not started
+  web/        # Frontend: Vite and React 19 shell (FE0.1); screens not started
   api/        # Node/Express REST API (foundation implemented)
 packages/
   domain/     # Framework-agnostic domain logic (entities, validation, calculations)
