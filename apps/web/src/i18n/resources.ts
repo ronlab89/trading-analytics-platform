@@ -24,12 +24,31 @@ const en = {
     userMenu: "User menu",
     viewProfile: "View profile",
     signOut: "Sign out",
+    statusBar: "Status",
+    connection: {
+      live: "Live",
+      connecting: "Connecting…",
+      reconnecting: "Reconnecting…",
+      offline: "Offline",
+    },
+    lastSync: {
+      syncedAgo: "Synced {{seconds}} s ago",
+      lastDataAgo: "Last data {{seconds}} s ago",
+      lastDataAt: "Last data {{time}}",
+      waiting: "Waiting for the first data",
+    },
+    calculation: {
+      upToDate: "Calculation up to date · {{time}}",
+      stopped: "Calculation stopped",
+    },
+    alerts_one: "{{count}} alert",
+    alerts_other: "{{count}} alerts",
   },
 } as const;
 
-type Messages = { [K in keyof typeof en]: { [P in keyof (typeof en)[K]]: string } };
+type Messages<T> = { [K in keyof T]: T[K] extends string ? string : Messages<T[K]> };
 
-const es: Messages = {
+const es: Messages<typeof en> = {
   app: { title: "Plataforma de Análisis de Trading" },
   notFound: { title: "Página no encontrada", back: "Volver al inicio" },
   nav: {
@@ -47,6 +66,25 @@ const es: Messages = {
     userMenu: "Menú de usuario",
     viewProfile: "Ver perfil",
     signOut: "Cerrar sesión",
+    statusBar: "Estado",
+    connection: {
+      live: "En vivo",
+      connecting: "Conectando…",
+      reconnecting: "Reconectando…",
+      offline: "Sin conexión",
+    },
+    lastSync: {
+      syncedAgo: "Sincronizado hace {{seconds}} s",
+      lastDataAgo: "Último dato hace {{seconds}} s",
+      lastDataAt: "Último dato {{time}}",
+      waiting: "Esperando el primer dato",
+    },
+    calculation: {
+      upToDate: "Cálculo al día · {{time}}",
+      stopped: "Cálculo detenido",
+    },
+    alerts_one: "{{count}} alerta",
+    alerts_other: "{{count}} alertas",
   },
 };
 
