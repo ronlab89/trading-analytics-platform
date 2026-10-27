@@ -560,12 +560,14 @@ Backend authorization check
 | Shared UI structure and design tokens | `Deferred` until the new wireframe is shared (ADR-011, Pending UX input); neutral shadcn placeholder tokens are in place | FE0 |
 | Routing: React Router (ADR-011 point 6) | `Implemented` (FE0.3): browser router with the Vite base path and a not-found route; role-protected routes wait for the session screens | FE0 |
 | Server state: TanStack Query (ADR-011 point 4) | `Implemented` (FE0.3): `QueryClientProvider` with query retries off, because the HTTP adapter owns the retry policy (`04-tech-stack.md` §10) | FE0 |
-| Client state (Zustand), forms (React Hook Form with Zod), HTTP client timeout and retry (ADR-011 points 5, 9 and 15) | `Planned (FE0)` (`04-tech-stack.md` §10, §11 and §13) | FE0 |
+| Client state: Zustand (ADR-011 point 5) | `Implemented` (FE0.4): the language store; further stores arrive with their screens | FE0 |
+| Forms (React Hook Form with Zod), HTTP client timeout and retry (ADR-011 points 9 and 15) | `Planned (FE0)` (`04-tech-stack.md` §10, §11 and §13) | FE0 |
 | Request and response types (DTOs) consumed from `@trading/contracts` (ADR-002 point 5) | `Planned (FE0)`; the package is `Planned (B0)` | FE0 |
 | Feature structure (the `src/` layout below) | `Deferred` to the frontend-stage ADR (`06-architecture.md` §7 and §8) | FE0 |
 | `TradingClient` port with the HTTP adapter over `@trading/contracts` (ADR-002 point 5); the in-process adapter is FE4 | `Planned (FE0)` | FE0 |
 | Application shell: icon rail, top bar and status bar (`11-ui-ux-spec.md`) | `Planned (FE0)` | FE0 |
-| English and Spanish (ADR-010 point 8): English initially, Spanish only after the user selects it, localized messages mapped from error codes, locale formatting | `Planned (FE0)` | FE0 |
+| English and Spanish (ADR-010 point 8): react-i18next with `en` and `es` resources, English initially and as fallback, the browser language never read, `<html lang>` follows the active language | `Implemented` (FE0.4) | FE0 |
+| Language selection and its persistence in the `language` preference (FR-087), localized messages mapped from error codes, locale formatting of dates and numbers | `Planned (FE0)`; the selection needs a session (FE1) | FE0, FE1 |
 | `APP_MODE` and the API and WebSocket base URLs as build-time values (`VITE_APP_MODE`, `VITE_API_BASE_URL` and proposed `VITE_WS_URL`; ADR-006 point 8) | `VITE_APP_MODE` and `VITE_API_BASE_URL` `Implemented` (FE0.3, validated with Zod at startup); `VITE_WS_URL` `Planned (FE)` with the realtime views | FE0 |
 | Browser-console `Logger` adapter (ADR-009 point 1) | `Planned (FE0)`; the `Logger` port is `Implemented` (B3.1) | FE0 |
 | Wireframe corrections: `lang="es"` becomes English and `WIREFRAME-PLAN.md` is updated (ADR-010 point 8) | `Planned (FE0)` | FE0 |
