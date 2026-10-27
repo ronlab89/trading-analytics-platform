@@ -27,8 +27,12 @@ export function DemoMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline">
-          {t("shell.demoData")}
+        <Button
+          className="max-md:w-8 max-md:border-0 max-md:bg-transparent max-md:px-0"
+          size="sm"
+          variant="outline"
+        >
+          <span className="max-md:sr-only">{t("shell.demoData")}</span>
           <SlidersHorizontal />
         </Button>
       </DropdownMenuTrigger>

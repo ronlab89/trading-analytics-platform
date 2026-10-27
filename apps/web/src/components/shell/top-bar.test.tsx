@@ -17,11 +17,15 @@ function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}, pat
     portfolios,
     selectedPortfolioId: "growth",
     unread: { kind: "none" },
+    userName: "Jane Doe",
+    userInitials: "JD",
     onSelectPortfolio: vi.fn(),
     onOpenNotifications: vi.fn(),
     onSimulateConnectionIssue: vi.fn(),
     onSendTestNotification: vi.fn(),
     onResetDemo: vi.fn(),
+    onViewProfile: vi.fn(),
+    onSignOut: vi.fn(),
     ...overrides,
   } as const;
   const router = createMemoryRouter([{ path: "*", element: <TopBar {...props} /> }], {
@@ -97,6 +101,16 @@ describe("TopBar", () => {
     await user.click(screen.getByRole("button", { name: "Notifications" }));
 
     expect(props.onOpenNotifications).toHaveBeenCalledOnce();
+  });
+
+  it("signs out from the user menu", async () => {
+    const user = userEvent.setup();
+    const { props } = renderTopBar();
+
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "Sign out" }));
+
+    expect(props.onSignOut).toHaveBeenCalledOnce();
   });
 
   it("has no accessibility violations", async () => {

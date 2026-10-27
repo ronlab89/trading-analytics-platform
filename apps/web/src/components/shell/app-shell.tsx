@@ -37,10 +37,14 @@ export function AppShell() {
             onResetDemo={() => undefined}
             onSelectPortfolio={setPortfolioId}
             onSendTestNotification={() => undefined}
+            onSignOut={() => undefined}
             onSimulateConnectionIssue={() => undefined}
+            onViewProfile={() => undefined}
             portfolios={SAMPLE_PORTFOLIOS}
             selectedPortfolioId={portfolioId}
             unread={{ kind: "count", count: 3 }}
+            userInitials="JD"
+            userName="Jane Doe"
           />
           <main className="min-h-0 flex-1 overflow-y-auto p-4 md:pt-2 md:pr-4 md:pb-4 md:pl-2">
             <Outlet />

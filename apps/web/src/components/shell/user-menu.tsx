@@ -15,10 +15,18 @@ interface UserMenuProps {
   initials: string;
   onViewProfile: () => void;
   onSignOut: () => void;
+  /** Where the menu opens: beside the activity bar, below the mobile top bar. */
+  side?: "right" | "bottom";
 }
 
 /** The avatar of the activity bar and the menu it opens. */
-export function UserMenu({ name, initials, onViewProfile, onSignOut }: UserMenuProps) {
+export function UserMenu({
+  name,
+  initials,
+  onViewProfile,
+  onSignOut,
+  side = "right",
+}: UserMenuProps) {
   const { t } = useTranslation();
 
   return (
@@ -32,7 +40,7 @@ export function UserMenu({ name, initials, onViewProfile, onSignOut }: UserMenuP
           <Avatar initials={initials} shape="circle" size="md" tone="dark" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60" side="right">
+      <DropdownMenuContent align="end" className="w-60" side={side}>
         <DropdownMenuLabel>{name}</DropdownMenuLabel>
         <DropdownMenuItem onSelect={onViewProfile}>
           <User />
