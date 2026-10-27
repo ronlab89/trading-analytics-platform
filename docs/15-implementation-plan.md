@@ -149,7 +149,7 @@ Code vs ADR:
 | 10 Background operations | jobs and idempotency `Implemented` (B4) | screens `Planned (FE3)` |
 | 11 Demo Mode | `@trading/market-sim` `Implemented` (B5) | `Planned (FE4)` |
 | 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
-| 13 Observability | logger and security events `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Planned (FE0)`; diagnostic modes `Deferred` |
+| 13 Observability | logger and security events `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Implemented` (FE0.7); diagnostic modes `Deferred` |
 | 14 Deployment | local full stack `Implemented` (B7); CI `Implemented` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
 | 15 UX, accessibility and performance refinement | B5 (server-side performance measurement after realtime exists, §32) | `Planned (FE5)` |
 | 16 Portfolio case study | none | `Planned (FE6)` |
@@ -570,7 +570,7 @@ Backend authorization check
 | English and Spanish (ADR-010 point 8): react-i18next with `en` and `es` resources, English initially and as fallback, the browser language never read, `<html lang>` follows the active language | `Implemented` (FE0.4) | FE0 |
 | Language selection and its persistence in the `language` preference (FR-087), localized messages mapped from error codes, locale formatting of dates and numbers | `Planned (FE0)`; the selection needs a session (FE1) | FE0, FE1 |
 | `APP_MODE` and the API and WebSocket base URLs as build-time values (`VITE_APP_MODE`, `VITE_API_BASE_URL` and proposed `VITE_WS_URL`; ADR-006 point 8) | `VITE_APP_MODE` and `VITE_API_BASE_URL` `Implemented` (FE0.3, validated with Zod at startup); `VITE_WS_URL` `Planned (FE)` with the realtime views | FE0 |
-| Browser-console `Logger` adapter (ADR-009 point 1) | `Planned (FE0)`; the `Logger` port is `Implemented` (B3.1) | FE0 |
+| Browser-console `Logger` adapter (ADR-009 point 1) | `Implemented` (FE0.7): levels by Vite mode, the redaction list of the API adapter; the `Logger` port is `Implemented` (B3.1) | FE0 |
 | Wireframe corrections: `lang="es"` becomes English and `WIREFRAME-PLAN.md` is updated (ADR-010 point 8) | `Planned (FE0)` | FE0 |
 
 Code vs ADR:
@@ -1182,7 +1182,7 @@ E2E
 | Performance measurements: a `warn` entry when a request exceeds `SLOW_REQUEST_THRESHOLD_MS` (default 500 ms), and separate timing of the analytics series reconstruction (ADR-009 point 8); individual database operations are not timed | `Implemented` (B3.2, B3.3) | B3 |
 | Realtime and background-job diagnostics: lifecycle entries for realtime connections (ADR-007) and job transitions (ADR-008); simulator entries `simulation.started`, `simulation.paused`, `simulation.mode.changed` (ADR-009 point 11) | Job entries `Implemented` (B4.2); realtime and simulator entries `Implemented` (B5); their names and fields are open details | B4, B5 |
 | Local debugging tools: `LOG_LEVEL=debug` with `pino-pretty` covers local debugging | `Implemented` (B3.1; workflow documented in B3.5) | B3 |
-| Browser-console `Logger` adapter, so application code logs without knowing where it runs (ADR-009 point 1) | `Planned (FE0)`; demo event names `Deferred` (ADR-010 point 6) | FE0 |
+| Browser-console `Logger` adapter, so application code logs without knowing where it runs (ADR-009 point 1) | `Implemented` (FE0.7); demo event names `Deferred` (ADR-010 point 6) | FE0 |
 | Metrics, a `/metrics` endpoint and process metrics | `Deferred` (ADR-009 point 10) | none |
 | Realtime debug mode, diagnostics panel and demo diagnostics interface | `Deferred` to the frontend-stage ADR and the demo ADR (ADR-009 point 12, ADR-010 point 6) | none |
 
@@ -1515,7 +1515,7 @@ How the original nodes map to the blocks:
 | Background operations | Jobs B4; screens FE3 | `Implemented` (B4), `Planned (FE3)` |
 | Demo | Engine in B5 (with the application layer from B0); demo mode in FE4 | `Implemented` (B5), `Planned (FE4)` |
 | Testing | Spread across the blocks from B0; component, E2E and accessibility checks in FE5 | `Planned (B0)`, `Planned (FE5)` |
-| Observability | Backend B3; browser `Logger` adapter FE0 | `Implemented` (B3), `Planned (FE0)` |
+| Observability | Backend B3; browser `Logger` adapter FE0 | `Implemented` (B3), `Implemented` (FE0.7) |
 | Deployment | Local full stack B7; demo build and publication FE4 | `Implemented` (B7), `Planned (FE4)` |
 | Case Study | FE6 | `Planned (FE6)` |
 
