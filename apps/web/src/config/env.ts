@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   VITE_APP_MODE: z.enum(["real", "demo"]).default("real"),
-  VITE_API_BASE_URL: z.url().default("http://localhost:7001/api/v1"),
+  VITE_API_BASE_URL: z.url().default("http://localhost:7001"),
 });
 
 export type Env = z.infer<typeof envSchema>;
