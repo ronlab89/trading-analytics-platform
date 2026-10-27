@@ -5,7 +5,8 @@ const port = 4173;
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
-  reporter: "list",
+  // CI uploads this folder as an artifact (.github/workflows/ci.yml); keep the two in sync.
+  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {
     baseURL: `http://localhost:${port}`,
     trace: "on-first-retry",
