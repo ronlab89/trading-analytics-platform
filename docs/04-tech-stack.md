@@ -765,9 +765,9 @@ ADR already names is added in that ADR's block.
 | Frontend | Tailwind CSS, `@tailwindcss/vite` | 4.3.3 | `Implemented` (FE0.2) | ADR-011 point 2 |
 | Frontend | shadcn/ui on Radix UI (`radix-ui`, `shadcn`, `class-variance-authority`, `cn`, `lucide-react`, `tw-animate-css`) | 1.8.1, 4.22.1, 0.7.1, 0.5.0, 1.61.0, 1.4.0 | `Implemented` (FE0.2) | ADR-011 point 3 |
 | Frontend | TanStack Query | 5.104.5 | `Implemented` (FE0.3) | ADR-011 point 4 |
-| Frontend | Zustand | — | `Planned (FE)`; lands with the first client state (FE0.4) | ADR-011 point 5 |
+| Frontend | Zustand | 5.0.16 | `Implemented` (FE0.4) | ADR-011 point 5 |
 | Frontend | TanStack Table, React Hook Form, Recharts | — | `Planned (FE)` | ADR-011 points 7-9 |
-| Frontend | react-i18next | — | `Planned (FE)` | ADR-011 point 16 |
+| Frontend | react-i18next, i18next | 17.1.9, 26.5.11 | `Implemented` (FE0.4) | ADR-011 point 16 |
 | Testing | Vitest with React Testing Library, Playwright, axe-core | — | `Planned (FE)` | ADR-011 points 11-13 |
 | Observability | Metrics | — | `Deferred` | ADR-009 point 10 |
 
