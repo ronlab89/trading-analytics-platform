@@ -67,9 +67,11 @@ CI is `Implemented` (ADR-006 points 10 and 11): one GitHub Actions workflow,
 - `pnpm format:check`
 - `pnpm docs:check`
 - `pnpm test:scripts` (the fixture tests of `scripts/check-docs.mjs` and the tests of `scripts/smoke.mjs`)
-- `pnpm test` (the domain, database and API suites; the latter two run against a
-  PostgreSQL service container)
+- `pnpm test` (the domain, database, API and web suites; the database and API ones run
+  against a PostgreSQL service container)
 - `pnpm build`
+- installing Chromium and running the web end-to-end suite (`pnpm --filter @trading/web test:e2e`);
+  a failed run uploads the Playwright report as an artifact
 - starting the built API (`node apps/api/dist/index.js`) and waiting for `GET /health/ready`
 
 There is no coverage threshold and no continuous deployment. The CI test database

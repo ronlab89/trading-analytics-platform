@@ -1077,13 +1077,14 @@ The same product/application behavior should remain conceptually shared with the
 | Redaction and event-name unit tests; an integration test that a request's `requestId` appears in its log entries (ADR-009 point 13) | `Implemented` (B3.1, B3.2) | B3 |
 | Tests that ship with the feature of their block: analytics (B1), jobs and idempotency (B4), realtime server and the shared simulation engine (B5), the OpenAPI document (B6) | B1 and B4 `Implemented`; B5 and B6 `Planned`, per block | B1 to B6 |
 | Minimal CI workflow on pushes and pull requests to `develop` and `main`: install with the lockfile, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm docs:check`, `pnpm test` (domain, database and API suites, the last two against a PostgreSQL service container), `pnpm build`; no coverage threshold (ADR-006 points 10 and 11) | `Implemented`; the CI test database uses the ADR-005 point 13 roles | none |
-| Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the runner and React Testing Library `Deferred` to the frontend-stage ADR | FE5 |
+| Component tests (forms, tables, filters, loading and error states) | `Planned (FE5)`; the tooling (Vitest with jsdom, React Testing Library and `vitest-axe`) is `Implemented` (FE0.6) | FE5 |
 | Realtime client tests (connect, disconnect, reconnect, event processing) | Server `Implemented` (B5); client `Planned (FE3)` with the feature; component and E2E checks `Planned (FE5)` | B5, FE3, FE5 |
 | Demo tests: simulation determinism of the shared engine, and the demo flows with the CSV import failure | Engine `Implemented` (B5); demo flows `Planned (FE4)` | B5, FE4 |
-| E2E flows (login, portfolio workflow, transaction workflow, analytics, realtime, recovery), plus the CSV import flow as a critical flow (`10` §33) | `Planned (FE5)`; Playwright `Deferred` to the frontend-stage ADR | FE5 |
+| E2E flows (login, portfolio workflow, transaction workflow, analytics, realtime, recovery), plus the CSV import flow as a critical flow (`10` §33) | `Planned (FE5)`; Playwright is `Implemented` (FE0.6) with a minimal navigation suite that runs in CI | FE5 |
 | Accessibility checks | `Planned (FE5)`; the scanning tool `Deferred` to the frontend-stage ADR | FE5 |
 | Demo reset, local persistence and scripted failures other than the import failure | `Deferred` to the frontend-stage ADR (ADR-010 point 6) | FE4 |
-| Frontend test tooling (component runner, React Testing Library, Playwright), the accessibility scanning tool, the HTTP client timeout and retry policy, and a coverage threshold | `Deferred` (ADR-006 point 11) | none |
+| Frontend test tooling (component runner, React Testing Library, Playwright), the accessibility scanning tool and the HTTP client timeout and retry policy | `Implemented` (FE0.5 for the client policy, FE0.6 for the tooling) | FE0 |
+| Frontend coverage threshold | `Deferred` (ADR-006 point 11) | none |
 
 Code vs ADR:
 
@@ -3220,8 +3221,8 @@ public demo works without production infrastructure
 | --- | --- | --- |
 | Unit tests | `Implemented` for `packages/domain` (`vitest run`); application services with in-memory fakes `Planned (B0)` | B0 |
 | Integration tests | `Implemented` for `packages/database` and `apps/api` (they run against `.env.test.local`); route tests `Planned (B0)`; run in CI `Implemented` | B0 |
-| Component tests | tooling `Deferred` to the frontend-stage ADR (ADR-006 point 11); checks `Planned (FE5)` | FE5 |
-| E2E | tooling `Deferred` to the frontend-stage ADR (same decision; Playwright is named in ADR-006 point 11); checks `Planned (FE5)` | FE5 |
+| Component tests | tooling `Implemented` (FE0.6); checks `Planned (FE5)` | FE5 |
+| E2E | tooling `Implemented` (FE0.6, Playwright); checks `Planned (FE5)` | FE5 |
 | Accessibility | the scanning tool is chosen in the frontend-stage ADR; checks `Planned (FE5)` | FE5 |
 | Security review | B2 owns the auth-focused review; B7 owns the final pass with the checklist of §33 (decided 2026-10-08) | B2, B7 |
 | Performance measurement | server: slow-request logging at 500 ms `Implemented` (B3.2), no load test, metrics `Deferred` (ADR-009 points 8 and 10); measurement after realtime exists `Implemented` (B5) (decided 2026-10-08); client `Planned (FE5)` (`10-testing-strategy.md` §39) | B3, B5, FE5 |
