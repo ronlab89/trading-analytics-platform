@@ -1,9 +1,12 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import "./config/env";
+import { env } from "./config/env";
 import "./i18n";
 import "./index.css";
+import { logger } from "./lib/logging/logger";
+
+logger.info("app.started", { mode: env.VITE_APP_MODE });
 
 const container = document.getElementById("root");
 if (!container) {

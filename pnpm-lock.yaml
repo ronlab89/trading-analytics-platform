@@ -239,6 +239,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.104.5
         version: 5.104.5(@types/react@19.3.0)(react@19.3.1)
+      '@trading/application':
+        specifier: workspace:*
+        version: link:../../packages/application
       '@trading/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
