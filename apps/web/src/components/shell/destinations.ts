@@ -34,3 +34,15 @@ export const SETTINGS_DESTINATION: Destination = {
   labelKey: "nav.settings",
   icon: Settings,
 };
+
+/**
+ * The destination to mark as current. A path inside a view marks that view; any other
+ * path (the not-found page) leaves Home marked, as the Figma global states do.
+ */
+export function activeDestinationPath(pathname: string): string {
+  const match = [...DESTINATIONS, SETTINGS_DESTINATION].find(
+    ({ path }) => path !== "/" && (pathname === path || pathname.startsWith(`${path}/`)),
+  );
+
+  return match?.path ?? "/";
+}

@@ -19,6 +19,12 @@ const en = {
     activity: "Activity",
     settings: "Settings",
   },
+  shell: {
+    mainNavigation: "Main navigation",
+    userMenu: "User menu",
+    viewProfile: "View profile",
+    signOut: "Sign out",
+  },
 } as const;
 
 type Messages = { [K in keyof typeof en]: { [P in keyof (typeof en)[K]]: string } };
@@ -35,6 +41,12 @@ const es: Messages = {
     decisions: "Centro de decisiones",
     activity: "Actividad",
     settings: "Configuración",
+  },
+  shell: {
+    mainNavigation: "Navegación principal",
+    userMenu: "Menú de usuario",
+    viewProfile: "Ver perfil",
+    signOut: "Cerrar sesión",
   },
 };
 
