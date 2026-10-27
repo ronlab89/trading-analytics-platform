@@ -56,7 +56,7 @@ export function StatusBar({ connection, lastSync, calculation, alertCount }: Sta
   return (
     <footer
       aria-label={t("shell.statusBar")}
-      className="sticky bottom-0 flex h-7 shrink-0 items-center justify-between bg-card px-3"
+      className="flex h-7 shrink-0 items-center justify-between rounded-md bg-card px-3"
     >
       <div className="flex items-center gap-4">
         <StatusItem role="status" tone={CONNECTION_TONE[connection]}>
