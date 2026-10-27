@@ -1,10 +1,15 @@
-import { Button } from "@/components/ui/button";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { RouterProvider } from "react-router";
+import { createQueryClient } from "@/lib/query-client";
+import { router } from "@/router";
 
 export function App() {
+  const [queryClient] = useState(createQueryClient);
+
   return (
-    <main className="flex min-h-screen flex-col items-start gap-4 p-6">
-      <h1 className="text-2xl font-semibold">Trading Analytics Platform</h1>
-      <Button>Placeholder</Button>
-    </main>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
   );
 }

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
+import reactHooks from "eslint-plugin-react-hooks";
 import eslintConfigPrettier from "eslint-config-prettier";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -122,6 +123,12 @@ export default [
         },
       ],
     },
+  },
+
+  {
+    // Rules of Hooks and exhaustive dependencies for the React app (ADR-011 point 1).
+    files: ["apps/web/src/**/*.{ts,tsx}"],
+    ...reactHooks.configs.flat.recommended,
   },
 
   {

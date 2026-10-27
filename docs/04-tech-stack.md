@@ -593,7 +593,8 @@ cover it); test variables come from the job `env`, not a generated
 | `SLOW_REQUEST_THRESHOLD_MS` | API (B3) | milliseconds; default `500`; HTTP requests only |
 | `API_DOCS_ENABLED` | API (B6) | `true` or `false`; unset means on outside production and off in production; serves `/openapi.json` and the Scalar viewer at `/api/docs`; when off both answer 404 |
 | `API_DOCS_CDN_URL` | API (B6) | optional http(s) URL of the viewer script; default Scalar's jsDelivr bundle. The viewer needs the network to load it; set this to a host you serve to work offline |
-| `APP_MODE` | web build (FE) | `real` or `demo`, exposed as `VITE_APP_MODE` |
+| `APP_MODE` | web build (FE0.3) | `real` or `demo`, exposed as `VITE_APP_MODE`; default `real` |
+| `VITE_API_BASE_URL` | web build (FE0.3) | http(s) URL of the API; default `http://localhost:7001/api/v1` |
 
 The API validates its variables with Zod at startup and exits with code 1
 on any invalid value, naming the keys but never their values. Scripts load
@@ -760,10 +761,11 @@ ADR already names is added in that ADR's block.
 | Infrastructure | API Dockerfile, `full` profile | — | `Implemented` (B7) | ADR-006 point 4 |
 | Frontend build | Vite, `@vitejs/plugin-react` | 8.3.5, 6.1.2 | `Implemented` (FE0.1) | ADR-006 point 8 |
 | Frontend | React | 19.3.1 | `Implemented` (FE0.1) | ADR-011 point 1 |
-| Frontend | React Router | — | `Planned (FE)` | ADR-011 point 6 |
+| Frontend | React Router | 8.5.0 | `Implemented` (FE0.3) | ADR-011 point 6 |
 | Frontend | Tailwind CSS, `@tailwindcss/vite` | 4.3.3 | `Implemented` (FE0.2) | ADR-011 point 2 |
 | Frontend | shadcn/ui on Radix UI (`radix-ui`, `shadcn`, `class-variance-authority`, `cn`, `lucide-react`, `tw-animate-css`) | 1.8.1, 4.22.1, 0.7.1, 0.5.0, 1.61.0, 1.4.0 | `Implemented` (FE0.2) | ADR-011 point 3 |
-| Frontend | TanStack Query, Zustand | — | `Planned (FE)` | ADR-011 points 4, 5 |
+| Frontend | TanStack Query | 5.104.5 | `Implemented` (FE0.3) | ADR-011 point 4 |
+| Frontend | Zustand | — | `Planned (FE)`; lands with the first client state (FE0.4) | ADR-011 point 5 |
 | Frontend | TanStack Table, React Hook Form, Recharts | — | `Planned (FE)` | ADR-011 points 7-9 |
 | Frontend | react-i18next | — | `Planned (FE)` | ADR-011 point 16 |
 | Testing | Vitest with React Testing Library, Playwright, axe-core | — | `Planned (FE)` | ADR-011 points 11-13 |
