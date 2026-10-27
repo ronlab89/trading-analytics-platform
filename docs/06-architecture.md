@@ -178,8 +178,9 @@ Already decided, to apply in the frontend stage:
   TanStack Table and React Hook Form with Zod (ADR-011 points 1-9, Proposed).
 
 The workspace is `apps/web`, package `@trading/web` (`Implemented`, FE0.1).
-Open detail (FE): how it consumes the workspace packages, now that B7.1 builds
-them (`BACKEND-ROADMAP.md` §6); settled with the `TradingClient` in FE0.5.
+The web app consumes the workspace packages through the `@trading/source`
+condition (Vite `resolve.conditions`), as the API does, and references
+`@trading/contracts` in its `tsconfig` (`Implemented`, FE0.5).
 
 ---
 

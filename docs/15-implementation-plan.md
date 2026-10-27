@@ -561,10 +561,11 @@ Backend authorization check
 | Routing: React Router (ADR-011 point 6) | `Implemented` (FE0.3): browser router with the Vite base path and a not-found route; role-protected routes wait for the session screens | FE0 |
 | Server state: TanStack Query (ADR-011 point 4) | `Implemented` (FE0.3): `QueryClientProvider` with query retries off, because the HTTP adapter owns the retry policy (`04-tech-stack.md` §10) | FE0 |
 | Client state: Zustand (ADR-011 point 5) | `Implemented` (FE0.4): the language store; further stores arrive with their screens | FE0 |
-| Forms (React Hook Form with Zod), HTTP client timeout and retry (ADR-011 points 9 and 15) | `Planned (FE0)` (`04-tech-stack.md` §10, §11 and §13) | FE0 |
-| Request and response types (DTOs) consumed from `@trading/contracts` (ADR-002 point 5) | `Planned (FE0)`; the package is `Planned (B0)` | FE0 |
+| HTTP client timeout and retry (ADR-011 point 15) | `Implemented` (FE0.5): 15 s timeout, reads retried twice with backoff, 4xx never retried, creations retried only with their `Idempotency-Key`; one test per rule | FE0 |
+| Forms (React Hook Form with Zod) (ADR-011 point 9) | `Planned (FE0)` (`04-tech-stack.md` §11 and §13); arrives with the first form (preferences) | FE0 |
+| Request and response types (DTOs) consumed from `@trading/contracts` (ADR-002 point 5) | `Implemented` (FE0.5): `@trading/web` depends on the package and resolves its source through the `@trading/source` condition, as the API does | FE0 |
 | Feature structure (the `src/` layout below) | `Deferred` to the frontend-stage ADR (`06-architecture.md` §7 and §8) | FE0 |
-| `TradingClient` port with the HTTP adapter over `@trading/contracts` (ADR-002 point 5); the in-process adapter is FE4 | `Planned (FE0)` | FE0 |
+| `TradingClient` port with the HTTP adapter over `@trading/contracts` (ADR-002 point 5): one `call(operation, input)` over the contract `ApiOperation`s, success validated against its schema, failures raised as `ApiError`; the in-process adapter is FE4. The 401 refresh and retry (ADR-005) arrives with the session screens (FE1) | `Implemented` (FE0.5) | FE0 |
 | Application shell: icon rail, top bar and status bar (`11-ui-ux-spec.md`) | `Planned (FE0)` | FE0 |
 | English and Spanish (ADR-010 point 8): react-i18next with `en` and `es` resources, English initially and as fallback, the browser language never read, `<html lang>` follows the active language | `Implemented` (FE0.4) | FE0 |
 | Language selection and its persistence in the `language` preference (FR-087), localized messages mapped from error codes, locale formatting of dates and numbers | `Planned (FE0)`; the selection needs a session (FE1) | FE0, FE1 |

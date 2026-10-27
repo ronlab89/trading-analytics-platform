@@ -1,4 +1,6 @@
-export const LANGUAGES = ["en", "es"] as const;
+import type { LANGUAGES } from "@trading/contracts";
+
+/** The languages the API accepts in `UserPreference.language`. */
 export type Language = (typeof LANGUAGES)[number];
 
 /** English is the initial language and the fallback (ADR-010 point 8). */
