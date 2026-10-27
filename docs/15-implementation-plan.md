@@ -557,7 +557,8 @@ Backend authorization check
 | React 19 as the rendering library (ADR-011 point 1) | `Implemented` (FE0.1) | FE0 |
 | TypeScript for `apps/web`, covered by the root `typecheck` | `Implemented` (FE0.1) | FE0 |
 | Tailwind CSS and shadcn/ui on Radix (ADR-011 points 2 and 3) | `Implemented` (FE0.2) | FE0 |
-| Shared UI structure and design tokens | `Deferred` until the new wireframe is shared (ADR-011, Pending UX input); neutral shadcn placeholder tokens are in place | FE0 |
+| Design tokens from the Figma file "Trading (Copy)" (light theme only, no dark theme): exported to `apps/web/src/styles/tokens.css`, wired to the shadcn names in `index.css`, DM Sans with the text styles as utilities (`styles/typography.css`), the Figma radius scale, the `--space-*` scale as `p-md`-style utilities and the four elevation shadows (`styles/effects.css`, written by hand because the exporter does not cover effect styles; keep them in step with Figma). `styles/tokens.test.ts` checks that the wiring stays complete | `Implemented` (FE0.8) | FE0 |
+| Shared UI structure (shell and base components) | `Planned (FE0)` after the tokens; the Figma shell and components come next | FE0 |
 | Routing: React Router (ADR-011 point 6) | `Implemented` (FE0.3): browser router with the Vite base path and a not-found route; role-protected routes wait for the session screens | FE0 |
 | Server state: TanStack Query (ADR-011 point 4) | `Implemented` (FE0.3): `QueryClientProvider` with query retries off, because the HTTP adapter owns the retry policy (`04-tech-stack.md` §10) | FE0 |
 | Client state: Zustand (ADR-011 point 5) | `Implemented` (FE0.4): the language store; further stores arrive with their screens | FE0 |
