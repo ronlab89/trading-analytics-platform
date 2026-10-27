@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ActivityBar } from "./activity-bar";
+import { BottomTabBar } from "./bottom-tab-bar";
 import type { PortfolioOption } from "./portfolio-selector";
 import { StatusBar } from "./status-bar";
 import { TopBar } from "./top-bar";
@@ -23,14 +24,14 @@ export function AppShell() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen gap-2 p-2">
+      <div className="flex h-dvh flex-col md:flex-row md:gap-2 md:p-2">
         <ActivityBar
           userInitials="JD"
           userName="Jane Doe"
           onSignOut={() => undefined}
           onViewProfile={() => undefined}
         />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col md:gap-2">
           <TopBar
             onOpenNotifications={() => undefined}
             onResetDemo={() => undefined}
@@ -41,7 +42,7 @@ export function AppShell() {
             selectedPortfolioId={portfolioId}
             unread={{ kind: "count", count: 3 }}
           />
-          <main className="min-h-0 flex-1 overflow-y-auto pt-2 pr-4 pb-4 pl-2">
+          <main className="min-h-0 flex-1 overflow-y-auto p-4 md:pt-2 md:pr-4 md:pb-4 md:pl-2">
             <Outlet />
           </main>
           <StatusBar
@@ -50,6 +51,7 @@ export function AppShell() {
             connection="live"
             lastSync={{ kind: "syncedAgo", seconds: 3 }}
           />
+          <BottomTabBar />
         </div>
       </div>
     </TooltipProvider>

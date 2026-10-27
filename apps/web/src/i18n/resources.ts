@@ -21,6 +21,8 @@ const en = {
   },
   shell: {
     mainNavigation: "Main navigation",
+    tabNavigation: "Main tabs",
+    more: "More",
     userMenu: "User menu",
     viewProfile: "View profile",
     signOut: "Sign out",
@@ -74,6 +76,8 @@ const es: Messages<typeof en> = {
   },
   shell: {
     mainNavigation: "Navegación principal",
+    tabNavigation: "Pestañas principales",
+    more: "Más",
     userMenu: "Menú de usuario",
     viewProfile: "Ver perfil",
     signOut: "Cerrar sesión",

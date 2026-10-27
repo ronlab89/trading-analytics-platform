@@ -35,6 +35,15 @@ export const SETTINGS_DESTINATION: Destination = {
   icon: Settings,
 };
 
+const byPath = (paths: readonly string[]): readonly Destination[] =>
+  [...DESTINATIONS, SETTINGS_DESTINATION].filter(({ path }) => paths.includes(path));
+
+/** The four views that get their own tab in the mobile bottom bar. */
+export const TAB_DESTINATIONS = byPath(["/", "/portfolios", "/transactions", "/markets"]);
+
+/** The views that live behind the "More" tab on mobile. */
+export const MORE_DESTINATIONS = byPath(["/analytics", "/decisions", "/activity", "/settings"]);
+
 /**
  * The destination to mark as current. A path inside a view marks that view; any other
  * path (the not-found page) leaves Home marked, as the Figma global states do.
