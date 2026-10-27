@@ -97,19 +97,22 @@ explicit `any` (§34). Resolved versions: see §2.
 
 # 7. Styling
 
-**Status:** `Planned (FE)` — ADR-011 point 2 (Proposed).
+**Status:** `Implemented` (FE0.2, `tailwindcss` `4.3.3` with `@tailwindcss/vite`) — ADR-011 point 2 (Proposed).
 
 Tailwind CSS is the only styling layer. Hand-written CSS is allowed only
-where Tailwind cannot express the rule.
+where Tailwind cannot express the rule. `src/index.css` holds the neutral
+shadcn color tokens as placeholders; the real tokens and typography wait for
+the new wireframe (the font is the system stack until then).
 
 ---
 
 # 8. UI Components
 
-**Status:** `Planned (FE)` — ADR-011 point 3 (Proposed).
+**Status:** `Implemented` (FE0.2, `radix-ui` `1.8.1`, `shadcn` `4.22.1`) — ADR-011 point 3 (Proposed).
 
-shadcn/ui on Radix UI primitives, copied into the repository and styled with
-Tailwind.
+shadcn/ui on Radix UI primitives (style `radix-vega`), copied into the
+repository and styled with Tailwind. `components.json` fixes the style and the
+`@/` alias; `Button` is the first component.
 
 ---
 
@@ -758,7 +761,8 @@ ADR already names is added in that ADR's block.
 | Frontend build | Vite, `@vitejs/plugin-react` | 8.3.5, 6.1.2 | `Implemented` (FE0.1) | ADR-006 point 8 |
 | Frontend | React | 19.3.1 | `Implemented` (FE0.1) | ADR-011 point 1 |
 | Frontend | React Router | — | `Planned (FE)` | ADR-011 point 6 |
-| Frontend | Tailwind CSS, shadcn/ui on Radix UI | — | `Planned (FE)` | ADR-011 points 2, 3 |
+| Frontend | Tailwind CSS, `@tailwindcss/vite` | 4.3.3 | `Implemented` (FE0.2) | ADR-011 point 2 |
+| Frontend | shadcn/ui on Radix UI (`radix-ui`, `shadcn`, `class-variance-authority`, `cn`, `lucide-react`, `tw-animate-css`) | 1.8.1, 4.22.1, 0.7.1, 0.5.0, 1.61.0, 1.4.0 | `Implemented` (FE0.2) | ADR-011 point 3 |
 | Frontend | TanStack Query, Zustand | — | `Planned (FE)` | ADR-011 points 4, 5 |
 | Frontend | TanStack Table, React Hook Form, Recharts | — | `Planned (FE)` | ADR-011 points 7-9 |
 | Frontend | react-i18next | — | `Planned (FE)` | ADR-011 point 16 |
