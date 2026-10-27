@@ -128,7 +128,7 @@ Respecting `prefers-reduced-motion` is an accessibility requirement
 
 # 10. Server State
 
-**Status:** `Planned (FE)` — ADR-011 points 4 and 15 (Proposed).
+**Status:** TanStack Query and the HTTP client policy `Implemented` (FE0.3, FE0.5) — ADR-011 points 4 and 15 (Proposed).
 
 TanStack Query. The HTTP client times out after 15 seconds; reads are retried
 up to 2 times with exponential backoff after a network error, a timeout, or a
@@ -594,7 +594,7 @@ cover it); test variables come from the job `env`, not a generated
 | `API_DOCS_ENABLED` | API (B6) | `true` or `false`; unset means on outside production and off in production; serves `/openapi.json` and the Scalar viewer at `/api/docs`; when off both answer 404 |
 | `API_DOCS_CDN_URL` | API (B6) | optional http(s) URL of the viewer script; default Scalar's jsDelivr bundle. The viewer needs the network to load it; set this to a host you serve to work offline |
 | `APP_MODE` | web build (FE0.3) | `real` or `demo`, exposed as `VITE_APP_MODE`; default `real` |
-| `VITE_API_BASE_URL` | web build (FE0.3) | http(s) URL of the API; default `http://localhost:7001/api/v1` |
+| `VITE_API_BASE_URL` | web build (FE0.3) | http(s) origin of the API, without a path (the contract operations carry `/api/v1`); default `http://localhost:7001` |
 
 The API validates its variables with Zod at startup and exits with code 1
 on any invalid value, naming the keys but never their values. Scripts load
