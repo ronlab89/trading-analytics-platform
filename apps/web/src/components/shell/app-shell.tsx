@@ -1,7 +1,16 @@
+import { useState } from "react";
 import { Outlet } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ActivityBar } from "./activity-bar";
+import type { PortfolioOption } from "./portfolio-selector";
 import { StatusBar } from "./status-bar";
+import { TopBar } from "./top-bar";
+
+const SAMPLE_PORTFOLIOS: readonly PortfolioOption[] = [
+  { id: "growth", name: "Crecimiento", currency: "USD", initials: "CR" },
+  { id: "conservative", name: "Conservador", currency: "USD", initials: "CO" },
+  { id: "dividends", name: "Dividendos", currency: "USD", initials: "DI" },
+];
 
 /**
  * The frame of every view: floating panels (activity bar, status bar) with 8 px around them
@@ -10,6 +19,8 @@ import { StatusBar } from "./status-bar";
  * connection (FE3) provide the real ones.
  */
 export function AppShell() {
+  const [portfolioId, setPortfolioId] = useState("growth");
+
   return (
     <TooltipProvider>
       <div className="flex h-screen gap-2 p-2">
@@ -20,6 +31,16 @@ export function AppShell() {
           onViewProfile={() => undefined}
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <TopBar
+            onOpenNotifications={() => undefined}
+            onResetDemo={() => undefined}
+            onSelectPortfolio={setPortfolioId}
+            onSendTestNotification={() => undefined}
+            onSimulateConnectionIssue={() => undefined}
+            portfolios={SAMPLE_PORTFOLIOS}
+            selectedPortfolioId={portfolioId}
+            unread={{ kind: "count", count: 3 }}
+          />
           <main className="min-h-0 flex-1 overflow-y-auto pt-2 pr-4 pb-4 pl-2">
             <Outlet />
           </main>
