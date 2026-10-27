@@ -15,6 +15,7 @@ export function AppShell() {
       <div className="flex h-screen gap-2 p-2">
         <ActivityBar
           userInitials="JD"
+          userName="Jane Doe"
           onSignOut={() => undefined}
           onViewProfile={() => undefined}
         />

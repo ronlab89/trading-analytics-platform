@@ -11,7 +11,7 @@ function renderBar(path = "/", handlers = { onViewProfile: vi.fn(), onSignOut: v
   return render(
     <MemoryRouter initialEntries={[path]}>
       <TooltipProvider>
-        <ActivityBar userInitials="JD" {...handlers} />
+        <ActivityBar userInitials="JD" userName="Jane Doe" {...handlers} />
       </TooltipProvider>
     </MemoryRouter>,
   );
@@ -53,12 +53,15 @@ describe("ActivityBar", () => {
     expect(screen.getByRole("link", { current: "page" })).toHaveAccessibleName("Home");
   });
 
-  it("opens the user menu with the profile and sign out actions", async () => {
+  it("opens the user menu with the user name, the profile and sign out actions", async () => {
     const handlers = { onViewProfile: vi.fn(), onSignOut: vi.fn() };
     renderBar("/", handlers);
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+
     await user.click(screen.getByRole("menuitem", { name: "Sign out" }));
 
     expect(handlers.onSignOut).toHaveBeenCalledOnce();

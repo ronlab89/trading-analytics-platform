@@ -7,13 +7,19 @@ import { NavItem } from "./nav-item";
 import { UserMenu } from "./user-menu";
 
 interface ActivityBarProps {
+  userName: string;
   userInitials: string;
   onViewProfile: () => void;
   onSignOut: () => void;
 }
 
 /** The fixed 56 px icon rail on the left (tablet and desktop; mobile uses the bottom tab bar). */
-export function ActivityBar({ userInitials, onViewProfile, onSignOut }: ActivityBarProps) {
+export function ActivityBar({
+  userName,
+  userInitials,
+  onViewProfile,
+  onSignOut,
+}: ActivityBarProps) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const activePath = activeDestinationPath(pathname);
@@ -45,7 +51,12 @@ export function ActivityBar({ userInitials, onViewProfile, onSignOut }: Activity
           label={t(SETTINGS_DESTINATION.labelKey)}
           to={SETTINGS_DESTINATION.path}
         />
-        <UserMenu initials={userInitials} onSignOut={onSignOut} onViewProfile={onViewProfile} />
+        <UserMenu
+          name={userName}
+          initials={userInitials}
+          onSignOut={onSignOut}
+          onViewProfile={onViewProfile}
+        />
       </div>
     </nav>
   );
