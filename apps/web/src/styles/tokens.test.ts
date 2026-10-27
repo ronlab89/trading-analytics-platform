@@ -43,10 +43,7 @@ describe("design tokens", () => {
     expect(sources["index.css"]).toContain(`--shadow-${name}: var(--shadow-${name});`);
   });
 
-  it.each(["3xs", "xs", "md", "4xl"])(
-    "exposes the %s spacing token as a Tailwind utility",
-    (step) => {
-      expect(sources["index.css"]).toContain(`--spacing-${step}: var(--space-${step});`);
-    },
-  );
+  it("does not remap the Tailwind size scale with the spacing tokens", () => {
+    expect(sources["index.css"]).not.toMatch(/--spacing-\w+\s*:/);
+  });
 });
