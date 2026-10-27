@@ -49,15 +49,15 @@ export function TopBar({
   );
 
   return (
-    <header className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-2.5 md:h-11 md:rounded-md md:border md:py-0 md:pr-3 md:pl-2">
+    <header className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-2.5 tablet:h-11 tablet:rounded-md tablet:border tablet:py-0 tablet:pr-3 tablet:pl-2">
       <div className="flex min-w-0 items-center gap-2">
-        <Logo className="shrink-0 md:hidden" />
+        <Logo className="shrink-0 tablet:hidden" />
         <PortfolioSelector
           onSelect={onSelectPortfolio}
           portfolios={portfolios}
           selectedId={selectedPortfolioId}
         />
-        <div className="flex items-center gap-2 max-md:hidden">
+        <div className="flex items-center gap-2 max-tablet:hidden">
           <ChevronRight aria-hidden="true" className="size-3.5 text-muted-foreground" />
           <Breadcrumb label={t("shell.breadcrumb")}>
             <BreadcrumbItem>{current ? t(current.labelKey) : null}</BreadcrumbItem>
@@ -71,7 +71,7 @@ export function TopBar({
           onSimulateConnectionIssue={onSimulateConnectionIssue}
         />
         <NotificationButton onClick={onOpenNotifications} unread={unread} />
-        <div className="md:hidden">
+        <div className="tablet:hidden">
           <UserMenu
             initials={userInitials}
             name={userName}

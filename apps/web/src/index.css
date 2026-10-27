@@ -92,3 +92,14 @@
     @apply font-sans;
   }
 }
+
+/*
+ * The layout modes of ADR-010 point 9: mobile 360-560 px, tablet 561-900 px, desktop above
+ * 900 px. They replace Tailwind's default `sm`..`2xl` so a `md:` or `lg:` cannot slip in at a
+ * width the design does not change at. The shell switches to the activity bar at `tablet`.
+ */
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-tablet: 561px;
+  --breakpoint-desktop: 901px;
+}

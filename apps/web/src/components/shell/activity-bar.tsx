@@ -27,7 +27,7 @@ export function ActivityBar({
   return (
     <nav
       aria-label={t("shell.mainNavigation")}
-      className="hidden w-14 shrink-0 flex-col items-center justify-between rounded-md bg-card px-2 pt-3 pb-2 md:flex"
+      className="hidden w-14 shrink-0 flex-col items-center justify-between rounded-md bg-card px-2 pt-3 pb-2 tablet:flex"
     >
       <div className="flex flex-col items-center gap-3">
         <Logo />

@@ -24,14 +24,14 @@ export function AppShell() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-dvh flex-col md:flex-row md:gap-2 md:p-2">
+      <div className="flex h-dvh flex-col tablet:flex-row tablet:gap-2 tablet:p-2">
         <ActivityBar
           userInitials="JD"
           userName="Jane Doe"
           onSignOut={() => undefined}
           onViewProfile={() => undefined}
         />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col md:gap-2">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col tablet:gap-2">
           <TopBar
             onOpenNotifications={() => undefined}
             onResetDemo={() => undefined}
@@ -46,7 +46,7 @@ export function AppShell() {
             userInitials="JD"
             userName="Jane Doe"
           />
-          <main className="min-h-0 flex-1 overflow-y-auto p-4 md:pt-2 md:pr-4 md:pb-4 md:pl-2">
+          <main className="min-h-0 flex-1 overflow-y-auto p-4 tablet:px-6 tablet:pt-2 tablet:pb-4 desktop:pr-4 desktop:pl-2">
             <Outlet />
           </main>
           <StatusBar

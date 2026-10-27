@@ -38,12 +38,12 @@ export function PortfolioSelector({ portfolios, selectedId, onSelect }: Portfoli
       <DropdownMenuTrigger asChild>
         <button
           aria-label={t("shell.selectPortfolio")}
-          className="flex items-center md:w-50 gap-2 rounded-md border border-input py-1 pr-2 pl-1 text-left hover:bg-(--color-surface-hover) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-expanded:border-(--color-border-strong-hover) aria-expanded:bg-(--color-surface-hover)"
+          className="flex items-center tablet:w-50 gap-2 rounded-md border border-input py-1 pr-2 pl-1 text-left hover:bg-(--color-surface-hover) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-expanded:border-(--color-border-strong-hover) aria-expanded:bg-(--color-surface-hover)"
           type="button"
         >
           <Avatar initials={selected.initials} shape="square" size="sm" tone="brand" />
           <span className="flex-1 truncate text-sm font-medium">{selected.name}</span>
-          <Badge className="max-md:hidden">{selected.currency}</Badge>
+          <Badge className="max-tablet:hidden">{selected.currency}</Badge>
           <ChevronDown aria-hidden="true" className="size-4 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>

@@ -28,11 +28,11 @@ export function DemoMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="max-md:w-8 max-md:border-0 max-md:bg-transparent max-md:px-0"
+          className="max-tablet:w-8 max-tablet:border-0 max-tablet:bg-transparent max-tablet:px-0"
           size="sm"
           variant="outline"
         >
-          <span className="max-md:sr-only">{t("shell.demoData")}</span>
+          <span className="max-tablet:sr-only">{t("shell.demoData")}</span>
           <SlidersHorizontal />
         </Button>
       </DropdownMenuTrigger>

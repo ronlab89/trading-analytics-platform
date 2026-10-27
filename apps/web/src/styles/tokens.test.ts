@@ -46,4 +46,9 @@ describe("design tokens", () => {
   it("does not remap the Tailwind size scale with the spacing tokens", () => {
     expect(sources["index.css"]).not.toMatch(/--spacing-\w+\s*:/);
   });
+
+  it("switches layout at the ADR-010 widths, not at the Tailwind defaults", () => {
+    expect(sources["index.css"]).toContain("--breakpoint-tablet: 561px;");
+    expect(sources["index.css"]).toContain("--breakpoint-desktop: 901px;");
+  });
 });

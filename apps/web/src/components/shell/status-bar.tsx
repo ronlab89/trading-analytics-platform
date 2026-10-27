@@ -62,8 +62,8 @@ export function StatusBar({ connection, lastSync, calculation, alertCount }: Sta
         <StatusItem role="status" tone={CONNECTION_TONE[connection]}>
           {t(`shell.connection.${connection}`)}
         </StatusItem>
-        <StatusItem className="hidden md:flex">{lastSyncText(t, lastSync)}</StatusItem>
-        <StatusItem className="hidden md:flex">{calculationText(t, calculation)}</StatusItem>
+        <StatusItem className="hidden tablet:flex">{lastSyncText(t, lastSync)}</StatusItem>
+        <StatusItem className="hidden tablet:flex">{calculationText(t, calculation)}</StatusItem>
       </div>
       <StatusItem icon={TriangleAlert}>{t("shell.alerts", { count: alertCount })}</StatusItem>
     </footer>

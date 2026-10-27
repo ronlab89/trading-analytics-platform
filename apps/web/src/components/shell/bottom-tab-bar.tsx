@@ -78,7 +78,7 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label={t("shell.tabNavigation")}
-      className="flex shrink-0 border-t bg-card pb-3 md:hidden"
+      className="flex shrink-0 border-t bg-card pb-3 tablet:hidden"
     >
       {TAB_DESTINATIONS.map(({ path, labelKey, icon: Icon }) => {
         const active = path === activePath;
