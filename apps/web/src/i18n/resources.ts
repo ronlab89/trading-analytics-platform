@@ -9,6 +9,16 @@ export const DEFAULT_LANGUAGE: Language = "en";
 const en = {
   app: { title: "Trading Analytics Platform" },
   notFound: { title: "Page not found", back: "Back to the start" },
+  nav: {
+    home: "Home",
+    portfolios: "Portfolios",
+    transactions: "Transactions",
+    analytics: "Analytics",
+    markets: "Markets",
+    decisions: "Decision Center",
+    activity: "Activity",
+    settings: "Settings",
+  },
 } as const;
 
 type Messages = { [K in keyof typeof en]: { [P in keyof (typeof en)[K]]: string } };
@@ -16,6 +26,16 @@ type Messages = { [K in keyof typeof en]: { [P in keyof (typeof en)[K]]: string 
 const es: Messages = {
   app: { title: "Plataforma de Análisis de Trading" },
   notFound: { title: "Página no encontrada", back: "Volver al inicio" },
+  nav: {
+    home: "Inicio",
+    portfolios: "Portafolios",
+    transactions: "Transacciones",
+    analytics: "Análisis",
+    markets: "Mercados",
+    decisions: "Centro de decisiones",
+    activity: "Actividad",
+    settings: "Configuración",
+  },
 };
 
 export const resources = {
