@@ -5,9 +5,9 @@ export function HomePage() {
   const { t } = useTranslation();
 
   return (
-    <main className="flex min-h-screen flex-col items-start gap-4 p-6">
+    <div className="flex flex-col items-start gap-4 p-6">
       <h1 className="text-2xl font-semibold">{t("app.title")}</h1>
       <Button>Placeholder</Button>
-    </main>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ test("an unknown route renders the not-found page with a link back home", async 
   await page.goto("/does-not-exist");
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await page.getByRole("link").click();
+  await page.getByRole("link", { name: "Back to the start" }).click();
 
   await expect(page).toHaveURL("/");
 });

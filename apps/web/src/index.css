@@ -35,9 +35,10 @@
 }
 
 /*
- * Radius, spacing and shadows come straight from the Figma tokens. With
- * `inline`, each utility reads the :root variable defined in styles/tokens.css
- * and styles/effects.css, so a Figma re-export updates the utilities as well.
+ * Radius and shadows come straight from the Figma tokens. With `inline`, each utility
+ * reads the :root variable defined in styles/tokens.css and styles/effects.css, so a
+ * Figma re-export updates the utilities as well. The `--space-*` scale is not mapped to
+ * `--spacing-*`: Tailwind also reads those keys for `max-w-xs`, `w-md` and the like.
  */
 @theme inline {
   --radius-xs: var(--radius-xs);
@@ -47,16 +48,6 @@
   --radius-xl: var(--radius-xl);
   --radius-2xl: var(--radius-2xl);
   --radius-3xl: var(--radius-3xl);
-  --spacing-3xs: var(--space-3xs);
-  --spacing-2xs: var(--space-2xs);
-  --spacing-xs: var(--space-xs);
-  --spacing-sm: var(--space-sm);
-  --spacing-md: var(--space-md);
-  --spacing-lg: var(--space-lg);
-  --spacing-xl: var(--space-xl);
-  --spacing-2xl: var(--space-2xl);
-  --spacing-3xl: var(--space-3xl);
-  --spacing-4xl: var(--space-4xl);
   --shadow-raised: var(--shadow-raised);
   --shadow-popover: var(--shadow-popover);
   --shadow-toast: var(--shadow-toast);
@@ -100,4 +91,15 @@
   html {
     @apply font-sans;
   }
+}
+
+/*
+ * The layout modes of ADR-010 point 9: mobile 360-560 px, tablet 561-900 px, desktop above
+ * 900 px. They replace Tailwind's default `sm`..`2xl` so a `md:` or `lg:` cannot slip in at a
+ * width the design does not change at. The shell switches to the activity bar at `tablet`.
+ */
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-tablet: 561px;
+  --breakpoint-desktop: 901px;
 }

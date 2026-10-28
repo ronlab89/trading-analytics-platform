@@ -1,65 +1,86 @@
-import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
+import { LoaderCircle } from "lucide-react";
+import type { ComponentProps } from "react";
 import { Slot } from "radix-ui";
+import { cn } from "@/lib/utils";
 
+/**
+ * The Figma "Button" and "Icon Button": five variants, three sizes (32, 36 and 40 px) and
+ * the square `icon-*` sizes. States come from the `--color-button-*` tokens.
+ */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors select-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-(--color-button-focus-ring) disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        primary:
+          "bg-(--color-button-primary-background) text-(--color-button-primary-foreground) hover:bg-(--color-button-primary-background-hover) active:bg-(--color-button-primary-background-pressed) disabled:bg-(--color-button-disabled-background) disabled:text-(--color-button-disabled-foreground)",
         outline:
-          "border-border bg-background shadow-xs hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border border-(--color-button-outline-border) text-(--color-button-outline-foreground) hover:border-(--color-button-outline-border-hover) hover:bg-(--color-button-outline-background-hover) active:bg-(--color-button-outline-background-pressed) disabled:border-(--color-button-disabled-border) disabled:text-(--color-button-disabled-foreground)",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "text-(--color-button-ghost-foreground) hover:bg-(--color-button-ghost-background-hover) active:bg-(--color-button-ghost-background-pressed) disabled:text-(--color-button-disabled-foreground)",
+        link: "text-(--color-button-link-foreground) underline-offset-4 hover:underline active:text-(--color-button-link-foreground-pressed) disabled:text-(--color-button-disabled-foreground)",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-(--color-button-destructive-background) text-(--color-button-destructive-foreground) hover:bg-(--color-button-destructive-background-hover) active:bg-(--color-button-destructive-background-pressed) disabled:bg-(--color-button-disabled-background) disabled:text-(--color-button-disabled-foreground)",
       },
       size: {
-        default:
-          "h-9 gap-1.5 px-2.5 in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),8px)] px-2 text-xs in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1 rounded-[min(var(--radius-md),10px)] px-2.5 in-data-[slot=button-group]:rounded-md has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
-        lg: "h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-9",
-        "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),8px)] in-data-[slot=button-group]:rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm":
-          "size-8 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-md",
+        sm: "h-8 px-3",
+        md: "h-9 px-4",
+        lg: "h-10 px-6 text-base",
+        "icon-sm": "size-8",
+        "icon-md": "size-9",
         "icon-lg": "size-10",
       },
     },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
+    compoundVariants: [{ variant: "link", class: "h-auto px-0" }],
+    defaultVariants: { variant: "primary", size: "md" },
   },
 );
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
+type ButtonProps = ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
-  }) {
-  const Comp = asChild ? Slot.Root : "button";
+    /** Shows the spinner and ignores clicks while an action runs; it keeps its normal colors. */
+    loading?: boolean;
+  };
+
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  loading = false,
+  children,
+  onClick,
+  ...props
+}: ButtonProps) {
+  const classes = cn(buttonVariants({ variant, size }), className);
+
+  if (asChild) {
+    return (
+      <Slot.Root className={classes} data-slot="button" {...props}>
+        {children}
+      </Slot.Root>
+    );
+  }
 
   return (
-    <Comp
+    <button
+      aria-busy={loading || undefined}
+      className={cn(classes, loading && "pointer-events-none")}
       data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      onClick={
+        loading
+          ? (event) => {
+              event.preventDefault();
+            }
+          : onClick
+      }
       {...props}
-    />
+    >
+      {loading ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : null}
+      {children}
+    </button>
   );
 }
 
