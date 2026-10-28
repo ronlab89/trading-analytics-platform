@@ -3,6 +3,7 @@ import { useState } from "react";
 import { RouterProvider } from "react-router";
 import { createHttpTradingClient } from "@/api/http-trading-client";
 import { TradingClientProvider } from "@/api/trading-client-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/config/env";
 import { useRestoreSession } from "@/hooks/use-restore-session";
 import { createQueryClient } from "@/lib/query-client";
@@ -32,6 +33,7 @@ export function App() {
       <TradingClientProvider client={services.client}>
         <SessionServiceProvider service={services.session}>
           <AppRouter />
+          <Toaster />
         </SessionServiceProvider>
       </TradingClientProvider>
     </QueryClientProvider>
