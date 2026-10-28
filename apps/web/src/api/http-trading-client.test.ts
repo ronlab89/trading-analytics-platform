@@ -91,6 +91,62 @@ describe("HTTP TradingClient: requests", () => {
   });
 });
 
+describe("HTTP TradingClient: session cookie", () => {
+  const refresh: ApiOperation = {
+    ...baseOperation,
+    operationId: "refresh",
+    method: "post",
+    path: "/api/v1/auth/refresh",
+    authenticated: false,
+    cookies: z.object({ refresh_token: z.string() }),
+    success: { status: 200, description: "Refreshed.", schema: z.object({ data: z.string() }) },
+  };
+  const login: ApiOperation = {
+    ...baseOperation,
+    operationId: "login",
+    method: "post",
+    path: "/api/v1/auth/login",
+    authenticated: false,
+    body: z.object({ email: z.string() }),
+    success: {
+      status: 200,
+      description: "Logged in.",
+      headers: { "Set-Cookie": "The refresh token." },
+      schema: z.object({ data: z.string() }),
+    },
+  };
+
+  it("sends the cookie and the CSRF header on an operation that reads the refresh cookie", async () => {
+    const { client, fetchMock } = setup([ok("a")]);
+
+    await client.call(refresh);
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect(init?.credentials).toBe("include");
+    expect(init?.headers).toMatchObject({ "X-Requested-With": "XMLHttpRequest" });
+  });
+
+  it("lets the browser store the cookie an operation sets, without the CSRF header", async () => {
+    const { client, fetchMock } = setup([ok("a")]);
+
+    await client.call(login, { body: { email: "a@b.co" } });
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect(init?.credentials).toBe("include");
+    expect(init?.headers).not.toHaveProperty("X-Requested-With");
+  });
+
+  it("keeps the default credentials and no CSRF header on every other operation", async () => {
+    const { client, fetchMock } = setup([ok("a")]);
+
+    await client.call(getThing, input);
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect(init).not.toHaveProperty("credentials");
+    expect(init?.headers).not.toHaveProperty("X-Requested-With");
+  });
+});
+
 describe("HTTP TradingClient: timeout", () => {
   it(`fails with TIMEOUT after ${String(REQUEST_TIMEOUT_MS)} ms`, async () => {
     vi.useFakeTimers();
