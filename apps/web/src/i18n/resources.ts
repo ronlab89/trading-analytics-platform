@@ -9,6 +9,7 @@ export const DEFAULT_LANGUAGE: Language = "en";
 const en = {
   app: { title: "Trading Analytics Platform" },
   notFound: { title: "Page not found", back: "Back to the start" },
+  auth: { restoringSession: "Restoring your session…" },
   nav: {
     home: "Home",
     portfolios: "Portfolios",
@@ -64,6 +65,7 @@ type Messages<T> = { [K in keyof T]: T[K] extends string ? string : Messages<T[K
 const es: Messages<typeof en> = {
   app: { title: "Plataforma de Análisis de Trading" },
   notFound: { title: "Página no encontrada", back: "Volver al inicio" },
+  auth: { restoringSession: "Restaurando tu sesión…" },
   nav: {
     home: "Inicio",
     portfolios: "Portafolios",
