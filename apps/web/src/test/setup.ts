@@ -11,6 +11,15 @@ expect.extend(axeMatchers);
 // axe-core probes canvas support; jsdom does not implement it and logs a warning.
 beforeAll(() => {
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  // Radix measures the hidden form input of a checkbox with ResizeObserver; jsdom has none.
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    },
+  );
 });
 
 afterEach(() => {
