@@ -140,7 +140,7 @@ Code vs ADR:
 | 1 Product and domain foundation | `Implemented` (`packages/domain`); analytics additions `Implemented`; application layer and `@trading/contracts` `Planned (B0)` | none |
 | 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Implemented` (B4); runtime database role `Implemented` | none |
 | 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Implemented` (B6) | none |
-| 4 Authentication and RBAC | login, `me`, refresh, logout and role enforcement `Implemented` (B2) | session screens `Planned (FE1)` |
+| 4 Authentication and RBAC | login, `me`, refresh, logout and role enforcement `Implemented` (B2) | login, session restore and the route guard `Implemented` (FE1.1); logout and the user in the shell `Planned (FE1)` |
 | 5 Frontend foundation | none | `Planned (FE0)` |
 | 6 Core portfolio workflow | endpoints `Implemented` | `Planned (FE1)` |
 | 7 Transactions and positions | endpoints `Implemented`; fee handling change `Implemented` | `Planned (FE1)` |
@@ -493,7 +493,8 @@ The API:
 | Ownership checks: another user's resource returns 404, never 403 (ADR-005 point 12) | `Implemented` | none |
 | Authentication tests: login success, wrong password, unknown email, `/me` without a token, `/me` with a malformed token (`apps/api/src/routes/auth.routes.test.ts`) | `Implemented`; expired and wrongly signed token tests `Implemented` with the refresh tests (`token.service.test.ts`, `refresh.service.test.ts`, B2.3, B2.4) | B2 |
 | Authorization tests: cross-user access returns 404 (portfolio route tests) | `Implemented`; role tests `Implemented` (`permissions.test.ts`, `viewer-role.routes.test.ts`, B2.1, B2.2) | B2 |
-| Session screens: login, logout, session expiry handling, access token kept in memory only (ADR-005 point 4) | `Planned (FE1)` | FE1 |
+| Session screens: login, logout, session expiry handling, access token kept in memory only (ADR-005 point 4) | `Implemented` for the login screen, the session restore from the refresh cookie, the route guard (`RequireAuth`) and the expired-session notice (FE1.1, in progress); logout and the user in the shell `Planned` (FE1.1 T7) | FE1 |
+| Login screen against the Figma frames "Acceso" (desktop, tablet, mobile; states 01-07 and 11): validation with the `loginRequestSchema` of `@trading/contracts` and the screen's own messages, the 401, 429, service-down and offline alerts, and a redirect after login that follows `location.state.from` only when it is an internal path (`resolveRedirectPath`). Deviations from Figma: "Recordarme" and "¿Olvidaste tu contraseña?" are left out (the API has no remember-me and no recovery endpoint); "Entrar a la demo" is shown but not wired until FE4; the "Divisor" and "Marca" frames are 100 px tall on desktop and tablet but 16 and 28 px on mobile, so the mobile sizes are used as the design intent; the brand panel is the gradient without its texture layers; the 429 message ("Demasiados intentos") is not in Figma | `Implemented` (FE1.1) | FE1 |
 | Demo identity with a role selector (Viewer, Trader, Admin) going through the same permission checks (ADR-005 point 11) | `Planned (FE4)` | FE4 |
 
 Code vs ADR:
@@ -563,7 +564,7 @@ Backend authorization check
 | Server state: TanStack Query (ADR-011 point 4) | `Implemented` (FE0.3): `QueryClientProvider` with query retries off, because the HTTP adapter owns the retry policy (`04-tech-stack.md` §10) | FE0 |
 | Client state: Zustand (ADR-011 point 5) | `Implemented` (FE0.4): the language store; further stores arrive with their screens | FE0 |
 | HTTP client timeout and retry (ADR-011 point 15) | `Implemented` (FE0.5): 15 s timeout, reads retried twice with backoff, 4xx never retried, creations retried only with their `Idempotency-Key`; one test per rule | FE0 |
-| Forms (React Hook Form with Zod) (ADR-011 point 9) | `Planned (FE0)` (`04-tech-stack.md` §11 and §13); arrives with the first form (preferences) | FE0 |
+| Forms (React Hook Form with Zod) (ADR-011 point 9) | `Planned (FE0)` (`04-tech-stack.md` §11 and §13); arrives with the first form (preferences); the login form (FE1.1) uses plain state and the contract's Zod schema, so it needs no form library | FE0 |
 | Request and response types (DTOs) consumed from `@trading/contracts` (ADR-002 point 5) | `Implemented` (FE0.5): `@trading/web` depends on the package and resolves its source through the `@trading/source` condition, as the API does | FE0 |
 | Feature structure (the `src/` layout below) | `Deferred` to the frontend-stage ADR (`06-architecture.md` §7 and §8) | FE0 |
 | `TradingClient` port with the HTTP adapter over `@trading/contracts` (ADR-002 point 5): one `call(operation, input)` over the contract `ApiOperation`s, success validated against its schema, failures raised as `ApiError`; the in-process adapter is FE4. The 401 refresh and retry (ADR-005) arrives with the session screens (FE1) | `Implemented` (FE0.5) | FE0 |
