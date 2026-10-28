@@ -35,6 +35,10 @@ const en = {
       enteringDemo: "Entering…",
       demoNote: "No credentials · uses fictional data",
       retry: "Try again",
+      expired: {
+        title: "Your session expired",
+        description: "For your security, sign in again to continue.",
+      },
       offline: {
         title: "No connection",
         description: "Check your internet connection to sign in.",
@@ -136,6 +140,10 @@ const es: Messages<typeof en> = {
       enteringDemo: "Entrando…",
       demoNote: "Sin credenciales · usa datos ficticios",
       retry: "Reintentar",
+      expired: {
+        title: "Tu sesión expiró",
+        description: "Por seguridad, vuelve a iniciar sesión para continuar.",
+      },
       offline: {
         title: "Sin conexión",
         description: "Revisa tu conexión a internet para iniciar sesión.",
