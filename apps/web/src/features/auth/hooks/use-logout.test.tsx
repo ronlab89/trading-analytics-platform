@@ -41,7 +41,7 @@ describe("useLogout", () => {
     expect(queryClient.getQueryData(["portfolios"])).toBeUndefined();
   });
 
-  it("drops the cache even when the service fails", async () => {
+  it("keeps the cache and exposes the error when the service fails, because the user is still signed in", async () => {
     const queryClient = cachedClient();
     const logout = () => Promise.reject(new ApiError("NETWORK_ERROR", "down"));
     const { result } = renderHook(() => useLogout(), {
@@ -53,6 +53,7 @@ describe("useLogout", () => {
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
-    expect(queryClient.getQueryData(["portfolios"])).toBeUndefined();
+    expect(result.current.error).toMatchObject({ code: "NETWORK_ERROR" });
+    expect(queryClient.getQueryData(["portfolios"])).toEqual([{ id: "p-1" }]);
   });
 });

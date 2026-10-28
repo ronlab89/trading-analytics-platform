@@ -144,13 +144,55 @@ describe("session: logout", () => {
     expect(useSessionStore.getState().accessToken).toBeUndefined();
   });
 
-  it("forgets the user even when the revocation request fails", async () => {
+  it("rejects and keeps the session when the revocation request fails", async () => {
     const { service } = setup(session("token-1"), new ApiError("NETWORK_ERROR", "down"));
     await service.login("jane@example.com", "secret");
 
+    await expect(service.logout()).rejects.toMatchObject({ code: "NETWORK_ERROR" });
+
+    expect(useSessionStore.getState()).toMatchObject({
+      status: "authenticated",
+      user,
+      accessToken: "token-1",
+    });
+  });
+
+  it("does not let a refresh that was in flight sign the user back in", async () => {
+    let answerRefresh: (value: unknown) => void = () => undefined;
+    const pendingRefresh = new Promise((resolve) => {
+      answerRefresh = resolve;
+    });
+    const { service } = setup(session("token-1"), pendingRefresh, undefined);
+    await service.login("jane@example.com", "secret");
+
+    const refreshing = service.refresh();
+    await service.logout();
+    answerRefresh(session("token-2"));
+
+    await expect(refreshing).resolves.toBe(false);
+    expect(useSessionStore.getState().status).toBe("anonymous");
+    expect(useSessionStore.getState().accessToken).toBeUndefined();
+  });
+
+  it("starts a fresh refresh after logout instead of joining the discarded one", async () => {
+    let answerRefresh: (value: unknown) => void = () => undefined;
+    const pendingRefresh = new Promise((resolve) => {
+      answerRefresh = resolve;
+    });
+    const { service, call } = setup(
+      session("token-1"),
+      pendingRefresh,
+      undefined,
+      session("token-3"),
+    );
+    await service.login("jane@example.com", "secret");
+    void service.refresh();
     await service.logout();
 
-    expect(useSessionStore.getState().status).toBe("anonymous");
-    expect(useSessionStore.getState().user).toBeUndefined();
+    await expect(service.refresh()).resolves.toBe(true);
+    answerRefresh(session("token-2"));
+
+    expect(call).toHaveBeenCalledTimes(4);
+    expect(useSessionStore.getState().accessToken).toBe("token-3");
   });
 });

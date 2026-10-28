@@ -31,14 +31,23 @@ export interface SessionService {
 /** Login, refresh and logout over the API, keeping the result in the session store. */
 export function createSessionService(client: TradingClient): SessionService {
   let inFlight: Promise<boolean> | undefined;
+  /** Bumped by logout: a refresh that started before it must not touch the store when it answers. */
+  let generation = 0;
 
   async function refreshOnce(): Promise<boolean> {
+    const startedAt = generation;
     const hadSession = useSessionStore.getState().status === "authenticated";
     try {
       const { data } = (await client.call(refreshOperation)) as { data: LoginResponse };
+      if (startedAt !== generation) {
+        return false;
+      }
       useSessionStore.getState().signIn(data);
       return true;
     } catch (error) {
+      if (startedAt !== generation) {
+        return false;
+      }
       if (!isRefusal(error)) {
         throw error;
       }
@@ -49,10 +58,16 @@ export function createSessionService(client: TradingClient): SessionService {
 
   /** Parallel callers share one request: a second rotation would revoke the session (ADR-005). */
   function refresh(): Promise<boolean> {
-    inFlight ??= refreshOnce().finally(() => {
-      inFlight = undefined;
+    if (inFlight) {
+      return inFlight;
+    }
+    const request = refreshOnce().finally(() => {
+      if (inFlight === request) {
+        inFlight = undefined;
+      }
     });
-    return inFlight;
+    inFlight = request;
+    return request;
   }
 
   return {
@@ -73,12 +88,11 @@ export function createSessionService(client: TradingClient): SessionService {
 
     refresh,
 
+    /** Rejects and keeps the session when the revocation fails: the refresh cookie would still be valid. */
     async logout() {
-      try {
-        await client.call(logoutOperation);
-      } catch {
-        // The cookie is the server's to clear; the browser forgets the user either way.
-      }
+      await client.call(logoutOperation);
+      generation++;
+      inFlight = undefined;
       useSessionStore.getState().signOut();
     },
   };
