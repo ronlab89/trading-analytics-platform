@@ -1,4 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { mockApi, signedInReply } from "./support/mock-api";
+
+test.beforeEach(async ({ page }) => {
+  await mockApi(page, { refresh: signedInReply });
+});
 
 test("the home page renders its heading", async ({ page }) => {
   await page.goto("/");
