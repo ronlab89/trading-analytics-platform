@@ -12,7 +12,17 @@ const en = {
   auth: {
     restoringSession: "Restoring your session…",
     login: {
+      title: "Sign in",
+      subtitle: "Sign in with your account to see your portfolio.",
+      brand: {
+        name: "Trading Analytics",
+        headline: "Your portfolio, clear and up to date.",
+        subtitle:
+          "Follow the performance, the risk and the distribution of your investments in one place.",
+      },
       email: "Email",
+      emailPlaceholder: "name@example.com",
+      passwordPlaceholder: "Your password",
       password: "Password",
       showPassword: "Show password",
       hidePassword: "Hide password",
@@ -103,7 +113,17 @@ const es: Messages<typeof en> = {
   auth: {
     restoringSession: "Restaurando tu sesión…",
     login: {
+      title: "Iniciar sesión",
+      subtitle: "Ingresa con tu cuenta para ver tu portafolio.",
+      brand: {
+        name: "Trading Analytics",
+        headline: "Tu portafolio, claro y al día.",
+        subtitle:
+          "Sigue el rendimiento, el riesgo y la distribución de tus inversiones en un solo lugar.",
+      },
       email: "Correo electrónico",
+      emailPlaceholder: "nombre@correo.com",
+      passwordPlaceholder: "Tu contraseña",
       password: "Contraseña",
       showPassword: "Mostrar contraseña",
       hidePassword: "Ocultar contraseña",

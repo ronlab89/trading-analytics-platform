@@ -30,6 +30,13 @@ describe("LoginFormView", () => {
     expect(screen.getByText("No credentials · uses fictional data")).toBeInTheDocument();
   });
 
+  it("hints what each field expects", () => {
+    setup();
+
+    expect(screen.getByLabelText("Email")).toHaveAttribute("placeholder", "name@example.com");
+    expect(screen.getByLabelText("Password")).toHaveAttribute("placeholder", "Your password");
+  });
+
   it("asks the browser for the right autofill", () => {
     setup();
 

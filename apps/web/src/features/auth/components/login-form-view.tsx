@@ -64,6 +64,7 @@ export function LoginFormView({
             onChange={(event) => {
               onChange("email", event.target.value);
             }}
+            placeholder={t("auth.login.emailPlaceholder")}
             type="email"
             value={values.email}
           />
@@ -75,6 +76,7 @@ export function LoginFormView({
             onChange={(event) => {
               onChange("password", event.target.value);
             }}
+            placeholder={t("auth.login.passwordPlaceholder")}
             showLabel={t("auth.login.showPassword")}
             value={values.password}
           />
