@@ -111,4 +111,22 @@ describe("LoginForm", () => {
     expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
     expect(login).not.toHaveBeenCalled();
   });
+
+  it("only checks the connection again when retrying while offline, and never sends", async () => {
+    const onLine = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    const login = vi.fn<SessionService["login"]>(() => Promise.resolve());
+    setup(login);
+    await userEvent.type(screen.getByLabelText("Email"), "jane@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "secret");
+
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.getByRole("status")).toHaveTextContent("No connection");
+
+    onLine.mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(screen.queryByText("No connection")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+    expect(login).not.toHaveBeenCalled();
+  });
 });

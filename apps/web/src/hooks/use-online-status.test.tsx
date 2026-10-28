@@ -16,7 +16,7 @@ describe("useOnlineStatus", () => {
 
     const { result } = renderHook(() => useOnlineStatus());
 
-    expect(result.current).toBe(false);
+    expect(result.current.online).toBe(false);
   });
 
   it("follows the browser going offline and back online", () => {
@@ -27,12 +27,25 @@ describe("useOnlineStatus", () => {
       setOnline(false);
       window.dispatchEvent(new Event("offline"));
     });
-    expect(result.current).toBe(false);
+    expect(result.current.online).toBe(false);
 
     act(() => {
       setOnline(true);
       window.dispatchEvent(new Event("online"));
     });
-    expect(result.current).toBe(true);
+    expect(result.current.online).toBe(true);
+  });
+
+  it("reads the browser again on demand, without waiting for an event", () => {
+    setOnline(false);
+    const { result } = renderHook(() => useOnlineStatus());
+    expect(result.current.online).toBe(false);
+
+    setOnline(true);
+    act(() => {
+      result.current.recheck();
+    });
+
+    expect(result.current.online).toBe(true);
   });
 });

@@ -15,7 +15,7 @@ interface LoginFormProps {
 /** Owns the form state and the sign in; `LoginFormView` draws it. */
 export function LoginForm({ onEnterDemo }: LoginFormProps) {
   const { t } = useTranslation();
-  const online = useOnlineStatus();
+  const { online, recheck } = useOnlineStatus();
   const login = useLogin();
   const [values, setValues] = useState<LoginValues>({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
@@ -31,7 +31,7 @@ export function LoginForm({ onEnterDemo }: LoginFormProps) {
 
   return (
     <LoginFormView
-      alert={alertFor({ online, failure, retry: submit, t })}
+      alert={alertFor({ online, failure, retry: submit, recheck, t })}
       errors={{
         email: fieldErrors.email ? t("auth.login.emailInvalid") : undefined,
         password: fieldErrors.password ? t("auth.login.passwordRequired") : undefined,
@@ -53,17 +53,21 @@ interface AlertInput {
   online: boolean;
   failure: LoginFailure | undefined;
   retry: () => void;
+  recheck: () => void;
   t: TFunction;
 }
 
-/** Offline wins: nothing else the server said matters until the connection is back. */
-function alertFor({ online, failure, retry, t }: AlertInput): LoginFormAlert | undefined {
+/**
+ * Offline wins: nothing else the server said matters until the connection is back. Its retry
+ * only looks at the connection again; sending is the user's next step, once it is back.
+ */
+function alertFor({ online, failure, retry, recheck, t }: AlertInput): LoginFormAlert | undefined {
   if (!online) {
     return {
       tone: "warning",
       title: t("auth.login.offline.title"),
       description: t("auth.login.offline.description"),
-      onRetry: retry,
+      onRetry: recheck,
     };
   }
   if (!failure) return undefined;
