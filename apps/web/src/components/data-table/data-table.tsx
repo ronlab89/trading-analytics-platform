@@ -1,4 +1,9 @@
-import { FlexRender, type RowData, type Table as TableInstance } from "@tanstack/react-table";
+import {
+  FlexRender,
+  type Column,
+  type RowData,
+  type Table as TableInstance,
+} from "@tanstack/react-table";
 import type { ComponentProps } from "react";
 import {
   Table,
@@ -9,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { DataTableColumnHeader } from "./data-table-column-header";
 import type { DataTableColumnMeta, DataTableFeatures } from "./data-table-features";
 
 const alignment = {
@@ -16,6 +22,15 @@ const alignment = {
   center: "text-center",
   end: "text-right",
 } as const satisfies Record<NonNullable<DataTableColumnMeta["align"]>, string>;
+
+const sortDirection = { asc: "ascending", desc: "descending" } as const;
+
+/** Only a column that can be sorted says how it is: a plain one has no `aria-sort`. */
+function ariaSort<TData extends RowData>(column: Column<DataTableFeatures, TData>) {
+  if (!column.getCanSort()) return undefined;
+  const direction = column.getIsSorted();
+  return direction === false ? "none" : sortDirection[direction];
+}
 
 type DataTableProps<TData extends RowData> = Omit<ComponentProps<typeof Table>, "children"> & {
   /** From `useDataTable`; other pieces (toolbar, pagination) read the same instance. */
@@ -35,10 +50,11 @@ export function DataTable<TData extends RowData>({ table, ...props }: DataTableP
           <TableRow className="h-auto" key={headerGroup.id}>
             {headerGroup.headers.map((header) => (
               <TableHead
+                aria-sort={ariaSort(header.column)}
                 className={alignment[header.column.columnDef.meta?.align ?? "start"]}
                 key={header.id}
               >
-                {header.isPlaceholder ? null : <FlexRender header={header} />}
+                {header.isPlaceholder ? null : <DataTableColumnHeader header={header} />}
               </TableHead>
             ))}
           </TableRow>
