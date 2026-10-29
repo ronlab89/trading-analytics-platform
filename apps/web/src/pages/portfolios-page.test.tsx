@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
@@ -78,6 +79,21 @@ describe("PortfoliosPage", () => {
     expect(
       within(within(table).getByRole("row", { name: /Crecimiento/ })).getByText("In use"),
     ).toBeInTheDocument();
+  });
+
+  it("narrows the list as the user searches by name, and the count and footer follow", async () => {
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(screen.getByText("3 portfolios")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–3 of 3")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search portfolio" }), "cre");
+
+    expect(within(table).getAllByRole("row")).toHaveLength(2);
+    expect(within(table).getByRole("row", { name: /Crecimiento/ })).toBeInTheDocument();
+    expect(screen.getByText("1 portfolio")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–1 of 3")).toBeInTheDocument();
+    expect(screen.getByText("Manage your portfolios · 3 in total")).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
