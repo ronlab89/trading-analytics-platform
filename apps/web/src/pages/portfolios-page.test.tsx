@@ -96,6 +96,29 @@ describe("PortfoliosPage", () => {
     expect(screen.getByText("Manage your portfolios · 3 in total")).toBeInTheDocument();
   });
 
+  it("sorts by name and by base currency, but not by status", async () => {
+    renderPage();
+    await screen.findByRole("table", { name: "Portfolios" });
+    const names = () =>
+      screen
+        .getAllByRole("rowheader")
+        .map(
+          (cell) => within(cell).getByText(/^(Conservador|Crecimiento|Experimental)$/).textContent,
+        );
+    expect(screen.queryByRole("button", { name: "Status" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Name" }));
+    await userEvent.click(screen.getByRole("button", { name: "Name" }));
+    expect(names()).toEqual(["Experimental", "Crecimiento", "Conservador"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Base currency" }));
+    expect(names()).toEqual(["Experimental", "Conservador", "Crecimiento"]);
+    expect(screen.getByRole("columnheader", { name: "Base currency" })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+  });
+
   it("holds the place of the list with a loading status and a disabled search while it loads", () => {
     renderPage({ call: () => new Promise(() => undefined) });
 

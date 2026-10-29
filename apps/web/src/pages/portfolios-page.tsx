@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,10 @@ export function PortfoliosPage() {
   const { active } = useActivePortfolio();
   const [query, setQuery] = useState("");
 
-  const visible = portfolios === undefined ? [] : filterPortfolios(portfolios, query);
+  const visible = useMemo(
+    () => (portfolios === undefined ? [] : filterPortfolios(portfolios, query)),
+    [portfolios, query],
+  );
 
   return (
     <div className="flex flex-col gap-6 p-6">
