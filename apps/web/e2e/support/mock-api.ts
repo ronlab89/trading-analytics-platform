@@ -9,6 +9,7 @@ export type Reply = { status: number; body?: unknown } | "network-error";
 export interface ApiReplies {
   refresh: Reply;
   login: Reply;
+  logout: Reply;
 }
 
 export interface ApiMock {
@@ -16,6 +17,8 @@ export interface ApiMock {
   reply: (endpoint: keyof ApiReplies, reply: Reply) => void;
   /** The bodies the app sent to the login endpoint, in order. */
   loginBodies: unknown[];
+  /** How many times the app asked to end the session. */
+  readonly logoutCalls: () => number;
 }
 
 const user = { id: "u-1", email: "jane@example.com", displayName: "Jane", role: "TRADER" } as const;
@@ -26,6 +29,9 @@ export const signedInReply: Reply = {
     data: { user, session: { accessToken: "access-token", expiresAt: "2099-01-01T00:00:00.000Z" } },
   },
 };
+
+/** What the API answers to a logout: no content. */
+export const loggedOutReply: Reply = { status: 204 };
 
 export function errorReply(status: number, code: string): Reply {
   return { status, body: { error: { code, message: code, requestId: "req-1" } } };
@@ -47,13 +53,19 @@ export async function mockApi(page: Page, initial: Partial<ApiReplies> = {}): Pr
     // By default nobody is signed in: the restore is refused, the login is wrong credentials.
     refresh: errorReply(401, "UNAUTHORIZED"),
     login: errorReply(401, "UNAUTHORIZED"),
+    logout: loggedOutReply,
     ...initial,
   };
   const loginBodies: unknown[] = [];
+  let logoutCalls = 0;
 
   async function answer(route: Route, reply: Reply) {
     if (reply === "network-error") {
       await route.abort("failed");
+      return;
+    }
+    if (reply.status === 204) {
+      await route.fulfill({ status: 204, headers: corsHeaders });
       return;
     }
     await route.fulfill({
@@ -76,6 +88,9 @@ export async function mockApi(page: Page, initial: Partial<ApiReplies> = {}): Pr
     } else if (pathname === "/api/v1/auth/login") {
       loginBodies.push(request.postDataJSON());
       await answer(route, replies.login);
+    } else if (pathname === "/api/v1/auth/logout") {
+      logoutCalls += 1;
+      await answer(route, replies.logout);
     } else {
       await answer(route, errorReply(404, "NOT_FOUND"));
     }
@@ -86,5 +101,6 @@ export async function mockApi(page: Page, initial: Partial<ApiReplies> = {}): Pr
       replies[endpoint] = reply;
     },
     loginBodies,
+    logoutCalls: () => logoutCalls,
   };
 }
