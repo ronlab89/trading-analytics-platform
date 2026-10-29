@@ -8,7 +8,7 @@ import { useFieldControlProps } from "./field-context";
  * the `--color-input-*` tokens; the focus ring is the 2 px outline Figma draws 3 px outside.
  */
 const inputVariants = cva(
-  "w-full rounded-md border border-(--color-input-border) bg-(--color-input-background) text-(--color-text-default) transition-colors placeholder:text-(--color-text-secondary) hover:border-(--color-input-border-hover) focus-visible:border-(--color-input-border-hover) focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-(--color-input-ring) aria-invalid:border-(--color-input-border-error) aria-invalid:focus-visible:outline-(--color-input-ring-error) disabled:cursor-not-allowed disabled:border-(--color-input-border-disabled) disabled:bg-(--color-input-background-disabled) disabled:text-(--color-text-disabled) disabled:placeholder:text-(--color-text-disabled)",
+  "w-full rounded-md border border-(--color-input-border) outline-0 bg-(--color-input-background) text-(--color-text-default) transition-colors placeholder:text-(--color-text-secondary) hover:border-(--color-input-border-hover) keyboard:focus-visible:border-(--color-input-border-hover) keyboard:focus-visible:outline-2 keyboard:focus-visible:outline-offset-3 keyboard:focus-visible:outline-(--color-input-ring) aria-invalid:border-(--color-input-border-error) keyboard:aria-invalid:focus-visible:outline-(--color-input-ring-error) disabled:cursor-not-allowed disabled:border-(--color-input-border-disabled) disabled:bg-(--color-input-background-disabled) disabled:text-(--color-text-disabled) disabled:placeholder:text-(--color-text-disabled)",
   {
     variants: {
       size: {
