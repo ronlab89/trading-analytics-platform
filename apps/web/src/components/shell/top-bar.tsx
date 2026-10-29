@@ -11,7 +11,10 @@ import { UserMenu } from "./user-menu";
 
 interface TopBarProps {
   portfolios: readonly PortfolioOption[];
-  selectedPortfolioId: string;
+  selectedPortfolioId: string | undefined;
+  portfoliosLoading?: boolean;
+  portfoliosFailed?: boolean;
+  onRetryPortfolios?: () => void;
   unread: Unread;
   userName: string;
   userInitials: string;
@@ -31,6 +34,9 @@ interface TopBarProps {
 export function TopBar({
   portfolios,
   selectedPortfolioId,
+  portfoliosLoading,
+  portfoliosFailed,
+  onRetryPortfolios,
   unread,
   userName,
   userInitials,
@@ -53,6 +59,9 @@ export function TopBar({
       <div className="flex min-w-0 items-center gap-2">
         <Logo className="shrink-0 tablet:hidden" />
         <PortfolioSelector
+          failed={portfoliosFailed}
+          loading={portfoliosLoading}
+          onRetry={onRetryPortfolios}
           onSelect={onSelectPortfolio}
           portfolios={portfolios}
           selectedId={selectedPortfolioId}

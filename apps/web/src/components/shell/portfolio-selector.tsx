@@ -24,10 +24,10 @@ interface PortfolioSelectorProps {
   portfolios: readonly PortfolioOption[];
   selectedId: string | undefined;
   /** The Figma "Loading" state: the skeleton stands in until the list arrives. */
-  loading?: boolean;
+  loading?: boolean | undefined;
   /** The list failed to load; the selector offers `onRetry`. */
-  failed?: boolean;
-  onRetry?: () => void;
+  failed?: boolean | undefined;
+  onRetry?: (() => void) | undefined;
   onSelect: (id: string) => void;
 }
 
