@@ -1,9 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
-import type { TradingClient } from "@/api/trading-client";
+import { ApiError, type TradingClient } from "@/api/trading-client";
 import { PortfoliosPage } from "@/pages/portfolios-page";
 import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
@@ -26,7 +26,7 @@ function portfolio(
   };
 }
 
-const client: TradingClient = {
+const listing: TradingClient = {
   call: () =>
     Promise.resolve({
       data: [
@@ -37,7 +37,7 @@ const client: TradingClient = {
     }),
 };
 
-function renderPage() {
+function renderPage(client: TradingClient = listing) {
   const Wrapper = tradingClientWrapper(client);
   return render(
     <Wrapper>
@@ -94,6 +94,55 @@ describe("PortfoliosPage", () => {
     expect(screen.getByText("1 portfolio")).toBeInTheDocument();
     expect(screen.getByText("Showing 1–1 of 3")).toBeInTheDocument();
     expect(screen.getByText("Manage your portfolios · 3 in total")).toBeInTheDocument();
+  });
+
+  it("holds the place of the list with a loading status and a disabled search while it loads", () => {
+    renderPage({ call: () => new Promise(() => undefined) });
+
+    expect(screen.getByRole("status", { name: "Loading portfolios" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search portfolio" })).toBeDisabled();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("invites the user to create the first portfolio when there are none", async () => {
+    renderPage({ call: () => Promise.resolve({ data: [] }) });
+
+    expect(await screen.findByText("You have no portfolios yet")).toBeInTheDocument();
+    expect(screen.getByText("Manage your portfolios · 0 in total")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("says nothing matches the search and clears it on request", async () => {
+    renderPage();
+    await screen.findByRole("table", { name: "Portfolios" });
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search portfolio" }), "Bonos");
+
+    expect(screen.getByText("No results")).toBeInTheDocument();
+    expect(screen.getByText(/No portfolio matches “Bonos”/)).toBeInTheDocument();
+    expect(screen.getByText("0 portfolios")).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(screen.getByRole("searchbox", { name: "Search portfolio" })).toHaveValue("");
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(4);
+  });
+
+  it("tells the user the list failed and loads it when they retry", async () => {
+    const call = vi
+      .fn<TradingClient["call"]>()
+      .mockRejectedValueOnce(new ApiError("NETWORK_ERROR", "down"))
+      .mockImplementation((operation, input) => listing.call(operation, input));
+    renderPage({ call });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load the portfolios");
+    expect(screen.queryByText(/in total/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByRole("table", { name: "Portfolios" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {

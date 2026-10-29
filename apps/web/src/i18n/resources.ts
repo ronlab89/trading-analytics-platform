@@ -73,6 +73,21 @@ const en = {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
     table: "Portfolios",
+    loading: "Loading portfolios",
+    empty: {
+      title: "You have no portfolios yet",
+      description: "Create your first portfolio to record positions and transactions.",
+    },
+    noResults: {
+      title: "No results",
+      description: "No portfolio matches “{{query}}”. Check the name or clear the search.",
+      clear: "Clear search",
+    },
+    failed: {
+      title: "Couldn't load the portfolios",
+      description: "Check your connection and try again. Your data has not been changed.",
+      retry: "Retry",
+    },
     search: "Search portfolio",
     count_one: "{{count}} portfolio",
     count_other: "{{count}} portfolios",
@@ -199,6 +214,22 @@ const es: Messages<typeof en> = {
     summary_one: "Administra tus portafolios · {{count}} en total",
     summary_other: "Administra tus portafolios · {{count}} en total",
     table: "Portafolios",
+    loading: "Cargando portafolios",
+    empty: {
+      title: "Aún no tienes portafolios",
+      description: "Crea tu primer portafolio para registrar posiciones y transacciones.",
+    },
+    noResults: {
+      title: "Sin resultados",
+      description:
+        "No hay portafolios que coincidan con «{{query}}». Revisa el nombre o limpia la búsqueda.",
+      clear: "Limpiar búsqueda",
+    },
+    failed: {
+      title: "No se pudieron cargar los portafolios",
+      description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+      retry: "Reintentar",
+    },
     search: "Buscar portafolio",
     count_one: "{{count}} portafolio",
     count_other: "{{count}} portafolios",
