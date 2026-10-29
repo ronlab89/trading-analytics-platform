@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Outlet } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { userInitials } from "@/features/auth/lib/user-initials";
 import { useCurrentUser } from "@/hooks/use-session";
 import { ActivityBar } from "./activity-bar";
@@ -26,6 +27,7 @@ export function AppShell() {
   // The routes put the shell behind `RequireAuth`, so there is a user; the fallback is for tests.
   const userName = useCurrentUser()?.displayName ?? "";
   const initials = userInitials(userName);
+  const signOut = useSignOut();
 
   return (
     <TooltipProvider>
@@ -33,7 +35,7 @@ export function AppShell() {
         <ActivityBar
           userInitials={initials}
           userName={userName}
-          onSignOut={() => undefined}
+          onSignOut={signOut}
           onViewProfile={() => undefined}
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col tablet:gap-2">
@@ -42,7 +44,7 @@ export function AppShell() {
             onResetDemo={() => undefined}
             onSelectPortfolio={setPortfolioId}
             onSendTestNotification={() => undefined}
-            onSignOut={() => undefined}
+            onSignOut={signOut}
             onSimulateConnectionIssue={() => undefined}
             onViewProfile={() => undefined}
             portfolios={SAMPLE_PORTFOLIOS}

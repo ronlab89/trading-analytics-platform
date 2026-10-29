@@ -105,6 +105,10 @@ const en = {
     resetDemo: "Reset demo",
     notifications: "Notifications",
     messages: "Messages",
+    signOutFailed: {
+      title: "Could not sign out",
+      description: "You are still signed in. Check your connection and try again.",
+    },
     notificationsUnread_one: "Notifications, {{count}} unread",
     notificationsUnread_other: "Notifications, {{count}} unread",
   },
@@ -211,6 +215,10 @@ const es: Messages<typeof en> = {
     resetDemo: "Restablecer demo",
     notifications: "Notificaciones",
     messages: "Mensajes",
+    signOutFailed: {
+      title: "No se pudo cerrar la sesión",
+      description: "Seguís con la sesión iniciada. Revisá tu conexión e intentá de nuevo.",
+    },
     notificationsUnread_one: "Notificaciones, {{count}} sin leer",
     notificationsUnread_other: "Notificaciones, {{count}} sin leer",
   },

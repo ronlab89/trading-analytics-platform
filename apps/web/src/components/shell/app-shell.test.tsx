@@ -1,18 +1,42 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
+import { ApiError } from "@/api/trading-client";
+import { Toaster } from "@/components/ui/sonner";
+import type { SessionService } from "@/services/session/session-service";
 import { useSessionStore } from "@/stores/session-store";
+import { fakeSessionService, sessionWrapper } from "@/test/session-wrapper";
 import { AppShell } from "./app-shell";
 
-function renderShell() {
+function renderShell(service: SessionService = fakeSessionService()) {
   const router = createMemoryRouter([
     { element: <AppShell />, children: [{ path: "/", element: <h1>Content</h1> }] },
   ]);
+  const Wrapper = sessionWrapper(service);
 
-  return render(<RouterProvider router={router} />);
+  return render(
+    <Wrapper>
+      <RouterProvider router={router} />
+      <Toaster />
+    </Wrapper>,
+  );
+}
+
+function signInAsAna() {
+  useSessionStore.getState().signIn({
+    user: { id: "u-1", email: "ana@example.com", displayName: "Ana Pérez", role: "TRADER" },
+    session: { accessToken: "token", expiresAt: "2099-01-01T00:00:00.000Z" },
+  });
+}
+
+// The activity bar and the mobile top bar each hold one; CSS shows one at a time.
+async function openUserMenu() {
+  const menu = screen.getAllByRole("button", { name: "User menu" }).at(0);
+  if (!menu) throw new Error("The shell has no user menu");
+  await userEvent.click(menu);
 }
 
 beforeEach(() => {
@@ -35,18 +59,38 @@ describe("AppShell", () => {
   });
 
   it("names the signed-in user in the user menu", async () => {
-    useSessionStore.getState().signIn({
-      user: { id: "u-1", email: "ana@example.com", displayName: "Ana Pérez", role: "TRADER" },
-      session: { accessToken: "token", expiresAt: "2099-01-01T00:00:00.000Z" },
-    });
+    signInAsAna();
     renderShell();
 
-    // The activity bar and the mobile top bar each hold one; CSS shows one at a time.
-    const menu = screen.getAllByRole("button", { name: "User menu" }).at(0);
-    if (!menu) throw new Error("The shell has no user menu");
-    await userEvent.click(menu);
+    await openUserMenu();
 
     expect(screen.getByText("Ana Pérez")).toBeInTheDocument();
     expect(screen.queryByText("Jane Doe")).not.toBeInTheDocument();
+  });
+
+  it("signs out through the session service from the user menu", async () => {
+    signInAsAna();
+    const logout = vi.fn<() => Promise<void>>(() => Promise.resolve());
+    renderShell(fakeSessionService({ logout }));
+
+    await openUserMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
+
+    await waitFor(() => {
+      expect(logout).toHaveBeenCalledOnce();
+    });
+  });
+
+  it("tells the user when signing out fails, and keeps them signed in", async () => {
+    signInAsAna();
+    const logout = () => Promise.reject(new ApiError("NETWORK_ERROR", "down"));
+    renderShell(fakeSessionService({ logout }));
+
+    await openUserMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
+
+    expect(await screen.findByText("Could not sign out")).toBeVisible();
+    expect(screen.getByText(/You are still signed in/)).toBeVisible();
+    expect(useSessionStore.getState().status).toBe("authenticated");
   });
 });
