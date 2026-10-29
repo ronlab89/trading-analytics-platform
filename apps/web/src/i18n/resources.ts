@@ -69,6 +69,14 @@ const en = {
     activity: "Activity",
     settings: "Settings",
   },
+  portfolios: {
+    summary_one: "Manage your portfolios · {{count}} in total",
+    summary_other: "Manage your portfolios · {{count}} in total",
+    table: "Portfolios",
+    columns: { name: "Name", baseCurrency: "Base currency", status: "Status" },
+    status: { ACTIVE: "Active", ARCHIVED: "Archived" },
+    inUse: "In use",
+  },
   shell: {
     mainNavigation: "Main navigation",
     tabNavigation: "Main tabs",
@@ -182,6 +190,14 @@ const es: Messages<typeof en> = {
     decisions: "Centro de decisiones",
     activity: "Actividad",
     settings: "Configuración",
+  },
+  portfolios: {
+    summary_one: "Administra tus portafolios · {{count}} en total",
+    summary_other: "Administra tus portafolios · {{count}} en total",
+    table: "Portafolios",
+    columns: { name: "Nombre", baseCurrency: "Moneda base", status: "Estado" },
+    status: { ACTIVE: "Activo", ARCHIVED: "Archivado" },
+    inUse: "En uso",
   },
   shell: {
     mainNavigation: "Navegación principal",
