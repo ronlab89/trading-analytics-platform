@@ -59,12 +59,14 @@ export function usePortfolioColumns(activeId: string | undefined) {
         }),
         column.accessor("baseCurrency", {
           header: headerOf("baseCurrency"),
+          enableGlobalFilter: false,
           meta: { align: "center" },
           cell: ({ getValue }) => <span className="font-medium">{getValue()}</span>,
         }),
         column.accessor("status", {
           header: headerOf("status"),
           enableSorting: false,
+          enableGlobalFilter: false,
           meta: { align: "center" },
           cell: ({ getValue }) => <StatusBadge status={getValue()} />,
         }),

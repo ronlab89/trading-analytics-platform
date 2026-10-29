@@ -1,5 +1,6 @@
 import { useTable, type RowData } from "@tanstack/react-table";
 import { dataTableFeatures, type DataTableColumn } from "./data-table-features";
+import { includesText } from "./filter-fns";
 
 interface UseDataTableOptions<TData extends RowData> {
   /** Keep it stable (module scope or memoized): a new array on every render rebuilds the table. */
@@ -28,6 +29,7 @@ export function useDataTable<TData extends RowData>({
     data,
     getRowId,
     enableSorting: sortable,
+    globalFilterFn: includesText,
     // By default TanStack sorts numbers descending first; every column starts ascending instead.
     sortDescFirst: false,
   });

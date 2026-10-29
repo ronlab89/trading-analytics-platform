@@ -1,5 +1,8 @@
 import {
+  columnFilteringFeature,
+  createFilteredRowModel,
   createSortedRowModel,
+  globalFilteringFeature,
   metaHelper,
   rowSortingFeature,
   sortFn_alphanumeric,
@@ -23,10 +26,15 @@ export interface DataTableColumnMeta {
  * The table features every `DataTable` is built with. They live in one place so the column
  * definitions of each view and the table agree on the same types. Sorting is registered here but
  * stays off until a view asks for it (`useDataTable`'s `sortable`); the sort functions are the ones
- * TanStack picks on its own by the type of the values: text, alphanumeric, dates and the rest.
+ * TanStack picks on its own by the type of the values: text, alphanumeric, dates and the rest. The
+ * global filter is what the toolbar's search writes; a column that must not be searched sets
+ * `enableGlobalFilter: false`.
  */
 export const dataTableFeatures = tableFeatures({
   columnMeta: metaHelper<DataTableColumnMeta>(),
+  columnFilteringFeature,
+  globalFilteringFeature,
+  filteredRowModel: createFilteredRowModel(),
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
   sortFns: {
