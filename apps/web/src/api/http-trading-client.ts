@@ -44,6 +44,11 @@ function isSafeToRetry(operation: ApiOperation, input: CallInput): boolean {
   return operation.method === "get" || input.idempotencyKey !== undefined;
 }
 
+/** The refresh cookie is read (refresh, logout) or set (login): the browser must send and store it. */
+function usesSessionCookie(operation: ApiOperation): boolean {
+  return operation.cookies !== undefined || "Set-Cookie" in (operation.success.headers ?? {});
+}
+
 function parseJson(text: string): unknown {
   try {
     return JSON.parse(text) as unknown;
@@ -101,6 +106,10 @@ export function createHttpTradingClient(options: HttpTradingClientOptions): Trad
     if (input.idempotencyKey !== undefined) {
       headers["Idempotency-Key"] = input.idempotencyKey;
     }
+    if (operation.cookies !== undefined) {
+      // The routes that read the refresh cookie demand this header (ADR-005 point 7).
+      headers["X-Requested-With"] = "XMLHttpRequest";
+    }
 
     const controller = new AbortController();
     const timer = setTimeout(() => {
@@ -112,6 +121,7 @@ export function createHttpTradingClient(options: HttpTradingClientOptions): Trad
         headers,
         ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
         signal: controller.signal,
+        ...(usesSessionCookie(operation) ? { credentials: "include" as const } : {}),
       });
       return { status: response.status, text: await response.text() };
     } catch {

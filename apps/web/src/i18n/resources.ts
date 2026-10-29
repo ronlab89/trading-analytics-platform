@@ -9,6 +9,56 @@ export const DEFAULT_LANGUAGE: Language = "en";
 const en = {
   app: { title: "Trading Analytics Platform" },
   notFound: { title: "Page not found", back: "Back to the start" },
+  auth: {
+    restoringSession: "Restoring your session…",
+    login: {
+      title: "Sign in",
+      subtitle: "Sign in with your account to see your portfolio.",
+      brand: {
+        name: "Trading Analytics",
+        headline: "Your portfolio, clear and up to date.",
+        subtitle:
+          "Follow the performance, the risk and the distribution of your investments in one place.",
+      },
+      email: "Email",
+      emailPlaceholder: "name@example.com",
+      passwordPlaceholder: "Your password",
+      password: "Password",
+      showPassword: "Show password",
+      hidePassword: "Hide password",
+      emailInvalid: "Enter a valid email",
+      passwordRequired: "Enter your password",
+      submit: "Sign in",
+      submitting: "Signing in…",
+      or: "or",
+      enterDemo: "Enter the demo",
+      enteringDemo: "Entering…",
+      demoNote: "No credentials · uses fictional data",
+      retry: "Try again",
+      expired: {
+        title: "Your session expired",
+        description: "For your security, sign in again to continue.",
+      },
+      offline: {
+        title: "No connection",
+        description: "Check your internet connection to sign in.",
+      },
+      failure: {
+        credentials: {
+          title: "Wrong email or password",
+          description: "Check your details and try again.",
+        },
+        "rate-limited": {
+          title: "Too many attempts",
+          description: "Wait a few minutes before trying again.",
+        },
+        unavailable: {
+          title: "Service unavailable",
+          description: "We could not reach the server. Try again in a few minutes.",
+        },
+      },
+    },
+  },
   nav: {
     home: "Home",
     portfolios: "Portfolios",
@@ -54,6 +104,11 @@ const en = {
     sendTestNotification: "Send a test notification",
     resetDemo: "Reset demo",
     notifications: "Notifications",
+    messages: "Messages",
+    signOutFailed: {
+      title: "Could not sign out",
+      description: "You are still signed in. Check your connection and try again.",
+    },
     notificationsUnread_one: "Notifications, {{count}} unread",
     notificationsUnread_other: "Notifications, {{count}} unread",
   },
@@ -64,6 +119,56 @@ type Messages<T> = { [K in keyof T]: T[K] extends string ? string : Messages<T[K
 const es: Messages<typeof en> = {
   app: { title: "Plataforma de Análisis de Trading" },
   notFound: { title: "Página no encontrada", back: "Volver al inicio" },
+  auth: {
+    restoringSession: "Restaurando tu sesión…",
+    login: {
+      title: "Iniciar sesión",
+      subtitle: "Ingresa con tu cuenta para ver tu portafolio.",
+      brand: {
+        name: "Trading Analytics",
+        headline: "Tu portafolio, claro y al día.",
+        subtitle:
+          "Sigue el rendimiento, el riesgo y la distribución de tus inversiones en un solo lugar.",
+      },
+      email: "Correo electrónico",
+      emailPlaceholder: "nombre@correo.com",
+      passwordPlaceholder: "Tu contraseña",
+      password: "Contraseña",
+      showPassword: "Mostrar contraseña",
+      hidePassword: "Ocultar contraseña",
+      emailInvalid: "Ingresa un correo válido",
+      passwordRequired: "Ingresa tu contraseña",
+      submit: "Iniciar sesión",
+      submitting: "Iniciando sesión…",
+      or: "o",
+      enterDemo: "Entrar a la demo",
+      enteringDemo: "Entrando…",
+      demoNote: "Sin credenciales · usa datos ficticios",
+      retry: "Reintentar",
+      expired: {
+        title: "Tu sesión expiró",
+        description: "Por seguridad, vuelve a iniciar sesión para continuar.",
+      },
+      offline: {
+        title: "Sin conexión",
+        description: "Revisa tu conexión a internet para iniciar sesión.",
+      },
+      failure: {
+        credentials: {
+          title: "Correo o contraseña incorrectos",
+          description: "Revisa tus datos e inténtalo de nuevo.",
+        },
+        "rate-limited": {
+          title: "Demasiados intentos",
+          description: "Espera unos minutos antes de volver a intentarlo.",
+        },
+        unavailable: {
+          title: "Servicio no disponible",
+          description: "No pudimos conectar con el servidor. Inténtalo de nuevo en unos minutos.",
+        },
+      },
+    },
+  },
   nav: {
     home: "Inicio",
     portfolios: "Portafolios",
@@ -109,6 +214,11 @@ const es: Messages<typeof en> = {
     sendTestNotification: "Enviar notificación de prueba",
     resetDemo: "Restablecer demo",
     notifications: "Notificaciones",
+    messages: "Mensajes",
+    signOutFailed: {
+      title: "No se pudo cerrar la sesión",
+      description: "Seguís con la sesión iniciada. Revisá tu conexión e intentá de nuevo.",
+    },
     notificationsUnread_one: "Notificaciones, {{count}} sin leer",
     notificationsUnread_other: "Notificaciones, {{count}} sin leer",
   },
