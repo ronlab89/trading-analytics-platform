@@ -153,9 +153,9 @@ Decided constraint: the access token lives in memory only (ADR-005 point 4).
 
 # 12. Tables
 
-**Status:** `Planned (FE)` — ADR-011 point 8 (Proposed).
+**Status:** `Implemented` (FE1.2) — ADR-011 point 8 (Proposed).
 
-TanStack Table with the shadcn Table component for markup.
+TanStack Table v9 (`@tanstack/react-table`) with the shadcn Table component for markup. The shared `DataTable` registers the table features once (sorting, global filter, pagination) and the views opt in; the column definitions of each view use `createColumnHelper` over those features.
 
 ---
 

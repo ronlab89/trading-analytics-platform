@@ -2,20 +2,30 @@ import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import "@/i18n";
+import type { TradingClient } from "@/api/trading-client";
+import { createQueryClient } from "@/lib/query-client";
 import { useSessionStore } from "@/stores/session-store";
 import { fakeSessionService, sessionWrapper } from "@/test/session-wrapper";
+import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { routes } from "./router";
 
 beforeEach(() => {
   useSessionStore.setState(useSessionStore.getInitialState());
 });
 
+// The shell lists the portfolios; these tests are about routing, so that call never answers.
+const silentClient = { call: () => new Promise(() => undefined) } as TradingClient;
+
 function renderAt(path: string) {
-  const Wrapper = sessionWrapper(fakeSessionService());
+  const queryClient = createQueryClient();
+  const SessionWrapper = sessionWrapper(fakeSessionService(), queryClient);
+  const ClientWrapper = tradingClientWrapper(silentClient, queryClient);
   return render(
-    <Wrapper>
-      <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
-    </Wrapper>,
+    <SessionWrapper>
+      <ClientWrapper>
+        <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
+      </ClientWrapper>
+    </SessionWrapper>,
   );
 }
 

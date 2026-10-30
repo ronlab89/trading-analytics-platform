@@ -4,6 +4,7 @@ import { RequireAuth } from "@/features/auth/components/require-auth";
 import { HomePage } from "@/pages/home-page";
 import { LoginPage } from "@/pages/login-page";
 import { NotFoundPage } from "@/pages/not-found-page";
+import { PortfoliosPage } from "@/pages/portfolios-page";
 
 /**
  * Only the login is public and outside the shell; everything else, the not-found page
@@ -18,6 +19,7 @@ export const routes: RouteObject[] = [
         element: <AppShell />,
         children: [
           { path: "/", element: <HomePage /> },
+          { path: "/portfolios", element: <PortfoliosPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },

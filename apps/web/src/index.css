@@ -98,6 +98,9 @@
  * 900 px. They replace Tailwind's default `sm`..`2xl` so a `md:` or `lg:` cannot slip in at a
  * width the design does not change at. The shell switches to the activity bar at `tablet`.
  */
+/* Styles that apply only while the user navigates with the Tab key (lib/input-modality.ts). */
+@custom-variant keyboard (:where([data-input-modality="keyboard"]) &);
+
 @theme {
   --breakpoint-*: initial;
   --breakpoint-tablet: 561px;
