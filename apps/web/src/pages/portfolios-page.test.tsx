@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
@@ -41,7 +42,9 @@ function renderPage(client: TradingClient = listing) {
   const Wrapper = tradingClientWrapper(client);
   return render(
     <Wrapper>
-      <PortfoliosPage />
+      <MemoryRouter>
+        <PortfoliosPage />
+      </MemoryRouter>
     </Wrapper>,
   );
 }
@@ -62,6 +65,29 @@ describe("PortfoliosPage", () => {
     expect(
       within(within(table).getByRole("row", { name: /Conservador/ })).getByText("Active"),
     ).toBeInTheDocument();
+  });
+
+  it("opens the detail of a portfolio from its name, archived ones included", async () => {
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getByRole("link", { name: "Crecimiento" })).toHaveAttribute(
+      "href",
+      "/portfolios/p2",
+    );
+    expect(within(table).getByRole("link", { name: "Experimental" })).toHaveAttribute(
+      "href",
+      "/portfolios/p3",
+    );
+  });
+
+  it("keeps the in-use tag out of the name of the link", async () => {
+    useActivePortfolioStore.getState().select("p2");
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getByRole("link", { name: "Crecimiento" })).toBeInTheDocument();
+    expect(within(table).getByText("In use")).toBeInTheDocument();
   });
 
   it("states how many portfolios there are", async () => {
