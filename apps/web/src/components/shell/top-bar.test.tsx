@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -50,6 +50,18 @@ describe("TopBar", () => {
 
     expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
     expect(screen.getByText("Analytics")).toHaveAttribute("aria-current", "page");
+  });
+
+  it("adds the page title after the section, which becomes a link back to it", () => {
+    renderTopBar({ pageTitle: "Experimental" }, "/portfolios/p3");
+
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(breadcrumb).getByRole("link", { name: "Portfolios" })).toHaveAttribute(
+      "href",
+      "/portfolios",
+    );
+    expect(within(breadcrumb).getByText("Experimental")).toHaveAttribute("aria-current", "page");
+    expect(within(breadcrumb).getByText("Portfolios")).not.toHaveAttribute("aria-current");
   });
 
   it("keeps Home in the breadcrumb on an unknown path", () => {

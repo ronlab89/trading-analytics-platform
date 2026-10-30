@@ -1,7 +1,8 @@
-import { Outlet } from "react-router";
+import { Outlet, useMatch } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { userInitials } from "@/features/auth/lib/user-initials";
+import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useCurrentUser } from "@/hooks/use-session";
 import { portfolioInitials } from "@/lib/portfolio-initials";
@@ -28,6 +29,9 @@ export function AppShell() {
   const userName = useCurrentUser()?.displayName ?? "";
   const initials = userInitials(userName);
   const signOut = useSignOut();
+  // The detail page reads the same query, so the name in the breadcrumb costs no extra request.
+  const detailId = useMatch("/portfolios/:portfolioId")?.params.portfolioId;
+  const detailName = usePortfolio(detailId).data?.name;
 
   return (
     <TooltipProvider>
@@ -48,6 +52,7 @@ export function AppShell() {
             onSignOut={signOut}
             onSimulateConnectionIssue={() => undefined}
             onViewProfile={() => undefined}
+            pageTitle={detailName}
             portfolios={portfolioOptions}
             portfoliosFailed={portfolio.isError}
             portfoliosLoading={portfolio.isPending}

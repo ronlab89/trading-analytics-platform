@@ -15,6 +15,8 @@ interface TopBarProps {
   portfoliosLoading?: boolean;
   portfoliosFailed?: boolean;
   onRetryPortfolios?: () => void;
+  /** The page inside the current section, for example a portfolio's name; it ends the breadcrumb. */
+  pageTitle?: string | undefined;
   unread: Unread;
   userName: string;
   userInitials: string;
@@ -37,6 +39,7 @@ export function TopBar({
   portfoliosLoading,
   portfoliosFailed,
   onRetryPortfolios,
+  pageTitle,
   unread,
   userName,
   userInitials,
@@ -69,7 +72,15 @@ export function TopBar({
         <div className="flex items-center gap-2 max-tablet:hidden">
           <ChevronRight aria-hidden="true" className="size-3.5 text-muted-foreground" />
           <Breadcrumb label={t("shell.breadcrumb")}>
-            <BreadcrumbItem>{current ? t(current.labelKey) : null}</BreadcrumbItem>
+            <BreadcrumbItem to={pageTitle && current ? current.path : undefined}>
+              {current ? t(current.labelKey) : null}
+            </BreadcrumbItem>
+            {pageTitle ? (
+              <>
+                <ChevronRight aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                <BreadcrumbItem>{pageTitle}</BreadcrumbItem>
+              </>
+            ) : null}
           </Breadcrumb>
         </div>
       </div>
