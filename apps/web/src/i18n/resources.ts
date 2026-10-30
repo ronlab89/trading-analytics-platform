@@ -102,6 +102,29 @@ const en = {
     status: { ACTIVE: "Active", ARCHIVED: "Archived" },
     inUse: "In use",
   },
+  portfolioDetail: {
+    back: "Back to Portfolios",
+    failed: {
+      title: "Couldn't load the portfolio",
+      description: "Check your connection and try again. Your data has not been changed.",
+      retry: "Retry",
+    },
+    positions: {
+      title: "Positions",
+      loading: "Loading positions",
+      count_one: "{{count}} position",
+      count_other: "{{count}} positions",
+      empty: {
+        title: "No positions",
+        description: "Record a buy transaction to add the first position of this portfolio.",
+      },
+      failed: {
+        title: "Couldn't load the positions",
+        description: "Check your connection and try again. Your data has not been changed.",
+        retry: "Retry",
+      },
+    },
+  },
   shell: {
     mainNavigation: "Main navigation",
     tabNavigation: "Main tabs",
@@ -249,6 +272,30 @@ const es: Messages<typeof en> = {
     columns: { name: "Nombre", baseCurrency: "Moneda base", status: "Estado" },
     status: { ACTIVE: "Activo", ARCHIVED: "Archivado" },
     inUse: "En uso",
+  },
+  portfolioDetail: {
+    back: "Volver a Portafolios",
+    failed: {
+      title: "No se pudo cargar el portafolio",
+      description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+      retry: "Reintentar",
+    },
+    positions: {
+      title: "Posiciones",
+      loading: "Cargando posiciones",
+      count_one: "{{count}} posición",
+      count_other: "{{count}} posiciones",
+      empty: {
+        title: "Sin posiciones",
+        description:
+          "Registra una transacción de compra para añadir la primera posición de este portafolio.",
+      },
+      failed: {
+        title: "No se pudieron cargar las posiciones",
+        description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+        retry: "Reintentar",
+      },
+    },
   },
   shell: {
     mainNavigation: "Navegación principal",

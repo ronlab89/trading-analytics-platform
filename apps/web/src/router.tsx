@@ -4,6 +4,7 @@ import { RequireAuth } from "@/features/auth/components/require-auth";
 import { HomePage } from "@/pages/home-page";
 import { LoginPage } from "@/pages/login-page";
 import { NotFoundPage } from "@/pages/not-found-page";
+import { PortfolioDetailPage } from "@/pages/portfolio-detail-page";
 import { PortfoliosPage } from "@/pages/portfolios-page";
 
 /**
@@ -20,6 +21,7 @@ export const routes: RouteObject[] = [
         children: [
           { path: "/", element: <HomePage /> },
           { path: "/portfolios", element: <PortfoliosPage /> },
+          { path: "/portfolios/:portfolioId", element: <PortfolioDetailPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },
