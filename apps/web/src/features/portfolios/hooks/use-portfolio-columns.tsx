@@ -54,7 +54,7 @@ export function usePortfolioColumns(activeId: string | undefined) {
                 tone={row.original.id === activeId ? "dark" : "neutral"}
               />
               <Link
-                className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 to={`/portfolios/${row.original.id}`}
               >
                 {row.original.name}

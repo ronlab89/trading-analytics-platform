@@ -29,6 +29,15 @@ describe("Table", () => {
     expect(screen.getByRole("cell", { name: "Ada" })).toBeInTheDocument();
   });
 
+  it("tints a row on hover with the table row token, as the Figma row does", () => {
+    renderTable();
+
+    const [, bodyRow] = screen.getAllByRole("row");
+    expect(bodyRow).toHaveClass(
+      "in-data-[slot=table-body]:hover:bg-(--color-table-row-background-hover)",
+    );
+  });
+
   it("has no accessibility violations", async () => {
     const { container } = renderTable();
 

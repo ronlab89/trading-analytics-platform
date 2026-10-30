@@ -81,6 +81,15 @@ describe("PortfoliosPage", () => {
     );
   });
 
+  it("does not underline the name on hover, because the Figma list only tints the row", async () => {
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getByRole("link", { name: "Crecimiento" }).className).not.toContain(
+      "underline",
+    );
+  });
+
   it("keeps the in-use tag out of the name of the link", async () => {
     useActivePortfolioStore.getState().select("p2");
     renderPage();
