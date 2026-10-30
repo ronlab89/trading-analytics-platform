@@ -141,7 +141,7 @@ Code vs ADR:
 | 2 Database and infrastructure | `Implemented` (Prisma, PostgreSQL through Compose); `Job` and `IdempotencyKey` models `Implemented` (B4); runtime database role `Implemented` | none |
 | 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Implemented` (B6) | none |
 | 4 Authentication and RBAC | login, `me`, refresh, logout and role enforcement `Implemented` (B2) | login, session restore, the route guard, logout and the user in the shell `Implemented` (FE1.1) |
-| 5 Frontend foundation | none | `Planned (FE0)` |
+| 5 Frontend foundation | none | `Implemented` for FE0.1 to FE0.9; forms and language selection `Planned (FE0)` |
 | 6 Core portfolio workflow | endpoints `Implemented` | the portfolio list screen and the real portfolio selector `Implemented` (FE1.2); detail, create, edit and archive `Planned (FE1)` |
 | 7 Transactions and positions | endpoints `Implemented`; fee handling change `Implemented` | `Planned (FE1)` |
 | 8 Tables, filters and analytics | allocation and attribution `Implemented`; performance and risk endpoints `Implemented` | `Planned (FE2)` |
@@ -559,7 +559,7 @@ Backend authorization check
 | TypeScript for `apps/web`, covered by the root `typecheck` | `Implemented` (FE0.1) | FE0 |
 | Tailwind CSS and shadcn/ui on Radix (ADR-011 points 2 and 3) | `Implemented` (FE0.2) | FE0 |
 | Design tokens from the Figma file "Trading (Copy)" (light theme only, no dark theme): exported to `apps/web/src/styles/tokens.css`, wired to the shadcn names in `index.css`, DM Sans with the text styles as utilities (`styles/typography.css`), the Figma radius scale, the `--space-*` scale as plain variables (not remapped to Tailwind's `--spacing-*`, which `max-w-xs` and `w-md` also read) and the four elevation shadows (`styles/effects.css`, written by hand because the exporter does not cover effect styles; keep them in step with Figma). `styles/tokens.test.ts` checks that the wiring stays complete | `Implemented` (FE0.8) | FE0 |
-| Shared UI structure (shell and base components) | `Planned (FE0)` after the tokens; the Figma shell and components come next | FE0 |
+| Shared UI structure (shell and base components) | `Implemented` (FE0.8 tokens, FE0.9 shell and base components) | FE0 |
 | Routing: React Router (ADR-011 point 6) | `Implemented` (FE0.3): browser router with the Vite base path and a not-found route; role-protected routes wait for the session screens | FE0 |
 | Server state: TanStack Query (ADR-011 point 4) | `Implemented` (FE0.3): `QueryClientProvider` with query retries off, because the HTTP adapter owns the retry policy (`04-tech-stack.md` §10) | FE0 |
 | Client state: Zustand (ADR-011 point 5) | `Implemented` (FE0.4): the language store; further stores arrive with their screens | FE0 |
@@ -574,7 +574,7 @@ Backend authorization check
 | Language selection and its persistence in the `language` preference (FR-087), localized messages mapped from error codes, locale formatting of dates and numbers | `Planned (FE0)`; the selection needs a session (FE1) | FE0, FE1 |
 | `APP_MODE` and the API and WebSocket base URLs as build-time values (`VITE_APP_MODE`, `VITE_API_BASE_URL` and proposed `VITE_WS_URL`; ADR-006 point 8) | `VITE_APP_MODE` and `VITE_API_BASE_URL` `Implemented` (FE0.3, validated with Zod at startup); `VITE_WS_URL` `Planned (FE)` with the realtime views | FE0 |
 | Browser-console `Logger` adapter (ADR-009 point 1) | `Implemented` (FE0.7): levels by Vite mode, the redaction list of the API adapter; the `Logger` port is `Implemented` (B3.1) | FE0 |
-| Wireframe corrections: `lang="es"` becomes English (ADR-010 point 8); `WIREFRAME-PLAN.md` was removed, superseded by Figma as the design source of truth | `Planned (FE0)` | FE0 |
+| Wireframe corrections: `lang="es"` becomes English (ADR-010 point 8); `WIREFRAME-PLAN.md` was removed, superseded by Figma as the design source of truth | Superseded: not needed | FE0 |
 
 Code vs ADR:
 
@@ -638,12 +638,12 @@ The final structure may evolve during implementation.
 | Asset endpoints: list, detail, price and history (`assets.routes.ts`), and the batch price endpoint (`market.routes.ts`) | `Implemented`; change semantics against the last closed candle `Implemented` (B5) (ADR-007 point 14) | B5 |
 | Archived portfolio is read-only: any mutation scoped to it returns 409 `CONFLICT` and writes nothing; reads and the archive call are unchanged (ADR-010 point 5). A delete on an archived portfolio, such as deleting one of its alerts, is a mutation and returns 409 too | `Planned (B0)` | B0 |
 | Route tests for the positions, assets, market and analytics routes, before the services move into `@trading/application` (ADR-001 point 8) | `Planned (B0)` | B0 |
-| Session state: the access token kept in memory only (ADR-005 point 4), login and logout screens | `Planned (FE1)`; session endpoints `Implemented` (B2.3, B2.4) | FE1 |
+| Session state: the access token kept in memory only (ADR-005 point 4), login and logout screens | `Implemented` (FE1.1); session endpoints `Implemented` (B2.3, B2.4) | FE1 |
 | Portfolio listing: the real portfolio selector in the shell (active portfolios only, the choice remembered) and the list screen at `/portfolios` over the `DataTable` (name, base currency and status; search by name, sorting by name and base currency, pagination). Value, daily return and positions per portfolio need analytics data, so they arrive with FE2 | `Implemented` (FE1.2) | FE1 |
 | Portfolio detail and positions screens, create, edit and archive | `Planned (FE1)`; the application shell is FE0 (§10) | FE1 |
 | Dashboard (the overview and Pulse API; decided 2026-10-08, §4.3) | `Planned (FE2)` | FE2 |
 | Loading, empty and error states; responsive behavior (breakpoints 900 px and 560 px, minimum width 360 px, ADR-010 point 9) | `Implemented` for the portfolio list (loading, empty, no results and failed, FE1.2) on desktop; the tablet and mobile layouts and the other screens `Planned (FE1)` | FE1 |
-| API integration through the `TradingClient` port and its HTTP adapter over `@trading/contracts` (ADR-002 point 5) | `Planned (FE0)` for the client; `Planned (FE1)` for its use in each screen | FE0, FE1 |
+| API integration through the `TradingClient` port and its HTTP adapter over `@trading/contracts` (ADR-002 point 5) | `Implemented` (FE0.5) for the client; its use in the login (FE1.1) and portfolio list (FE1.2) screens `Implemented`, the remaining screens `Planned (FE1)` | FE0, FE1 |
 
 Code vs ADR:
 
@@ -1001,7 +1001,7 @@ The frontend should expose:
 | Application layer `@trading/application` that the demo runs in the browser, with in-memory implementations of the repository contracts and of `UnitOfWork` (rollback included) | `Planned (B0)`; the package does not exist yet | B0 |
 | `@trading/contracts`: the DTOs and schemas both adapters return | `Planned (B0)` | B0 |
 | `@trading/market-sim`: a pure, deterministic package with a seeded pseudo-random generator, an injected clock and the modes and scenarios of `12-demo-mode-spec.md` §37-§40; depends only on `@trading/domain`; the API and the demo use the same engine (ADR-007 point 7) | `Implemented` (B5); the package lives at `packages/market-sim` (ADR-007 point 7) | B5 |
-| Runtime mode selection: `APP_MODE` is `real` or `demo`, fixed at build time through `VITE_APP_MODE` (ADR-006 point 8) | `Planned (FE0)` for the build-time values; `Planned (FE4)` for the demo build | FE0, FE4 |
+| Runtime mode selection: `APP_MODE` is `real` or `demo`, fixed at build time through `VITE_APP_MODE` (ADR-006 point 8) | `Implemented` (FE0.3) for the real-mode values; `Planned (FE4)` for the demo build | FE0, FE4 |
 | In-process adapter of the `TradingClient` port, calling `@trading/application` and the same presenters, so the UI cannot tell which mode it runs in (ADR-002 point 5); the HTTP adapter is FE0 | `Planned (FE4)` | FE4 |
 | Demo composition root with in-memory repositories (ADR-001 point 4); the in-memory fakes written for the application tests are its starting point | `Planned (FE4)` | FE4 |
 | Demo identity with a role selector (Viewer, Trader, Admin) that goes through the same permission checks (ADR-005 point 11) | `Planned (FE4)` | FE4 |
@@ -1246,7 +1246,7 @@ without requiring a paid external monitoring service.
 | Production backend build: every workspace package compiles to `dist` and exposes it through `exports`, and the API runs with `node dist/index.js` (ADR-006 point 3) | `Implemented` (B7.1) | none |
 | Production Docker image: `apps/api/Dockerfile`, multi-stage, non-root user, built with the workspace root as the build context, entrypoint `node dist/index.js` with no shell or package-manager wrapper so `SIGTERM` reaches the process (ADR-006 point 4) | `Implemented` (B7.2) | B7 |
 | Environment configuration for `development`, `test` and the local `full` profile: `PORT` (default 7001), `JWT_EXPIRES_IN_SECONDS`, `APP_MODE` with `real` or `demo`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (ADR-006 point 8, ADR-009) | `Implemented` in part: `apps/api/src/config/env.ts` reads `PORT`, `JWT_EXPIRES_IN_SECONDS`, `LOG_LEVEL` and `SLOW_REQUEST_THRESHOLD_MS` (B3.1, B3.2); it validates `DATABASE_URL` since B7.1 and does not read `APP_MODE`; the rest is `Planned (FE)` (`APP_MODE`, ADR-006 point 8) | B3, B7, FE |
-| Web build-time values `VITE_APP_MODE` and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) | `Planned (FE0)` | FE0 |
+| Web build-time values `VITE_APP_MODE` and the API and WebSocket base URLs (proposed names `VITE_API_BASE_URL` and `VITE_WS_URL`) | `VITE_APP_MODE` and `VITE_API_BASE_URL` `Implemented` (FE0.3); `VITE_WS_URL` `Planned (FE)` | FE0 |
 | Local full stack: a Docker Compose `full` profile with PostgreSQL and the API; the default profile keeps only PostgreSQL; `TZ=UTC` on both containers; the real-mode web app runs on the Vite dev server against the local API (ADR-006 points 4 and 8) | `Implemented` (B7.3) | B7 |
 | Migration deployment: a one-shot `migrate` service in the `full` profile runs `prisma migrate deploy` after PostgreSQL is healthy, and the API starts after it completes (ADR-006 points 4 and 5 and Deferred detail) | `Implemented` (B7.3) | none |
 | Health checks: `GET /health` and `GET /health/ready` exist; the container healthcheck probes `GET /health/ready` (ADR-006 point 4) | Endpoints `Implemented`; container healthcheck `Implemented` (B7.2) | B7 |
@@ -1511,9 +1511,9 @@ How the original nodes map to the blocks:
 | Domain | Phase 1 `Implemented` in `packages/domain`; analytics additions in B1; application layer and contracts in B0 | `Implemented`; `Planned (B0)` |
 | Database | Phase 2 `Implemented`; `Job` and `IdempotencyKey` in B4; runtime database role in B0 | `Implemented` |
 | Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Implemented` (B6) |
-| Auth | Phase 4 login, `me`, refresh, logout and roles `Implemented` in B2; session screens in FE1 | `Implemented` (B2), `Planned (FE1)` |
-| Frontend | Phase 5, FE0 | `Planned (FE0)` |
-| Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | `Planned (FE1)` |
+| Auth | Phase 4 login, `me`, refresh, logout and roles `Implemented` in B2; session screens in FE1 | `Implemented` (B2 and FE1.1) |
+| Frontend | Phase 5, FE0 | FE0.1 to FE0.9 `Implemented`; forms and language selection `Planned (FE0)` |
+| Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | Portfolio list `Implemented` (FE1.2); the remaining screens `Planned (FE1)` |
 | Analytics | Allocation and attribution `Implemented`; performance and risk in B1; views in FE2 | `Implemented`; `Planned (FE2)` |
 | Realtime | Server B5; client FE3 | `Implemented` (B5), `Planned (FE3)` |
 | Background operations | Jobs B4; screens FE3 | `Implemented` (B4), `Planned (FE3)` |
@@ -1630,7 +1630,7 @@ Same flow
 | API contract: request schemas exist in `apps/api/src/schemas/`; `@trading/contracts` with request schemas, response schemas, the error envelope, pagination `meta` and presenters (ADR-002 points 1 to 4) | Requests `Implemented` in the API only; `@trading/contracts` `Planned (B0)` (the package holds only `.gitkeep`) | B0 |
 | API document generated from the schemas (ADR-002 point 7) | `Implemented` (B6) | B6 |
 | Persistence contract: the repository interfaces of `packages/domain/src/repositories/`, with Prisma implementations in `packages/database` | `Implemented`; in-memory implementations `Planned (B0)` (ADR-001 points 4 and 7) | B0 |
-| Frontend data contract: DTOs from `@trading/contracts` consumed through a `TradingClient` port (ADR-002 point 5) | DTOs `Planned (B0)`; HTTP adapter `Planned (FE0)`; in-process adapter `Planned (FE4)` | B0, FE0, FE4 |
+| Frontend data contract: DTOs from `@trading/contracts` consumed through a `TradingClient` port (ADR-002 point 5) | DTOs `Planned (B0)`; HTTP adapter `Implemented` (FE0.5); in-process adapter `Planned (FE4)` | B0, FE0, FE4 |
 
 Code vs ADR:
 
@@ -1769,10 +1769,10 @@ Foreign keys and constraints should reflect domain ownership.
 
 | Step | Status | Block |
 | --- | --- | --- |
-| App shell | `Planned (FE0)` | FE0 |
-| Authentication: session screens | `Planned (FE1)`; needs refresh and logout from B2 | FE1 |
+| App shell | `Implemented` (FE0.9) | FE0 |
+| Authentication: session screens | `Implemented` (FE1.1); needs refresh and logout from B2 | FE1 |
 | Dashboard | `Planned (FE2)`; decided 2026-10-08, it depends on the overview and Pulse API | FE2 |
-| Portfolio, positions and transactions | `Planned (FE1)` | FE1 |
+| Portfolio, positions and transactions | Portfolio list `Implemented` (FE1.2); the rest `Planned (FE1)` | FE1 |
 | Analytics: performance, risk, pulse, allocation and attribution | `Planned (FE2)` | FE2 |
 | Realtime: client, notifications and alerts | `Planned (FE3)` | FE3 |
 | Background operations: CSV import screens and job progress | `Planned (FE3)` | FE3 |
@@ -3105,9 +3105,9 @@ observable runtime
 
 | Item | Status | Block |
 | --- | --- | --- |
-| Frontend shell | `Planned (FE0)`; `apps/web` is a React and Vite app with the app shell (FE0.9) and the session and portfolios screens (FE1.1, FE1.2) | FE0 |
-| Authentication UI | `Planned (FE1)`; needs B2 | FE1 |
-| Portfolios, positions, transactions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
+| Frontend shell | `Implemented` (FE0.9); `apps/web` is a React and Vite app with the app shell (FE0.9) and the session and portfolios screens (FE1.1, FE1.2) | FE0 |
+| Authentication UI | `Implemented` (FE1.1); needs B2 | FE1 |
+| Portfolios, positions, transactions | endpoints `Implemented`; portfolio list `Implemented` (FE1.2), the other screens `Planned (FE1)` | FE1 |
 | Dashboard and analytics | allocation and attribution endpoints `Implemented`; performance and risk endpoints `Implemented`; views `Planned (FE2)` | B1, FE2 |
 
 Code vs ADR:
@@ -3545,10 +3545,10 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 09 Observability foundation | `Implemented` (B3, ADR-009) | B3 |
 | 10 Authentication | login, `me`, refresh and logout `Implemented` (B2) (ADR-005) | B2 |
 | 11 RBAC | `Implemented` (B2.1, B2.2); the permission mechanism `Implemented` (B0) (ADR-005 point 3) | B0, B2 |
-| 12 Frontend shell | `Planned (FE0)`; `apps/web` is a React and Vite app in progress | FE0 |
-| 13 Auth UI | `Planned (FE1)` | FE1 |
+| 12 Frontend shell | `Implemented` (FE0.9); `apps/web` is a React and Vite app in progress | FE0 |
+| 13 Auth UI | `Implemented` (FE1.1) | FE1 |
 | 14 Dashboard | overview endpoint `Implemented`, with the `performance` field and What Changed; views `Planned (FE2)` | B1, FE2 |
-| 15 Portfolio | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
+| 15 Portfolio | endpoints `Implemented`; list screen `Implemented` (FE1.2), the other screens `Planned (FE1)` | FE1 |
 | 16 Positions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
 | 17 Transactions | endpoints `Implemented`; chronological validation `Planned (B0)`; screens `Planned (FE1)` | B0, FE1 |
 | 18 Analytics | allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)` | B1, FE2 |
@@ -3640,7 +3640,7 @@ This sequence should be adjusted when real implementation dependencies reveal a 
 | One composition root builds the adapters (ADR-001 point 4) | `apps/api/src/composition.ts` does not exist | `Planned (B0)` | B0 |
 | Shared typed contracts at the boundary (ADR-002) | `packages/contracts` holds only `.gitkeep` | `Planned (B0)` | B0 |
 | WebSocket adapter behind a transport port (ADR-007 point 1) | `apps/api/src/realtime/ws-transport.ts` | `Implemented` (B5) | B5 |
-| `features` and `presentation` | `apps/web/src/features` holds the first screens (FE1) | `Planned (FE0)` | FE0 |
+| `features` and `presentation` | `apps/web/src/features` holds the first screens (FE1) | `Implemented` (FE1.1, FE1.2) | FE0 |
 | Demo Mode shares `application` and `domain`, and replaces only infrastructure (ADR-001, ADR-006 point 7, ADR-007 point 13) | no demo code exists | `Planned (FE4)` | FE4 |
 | Layer boundaries are enforced mechanically (ADR-001 point 1) | ADR-001 point 1 enforces it with lint rules, which land with the application layer | `Planned (B0)` | B0 |
 
