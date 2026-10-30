@@ -67,6 +67,21 @@ describe("useAssets", () => {
     expect(call).toHaveBeenCalledTimes(1);
   });
 
+  it("returns the same map between renders while nothing changed, so a view can depend on it", async () => {
+    const { client } = clientAnswering(() => Promise.resolve({ data: apple }));
+    const { result, rerender } = renderHook(() => useAssets(["a1"]), {
+      wrapper: tradingClientWrapper(client),
+    });
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+
+    const before = result.current.assets;
+    rerender();
+
+    expect(result.current.assets).toBe(before);
+  });
+
   it("does not call the API when there are no ids", () => {
     const { client, call } = clientAnswering(() => Promise.resolve({ data: apple }));
     const { result } = renderHook(() => useAssets([]), { wrapper: tradingClientWrapper(client) });
