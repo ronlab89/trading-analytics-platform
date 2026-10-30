@@ -545,7 +545,7 @@ Backend authorization check
 
 ## 10. Phase 5 — Frontend Foundation
 
-**Status:** per item (table below); the whole phase is frontend stage work and `apps/web` holds only a wireframe
+**Status:** per item (table below); the whole phase is frontend stage work and `apps/web` is a React and Vite app in progress (FE0 and FE1)
 
 **Owning blocks:** Backend: none (FE0 depends on B6, the documented API contract); Frontend: FE0 (§4.3). The frontend-stage ADR must exist before FE0 starts (§4.3).
 
@@ -1295,7 +1295,7 @@ A production-like deployment can be started and verified through documented step
 
 ## 20. Phase 15 — UX, Accessibility and Performance Refinement
 
-**Status:** `Planned (FE5)`; nothing in this phase exists yet because `apps/web` holds only a wireframe (`apps/web/wireframe.html`)
+**Status:** `Planned (FE5)`; nothing in this phase exists yet because the frontend stage has only reached FE0 and FE1
 
 **Owning blocks:** Backend: B5 (server-side performance measurement after realtime exists, §32); Frontend: FE5 (§4.3), after FE1 to FE4. Decisions: ADR-010 point 9 (breakpoints and interface scope), ADR-006 point 11 (accessibility tool deferred); targets in `03-non-functional-requirements.md`.
 
@@ -1763,7 +1763,7 @@ Foreign keys and constraints should reflect domain ownership.
 
 ## 27. Frontend Implementation Order
 
-**Status:** `Planned (FE)`; nothing exists yet because `apps/web` holds only a wireframe (`apps/web/wireframe.html`); the order below is the original recommendation and the blocks of §4.3 refine it
+**Status:** `Planned (FE)`; FE0 and FE1 are under way (`apps/web` is a React and Vite app); the order below is the original recommendation and the blocks of §4.3 refine it
 
 **Owning blocks:** Backend: none; Frontend: FE0 to FE4 as the table shows. Decisions: ADR-010 points 6 to 9; the frontend-stage ADR settles routing, state, rendering, charts and shared UI (§4.3).
 
@@ -2126,7 +2126,7 @@ Security is an architectural property, not only a final checklist.
 
 ## 34. Accessibility Validation Strategy
 
-**Status:** `Planned (FE5)`; nothing can be validated yet because `apps/web` holds only a wireframe; the scanning tool is `Deferred` to the frontend-stage ADR (ADR-006 point 11)
+**Status:** `Planned (FE5)`; little can be validated yet because the frontend stage has only reached FE0 and FE1; the scanning tool is `Deferred` to the frontend-stage ADR (ADR-006 point 11)
 
 **Owning blocks:** Backend: none; Frontend: built in FE0 to FE4, validated in FE5. Decisions: ADR-006 point 11, ADR-010 points 8 and 9; targets in `03-non-functional-requirements.md` NFR-029 to NFR-032; method in `10-testing-strategy.md` §36.
 
@@ -2442,7 +2442,7 @@ Omissions must be intentional.
 | --- | --- | --- |
 | Core domain is implemented | `Implemented` (`packages/domain`); portfolio performance and risk `Implemented` | B1 |
 | Backend is functional | `Implemented`: B0 to B7 are closed (§4.1) | B7 |
-| Frontend is functional | `Planned (FE5)`: `apps/web` holds only a wireframe | FE5 |
+| Frontend is functional | `Planned (FE5)`: the frontend stage has only reached FE0 and FE1 | FE5 |
 | Authentication works | Login, `me`, refresh and logout `Implemented` (B2) | B2 |
 | RBAC works | `Implemented` (B2.1, B2.2); the permission mechanism `Implemented` (B0) (ADR-005) | B0, B2 |
 | PostgreSQL persists data | `Implemented` | none |
@@ -3105,7 +3105,7 @@ observable runtime
 
 | Item | Status | Block |
 | --- | --- | --- |
-| Frontend shell | `Planned (FE0)`; `apps/web` holds the empty Vite shell (FE0.1); the app shell is next | FE0 |
+| Frontend shell | `Planned (FE0)`; `apps/web` is a React and Vite app with the app shell (FE0.9) and the session and portfolios screens (FE1.1, FE1.2) | FE0 |
 | Authentication UI | `Planned (FE1)`; needs B2 | FE1 |
 | Portfolios, positions, transactions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
 | Dashboard and analytics | allocation and attribution endpoints `Implemented`; performance and risk endpoints `Implemented`; views `Planned (FE2)` | B1, FE2 |
@@ -3545,7 +3545,7 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 09 Observability foundation | `Implemented` (B3, ADR-009) | B3 |
 | 10 Authentication | login, `me`, refresh and logout `Implemented` (B2) (ADR-005) | B2 |
 | 11 RBAC | `Implemented` (B2.1, B2.2); the permission mechanism `Implemented` (B0) (ADR-005 point 3) | B0, B2 |
-| 12 Frontend shell | `Planned (FE0)`; `apps/web` holds only a wireframe | FE0 |
+| 12 Frontend shell | `Planned (FE0)`; `apps/web` is a React and Vite app in progress | FE0 |
 | 13 Auth UI | `Planned (FE1)` | FE1 |
 | 14 Dashboard | overview endpoint `Implemented`, with the `performance` field and What Changed; views `Planned (FE2)` | B1, FE2 |
 | 15 Portfolio | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
@@ -3640,7 +3640,7 @@ This sequence should be adjusted when real implementation dependencies reveal a 
 | One composition root builds the adapters (ADR-001 point 4) | `apps/api/src/composition.ts` does not exist | `Planned (B0)` | B0 |
 | Shared typed contracts at the boundary (ADR-002) | `packages/contracts` holds only `.gitkeep` | `Planned (B0)` | B0 |
 | WebSocket adapter behind a transport port (ADR-007 point 1) | `apps/api/src/realtime/ws-transport.ts` | `Implemented` (B5) | B5 |
-| `features` and `presentation` | `apps/web` holds only `wireframe.html` | `Planned (FE0)` | FE0 |
+| `features` and `presentation` | `apps/web/src/features` holds the first screens (FE1) | `Planned (FE0)` | FE0 |
 | Demo Mode shares `application` and `domain`, and replaces only infrastructure (ADR-001, ADR-006 point 7, ADR-007 point 13) | no demo code exists | `Planned (FE4)` | FE4 |
 | Layer boundaries are enforced mechanically (ADR-001 point 1) | ADR-001 point 1 enforces it with lint rules, which land with the application layer | `Planned (B0)` | B0 |
 

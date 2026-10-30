@@ -28,7 +28,7 @@ The same product has two targets (ADR-006 point 1):
 
 Current state: development is backend-first. The REST API foundation exists
 (`apps/api`, `packages/domain`, `packages/database`); backend work continues
-in blocks B0-B7 (`BACKEND-ROADMAP.md`). `apps/web` holds only a wireframe; the
+in blocks B0-B7 (`BACKEND-ROADMAP.md`). `apps/web` is a React and Vite app in progress (FE0 and FE1); the
 frontend stage follows the backend blocks.
 
 ---

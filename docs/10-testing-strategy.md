@@ -309,7 +309,7 @@ confirm
 
 The test should verify the resulting user-visible behavior.
 
-No `apps/web` code or component test setup exists (`apps/web` holds only wireframe files). The component test runner and React Testing Library are decided in ADR-011 point 11 (Proposed).
+`apps/web` has a component test setup: Vitest and React Testing Library for unit and component tests, and Playwright for end-to-end tests (ADR-011 point 11).
 
 ---
 

@@ -743,7 +743,7 @@ Unexpected errors should be logged through the frontend observability abstractio
 
 Code vs ADR:
 
-- `apps/web` holds only a wireframe today; there is no frontend code to observe.
+- `apps/web` is a React and Vite app in progress (FE0 and FE1); this section still plans no frontend telemetry.
 - The abstraction is the `Logger` port of ADR-009 point 1. In demo mode application code logs through the browser-console adapter. How the UI layer of the real-mode web app reports unexpected errors is decided in the frontend stage (ADR-009 point 12).
 - Expected errors are told apart by the stable error `code` of the API (`07-api-spec.md` §5-6). The client shows a localized message mapped from the `code` (ADR-010 point 8), and can show the `requestId` of the error body (§9).
 - Some sources have a decided user-facing outcome: a lost realtime connection shows a stale-data indicator and falls back to HTTP polling (ADR-007 point 12); a failed or timed-out CSV import creates an `ERROR` notification (ADR-008 point 6). Neither is an unexpected application error.

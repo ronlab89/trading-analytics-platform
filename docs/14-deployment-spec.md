@@ -137,7 +137,7 @@ Docker should provide PostgreSQL and may provide the complete stack.
 
 Code vs ADR:
 
-- `apps/web` holds only `wireframe.html`; there is no React or Vite code. The frontend box is `Planned (FE)`, and the WebSocket path of the arrow is `Implemented` (B5).
+- `apps/web` is a React and Vite app in progress (FE0 and FE1). The frontend box is `Planned (FE)`, and the WebSocket path of the arrow is `Implemented` (B5).
 - Today the API runs on the host and reaches PostgreSQL through the published port on `localhost`.
 - ADR-006 point 4 settles "may provide the complete stack": the default Compose profile holds only PostgreSQL, and a `full` profile adds the one-shot `migrate` service and the API (`Implemented`, B7.3). No frontend container is decided (§5).
 
