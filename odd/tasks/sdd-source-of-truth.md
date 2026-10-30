@@ -162,7 +162,7 @@ needs a product decision is asked to the user, not invented.
   - Every section has a status, and the approved NFR targets are applied.
   - The user approved the UI decisions on 2026-10-05, recorded as ADR-010 point 9 and applied to `11` and to FR-051, 052, 053, 062 and 081.
   - The initial language is English; Spanish applies only when the user selects it (ADR-010 point 8, corrected).
-  - For the frontend stage: fix `lang="es"` in the wireframe and update `WIREFRAME-PLAN.md`.
+  - For the frontend stage: fix `lang="es"` in the wireframe (the design source of truth is now Figma).
 
 ### Phase 4 — Contracts
 

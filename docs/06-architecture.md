@@ -163,7 +163,7 @@ the API today.
 
 # 7. Frontend Architecture
 
-**Status:** `Planned (FE)` — ADR-002 point 5, ADR-005 point 4, ADR-007 point 13; `apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md`.
+**Status:** `Planned (FE)` — ADR-002 point 5, ADR-005 point 4, ADR-007 point 13; `apps/web` holds only `wireframe.html`.
 
 Already decided, to apply in the frontend stage:
 

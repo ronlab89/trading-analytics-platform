@@ -553,7 +553,7 @@ Backend authorization check
 | --- | --- | --- |
 | Frontend-stage ADR: routing, state, rendering library, charts, shared UI, accessibility tool, HTTP client timeout and retry, frontend test tooling (ADR-011, ADR-006 point 11) | `Proposed` (2026-10-26); accepted when its pending UX input closes | before FE0 |
 | Demo specifics: data layers, reset, simulated latency, scripted failures, hosting (ADR-010 point 6) | Open: not written; needs the new wireframe | before FE4 |
-| `apps/web` workspace (package `@trading/web`, scripts, build); `apps/web` holds the Vite shell, `WIREFRAME-PLAN.md` and the ignored `wireframe.html` | `Implemented` (FE0.1) | FE0 |
+| `apps/web` workspace (package `@trading/web`, scripts, build); `apps/web` holds the Vite shell and the ignored `wireframe.html` | `Implemented` (FE0.1) | FE0 |
 | Vite as the build tool (ADR-006 point 8) | `Implemented` (FE0.1) | FE0 |
 | React 19 as the rendering library (ADR-011 point 1) | `Implemented` (FE0.1) | FE0 |
 | TypeScript for `apps/web`, covered by the root `typecheck` | `Implemented` (FE0.1) | FE0 |
@@ -574,7 +574,7 @@ Backend authorization check
 | Language selection and its persistence in the `language` preference (FR-087), localized messages mapped from error codes, locale formatting of dates and numbers | `Planned (FE0)`; the selection needs a session (FE1) | FE0, FE1 |
 | `APP_MODE` and the API and WebSocket base URLs as build-time values (`VITE_APP_MODE`, `VITE_API_BASE_URL` and proposed `VITE_WS_URL`; ADR-006 point 8) | `VITE_APP_MODE` and `VITE_API_BASE_URL` `Implemented` (FE0.3, validated with Zod at startup); `VITE_WS_URL` `Planned (FE)` with the realtime views | FE0 |
 | Browser-console `Logger` adapter (ADR-009 point 1) | `Implemented` (FE0.7): levels by Vite mode, the redaction list of the API adapter; the `Logger` port is `Implemented` (B3.1) | FE0 |
-| Wireframe corrections: `lang="es"` becomes English and `WIREFRAME-PLAN.md` is updated (ADR-010 point 8) | `Planned (FE0)` | FE0 |
+| Wireframe corrections: `lang="es"` becomes English (ADR-010 point 8); `WIREFRAME-PLAN.md` was removed, superseded by Figma as the design source of truth | `Planned (FE0)` | FE0 |
 
 Code vs ADR:
 
@@ -3640,7 +3640,7 @@ This sequence should be adjusted when real implementation dependencies reveal a 
 | One composition root builds the adapters (ADR-001 point 4) | `apps/api/src/composition.ts` does not exist | `Planned (B0)` | B0 |
 | Shared typed contracts at the boundary (ADR-002) | `packages/contracts` holds only `.gitkeep` | `Planned (B0)` | B0 |
 | WebSocket adapter behind a transport port (ADR-007 point 1) | `apps/api/src/realtime/ws-transport.ts` | `Implemented` (B5) | B5 |
-| `features` and `presentation` | `apps/web` holds only `wireframe.html` and `WIREFRAME-PLAN.md` | `Planned (FE0)` | FE0 |
+| `features` and `presentation` | `apps/web` holds only `wireframe.html` | `Planned (FE0)` | FE0 |
 | Demo Mode shares `application` and `domain`, and replaces only infrastructure (ADR-001, ADR-006 point 7, ADR-007 point 13) | no demo code exists | `Planned (FE4)` | FE4 |
 | Layer boundaries are enforced mechanically (ADR-001 point 1) | ADR-001 point 1 enforces it with lint rules, which land with the application layer | `Planned (B0)` | B0 |
 
