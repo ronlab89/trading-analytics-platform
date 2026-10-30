@@ -13,7 +13,7 @@
 
 This document defines the UI/UX principles, interaction model, visual behavior, responsive strategy, accessibility requirements, and motion system for Trading Analytics Platform.
 
-The frontend is not built yet. Behavior described here is `Planned (FE)`. The HTML prototype `apps/web/wireframe.html` is the visual reference; "shown in the wireframe" means the prototype already sketches it, not that the product implements it. Acceptance criteria live in `02-functional-requirements.md`; this document references FR IDs instead of repeating them.
+The frontend is partly built (FE0 and FE1 are under way). Behavior described here is `Planned (FE)` unless `15-implementation-plan.md` marks it `Implemented`. The HTML prototype `apps/web/wireframe.html` is the visual reference; "shown in the wireframe" means the prototype already sketches it, not that the product implements it. Acceptance criteria live in `02-functional-requirements.md`; this document references FR IDs instead of repeating them.
 
 Every user-facing string (labels, navigation, validation and error messages, toasts) exists in English and Spanish (ADR-010 point 8, FR-087). The initial language is always English; Spanish is active only after the user selects it, which stores the `language` preference. The browser language is not used, and before login, or in the demo without a stored preference, the UI is in English (ADR-010 point 8).
 
