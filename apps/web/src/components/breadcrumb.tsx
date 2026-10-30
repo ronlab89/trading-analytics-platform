@@ -13,7 +13,7 @@ export function Breadcrumb({ label, children }: { label: string; children: React
 
 interface BreadcrumbItemProps {
   /** Present on every item but the current one. */
-  to?: string;
+  to?: string | undefined;
   children: ReactNode;
 }
 

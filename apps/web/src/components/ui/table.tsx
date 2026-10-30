@@ -32,7 +32,10 @@ function TableBody({ className, ...props }: ComponentProps<"tbody">) {
 function TableRow({ className, ...props }: ComponentProps<"tr">) {
   return (
     <tr
-      className={cn("h-12 border-b border-(--color-border-default)", className)}
+      className={cn(
+        "h-12 border-b border-(--color-border-default) in-data-[slot=table-body]:hover:bg-(--color-table-row-background-hover)",
+        className,
+      )}
       data-slot="table-row"
       {...props}
     />

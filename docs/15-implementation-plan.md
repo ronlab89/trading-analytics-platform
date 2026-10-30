@@ -142,8 +142,8 @@ Code vs ADR:
 | 3 Backend/API foundation | REST API foundation `Implemented`; layering `Planned (B0)`; OpenAPI document `Implemented` (B6) | none |
 | 4 Authentication and RBAC | login, `me`, refresh, logout and role enforcement `Implemented` (B2) | login, session restore, the route guard, logout and the user in the shell `Implemented` (FE1.1) |
 | 5 Frontend foundation | none | `Implemented` for FE0.1 to FE0.9; forms and language selection `Planned (FE0)` |
-| 6 Core portfolio workflow | endpoints `Implemented` | the portfolio list screen and the real portfolio selector `Implemented` (FE1.2); detail, create, edit and archive `Planned (FE1)` |
-| 7 Transactions and positions | endpoints `Implemented`; fee handling change `Implemented` | `Planned (FE1)` |
+| 6 Core portfolio workflow | endpoints `Implemented` | the portfolio list screen and the real portfolio selector `Implemented` (FE1.2); the detail screen with its positions table `Implemented` (FE1.3); create, edit and archive `Planned (FE1)` |
+| 7 Transactions and positions | endpoints `Implemented`; fee handling change `Implemented` | the positions table `Implemented` (FE1.3); transactions `Planned (FE1)` |
 | 8 Tables, filters and analytics | allocation and attribution `Implemented`; performance and risk endpoints `Implemented` | `Planned (FE2)` |
 | 9 Realtime | server `Implemented` (B5) | client `Planned (FE3)` |
 | 10 Background operations | jobs and idempotency `Implemented` (B4) | screens `Planned (FE3)` |
@@ -640,10 +640,11 @@ The final structure may evolve during implementation.
 | Route tests for the positions, assets, market and analytics routes, before the services move into `@trading/application` (ADR-001 point 8) | `Planned (B0)` | B0 |
 | Session state: the access token kept in memory only (ADR-005 point 4), login and logout screens | `Implemented` (FE1.1); session endpoints `Implemented` (B2.3, B2.4) | FE1 |
 | Portfolio listing: the real portfolio selector in the shell (active portfolios only, the choice remembered) and the list screen at `/portfolios` over the `DataTable` (name, base currency and status; search by name, sorting by name and base currency, pagination). Value, daily return and positions per portfolio need analytics data, so they arrive with FE2 | `Implemented` (FE1.2) | FE1 |
-| Portfolio detail and positions screens, create, edit and archive | `Planned (FE1)`; the application shell is FE0 (§10) | FE1 |
+| Portfolio detail at `/portfolios/:portfolioId` with its positions: a back link, the portfolio name in the breadcrumb of the shell, and the positions in the shared `DataTable` (asset with its symbol and name, quantity, average and current price; sorting by every column, the prices by amount; pagination of 10), with the loading, empty and failed states of the Figma frames; a portfolio that does not exist shows the not-found page. The asset behind each position is read with `getAsset`, once per asset, and a position whose asset fails to load shows "Unknown asset" instead of disappearing. Value, daily return, unrealized P/L and allocation need analytics data, so they arrive with FE2; the "New transaction" button of the empty state arrives with FE1.4 | `Implemented` (FE1.3) | FE1 |
+| Create, edit and archive a portfolio | `Planned (FE1)`; they come with the form foundation (FE0) | FE1 |
 | Dashboard (the overview and Pulse API; decided 2026-10-08, §4.3) | `Planned (FE2)` | FE2 |
-| Loading, empty and error states; responsive behavior (breakpoints 900 px and 560 px, minimum width 360 px, ADR-010 point 9) | `Implemented` for the portfolio list (loading, empty, no results and failed, FE1.2) on desktop; the tablet and mobile layouts and the other screens `Planned (FE1)` | FE1 |
-| API integration through the `TradingClient` port and its HTTP adapter over `@trading/contracts` (ADR-002 point 5) | `Implemented` (FE0.5) for the client; its use in the login (FE1.1) and portfolio list (FE1.2) screens `Implemented`, the remaining screens `Planned (FE1)` | FE0, FE1 |
+| Loading, empty and error states; responsive behavior (breakpoints 900 px and 560 px, minimum width 360 px, ADR-010 point 9) | `Implemented` for the portfolio list (loading, empty, no results and failed, FE1.2) and the portfolio detail (loading, empty and failed positions, FE1.3) on desktop; the tablet and mobile layouts and the other screens `Planned (FE1)` | FE1 |
+| API integration through the `TradingClient` port and its HTTP adapter over `@trading/contracts` (ADR-002 point 5) | `Implemented` (FE0.5) for the client; its use in the login (FE1.1), portfolio list (FE1.2) and portfolio detail (FE1.3) screens `Implemented`, the remaining screens `Planned (FE1)` | FE0, FE1 |
 
 Code vs ADR:
 
@@ -1513,7 +1514,7 @@ How the original nodes map to the blocks:
 | Backend | Phase 3 `Implemented`; layering in B0; OpenAPI document in B6 | `Implemented`; `Planned (B0)`, `Implemented` (B6) |
 | Auth | Phase 4 login, `me`, refresh, logout and roles `Implemented` in B2; session screens in FE1 | `Implemented` (B2 and FE1.1) |
 | Frontend | Phase 5, FE0 | FE0.1 to FE0.9 `Implemented`; forms and language selection `Planned (FE0)` |
-| Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | Portfolio list `Implemented` (FE1.2); the remaining screens `Planned (FE1)` |
+| Core workflows, Transactions | Endpoints `Implemented`; screens in FE1 | Portfolio list (FE1.2) and detail with positions (FE1.3) `Implemented`; the remaining screens `Planned (FE1)` |
 | Analytics | Allocation and attribution `Implemented`; performance and risk in B1; views in FE2 | `Implemented`; `Planned (FE2)` |
 | Realtime | Server B5; client FE3 | `Implemented` (B5), `Planned (FE3)` |
 | Background operations | Jobs B4; screens FE3 | `Implemented` (B4), `Planned (FE3)` |
@@ -1772,7 +1773,7 @@ Foreign keys and constraints should reflect domain ownership.
 | App shell | `Implemented` (FE0.9) | FE0 |
 | Authentication: session screens | `Implemented` (FE1.1); needs refresh and logout from B2 | FE1 |
 | Dashboard | `Planned (FE2)`; decided 2026-10-08, it depends on the overview and Pulse API | FE2 |
-| Portfolio, positions and transactions | Portfolio list `Implemented` (FE1.2); the rest `Planned (FE1)` | FE1 |
+| Portfolio, positions and transactions | Portfolio list (FE1.2) and detail with positions (FE1.3) `Implemented`; the rest `Planned (FE1)` | FE1 |
 | Analytics: performance, risk, pulse, allocation and attribution | `Planned (FE2)` | FE2 |
 | Realtime: client, notifications and alerts | `Planned (FE3)` | FE3 |
 | Background operations: CSV import screens and job progress | `Planned (FE3)` | FE3 |
@@ -2492,7 +2493,7 @@ The project is technically complete when:
 | Sign in | Login `Implemented` in the API; screens `Planned (FE1)` | FE1 |
 | View dashboard | Overview endpoint `Implemented`; `performance` field and the What Changed read model `Implemented` except alerts (ADR-010 point 1); views `Planned (FE2)` | B1, FE2 |
 | Manage portfolio | Endpoints `Implemented`; archived portfolios read-only (409 `CONFLICT`) `Planned (B0)` (ADR-010 point 5); screens `Planned (FE1)` | B0, FE1 |
-| Inspect positions | Endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
+| Inspect positions | Endpoints `Implemented`; positions table `Implemented` (FE1.3), market value and unrealized P/L `Planned (FE2)` | FE1 |
 | Record transactions | `BUY` and `SELL` only, no cash balance (ADR-003 points 1 and 2); chronological validation `Planned (B0)` (ADR-003 point 6); a transaction cannot be edited or deleted, no such endpoint (ADR-003 point 7); the form `Planned (FE1)` | B0, FE1 |
 | Review analytics | Allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)`; win/loss and transaction statistics are not in version 1 (ADR-010 point 10) | B1, FE2 |
 | Experience realtime updates | `Implemented` (B5); client `Planned (FE3)` | B5, FE3 |
@@ -3107,7 +3108,7 @@ observable runtime
 | --- | --- | --- |
 | Frontend shell | `Implemented` (FE0.9); `apps/web` is a React and Vite app with the app shell (FE0.9) and the session and portfolios screens (FE1.1, FE1.2) | FE0 |
 | Authentication UI | `Implemented` (FE1.1); needs B2 | FE1 |
-| Portfolios, positions, transactions | endpoints `Implemented`; portfolio list `Implemented` (FE1.2), the other screens `Planned (FE1)` | FE1 |
+| Portfolios, positions, transactions | endpoints `Implemented`; portfolio list (FE1.2) and detail with positions (FE1.3) `Implemented`, the other screens `Planned (FE1)` | FE1 |
 | Dashboard and analytics | allocation and attribution endpoints `Implemented`; performance and risk endpoints `Implemented`; views `Planned (FE2)` | B1, FE2 |
 
 Code vs ADR:
@@ -3548,8 +3549,8 @@ Each original step belongs to the block(s) below. The original numbers are kept 
 | 12 Frontend shell | `Implemented` (FE0.9); `apps/web` is a React and Vite app in progress | FE0 |
 | 13 Auth UI | `Implemented` (FE1.1) | FE1 |
 | 14 Dashboard | overview endpoint `Implemented`, with the `performance` field and What Changed; views `Planned (FE2)` | B1, FE2 |
-| 15 Portfolio | endpoints `Implemented`; list screen `Implemented` (FE1.2), the other screens `Planned (FE1)` | FE1 |
-| 16 Positions | endpoints `Implemented`; screens `Planned (FE1)` | FE1 |
+| 15 Portfolio | endpoints `Implemented`; list screen (FE1.2) and detail screen (FE1.3) `Implemented`, the other screens `Planned (FE1)` | FE1 |
+| 16 Positions | endpoints `Implemented`; positions table `Implemented` (FE1.3), without value and P/L, which arrive with FE2 | FE1 |
 | 17 Transactions | endpoints `Implemented`; chronological validation `Planned (B0)`; screens `Planned (FE1)` | B0, FE1 |
 | 18 Analytics | allocation and attribution `Implemented`; performance and risk `Implemented`; views `Planned (FE2)` | B1, FE2 |
 | 19 Tables/filters | `Planned (FE2)` (sorting is client-side, ADR-010 point 4) | FE2 |

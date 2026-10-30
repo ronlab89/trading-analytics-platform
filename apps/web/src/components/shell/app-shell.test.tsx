@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,13 +31,35 @@ function clientListing(portfolios: unknown[]): TradingClient {
   return { call: () => Promise.resolve({ data: portfolios }) };
 }
 
+const archived = { data: portfolio("p3", "Experimental", "ARCHIVED") };
+
+/** Answers each operation with its own response; the list is always the one active portfolio. */
+function clientByOperation(answers: Record<string, () => Promise<unknown>>): TradingClient {
+  return {
+    call: (operation) =>
+      operation.operationId === "listPortfolios"
+        ? Promise.resolve({ data: [portfolio("p1", "Crecimiento")] })
+        : (answers[operation.operationId]?.() ?? Promise.reject(new Error("unexpected call"))),
+  };
+}
+
 function renderShell(
   service: SessionService = fakeSessionService(),
   client: TradingClient = clientListing([portfolio("p1", "Crecimiento")]),
+  path = "/",
 ) {
-  const router = createMemoryRouter([
-    { element: <AppShell />, children: [{ path: "/", element: <h1>Content</h1> }] },
-  ]);
+  const router = createMemoryRouter(
+    [
+      {
+        element: <AppShell />,
+        children: [
+          { path: "/", element: <h1>Content</h1> },
+          { path: "/portfolios/:portfolioId", element: <h1>Detail</h1> },
+        ],
+      },
+    ],
+    { initialEntries: [path] },
+  );
   const queryClient = createQueryClient();
   const SessionWrapper = sessionWrapper(service, queryClient);
   const ClientWrapper = tradingClientWrapper(client, queryClient);
@@ -168,5 +190,37 @@ describe("AppShell", () => {
     expect(await screen.findByText("Could not sign out")).toBeVisible();
     expect(screen.getByText(/You are still signed in/)).toBeVisible();
     expect(useSessionStore.getState().status).toBe("authenticated");
+  });
+
+  it("names the portfolio of the detail page in the breadcrumb", async () => {
+    renderShell(
+      fakeSessionService(),
+      clientByOperation({ getPortfolio: () => Promise.resolve(archived) }),
+      "/portfolios/p3",
+    );
+
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(await within(breadcrumb).findByText("Experimental")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(breadcrumb).getByRole("link", { name: "Portfolios" })).toHaveAttribute(
+      "href",
+      "/portfolios",
+    );
+  });
+
+  it("keeps the section as the current item while the detail portfolio is unknown", async () => {
+    const failing = () => Promise.reject(new ApiError("NOT_FOUND", "Not found", 404));
+    renderShell(
+      fakeSessionService(),
+      clientByOperation({ getPortfolio: failing }),
+      "/portfolios/p3",
+    );
+
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    await screen.findByRole("heading", { name: "Detail" });
+    expect(within(breadcrumb).getByText("Portfolios")).toHaveAttribute("aria-current", "page");
+    expect(within(breadcrumb).queryByRole("link")).not.toBeInTheDocument();
   });
 });

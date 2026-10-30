@@ -2,6 +2,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Check, Tag } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { Avatar } from "@/components/avatar";
 import { Badge } from "@/components/badge";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
@@ -52,7 +53,12 @@ export function usePortfolioColumns(activeId: string | undefined) {
                 shape="square"
                 tone={row.original.id === activeId ? "dark" : "neutral"}
               />
-              <span>{row.original.name}</span>
+              <Link
+                className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                to={`/portfolios/${row.original.id}`}
+              >
+                {row.original.name}
+              </Link>
               {row.original.id === activeId ? <Badge>{t("portfolios.inUse")}</Badge> : null}
             </span>
           ),
