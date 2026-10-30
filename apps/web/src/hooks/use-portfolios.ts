@@ -9,6 +9,8 @@ const listPortfoliosOperation = findOperation(portfolioOperations, "listPortfoli
 export const portfolioKeys = {
   all: ["portfolios"] as const,
   list: () => [...portfolioKeys.all, "list"] as const,
+  detail: (id: string) => [...portfolioKeys.all, "detail", id] as const,
+  positions: (id: string) => [...portfolioKeys.all, "detail", id, "positions"] as const,
 };
 
 /**
