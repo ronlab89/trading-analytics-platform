@@ -69,6 +69,13 @@ const en = {
     activity: "Activity",
     settings: "Settings",
   },
+  dataTable: {
+    pagination: "Pagination",
+    showing: "Showing {{from}}–{{to}} of {{total}}",
+    page: "Page {{page}} of {{pageCount}}",
+    previousPage: "Previous page",
+    nextPage: "Next page",
+  },
   portfolios: {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
@@ -91,7 +98,6 @@ const en = {
     search: "Search portfolio",
     count_one: "{{count}} portfolio",
     count_other: "{{count}} portfolios",
-    showing: "Showing 1–{{shown}} of {{total}}",
     columns: { name: "Name", baseCurrency: "Base currency", status: "Status" },
     status: { ACTIVE: "Active", ARCHIVED: "Archived" },
     inUse: "In use",
@@ -210,6 +216,13 @@ const es: Messages<typeof en> = {
     activity: "Actividad",
     settings: "Configuración",
   },
+  dataTable: {
+    pagination: "Paginación",
+    showing: "Mostrando {{from}}–{{to}} de {{total}}",
+    page: "Página {{page}} de {{pageCount}}",
+    previousPage: "Página anterior",
+    nextPage: "Página siguiente",
+  },
   portfolios: {
     summary_one: "Administra tus portafolios · {{count}} en total",
     summary_other: "Administra tus portafolios · {{count}} en total",
@@ -233,7 +246,6 @@ const es: Messages<typeof en> = {
     search: "Buscar portafolio",
     count_one: "{{count}} portafolio",
     count_other: "{{count}} portafolios",
-    showing: "Mostrando 1–{{shown}} de {{total}}",
     columns: { name: "Nombre", baseCurrency: "Moneda base", status: "Estado" },
     status: { ACTIVE: "Activo", ARCHIVED: "Archivado" },
     inUse: "En uso",

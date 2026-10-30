@@ -1,9 +1,11 @@
 import {
   columnFilteringFeature,
   createFilteredRowModel,
+  createPaginatedRowModel,
   createSortedRowModel,
   globalFilteringFeature,
   metaHelper,
+  rowPaginationFeature,
   rowSortingFeature,
   sortFn_alphanumeric,
   sortFn_basic,
@@ -28,13 +30,15 @@ export interface DataTableColumnMeta {
  * stays off until a view asks for it (`useDataTable`'s `sortable`); the sort functions are the ones
  * TanStack picks on its own by the type of the values: text, alphanumeric, dates and the rest. The
  * global filter is what the toolbar's search writes; a column that must not be searched sets
- * `enableGlobalFilter: false`.
+ * `enableGlobalFilter: false`. Pagination is registered but off until a view gives a `pageSize`.
  */
 export const dataTableFeatures = tableFeatures({
   columnMeta: metaHelper<DataTableColumnMeta>(),
   columnFilteringFeature,
   globalFilteringFeature,
   filteredRowModel: createFilteredRowModel(),
+  rowPaginationFeature,
+  paginatedRowModel: createPaginatedRowModel(),
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
   sortFns: {

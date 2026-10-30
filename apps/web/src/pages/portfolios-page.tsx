@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { DataTable } from "@/components/data-table/data-table";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { useDataTable } from "@/components/data-table/use-data-table";
 import { Alert } from "@/components/ui/alert";
@@ -13,6 +14,7 @@ import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { usePortfolios } from "@/hooks/use-portfolios";
 
 const NO_PORTFOLIOS: PortfolioRow[] = [];
+const PAGE_SIZE = 10;
 
 /**
  * The portfolio list and its five Figma states: loading, with data, empty, no results for the
@@ -28,9 +30,10 @@ export function PortfoliosPage() {
     data: portfolios ?? NO_PORTFOLIOS,
     getRowId: (portfolio) => portfolio.id,
     sortable: true,
+    pageSize: PAGE_SIZE,
   });
 
-  const shown = table.getRowModel().rows.length;
+  const matches = table.getRowCount();
   const search = String(table.state.globalFilter ?? "").trim();
 
   return (
@@ -75,11 +78,11 @@ export function PortfoliosPage() {
           <>
             <DataTableToolbar searchLabel={t("portfolios.search")} table={table}>
               <p className="text-sm text-(--color-text-secondary)">
-                {t("portfolios.count", { count: shown })}
+                {t("portfolios.count", { count: matches })}
               </p>
             </DataTableToolbar>
             <DataTable aria-label={t("portfolios.table")} table={table} />
-            {shown === 0 ? (
+            {matches === 0 ? (
               <PortfoliosEmptyState
                 action={
                   <Button
@@ -95,11 +98,8 @@ export function PortfoliosPage() {
                 description={t("portfolios.noResults.description", { query: search })}
                 title={t("portfolios.noResults.title")}
               />
-            ) : (
-              <p className="text-sm text-(--color-text-secondary)">
-                {t("portfolios.showing", { shown, total: portfolios.length })}
-              </p>
-            )}
+            ) : null}
+            <DataTablePagination table={table} />
           </>
         )}
       </section>

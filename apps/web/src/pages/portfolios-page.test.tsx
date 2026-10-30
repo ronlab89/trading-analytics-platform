@@ -92,7 +92,7 @@ describe("PortfoliosPage", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(2);
     expect(within(table).getByRole("row", { name: /Crecimiento/ })).toBeInTheDocument();
     expect(screen.getByText("1 portfolio")).toBeInTheDocument();
-    expect(screen.getByText("Showing 1–1 of 3")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
     expect(screen.getByText("Manage your portfolios · 3 in total")).toBeInTheDocument();
   });
 

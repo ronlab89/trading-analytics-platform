@@ -14,6 +14,11 @@ interface UseDataTableOptions<TData extends RowData> {
    * keeps the order the API gives it.
    */
   sortable?: boolean | undefined;
+  /**
+   * Splits the rows in pages of this size, in the client: right for a list loaded in full (the
+   * pagination pieces read the same instance). Without it the table shows every row.
+   */
+  pageSize?: number | undefined;
 }
 
 /** The table instance of a view. It binds the project's features, so a view only gives its columns and rows. */
@@ -22,6 +27,7 @@ export function useDataTable<TData extends RowData>({
   data,
   getRowId,
   sortable = false,
+  pageSize,
 }: UseDataTableOptions<TData>) {
   return useTable({
     features: dataTableFeatures,
@@ -30,6 +36,9 @@ export function useDataTable<TData extends RowData>({
     getRowId,
     enableSorting: sortable,
     globalFilterFn: includesText,
+    // TanStack paginates by 10 unless told otherwise; a table paginates only when asked to.
+    manualPagination: pageSize === undefined,
+    ...(pageSize === undefined ? {} : { initialState: { pagination: { pageIndex: 0, pageSize } } }),
     // By default TanStack sorts numbers descending first; every column starts ascending instead.
     sortDescFirst: false,
   });
