@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -19,26 +19,56 @@ const growth = {
   updatedAt: "2026-10-01T00:00:00.000Z",
 };
 
-function position(id: string, assetId: string) {
+function position(
+  id: string,
+  assetId: string,
+  { quantity = 10, average = "100.00", current = "110.00" } = {},
+) {
   return {
     id,
     portfolioId: "p1",
     assetId,
-    quantity: 10,
-    averageEntryPrice: { amount: "100.00", currency: "USD" },
-    currentPrice: { amount: "110.00", currency: "USD" },
+    quantity,
+    averageEntryPrice: { amount: average, currency: "USD" },
+    currentPrice: { amount: current, currency: "USD" },
     openedAt: "2026-10-01T00:00:00.000Z",
     updatedAt: "2026-10-02T00:00:00.000Z",
   };
 }
 
-type Answers = Partial<Record<"getPortfolio" | "listPositions", () => Promise<unknown>>>;
+function asset(id: string, symbol: string, name: string) {
+  return {
+    id,
+    symbol,
+    name,
+    assetType: "STOCK",
+    currency: "USD",
+    exchange: "NASDAQ",
+    status: "ACTIVE",
+    metadata: {},
+  };
+}
+
+const assets = new Map([
+  ["a1", asset("a1", "AAPL", "Apple Inc.")],
+  ["a2", asset("a2", "MSFT", "Microsoft")],
+]);
+
+interface Answers {
+  getPortfolio?: () => Promise<unknown>;
+  listPositions?: () => Promise<unknown>;
+  getAsset?: (assetId: string) => Promise<unknown>;
+}
 
 function clientWith(answers: Answers) {
   const call = vi.fn<(operation: { operationId: string }, input?: CallInput) => Promise<unknown>>(
-    (operation) => {
-      const answer = answers[operation.operationId as keyof Answers];
-      return answer ? answer() : Promise.reject(new Error(`unexpected ${operation.operationId}`));
+    (operation, input) => {
+      const unexpected = () => Promise.reject(new Error(`unexpected ${operation.operationId}`));
+      if (operation.operationId === "getAsset") {
+        return answers.getAsset?.(input?.params?.assetId ?? "") ?? unexpected();
+      }
+      const answer = answers[operation.operationId as "getPortfolio" | "listPositions"];
+      return answer ? answer() : unexpected();
     },
   );
   return { client: { call } as TradingClient, call };
@@ -60,6 +90,7 @@ function renderPage(client: TradingClient, path = "/portfolios/p1") {
 const loaded: Answers = {
   getPortfolio: () => Promise.resolve({ data: growth }),
   listPositions: () => Promise.resolve({ data: [position("s1", "a1"), position("s2", "a2")] }),
+  getAsset: (assetId) => Promise.resolve({ data: assets.get(assetId) }),
 };
 
 describe("PortfolioDetailPage", () => {
@@ -77,6 +108,79 @@ describe("PortfolioDetailPage", () => {
     renderPage(clientWith(loaded).client);
 
     expect(await screen.findByText("2 positions")).toBeInTheDocument();
+  });
+
+  it("lists each position with its asset, quantity and prices", async () => {
+    renderPage(
+      clientWith({
+        ...loaded,
+        listPositions: () =>
+          Promise.resolve({
+            data: [position("s1", "a1", { quantity: 17560, average: "162.4", current: "180.70" })],
+          }),
+      }).client,
+    );
+
+    const table = await screen.findByRole("table", { name: "Positions" });
+    const row = within(table).getByRole("row", { name: /Apple Inc\./ });
+    expect(within(row).getByText("AAPL")).toBeInTheDocument();
+    expect(within(row).getByText("17,560")).toBeInTheDocument();
+    expect(within(row).getByText("$162.40")).toBeInTheDocument();
+    expect(within(row).getByText("$180.70")).toBeInTheDocument();
+  });
+
+  it("marks the position of an asset that could not be loaded instead of hiding it", async () => {
+    renderPage(
+      clientWith({
+        ...loaded,
+        getAsset: (assetId) =>
+          assetId === "a1"
+            ? Promise.resolve({ data: assets.get("a1") })
+            : Promise.reject(new ApiError("NOT_FOUND", "Asset not found", 404)),
+      }).client,
+    );
+
+    const table = await screen.findByRole("table", { name: "Positions" });
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    expect(within(table).getByText("Unknown asset")).toBeInTheDocument();
+  });
+
+  it("sorts the price columns by their value, not by their text", async () => {
+    renderPage(
+      clientWith({
+        ...loaded,
+        listPositions: () =>
+          Promise.resolve({
+            data: [
+              position("s1", "a1", { average: "100.00" }),
+              position("s2", "a2", { average: "9.00" }),
+            ],
+          }),
+      }).client,
+    );
+
+    const table = await screen.findByRole("table", { name: "Positions" });
+    await userEvent.click(within(table).getByRole("button", { name: /Avg\. price/ }));
+
+    const [first, second] = within(table).getAllByRole("row").slice(1);
+    expect(first).toHaveTextContent("MSFT");
+    expect(second).toHaveTextContent("AAPL");
+  });
+
+  it("shows the positions ten at a time", async () => {
+    renderPage(
+      clientWith({
+        ...loaded,
+        listPositions: () =>
+          Promise.resolve({
+            data: Array.from({ length: 12 }, (_, index) => position(`s${String(index)}`, "a1")),
+          }),
+      }).client,
+    );
+
+    const table = await screen.findByRole("table", { name: "Positions" });
+    expect(within(table).getAllByRole("row")).toHaveLength(11);
+    expect(screen.getByText("Showing 1–10 of 12")).toBeInTheDocument();
   });
 
   it("announces the positions as loading until they arrive", async () => {

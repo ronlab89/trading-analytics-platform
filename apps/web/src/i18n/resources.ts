@@ -111,7 +111,15 @@ const en = {
     },
     positions: {
       title: "Positions",
+      table: "Positions",
       loading: "Loading positions",
+      unknownAsset: "Unknown asset",
+      columns: {
+        asset: "Asset",
+        quantity: "Quantity",
+        averageEntryPrice: "Avg. price",
+        currentPrice: "Current price",
+      },
       count_one: "{{count}} position",
       count_other: "{{count}} positions",
       empty: {
@@ -282,7 +290,15 @@ const es: Messages<typeof en> = {
     },
     positions: {
       title: "Posiciones",
+      table: "Posiciones",
       loading: "Cargando posiciones",
+      unknownAsset: "Activo desconocido",
+      columns: {
+        asset: "Activo",
+        quantity: "Cantidad",
+        averageEntryPrice: "Precio prom.",
+        currentPrice: "Precio actual",
+      },
       count_one: "{{count}} posición",
       count_other: "{{count}} posiciones",
       empty: {
