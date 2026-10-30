@@ -77,6 +77,26 @@ const en = {
     nextPage: "Next page",
   },
   dialog: { close: "Close" },
+  portfolioForm: {
+    name: { label: "Name", placeholder: "e.g. Long term", required: "Enter a name" },
+    description: {
+      label: "Description",
+      placeholder: "e.g. Long-term investment portfolio",
+      optional: "Optional",
+    },
+    baseCurrency: {
+      label: "Base currency",
+      placeholder: "Select a currency",
+      help: "You won't be able to change it after creating it.",
+      required: "Select a base currency.",
+      options: {
+        USD: "USD · US dollar",
+        EUR: "EUR · Euro",
+        GBP: "GBP · Pound sterling",
+        COP: "COP · Colombian peso",
+      },
+    },
+  },
   portfolios: {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
@@ -256,6 +276,26 @@ const es: Messages<typeof en> = {
     nextPage: "Página siguiente",
   },
   dialog: { close: "Cerrar" },
+  portfolioForm: {
+    name: { label: "Nombre", placeholder: "Ej. Largo plazo", required: "Ingresa un nombre" },
+    description: {
+      label: "Descripción",
+      placeholder: "Ej. Cartera de inversión a largo plazo",
+      optional: "Opcional",
+    },
+    baseCurrency: {
+      label: "Moneda base",
+      placeholder: "Selecciona una moneda",
+      help: "No podrás cambiarla después de crearlo.",
+      required: "Selecciona una moneda base.",
+      options: {
+        USD: "USD · Dólar estadounidense",
+        EUR: "EUR · Euro",
+        GBP: "GBP · Libra esterlina",
+        COP: "COP · Peso colombiano",
+      },
+    },
+  },
   portfolios: {
     summary_one: "Administra tus portafolios · {{count}} en total",
     summary_other: "Administra tus portafolios · {{count}} en total",
