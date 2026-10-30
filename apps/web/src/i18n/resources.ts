@@ -76,6 +76,7 @@ const en = {
     previousPage: "Previous page",
     nextPage: "Next page",
   },
+  dialog: { close: "Close" },
   portfolios: {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
@@ -254,6 +255,7 @@ const es: Messages<typeof en> = {
     previousPage: "Página anterior",
     nextPage: "Página siguiente",
   },
+  dialog: { close: "Cerrar" },
   portfolios: {
     summary_one: "Administra tus portafolios · {{count}} en total",
     summary_other: "Administra tus portafolios · {{count}} en total",
