@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { useDiscardGuard, useReportDirty } from "../hooks/use-discard-guard";
 import { useUpdatePortfolio } from "../hooks/use-update-portfolio";
 import {
@@ -45,7 +46,7 @@ export function EditPortfolioDialog({ portfolio, open, onOpenChange }: EditPortf
   return (
     <>
       <Dialog onOpenChange={guard.handleOpenChange} open={open && portfolio !== null}>
-        <DialogContent aria-describedby={undefined}>
+        <DialogContent aria-describedby={undefined} mobileSheet>
           {portfolio ? (
             <EditPortfolioForm
               onDirtyChange={guard.setDirty}
@@ -77,6 +78,8 @@ interface EditPortfolioFormProps {
 /** Mounted only while the dialog is open, so every opening starts from the portfolio's values. */
 function EditPortfolioForm({ portfolio, update, onSaved, onDirtyChange }: EditPortfolioFormProps) {
   const { t } = useTranslation();
+  // The Figma mobile form words its description differently from the desktop one.
+  const isMobile = useIsMobile();
   const form = useForm<PortfolioFormValues>({
     resolver: zodResolver(portfolioFormSchema),
     defaultValues: portfolioToFormValues(portfolio),
@@ -117,7 +120,9 @@ function EditPortfolioForm({ portfolio, update, onSaved, onDirtyChange }: EditPo
     >
       <DialogHeader>
         <DialogTitle>{t("portfolioEdit.title")}</DialogTitle>
-        <DialogDescription>{t("portfolioEdit.subtitle")}</DialogDescription>
+        <DialogDescription>
+          {t(isMobile ? "portfolioEdit.mobileSubtitle" : "portfolioEdit.subtitle")}
+        </DialogDescription>
       </DialogHeader>
       <DialogBody className="gap-4">
         <PortfolioFields baseCurrencyLocked disabled={update.isPending} form={form} />

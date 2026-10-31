@@ -80,6 +80,10 @@ const en = {
   portfolioForm: {
     title: "New portfolio",
     subtitle: "Group your positions and transactions in an independent portfolio.",
+    mobile: {
+      title: "Create portfolio",
+      subtitle: "Group your positions and choose their base currency.",
+    },
     cancel: "Cancel",
     submit: "Create portfolio",
     submitting: "Creating…",
@@ -129,6 +133,7 @@ const en = {
   portfolioEdit: {
     title: "Edit portfolio",
     subtitle: "Change the name of your portfolio.",
+    mobileSubtitle: "Change the name or the description.",
     submit: "Save changes",
     submitting: "Saving…",
     discardDescription:
@@ -143,6 +148,17 @@ const en = {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
     new: "New portfolio",
+    newShort: "New",
+    mobile: {
+      empty: {
+        title: "There are no portfolios yet",
+        description: "Create your first portfolio to start recording transactions.",
+      },
+      failed: {
+        title: "We couldn't load the portfolios",
+        description: "There was a problem connecting to the server. Try again in a few seconds.",
+      },
+    },
     table: "Portfolios",
     loading: "Loading portfolios",
     empty: {
@@ -175,6 +191,7 @@ const en = {
   },
   portfolioDetail: {
     back: "Back to Portfolios",
+    menu: { label: "Portfolio actions" },
     failed: {
       title: "Couldn't load the portfolio",
       description: "Check your connection and try again. Your data has not been changed.",
@@ -185,6 +202,7 @@ const en = {
       table: "Positions",
       loading: "Loading positions",
       unknownAsset: "Unknown asset",
+      mobile: { summary: "{{quantity}} units · Avg. {{average}} · Current {{current}}" },
       columns: {
         asset: "Asset",
         quantity: "Quantity",
@@ -329,6 +347,10 @@ const es: Messages<typeof en> = {
   portfolioForm: {
     title: "Nuevo portafolio",
     subtitle: "Agrupa tus posiciones y transacciones en un portafolio independiente.",
+    mobile: {
+      title: "Crear portafolio",
+      subtitle: "Agrupa tus posiciones y elige su moneda base.",
+    },
     cancel: "Cancelar",
     submit: "Crear portafolio",
     submitting: "Creando…",
@@ -382,6 +404,7 @@ const es: Messages<typeof en> = {
   portfolioEdit: {
     title: "Editar portafolio",
     subtitle: "Cambia el nombre de tu portafolio.",
+    mobileSubtitle: "Cambia el nombre o la descripción.",
     submit: "Guardar cambios",
     submitting: "Guardando…",
     discardDescription:
@@ -396,6 +419,18 @@ const es: Messages<typeof en> = {
     summary_one: "Administra tus portafolios · {{count}} en total",
     summary_other: "Administra tus portafolios · {{count}} en total",
     new: "Nuevo portafolio",
+    newShort: "Nuevo",
+    mobile: {
+      empty: {
+        title: "Aún no hay portafolios",
+        description: "Crea tu primer portafolio para empezar a registrar transacciones.",
+      },
+      failed: {
+        title: "No pudimos cargar los portafolios",
+        description:
+          "Hubo un problema al conectar con el servidor. Inténtalo de nuevo en unos segundos.",
+      },
+    },
     table: "Portafolios",
     loading: "Cargando portafolios",
     empty: {
@@ -429,6 +464,7 @@ const es: Messages<typeof en> = {
   },
   portfolioDetail: {
     back: "Volver a Portafolios",
+    menu: { label: "Acciones del portafolio" },
     failed: {
       title: "No se pudo cargar el portafolio",
       description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
@@ -439,6 +475,7 @@ const es: Messages<typeof en> = {
       table: "Posiciones",
       loading: "Cargando posiciones",
       unknownAsset: "Activo desconocido",
+      mobile: { summary: "{{quantity}} uds. · Prom. {{average}} · Actual {{current}}" },
       columns: {
         asset: "Activo",
         quantity: "Cantidad",

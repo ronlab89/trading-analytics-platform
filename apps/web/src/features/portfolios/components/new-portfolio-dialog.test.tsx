@@ -70,6 +70,31 @@ describe("NewPortfolioDialog", () => {
     expect(screen.getByRole("button", { name: "Create portfolio" })).toBeEnabled();
   });
 
+  it("is a sheet at the bottom of the screen on mobile, as the Figma form is", () => {
+    renderDialog(clientWith(() => Promise.resolve({ data: created })).client);
+
+    expect(screen.getByRole("dialog", { name: "New portfolio" })).toHaveAttribute(
+      "data-mobile-sheet",
+    );
+  });
+
+  it("uses the title and description the Figma gives the mobile form", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      media: query,
+      matches: true,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    renderDialog(clientWith(() => Promise.resolve({ data: created })).client);
+
+    expect(screen.getByRole("dialog", { name: "Create portfolio" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Group your positions and choose their base currency."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("New portfolio")).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("renders nothing while it is closed", () => {
     renderDialog(clientWith(() => Promise.resolve({ data: created })).client, vi.fn(), false);
 

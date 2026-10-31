@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
-import { NotFoundPage } from "@/pages/not-found-page";
+import { NotFoundPage } from "@/pages/not-found/not-found-page";
 
 function renderPage() {
   return render(

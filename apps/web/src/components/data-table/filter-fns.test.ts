@@ -1,11 +1,19 @@
 import type { Row } from "@tanstack/react-table";
 import { describe, expect, it } from "vitest";
 import type { DataTableFeatures } from "./data-table-features";
-import { includesText } from "./filter-fns";
+import { includesText, matchesText } from "./filter-fns";
 
 function rowWith(value: unknown) {
   return { getValue: () => value } as unknown as Row<DataTableFeatures, object>;
 }
+
+describe("matchesText", () => {
+  it("is the search a list without a table applies: contains, ignoring case, accents and outer spaces", () => {
+    expect(matchesText("Educación", "  EDUCACION ")).toBe(true);
+    expect(matchesText("Renta fija", "")).toBe(true);
+    expect(matchesText("Crecimiento", "zzz")).toBe(false);
+  });
+});
 
 describe("includesText", () => {
   it("matches every row when the search is empty or only spaces", () => {

@@ -1,11 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
-import { PortfolioDetailPage } from "@/pages/portfolio-detail-page";
+import { PortfolioDetailPage } from "@/pages/portfolios/portfolio-detail-page";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 
 const growth = {
@@ -252,5 +252,118 @@ describe("PortfolioDetailPage", () => {
     await screen.findByText("2 positions");
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("offers the Edit button but not the ⋯ menu outside mobile, as the Figma does", async () => {
+    const user = userEvent.setup();
+    renderPage(clientWith(loaded).client);
+    await screen.findByText("2 positions");
+
+    expect(screen.queryByRole("button", { name: "Portfolio actions" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(await screen.findByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
+  });
+
+  describe("on mobile", () => {
+    beforeEach(() => {
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: query === "(max-width: 560px)",
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("shows the Edit button next to the back link and opens the edit form from it", async () => {
+      const user = userEvent.setup();
+      renderPage(clientWith(loaded).client);
+
+      await user.click(await screen.findByRole("button", { name: "Edit" }));
+
+      expect(await screen.findByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
+    });
+
+    it("opens the edit form from the ⋯ menu", async () => {
+      const user = userEvent.setup();
+      renderPage(clientWith(loaded).client);
+
+      await user.click(await screen.findByRole("button", { name: "Portfolio actions" }));
+      await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+
+      expect(await screen.findByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
+    });
+
+    it("asks before archiving from the ⋯ menu, which has no delete", async () => {
+      const user = userEvent.setup();
+      renderPage(clientWith(loaded).client);
+
+      await user.click(await screen.findByRole("button", { name: "Portfolio actions" }));
+      expect(screen.queryByRole("menuitem", { name: "Delete" })).not.toBeInTheDocument();
+      await user.click(screen.getByRole("menuitem", { name: "Archive" }));
+
+      expect(await screen.findByRole("dialog", { name: "Archive portfolio?" })).toBeInTheDocument();
+    });
+
+    it("offers no actions for an archived portfolio, which the API refuses to change", async () => {
+      renderPage(
+        clientWith({
+          ...loaded,
+          getPortfolio: () => Promise.resolve({ data: { ...growth, status: "ARCHIVED" } }),
+        }).client,
+      );
+      await screen.findByRole("list", { name: "Positions" });
+
+      expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Portfolio actions" })).not.toBeInTheDocument();
+    });
+
+    it("shows each position as a card with its quantity and prices instead of a table", async () => {
+      renderPage(
+        clientWith({
+          ...loaded,
+          listPositions: () =>
+            Promise.resolve({
+              data: [position("s1", "a1", { quantity: 236, average: "162.4", current: "180.70" })],
+            }),
+        }).client,
+      );
+
+      const list = await screen.findByRole("list", { name: "Positions" });
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      const card = within(list).getByRole("listitem");
+      expect(within(card).getByText("AAPL")).toBeInTheDocument();
+      expect(within(card).getByText("Apple Inc.")).toBeInTheDocument();
+      expect(
+        within(card).getByText("236 units · Avg. $162.40 · Current $180.70"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("1 position")).not.toBeInTheDocument();
+    });
+
+    it("shows the loading cards while the positions arrive", () => {
+      renderPage(
+        clientWith({ ...loaded, listPositions: () => new Promise(() => undefined) }).client,
+      );
+
+      expect(screen.getByRole("status", { name: "Loading positions" })).toBeInTheDocument();
+    });
+
+    it("explains an empty portfolio as on desktop", async () => {
+      renderPage(
+        clientWith({ ...loaded, listPositions: () => Promise.resolve({ data: [] }) }).client,
+      );
+
+      expect(await screen.findByText("No positions")).toBeInTheDocument();
+    });
+
+    it("has no accessibility violations", async () => {
+      const { container } = renderPage(clientWith(loaded).client);
+      await screen.findByRole("list", { name: "Positions" });
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
   });
 });

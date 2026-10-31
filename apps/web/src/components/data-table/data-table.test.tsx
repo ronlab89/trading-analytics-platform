@@ -22,7 +22,11 @@ const columns = helper.columns([
     meta: { align: "end" },
     cell: (info) => `${String(info.getValue())} years`,
   }),
-  helper.accessor("team", { header: "Team", enableSorting: false }),
+  helper.accessor("team", {
+    header: "Team",
+    enableSorting: false,
+    meta: { className: "max-desktop:hidden" },
+  }),
 ]);
 
 const people: Person[] = [
@@ -69,6 +73,15 @@ describe("DataTable", () => {
     expect(screen.getByRole("columnheader", { name: "Age" })).toHaveClass("text-right");
     expect(screen.getByRole("cell", { name: "36 years" })).toHaveClass("text-right");
     expect(screen.getByRole("columnheader", { name: "Name" })).toHaveClass("text-left");
+  });
+
+  it("adds the classes a column asks for to its header and its cells, so a view can hide it at a width", () => {
+    render(<PeopleTable data={people} />);
+
+    expect(screen.getByRole("columnheader", { name: "Team" })).toHaveClass("max-desktop:hidden");
+    expect(screen.getByRole("cell", { name: "Navy" })).toHaveClass("max-desktop:hidden");
+    expect(screen.getByRole("columnheader", { name: "Age" })).not.toHaveClass("max-desktop:hidden");
+    expect(screen.getByRole("cell", { name: "36 years" })).not.toHaveClass("max-desktop:hidden");
   });
 
   it("keeps only the header when there are no rows", () => {
