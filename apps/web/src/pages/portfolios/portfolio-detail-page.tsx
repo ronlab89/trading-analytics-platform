@@ -13,7 +13,7 @@ import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
 import { usePositionColumns } from "@/features/portfolios/hooks/use-position-columns";
 import { usePositionRows } from "@/features/portfolios/hooks/use-position-rows";
 import type { PositionRow } from "@/features/portfolios/types";
-import { NotFoundPage } from "@/pages/not-found-page";
+import { NotFoundPage } from "@/pages/not-found/not-found-page";
 
 const NO_POSITIONS: PositionRow[] = [];
 const PAGE_SIZE = 10;

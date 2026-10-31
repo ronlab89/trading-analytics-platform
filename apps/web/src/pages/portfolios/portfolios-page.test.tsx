@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
 import { ApiError, type TradingClient } from "@/api/trading-client";
-import { PortfoliosPage } from "@/pages/portfolios-page";
+import { PortfoliosPage } from "@/pages/portfolios/portfolios-page";
 import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 

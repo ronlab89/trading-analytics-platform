@@ -1,11 +1,11 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { AppShell } from "@/components/shell/app-shell";
 import { RequireAuth } from "@/features/auth/components/require-auth";
-import { HomePage } from "@/pages/home-page";
-import { LoginPage } from "@/pages/login-page";
-import { NotFoundPage } from "@/pages/not-found-page";
-import { PortfolioDetailPage } from "@/pages/portfolio-detail-page";
-import { PortfoliosPage } from "@/pages/portfolios-page";
+import { LoginPage } from "@/pages/auth/login-page";
+import { HomePage } from "@/pages/home/home-page";
+import { NotFoundPage } from "@/pages/not-found/not-found-page";
+import { PortfolioDetailPage } from "@/pages/portfolios/portfolio-detail-page";
+import { PortfoliosPage } from "@/pages/portfolios/portfolios-page";
 
 /**
  * Only the login is public and outside the shell; everything else, the not-found page

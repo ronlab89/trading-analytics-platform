@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
-import { PortfolioDetailPage } from "@/pages/portfolio-detail-page";
+import { PortfolioDetailPage } from "@/pages/portfolios/portfolio-detail-page";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 
 const growth = {
