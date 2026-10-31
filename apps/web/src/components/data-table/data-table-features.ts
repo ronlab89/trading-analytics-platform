@@ -22,6 +22,8 @@ export interface DataTableColumnMeta {
   align?: "start" | "center" | "end";
   /** The cell names its row: it renders as a row header, so a screen reader announces the row by it. */
   rowHeader?: boolean;
+  /** Extra classes for the header and every cell of the column, e.g. `max-desktop:hidden` to hide it at a width. */
+  className?: string;
 }
 
 /**

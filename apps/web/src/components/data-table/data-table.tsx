@@ -51,7 +51,10 @@ export function DataTable<TData extends RowData>({ table, ...props }: DataTableP
             {headerGroup.headers.map((header) => (
               <TableHead
                 aria-sort={ariaSort(header.column)}
-                className={alignment[header.column.columnDef.meta?.align ?? "start"]}
+                className={cn(
+                  alignment[header.column.columnDef.meta?.align ?? "start"],
+                  header.column.columnDef.meta?.className,
+                )}
                 key={header.id}
               >
                 {header.isPlaceholder ? null : <DataTableColumnHeader header={header} />}
@@ -64,14 +67,18 @@ export function DataTable<TData extends RowData>({ table, ...props }: DataTableP
         {table.getRowModel().rows.map((row) => (
           <TableRow key={row.id}>
             {row.getAllCells().map((cell) => {
-              const { align = "start", rowHeader } = cell.column.columnDef.meta ?? {};
+              const { align = "start", rowHeader, className } = cell.column.columnDef.meta ?? {};
               const content = <FlexRender cell={cell} />;
               return rowHeader ? (
-                <th className={cn("px-3 font-normal", alignment[align])} key={cell.id} scope="row">
+                <th
+                  className={cn("px-3 font-normal", alignment[align], className)}
+                  key={cell.id}
+                  scope="row"
+                >
                   {content}
                 </th>
               ) : (
-                <TableCell className={alignment[align]} key={cell.id}>
+                <TableCell className={cn(alignment[align], className)} key={cell.id}>
                   {content}
                 </TableCell>
               );

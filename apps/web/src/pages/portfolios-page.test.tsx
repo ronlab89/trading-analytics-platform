@@ -99,6 +99,23 @@ describe("PortfoliosPage", () => {
     expect(within(table).getByText("In use")).toBeInTheDocument();
   });
 
+  it("hides the base currency column below desktop, as the Figma tablet list does", async () => {
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getByRole("columnheader", { name: "Base currency" })).toHaveClass(
+      "max-desktop:hidden",
+    );
+    expect(
+      within(within(table).getByRole("row", { name: /Experimental/ })).getByRole("cell", {
+        name: "EUR",
+      }),
+    ).toHaveClass("max-desktop:hidden");
+    expect(within(table).getByRole("columnheader", { name: "Status" })).not.toHaveClass(
+      "max-desktop:hidden",
+    );
+  });
+
   it("states how many portfolios there are", async () => {
     renderPage();
 

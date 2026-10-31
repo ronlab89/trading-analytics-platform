@@ -80,7 +80,8 @@ export function usePortfolioColumns(activeId: string | undefined, actions: Portf
         column.accessor("baseCurrency", {
           header: headerOf("baseCurrency"),
           enableGlobalFilter: false,
-          meta: { align: "center" },
+          // The Figma tablet list drops this column; the desktop one keeps it.
+          meta: { align: "center", className: "max-desktop:hidden" },
           cell: ({ getValue }) => <span className="font-medium">{getValue()}</span>,
         }),
         column.accessor("status", {
