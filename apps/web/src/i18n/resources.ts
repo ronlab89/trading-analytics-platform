@@ -166,6 +166,12 @@ const en = {
     columns: { name: "Name", baseCurrency: "Base currency", status: "Status" },
     status: { ACTIVE: "Active", ARCHIVED: "Archived" },
     inUse: "In use",
+    rowMenu: {
+      label: "Actions for “{{name}}”",
+      use: "Use this portfolio",
+      edit: "Edit",
+      archive: "Archive",
+    },
   },
   portfolioDetail: {
     back: "Back to Portfolios",
@@ -414,6 +420,12 @@ const es: Messages<typeof en> = {
     columns: { name: "Nombre", baseCurrency: "Moneda base", status: "Estado" },
     status: { ACTIVE: "Activo", ARCHIVED: "Archivado" },
     inUse: "En uso",
+    rowMenu: {
+      label: "Acciones de «{{name}}»",
+      use: "Usar este portafolio",
+      edit: "Editar",
+      archive: "Archivar",
+    },
   },
   portfolioDetail: {
     back: "Volver a Portafolios",
