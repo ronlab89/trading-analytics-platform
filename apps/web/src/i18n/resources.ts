@@ -78,6 +78,16 @@ const en = {
   },
   dialog: { close: "Close" },
   portfolioForm: {
+    title: "New portfolio",
+    subtitle: "Group your positions and transactions in an independent portfolio.",
+    cancel: "Cancel",
+    submit: "Create portfolio",
+    submitting: "Creating…",
+    created: { title: "Portfolio created", description: "“{{name}}” is now in your list." },
+    createFailed: {
+      title: "Couldn't create the portfolio",
+      description: "Check your connection and try again. Nothing was created.",
+    },
     name: { label: "Name", placeholder: "e.g. Long term", required: "Enter a name" },
     description: {
       label: "Description",
@@ -277,6 +287,19 @@ const es: Messages<typeof en> = {
   },
   dialog: { close: "Cerrar" },
   portfolioForm: {
+    title: "Nuevo portafolio",
+    subtitle: "Agrupa tus posiciones y transacciones en un portafolio independiente.",
+    cancel: "Cancelar",
+    submit: "Crear portafolio",
+    submitting: "Creando…",
+    created: {
+      title: "Portafolio creado",
+      description: "«{{name}}» ya está disponible en tu lista.",
+    },
+    createFailed: {
+      title: "No se pudo crear el portafolio",
+      description: "Revisa tu conexión e inténtalo de nuevo. No se creó nada.",
+    },
     name: { label: "Nombre", placeholder: "Ej. Largo plazo", required: "Ingresa un nombre" },
     description: {
       label: "Descripción",
