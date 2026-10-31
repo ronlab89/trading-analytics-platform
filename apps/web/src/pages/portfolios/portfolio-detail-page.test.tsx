@@ -254,12 +254,14 @@ describe("PortfolioDetailPage", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("offers no edit or archive actions outside mobile", async () => {
+  it("offers the Edit button but not the ⋯ menu outside mobile, as the Figma does", async () => {
+    const user = userEvent.setup();
     renderPage(clientWith(loaded).client);
     await screen.findByText("2 positions");
 
-    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Portfolio actions" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(await screen.findByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
   });
 
   describe("on mobile", () => {

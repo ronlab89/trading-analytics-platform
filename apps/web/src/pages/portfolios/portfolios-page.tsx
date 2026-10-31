@@ -160,7 +160,7 @@ export function PortfoliosPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <h1 className="sr-only">{t("nav.portfolios")}</h1>
       <div className="flex items-center justify-between gap-4">
         {portfolios === undefined ? null : (

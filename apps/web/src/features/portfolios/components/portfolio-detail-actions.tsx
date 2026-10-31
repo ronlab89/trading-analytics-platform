@@ -9,15 +9,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface PortfolioDetailActionsProps {
+  /** Mobile adds the "⋯" menu, which the tablet and desktop headers do not draw. */
+  menu: boolean;
   onEdit: () => void;
   onArchive: () => void;
 }
 
 /**
- * The actions at the right of the mobile detail header, as the Figma draws them: an "Editar" button
- * and a "⋯" menu with "Editar" and "Archivar". "Eliminar" is not offered until the API can delete.
+ * The actions at the right of the detail header, as the Figma draws them: an "Editar" button and,
+ * on mobile, a "⋯" menu with "Editar" and "Archivar". "Eliminar" is not offered until the API can
+ * delete.
  */
-export function PortfolioDetailActions({ onEdit, onArchive }: PortfolioDetailActionsProps) {
+export function PortfolioDetailActions({ menu, onEdit, onArchive }: PortfolioDetailActionsProps) {
   const { t } = useTranslation();
 
   return (
@@ -26,23 +29,34 @@ export function PortfolioDetailActions({ onEdit, onArchive }: PortfolioDetailAct
         <Pencil aria-hidden="true" />
         {t("portfolios.rowMenu.edit")}
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button aria-label={t("portfolioDetail.menu.label")} size="icon-md" variant="ghost">
-            <Ellipsis aria-hidden="true" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-53.5">
-          <DropdownMenuItem onSelect={onEdit}>
-            <Pencil aria-hidden="true" />
-            {t("portfolios.rowMenu.edit")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onArchive}>
-            <Archive aria-hidden="true" />
-            {t("portfolios.rowMenu.archive")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {menu ? <DetailMenu onArchive={onArchive} onEdit={onEdit} /> : null}
     </div>
+  );
+}
+
+function DetailMenu({
+  onEdit,
+  onArchive,
+}: Pick<PortfolioDetailActionsProps, "onEdit" | "onArchive">) {
+  const { t } = useTranslation();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button aria-label={t("portfolioDetail.menu.label")} size="icon-md" variant="ghost">
+          <Ellipsis aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-53.5">
+        <DropdownMenuItem onSelect={onEdit}>
+          <Pencil aria-hidden="true" />
+          {t("portfolios.rowMenu.edit")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onArchive}>
+          <Archive aria-hidden="true" />
+          {t("portfolios.rowMenu.archive")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -53,10 +53,10 @@ export function PortfolioDetailPage() {
   }
 
   // An archived portfolio cannot be changed (the API answers 409), so it offers no actions.
-  const canChange = isMobile && portfolio.data?.status === "ACTIVE";
+  const canChange = portfolio.data?.status === "ACTIVE";
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-tablet:gap-4 max-tablet:p-0">
+    <div className="flex flex-col gap-6 max-tablet:gap-4">
       <h1 className="sr-only">{portfolio.data?.name ?? t("nav.portfolios")}</h1>
       <div className="flex items-center justify-between gap-4">
         <Link
@@ -68,6 +68,7 @@ export function PortfolioDetailPage() {
         </Link>
         {canChange ? (
           <PortfolioDetailActions
+            menu={isMobile}
             onArchive={() => {
               setArchiving(true);
             }}
