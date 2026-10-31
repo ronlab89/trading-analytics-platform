@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router";
 import { Alert } from "@/components/ui/alert";
 import { LoginBrandPanel } from "@/features/auth/components/login-brand-panel";
 import { LoginForm } from "@/features/auth/components/login-form";
+import { SessionRestoring } from "@/features/auth/components/session-restoring";
 import { resolveRedirectPath } from "@/features/auth/lib/resolve-redirect-path";
 import { useSessionExpired, useSessionStatus } from "@/hooks/use-session";
 
@@ -22,11 +23,7 @@ export function LoginPage() {
 
   // Like the private routes, wait for the restore instead of flashing a form the user will skip.
   if (status === "unknown") {
-    return (
-      <div className="p-6 text-sm text-(--color-text-secondary)" role="status">
-        {t("auth.restoringSession")}
-      </div>
-    );
+    return <SessionRestoring />;
   }
 
   return (
