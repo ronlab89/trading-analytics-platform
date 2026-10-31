@@ -45,7 +45,7 @@ export function EditPortfolioDialog({ portfolio, open, onOpenChange }: EditPortf
   return (
     <>
       <Dialog onOpenChange={guard.handleOpenChange} open={open && portfolio !== null}>
-        <DialogContent aria-describedby={undefined}>
+        <DialogContent aria-describedby={undefined} mobileSheet>
           {portfolio ? (
             <EditPortfolioForm
               onDirtyChange={guard.setDirty}

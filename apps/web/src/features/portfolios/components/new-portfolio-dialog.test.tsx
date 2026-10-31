@@ -70,6 +70,14 @@ describe("NewPortfolioDialog", () => {
     expect(screen.getByRole("button", { name: "Create portfolio" })).toBeEnabled();
   });
 
+  it("is a sheet at the bottom of the screen on mobile, as the Figma form is", () => {
+    renderDialog(clientWith(() => Promise.resolve({ data: created })).client);
+
+    expect(screen.getByRole("dialog", { name: "New portfolio" })).toHaveAttribute(
+      "data-mobile-sheet",
+    );
+  });
+
   it("renders nothing while it is closed", () => {
     renderDialog(clientWith(() => Promise.resolve({ data: created })).client, vi.fn(), false);
 

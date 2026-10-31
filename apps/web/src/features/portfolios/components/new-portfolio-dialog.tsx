@@ -43,7 +43,7 @@ export function NewPortfolioDialog({ open, onOpenChange }: NewPortfolioDialogPro
   return (
     <>
       <Dialog onOpenChange={guard.handleOpenChange} open={open}>
-        <DialogContent aria-describedby={undefined}>
+        <DialogContent aria-describedby={undefined} mobileSheet>
           <NewPortfolioForm
             create={create}
             onCreated={guard.close}

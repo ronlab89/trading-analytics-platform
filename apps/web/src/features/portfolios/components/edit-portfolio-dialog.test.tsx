@@ -69,6 +69,14 @@ describe("EditPortfolioDialog", () => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
   });
 
+  it("is a sheet at the bottom of the screen on mobile, as the Figma form is", () => {
+    renderDialog(clientWith(saved).client);
+
+    expect(screen.getByRole("dialog", { name: "Edit portfolio" })).toHaveAttribute(
+      "data-mobile-sheet",
+    );
+  });
+
   it("shows the base currency locked, with the reason", () => {
     renderDialog(clientWith(saved).client);
 
