@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PortfolioResponse } from "@trading/contracts";
 import { toast } from "sonner";
@@ -201,6 +201,106 @@ describe("NewPortfolioDialog", () => {
     setOpen(true);
 
     expect(await screen.findByRole("textbox", { name: /Name/ })).toHaveValue("");
+  });
+
+  describe("leaving with unsaved changes", () => {
+    const leave = {
+      Cancel: () => userEvent.click(screen.getByRole("button", { name: "Cancel" })),
+      "the close button": () => userEvent.click(screen.getByRole("button", { name: "Close" })),
+      Escape: () => userEvent.keyboard("{Escape}"),
+    };
+
+    it.each(Object.entries(leave))(
+      "asks before %s discards what the user typed",
+      async (_way, attempt) => {
+        const { client, createCalls } = clientWith(() => Promise.resolve({ data: created }));
+        const { onOpenChange } = renderDialog(client);
+        await userEvent.type(screen.getByRole("textbox", { name: /Name/ }), "Fixed income");
+
+        await attempt();
+
+        const confirm = await screen.findByRole("dialog", { name: "Leave without saving?" });
+        expect(
+          within(confirm).getByText(
+            "The portfolio you’re creating will be discarded. This can’t be undone.",
+          ),
+        ).toBeInTheDocument();
+        expect(onOpenChange).not.toHaveBeenCalled();
+        expect(createCalls()).toHaveLength(0);
+      },
+    );
+
+    it("goes back to the form, with what was typed, on “Keep editing”", async () => {
+      const { onOpenChange } = renderDialog(
+        clientWith(() => Promise.resolve({ data: created })).client,
+      );
+      await userEvent.type(screen.getByRole("textbox", { name: /Name/ }), "Fixed income");
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      await userEvent.click(await screen.findByRole("button", { name: "Keep editing" }));
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("dialog", { name: "Leave without saving?" }),
+        ).not.toBeInTheDocument();
+      });
+      expect(screen.getByRole("textbox", { name: /Name/ })).toHaveValue("Fixed income");
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("closes the dialog on “Leave without saving”, creating nothing", async () => {
+      const { client, createCalls } = clientWith(() => Promise.resolve({ data: created }));
+      const { onOpenChange } = renderDialog(client);
+      await userEvent.type(screen.getByRole("textbox", { name: /Name/ }), "Fixed income");
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      await userEvent.click(await screen.findByRole("button", { name: "Leave without saving" }));
+
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+      expect(createCalls()).toHaveLength(0);
+    });
+
+    it("closes straight away once the user has emptied what they typed", async () => {
+      const { onOpenChange } = renderDialog(
+        clientWith(() => Promise.resolve({ data: created })).client,
+      );
+      const name = screen.getByRole("textbox", { name: /Name/ });
+      await userEvent.type(name, "Fixed income");
+      await userEvent.clear(name);
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+      expect(
+        screen.queryByRole("dialog", { name: "Leave without saving?" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not carry the unsaved state over to the next time it opens", async () => {
+      const { setOpen, onOpenChange } = renderDialog(
+        clientWith(() => Promise.resolve({ data: created })).client,
+      );
+      await userEvent.type(screen.getByRole("textbox", { name: /Name/ }), "Leftover");
+      setOpen(false);
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      setOpen(true);
+
+      await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("has no accessibility violations", async () => {
+      renderDialog(clientWith(() => Promise.resolve({ data: created })).client);
+      await userEvent.type(screen.getByRole("textbox", { name: /Name/ }), "Fixed income");
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(
+        await axe(await screen.findByRole("dialog", { name: "Leave without saving?" })),
+      ).toHaveNoViolations();
+    });
   });
 
   it("has no accessibility violations", async () => {

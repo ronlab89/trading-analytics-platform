@@ -83,6 +83,12 @@ const en = {
     cancel: "Cancel",
     submit: "Create portfolio",
     submitting: "Creating…",
+    discard: {
+      title: "Leave without saving?",
+      description: "The portfolio you’re creating will be discarded. This can’t be undone.",
+      keepEditing: "Keep editing",
+      confirm: "Leave without saving",
+    },
     created: { title: "Portfolio created", description: "“{{name}}” is now in your list." },
     createFailed: {
       title: "Couldn't create the portfolio",
@@ -294,6 +300,13 @@ const es: Messages<typeof en> = {
     cancel: "Cancelar",
     submit: "Crear portafolio",
     submitting: "Creando…",
+    discard: {
+      title: "¿Salir sin guardar?",
+      description:
+        "Se descartará el portafolio que estás creando. Esta acción no se puede deshacer.",
+      keepEditing: "Seguir editando",
+      confirm: "Salir sin guardar",
+    },
     created: {
       title: "Portafolio creado",
       description: "«{{name}}» ya está disponible en tu lista.",
