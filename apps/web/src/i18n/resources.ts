@@ -77,14 +77,52 @@ const en = {
     nextPage: "Next page",
   },
   dialog: { close: "Close" },
+  portfolioForm: {
+    title: "New portfolio",
+    subtitle: "Group your positions and transactions in an independent portfolio.",
+    cancel: "Cancel",
+    submit: "Create portfolio",
+    submitting: "Creating…",
+    discard: {
+      title: "Leave without saving?",
+      description: "The portfolio you’re creating will be discarded. This can’t be undone.",
+      keepEditing: "Keep editing",
+      confirm: "Leave without saving",
+    },
+    created: { title: "Portfolio created", description: "“{{name}}” is now in your list." },
+    createFailed: {
+      title: "Couldn't create the portfolio",
+      description: "Check your connection and try again. Nothing was created.",
+    },
+    name: { label: "Name", placeholder: "e.g. Long term", required: "Enter a name" },
+    description: {
+      label: "Description",
+      placeholder: "e.g. Long-term investment portfolio",
+      optional: "Optional",
+    },
+    baseCurrency: {
+      label: "Base currency",
+      placeholder: "Select a currency",
+      help: "You won't be able to change it after creating it.",
+      required: "Select a base currency.",
+      options: {
+        USD: "USD · US dollar",
+        EUR: "EUR · Euro",
+        GBP: "GBP · Pound sterling",
+        COP: "COP · Colombian peso",
+      },
+    },
+  },
   portfolios: {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
+    new: "New portfolio",
     table: "Portfolios",
     loading: "Loading portfolios",
     empty: {
       title: "You have no portfolios yet",
       description: "Create your first portfolio to record positions and transactions.",
+      action: "Create portfolio",
     },
     noResults: {
       title: "No results",
@@ -256,14 +294,56 @@ const es: Messages<typeof en> = {
     nextPage: "Página siguiente",
   },
   dialog: { close: "Cerrar" },
+  portfolioForm: {
+    title: "Nuevo portafolio",
+    subtitle: "Agrupa tus posiciones y transacciones en un portafolio independiente.",
+    cancel: "Cancelar",
+    submit: "Crear portafolio",
+    submitting: "Creando…",
+    discard: {
+      title: "¿Salir sin guardar?",
+      description:
+        "Se descartará el portafolio que estás creando. Esta acción no se puede deshacer.",
+      keepEditing: "Seguir editando",
+      confirm: "Salir sin guardar",
+    },
+    created: {
+      title: "Portafolio creado",
+      description: "«{{name}}» ya está disponible en tu lista.",
+    },
+    createFailed: {
+      title: "No se pudo crear el portafolio",
+      description: "Revisa tu conexión e inténtalo de nuevo. No se creó nada.",
+    },
+    name: { label: "Nombre", placeholder: "Ej. Largo plazo", required: "Ingresa un nombre" },
+    description: {
+      label: "Descripción",
+      placeholder: "Ej. Cartera de inversión a largo plazo",
+      optional: "Opcional",
+    },
+    baseCurrency: {
+      label: "Moneda base",
+      placeholder: "Selecciona una moneda",
+      help: "No podrás cambiarla después de crearlo.",
+      required: "Selecciona una moneda base.",
+      options: {
+        USD: "USD · Dólar estadounidense",
+        EUR: "EUR · Euro",
+        GBP: "GBP · Libra esterlina",
+        COP: "COP · Peso colombiano",
+      },
+    },
+  },
   portfolios: {
     summary_one: "Administra tus portafolios · {{count}} en total",
     summary_other: "Administra tus portafolios · {{count}} en total",
+    new: "Nuevo portafolio",
     table: "Portafolios",
     loading: "Cargando portafolios",
     empty: {
       title: "Aún no tienes portafolios",
       description: "Crea tu primer portafolio para registrar posiciones y transacciones.",
+      action: "Crear portafolio",
     },
     noResults: {
       title: "Sin resultados",

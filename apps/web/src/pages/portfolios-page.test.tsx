@@ -203,6 +203,34 @@ describe("PortfoliosPage", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("opens the new portfolio dialog from the header button, which stays through every state", async () => {
+    renderPage();
+    await screen.findByRole("table", { name: "Portfolios" });
+
+    await userEvent.click(screen.getByRole("button", { name: "New portfolio" }));
+
+    expect(screen.getByRole("dialog", { name: "New portfolio" })).toBeInTheDocument();
+  });
+
+  it("offers the new portfolio button while the list loads and when it fails", async () => {
+    const { unmount } = renderPage({ call: () => new Promise(() => undefined) });
+    expect(screen.getByRole("button", { name: "New portfolio" })).toBeInTheDocument();
+    unmount();
+
+    renderPage({ call: () => Promise.reject(new ApiError("NETWORK_ERROR", "down")) });
+    await screen.findByRole("alert");
+    expect(screen.getByRole("button", { name: "New portfolio" })).toBeInTheDocument();
+  });
+
+  it("opens the same dialog from the empty state action", async () => {
+    renderPage({ call: () => Promise.resolve({ data: [] }) });
+    await screen.findByText("You have no portfolios yet");
+
+    await userEvent.click(screen.getByRole("button", { name: "Create portfolio" }));
+
+    expect(screen.getByRole("dialog", { name: "New portfolio" })).toBeInTheDocument();
+  });
+
   it("has no accessibility violations", async () => {
     const { container } = renderPage();
     await screen.findByRole("table", { name: "Portfolios" });
