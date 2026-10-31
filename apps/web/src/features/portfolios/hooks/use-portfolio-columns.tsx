@@ -7,7 +7,15 @@ import { Avatar } from "@/components/avatar";
 import { Badge } from "@/components/badge";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
 import { portfolioInitials } from "@/lib/portfolio-initials";
+import { PortfolioRowMenu } from "../components/portfolio-row-menu";
 import type { PortfolioRow } from "../types";
+
+/** What the row menu can do to a portfolio, by its id. They must be stable, or the columns rebuild. */
+export interface PortfolioRowActions {
+  onUse: (portfolioId: string) => void;
+  onEdit: (portfolioId: string) => void;
+  onArchive: (portfolioId: string) => void;
+}
 
 const column = createColumnHelper<DataTableFeatures, PortfolioRow>();
 
@@ -17,6 +25,12 @@ function headerOf(key: "name" | "baseCurrency" | "status") {
     const { t } = useTranslation();
     return t(`portfolios.columns.${key}`);
   };
+}
+
+/** The Figma header of the menu column is blank; screen readers still get a name for it. */
+function ActionsHeader() {
+  const { t } = useTranslation();
+  return <span className="sr-only">{t("portfolios.columns.actions")}</span>;
 }
 
 function StatusBadge({ status }: Pick<PortfolioRow, "status">) {
@@ -34,10 +48,10 @@ function StatusBadge({ status }: Pick<PortfolioRow, "status">) {
 /**
  * The columns of the portfolio list, as the Figma draws them, limited to what the list returns:
  * value, daily return and positions need analytics data and arrive with FE2. They depend on which
- * portfolio is in use, so they are rebuilt only when that changes, which the table needs to stay
- * stable.
+ * portfolio is in use and on the row actions, so they are rebuilt only when those change, which
+ * the table needs to stay stable.
  */
-export function usePortfolioColumns(activeId: string | undefined) {
+export function usePortfolioColumns(activeId: string | undefined, actions: PortfolioRowActions) {
   const { t } = useTranslation();
 
   return useMemo(
@@ -76,7 +90,21 @@ export function usePortfolioColumns(activeId: string | undefined) {
           meta: { align: "center" },
           cell: ({ getValue }) => <StatusBadge status={getValue()} />,
         }),
+        column.display({
+          id: "actions",
+          header: ActionsHeader,
+          meta: { align: "end" },
+          cell: ({ row }) => (
+            <PortfolioRowMenu
+              inUse={row.original.id === activeId}
+              onArchive={actions.onArchive}
+              onEdit={actions.onEdit}
+              onUse={actions.onUse}
+              portfolio={row.original}
+            />
+          ),
+        }),
       ]),
-    [activeId, t],
+    [activeId, actions, t],
   );
 }
