@@ -163,7 +163,7 @@ const en = {
     search: "Search portfolio",
     count_one: "{{count}} portfolio",
     count_other: "{{count}} portfolios",
-    columns: { name: "Name", baseCurrency: "Base currency", status: "Status" },
+    columns: { name: "Name", baseCurrency: "Base currency", status: "Status", actions: "Actions" },
     status: { ACTIVE: "Active", ARCHIVED: "Archived" },
     inUse: "In use",
     rowMenu: {
@@ -417,7 +417,7 @@ const es: Messages<typeof en> = {
     search: "Buscar portafolio",
     count_one: "{{count}} portafolio",
     count_other: "{{count}} portafolios",
-    columns: { name: "Nombre", baseCurrency: "Moneda base", status: "Estado" },
+    columns: { name: "Nombre", baseCurrency: "Moneda base", status: "Estado", actions: "Acciones" },
     status: { ACTIVE: "Activo", ARCHIVED: "Archivado" },
     inUse: "En uso",
     rowMenu: {

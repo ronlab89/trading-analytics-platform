@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
@@ -8,6 +8,8 @@ import { useDataTable } from "@/components/data-table/use-data-table";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ArchivePortfolioDialog } from "@/features/portfolios/components/archive-portfolio-dialog";
+import { EditPortfolioDialog } from "@/features/portfolios/components/edit-portfolio-dialog";
 import { NewPortfolioDialog } from "@/features/portfolios/components/new-portfolio-dialog";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { PortfoliosTableSkeleton } from "@/features/portfolios/components/portfolios-table-skeleton";
@@ -27,9 +29,15 @@ const PAGE_SIZE = 10;
 export function PortfoliosPage() {
   const { t } = useTranslation();
   const { data: portfolios, isError, refetch } = usePortfolios();
-  const { active } = useActivePortfolio();
+  const { active, select } = useActivePortfolio();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+  const rowActions = useMemo(
+    () => ({ onUse: select, onEdit: setEditingId, onArchive: setArchivingId }),
+    [select],
+  );
   const table = useDataTable({
-    columns: usePortfolioColumns(active?.id),
+    columns: usePortfolioColumns(active?.id, rowActions),
     data: portfolios ?? NO_PORTFOLIOS,
     getRowId: (portfolio) => portfolio.id,
     sortable: true,
@@ -123,6 +131,20 @@ export function PortfoliosPage() {
         )}
       </section>
       <NewPortfolioDialog onOpenChange={setDialogOpen} open={dialogOpen} />
+      <EditPortfolioDialog
+        onOpenChange={(open) => {
+          if (!open) setEditingId(null);
+        }}
+        open={editingId !== null}
+        portfolio={portfolios?.find((portfolio) => portfolio.id === editingId) ?? null}
+      />
+      <ArchivePortfolioDialog
+        onOpenChange={(open) => {
+          if (!open) setArchivingId(null);
+        }}
+        open={archivingId !== null}
+        portfolio={portfolios?.find((portfolio) => portfolio.id === archivingId) ?? null}
+      />
     </div>
   );
 }

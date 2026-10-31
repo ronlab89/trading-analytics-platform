@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -229,6 +229,73 @@ describe("PortfoliosPage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create portfolio" }));
 
     expect(screen.getByRole("dialog", { name: "New portfolio" })).toBeInTheDocument();
+  });
+
+  describe("row menu", () => {
+    const openRowMenu = async (name: string) => {
+      await screen.findByRole("table", { name: "Portfolios" });
+      await userEvent.click(screen.getByRole("button", { name: `Actions for “${name}”` }));
+    };
+
+    it("gives every active portfolio a menu and an archived one none", async () => {
+      renderPage();
+      const table = await screen.findByRole("table", { name: "Portfolios" });
+
+      expect(within(table).getAllByRole("button", { name: /^Actions for/ })).toHaveLength(2);
+      expect(
+        within(within(table).getByRole("row", { name: /Experimental/ })).queryByRole("button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("makes a portfolio the one in use from “Use this portfolio”", async () => {
+      useActivePortfolioStore.getState().select("p1");
+      renderPage();
+      await openRowMenu("Crecimiento");
+
+      await userEvent.click(screen.getByText("Use this portfolio"));
+
+      expect(useActivePortfolioStore.getState().selectedId).toBe("p2");
+      const table = screen.getByRole("table", { name: "Portfolios" });
+      expect(
+        within(within(table).getByRole("row", { name: /Crecimiento/ })).getByText("In use"),
+      ).toBeInTheDocument();
+      expect(within(table).getAllByText("In use")).toHaveLength(1);
+    });
+
+    it("opens the edit dialog filled with that portfolio from “Edit”", async () => {
+      renderPage();
+      await openRowMenu("Crecimiento");
+
+      await userEvent.click(screen.getByText("Edit"));
+
+      expect(screen.getByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: /Name/ })).toHaveValue("Crecimiento");
+    });
+
+    it("asks before archiving from “Archive”, then archives that portfolio", async () => {
+      const call = vi.fn<TradingClient["call"]>((operation, input) =>
+        operation.operationId === "archivePortfolio"
+          ? Promise.resolve({
+              data: { ...portfolio("p2", "Crecimiento"), status: "ARCHIVED" },
+              meta: { alreadyArchived: false },
+            })
+          : listing.call(operation, input),
+      );
+      renderPage({ call });
+      await openRowMenu("Crecimiento");
+
+      await userEvent.click(screen.getByText("Archive"));
+      expect(screen.getByRole("dialog", { name: "Archive portfolio?" })).toBeInTheDocument();
+      expect(call.mock.calls.some(([op]) => op.operationId === "archivePortfolio")).toBe(false);
+
+      await userEvent.click(screen.getByRole("button", { name: "Archive" }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      const archiveCall = call.mock.calls.find(([op]) => op.operationId === "archivePortfolio");
+      expect(archiveCall?.[1]).toEqual({ params: { portfolioId: "p2" } });
+    });
   });
 
   it("has no accessibility violations", async () => {
