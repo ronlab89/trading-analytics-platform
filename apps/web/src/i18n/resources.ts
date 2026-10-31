@@ -191,6 +191,7 @@ const en = {
   },
   portfolioDetail: {
     back: "Back to Portfolios",
+    menu: { label: "Portfolio actions" },
     failed: {
       title: "Couldn't load the portfolio",
       description: "Check your connection and try again. Your data has not been changed.",
@@ -462,6 +463,7 @@ const es: Messages<typeof en> = {
   },
   portfolioDetail: {
     back: "Volver a Portafolios",
+    menu: { label: "Acciones del portafolio" },
     failed: {
       title: "No se pudo cargar el portafolio",
       description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",

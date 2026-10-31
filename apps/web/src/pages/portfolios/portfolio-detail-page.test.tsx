@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
@@ -252,5 +252,78 @@ describe("PortfolioDetailPage", () => {
     await screen.findByText("2 positions");
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("offers no edit or archive actions outside mobile", async () => {
+    renderPage(clientWith(loaded).client);
+    await screen.findByText("2 positions");
+
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Portfolio actions" })).not.toBeInTheDocument();
+  });
+
+  describe("on mobile", () => {
+    beforeEach(() => {
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: query === "(max-width: 560px)",
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("shows the Edit button next to the back link and opens the edit form from it", async () => {
+      const user = userEvent.setup();
+      renderPage(clientWith(loaded).client);
+
+      await user.click(await screen.findByRole("button", { name: "Edit" }));
+
+      expect(await screen.findByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
+    });
+
+    it("opens the edit form from the ⋯ menu", async () => {
+      const user = userEvent.setup();
+      renderPage(clientWith(loaded).client);
+
+      await user.click(await screen.findByRole("button", { name: "Portfolio actions" }));
+      await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+
+      expect(await screen.findByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
+    });
+
+    it("asks before archiving from the ⋯ menu, which has no delete", async () => {
+      const user = userEvent.setup();
+      renderPage(clientWith(loaded).client);
+
+      await user.click(await screen.findByRole("button", { name: "Portfolio actions" }));
+      expect(screen.queryByRole("menuitem", { name: "Delete" })).not.toBeInTheDocument();
+      await user.click(screen.getByRole("menuitem", { name: "Archive" }));
+
+      expect(await screen.findByRole("dialog", { name: "Archive portfolio?" })).toBeInTheDocument();
+    });
+
+    it("offers no actions for an archived portfolio, which the API refuses to change", async () => {
+      renderPage(
+        clientWith({
+          ...loaded,
+          getPortfolio: () => Promise.resolve({ data: { ...growth, status: "ARCHIVED" } }),
+        }).client,
+      );
+      await screen.findByText("2 positions");
+
+      expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Portfolio actions" })).not.toBeInTheDocument();
+    });
+
+    it("has no accessibility violations", async () => {
+      const { container } = renderPage(clientWith(loaded).client);
+      await screen.findByRole("button", { name: "Edit" });
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
   });
 });
