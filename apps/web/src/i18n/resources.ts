@@ -114,6 +114,19 @@ const en = {
       },
     },
   },
+  portfolioEdit: {
+    title: "Edit portfolio",
+    subtitle: "Change the name of your portfolio.",
+    submit: "Save changes",
+    submitting: "Saving…",
+    discardDescription:
+      "The changes you made to this portfolio will be lost. This can’t be undone.",
+    saved: { title: "Portfolio updated", description: "“{{name}}” was saved." },
+    saveFailed: {
+      title: "Couldn't save the portfolio",
+      description: "Check your connection and try again. Nothing was changed.",
+    },
+  },
   portfolios: {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
@@ -334,6 +347,19 @@ const es: Messages<typeof en> = {
         GBP: "GBP · Libra esterlina",
         COP: "COP · Peso colombiano",
       },
+    },
+  },
+  portfolioEdit: {
+    title: "Editar portafolio",
+    subtitle: "Cambia el nombre de tu portafolio.",
+    submit: "Guardar cambios",
+    submitting: "Guardando…",
+    discardDescription:
+      "Se perderán los cambios que hiciste en este portafolio. Esta acción no se puede deshacer.",
+    saved: { title: "Portafolio actualizado", description: "«{{name}}» se guardó." },
+    saveFailed: {
+      title: "No se pudo guardar el portafolio",
+      description: "Revisa tu conexión e inténtalo de nuevo. No se cambió nada.",
     },
   },
   portfolios: {
