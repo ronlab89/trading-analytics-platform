@@ -114,6 +114,18 @@ const en = {
       },
     },
   },
+  portfolioArchive: {
+    title: "Archive portfolio?",
+    description:
+      "“{{name}}” will stop being active and you won’t be able to edit it. This can’t be undone.",
+    confirm: "Archive",
+    archiving: "Archiving…",
+    archived: { title: "Portfolio archived", description: "“{{name}}” moved to archived." },
+    failed: {
+      title: "Couldn't archive the portfolio",
+      description: "Check your connection and try again. Nothing was changed.",
+    },
+  },
   portfolioEdit: {
     title: "Edit portfolio",
     subtitle: "Change the name of your portfolio.",
@@ -347,6 +359,18 @@ const es: Messages<typeof en> = {
         GBP: "GBP · Libra esterlina",
         COP: "COP · Peso colombiano",
       },
+    },
+  },
+  portfolioArchive: {
+    title: "¿Archivar portafolio?",
+    description:
+      "«{{name}}» dejará de estar activo y no podrás editarlo. Esta acción no se puede deshacer.",
+    confirm: "Archivar",
+    archiving: "Archivando…",
+    archived: { title: "Portafolio archivado", description: "«{{name}}» pasó a archivados." },
+    failed: {
+      title: "No se pudo archivar el portafolio",
+      description: "Revisa tu conexión e inténtalo de nuevo. No se cambió nada.",
     },
   },
   portfolioEdit: {
