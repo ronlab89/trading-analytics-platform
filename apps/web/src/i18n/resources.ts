@@ -202,6 +202,7 @@ const en = {
       table: "Positions",
       loading: "Loading positions",
       unknownAsset: "Unknown asset",
+      mobile: { summary: "{{quantity}} units · Avg. {{average}} · Current {{current}}" },
       columns: {
         asset: "Asset",
         quantity: "Quantity",
@@ -474,6 +475,7 @@ const es: Messages<typeof en> = {
       table: "Posiciones",
       loading: "Cargando posiciones",
       unknownAsset: "Activo desconocido",
+      mobile: { summary: "{{quantity}} uds. · Prom. {{average}} · Actual {{current}}" },
       columns: {
         asset: "Activo",
         quantity: "Cantidad",

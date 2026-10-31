@@ -12,6 +12,8 @@ import { ArchivePortfolioDialog } from "@/features/portfolios/components/archive
 import { EditPortfolioDialog } from "@/features/portfolios/components/edit-portfolio-dialog";
 import { PortfolioDetailActions } from "@/features/portfolios/components/portfolio-detail-actions";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
+import { PositionCardList } from "@/features/portfolios/components/position-card-list";
+import { PositionsCardsSkeleton } from "@/features/portfolios/components/positions-cards-skeleton";
 import { PositionsTableSkeleton } from "@/features/portfolios/components/positions-table-skeleton";
 import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
 import { usePositionColumns } from "@/features/portfolios/hooks/use-position-columns";
@@ -93,12 +95,12 @@ export function PortfolioDetailPage() {
           tone="error"
         />
       ) : null}
-      <section className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-6">
+      <section className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-6 max-tablet:bg-transparent max-tablet:p-0">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-medium text-(--color-text-default)">
             {t("portfolioDetail.positions.title")}
           </h2>
-          {positions.rows === undefined ? null : (
+          {positions.rows === undefined || isMobile ? null : (
             <p className="text-sm text-(--color-text-secondary)">
               {t("portfolioDetail.positions.count", { count: positions.rows.length })}
             </p>
@@ -122,12 +124,18 @@ export function PortfolioDetailPage() {
             tone="error"
           />
         ) : positions.rows === undefined ? (
-          <PositionsTableSkeleton />
+          isMobile ? (
+            <PositionsCardsSkeleton />
+          ) : (
+            <PositionsTableSkeleton />
+          )
         ) : positions.rows.length === 0 ? (
           <PortfoliosEmptyState
             description={t("portfolioDetail.positions.empty.description")}
             title={t("portfolioDetail.positions.empty.title")}
           />
+        ) : isMobile ? (
+          <PositionCardList positions={positions.rows} />
         ) : (
           <>
             <DataTable aria-label={t("portfolioDetail.positions.table")} table={table} />
