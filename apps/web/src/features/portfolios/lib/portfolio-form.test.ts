@@ -1,9 +1,11 @@
-import { createPortfolioRequestSchema } from "@trading/contracts";
+import { createPortfolioRequestSchema, updatePortfolioRequestSchema } from "@trading/contracts";
 import { describe, expect, it } from "vitest";
 import {
   emptyPortfolioForm,
   portfolioFormSchema,
+  portfolioToFormValues,
   toCreatePortfolioBody,
+  toUpdatePortfolioBody,
   type PortfolioFormValues,
 } from "./portfolio-form";
 
@@ -67,5 +69,54 @@ describe("toCreatePortfolioBody", () => {
 
       expect(createPortfolioRequestSchema.safeParse(body).success).toBe(true);
     }
+  });
+});
+
+describe("portfolioToFormValues", () => {
+  it("fills the form with what the portfolio has, a missing description as an empty box", () => {
+    expect(
+      portfolioToFormValues({ name: "Growth", description: null, baseCurrency: "EUR" }),
+    ).toEqual({ name: "Growth", description: "", baseCurrency: "EUR" });
+    expect(
+      portfolioToFormValues({ name: "Growth", description: "Medium term", baseCurrency: "EUR" }),
+    ).toEqual({ name: "Growth", description: "Medium term", baseCurrency: "EUR" });
+  });
+});
+
+describe("toUpdatePortfolioBody", () => {
+  const original = { name: "Growth", description: "Medium term" };
+  const parsed = (values: Partial<PortfolioFormValues>) =>
+    portfolioFormSchema.parse({ ...valid, name: "Growth", description: "Medium term", ...values });
+
+  it("sends only what the user changed", () => {
+    expect(toUpdatePortfolioBody(parsed({ name: "Global growth" }), original)).toEqual({
+      name: "Global growth",
+    });
+    expect(toUpdatePortfolioBody(parsed({ description: "Long term" }), original)).toEqual({
+      description: "Long term",
+    });
+    expect(
+      toUpdatePortfolioBody(parsed({ name: "Global growth", description: "Long term" }), original),
+    ).toEqual({ name: "Global growth", description: "Long term" });
+  });
+
+  it("sends nothing when the user changed nothing, spaces around the text included", () => {
+    expect(toUpdatePortfolioBody(parsed({}), original)).toEqual({});
+    expect(toUpdatePortfolioBody(parsed({ name: "  Growth  " }), original)).toEqual({});
+  });
+
+  it("clears the description with an empty text, and leaves a missing one alone", () => {
+    expect(toUpdatePortfolioBody(parsed({ description: "" }), original)).toEqual({
+      description: "",
+    });
+    expect(
+      toUpdatePortfolioBody(parsed({ description: "" }), { ...original, description: null }),
+    ).toEqual({});
+  });
+
+  it("builds a body the API contract accepts whenever it has something to send", () => {
+    const body = toUpdatePortfolioBody(parsed({ name: "Global growth" }), original);
+
+    expect(updatePortfolioRequestSchema.safeParse(body).success).toBe(true);
   });
 });

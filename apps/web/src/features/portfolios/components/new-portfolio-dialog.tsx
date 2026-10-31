@@ -22,7 +22,7 @@ import {
   type PortfolioFormValues,
 } from "../lib/portfolio-form";
 import { DiscardPortfolioDialog } from "./discard-portfolio-dialog";
-import { NewPortfolioFields } from "./new-portfolio-fields";
+import { PortfolioFields } from "./portfolio-fields";
 
 interface NewPortfolioDialogProps {
   open: boolean;
@@ -107,7 +107,7 @@ function NewPortfolioForm({ create, onCreated, onDirtyChange }: NewPortfolioForm
         <DialogDescription>{t("portfolioForm.subtitle")}</DialogDescription>
       </DialogHeader>
       <DialogBody className="gap-4">
-        <NewPortfolioFields disabled={create.isPending} form={form} />
+        <PortfolioFields disabled={create.isPending} form={form} />
       </DialogBody>
       <DialogFooter>
         <DialogClose asChild>

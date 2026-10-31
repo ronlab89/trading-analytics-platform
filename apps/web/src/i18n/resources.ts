@@ -104,6 +104,7 @@ const en = {
       label: "Base currency",
       placeholder: "Select a currency",
       help: "You won't be able to change it after creating it.",
+      locked: "The base currency can’t be changed.",
       required: "Select a base currency.",
       options: {
         USD: "USD · US dollar",
@@ -325,6 +326,7 @@ const es: Messages<typeof en> = {
       label: "Moneda base",
       placeholder: "Selecciona una moneda",
       help: "No podrás cambiarla después de crearlo.",
+      locked: "La moneda base no se puede cambiar.",
       required: "Selecciona una moneda base.",
       options: {
         USD: "USD · Dólar estadounidense",

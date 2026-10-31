@@ -1,4 +1,9 @@
-import { createPortfolioRequestSchema, type CreatePortfolioRequestBody } from "@trading/contracts";
+import {
+  createPortfolioRequestSchema,
+  type CreatePortfolioRequestBody,
+  type PortfolioResponse,
+  type UpdatePortfolioRequestBody,
+} from "@trading/contracts";
 import { z } from "zod";
 
 /**
@@ -27,4 +32,30 @@ export function toCreatePortfolioBody(
 ): CreatePortfolioRequestBody {
   const { description, ...rest } = values;
   return description ? { ...rest, description } : rest;
+}
+
+/** The form filled in with what a portfolio has; a missing description is an empty text box. */
+export function portfolioToFormValues(
+  portfolio: Pick<PortfolioResponse, "name" | "description" | "baseCurrency">,
+): PortfolioFormValues {
+  return {
+    name: portfolio.name,
+    description: portfolio.description ?? "",
+    baseCurrency: portfolio.baseCurrency,
+  };
+}
+
+/**
+ * The update body: only what the user changed. Clearing a description sends `""`, which the API
+ * stores as none; clearing one that was already missing changes nothing. An empty body means there
+ * is nothing to save. The base currency is never sent: the API fixes it at creation.
+ */
+export function toUpdatePortfolioBody(
+  values: z.output<typeof portfolioFormSchema>,
+  original: Pick<PortfolioResponse, "name" | "description">,
+): UpdatePortfolioRequestBody {
+  const body: UpdatePortfolioRequestBody = {};
+  if (values.name !== original.name) body.name = values.name;
+  if (values.description !== (original.description ?? "")) body.description = values.description;
+  return body;
 }
