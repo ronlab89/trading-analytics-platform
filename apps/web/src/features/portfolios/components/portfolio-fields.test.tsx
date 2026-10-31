@@ -10,18 +10,22 @@ import {
   portfolioFormSchema,
   type PortfolioFormValues,
 } from "../lib/portfolio-form";
-import { NewPortfolioFields } from "./new-portfolio-fields";
+import { PortfolioFields } from "./portfolio-fields";
 
 function Harness({
   onValid = vi.fn(),
   disabled = false,
+  baseCurrencyLocked = false,
+  defaults = emptyPortfolioForm,
 }: {
   onValid?: (values: unknown) => void;
   disabled?: boolean;
+  baseCurrencyLocked?: boolean;
+  defaults?: PortfolioFormValues;
 }) {
   const form = useForm<PortfolioFormValues>({
     resolver: zodResolver(portfolioFormSchema),
-    defaultValues: emptyPortfolioForm,
+    defaultValues: defaults,
   });
 
   return (
@@ -31,7 +35,7 @@ function Harness({
         void form.handleSubmit(onValid)(event);
       }}
     >
-      <NewPortfolioFields disabled={disabled} form={form} />
+      <PortfolioFields baseCurrencyLocked={baseCurrencyLocked} disabled={disabled} form={form} />
       <button type="submit">Send</button>
     </form>
   );
@@ -42,7 +46,7 @@ async function pickCurrency(label: string) {
   await userEvent.click(screen.getByRole("option", { name: label }));
 }
 
-describe("NewPortfolioFields", () => {
+describe("PortfolioFields", () => {
   it("asks for the name and the base currency, and leaves the description optional", () => {
     render(<Harness />);
 
@@ -64,6 +68,32 @@ describe("NewPortfolioFields", () => {
     expect(screen.getByRole("combobox", { name: /Base currency/ })).toHaveAccessibleDescription(
       "You won't be able to change it after creating it.",
     );
+  });
+
+  describe("with the base currency locked, as when editing a portfolio", () => {
+    const defaults = { name: "Growth", description: "", baseCurrency: "EUR" };
+
+    it("shows the portfolio's currency with its name, greyed out, and says it cannot change", () => {
+      render(<Harness baseCurrencyLocked defaults={defaults} />);
+
+      const currency = screen.getByRole("combobox", { name: /Base currency/ });
+      expect(currency).toBeDisabled();
+      expect(currency).toHaveTextContent("EUR · Euro");
+      expect(currency).toHaveAccessibleDescription("The base currency can’t be changed.");
+    });
+
+    it("keeps the name and the description editable", () => {
+      render(<Harness baseCurrencyLocked defaults={defaults} />);
+
+      expect(screen.getByRole("textbox", { name: /Name/ })).toBeEnabled();
+      expect(screen.getByRole("textbox", { name: /Description/ })).toBeEnabled();
+    });
+
+    it("still shows a currency it has no name for, by its code", () => {
+      render(<Harness baseCurrencyLocked defaults={{ ...defaults, baseCurrency: "JPY" }} />);
+
+      expect(screen.getByRole("combobox", { name: /Base currency/ })).toHaveTextContent("JPY");
+    });
   });
 
   it("offers USD, EUR, GBP and COP with their names", async () => {

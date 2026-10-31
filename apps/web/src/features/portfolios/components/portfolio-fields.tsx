@@ -15,10 +15,12 @@ import type { PortfolioFormValues } from "../lib/portfolio-form";
 /** The base currencies the Figma "Nuevo portafolio" dialog offers. */
 const BASE_CURRENCIES = ["USD", "EUR", "GBP", "COP"] as const;
 
-interface NewPortfolioFieldsProps {
+interface PortfolioFieldsProps {
   form: UseFormReturn<PortfolioFormValues>;
   /** Locks every field, while the portfolio is being created. */
   disabled?: boolean;
+  /** Greys out the base currency and says it cannot change, as when editing a portfolio. */
+  baseCurrencyLocked?: boolean;
 }
 
 /**
@@ -26,13 +28,23 @@ interface NewPortfolioFieldsProps {
  * form lives in the parent, which owns the submit; the errors shown here are the app's own
  * messages, chosen by which field failed, so they follow the language.
  */
-export function NewPortfolioFields({ form, disabled = false }: NewPortfolioFieldsProps) {
+export function PortfolioFields({
+  form,
+  disabled = false,
+  baseCurrencyLocked = false,
+}: PortfolioFieldsProps) {
   const { t } = useTranslation();
   const {
     control,
     register,
     formState: { errors },
   } = form;
+  const currentCurrency = form.getValues("baseCurrency");
+  // A locked currency outside the four offered still has to show, so it joins the list by its code.
+  const currencies: readonly string[] =
+    baseCurrencyLocked && currentCurrency && !BASE_CURRENCIES.some((c) => c === currentCurrency)
+      ? [...BASE_CURRENCIES, currentCurrency]
+      : BASE_CURRENCIES;
 
   return (
     <>
@@ -53,8 +65,12 @@ export function NewPortfolioFields({ form, disabled = false }: NewPortfolioField
         />
       </Field>
       <Field
-        description={t("portfolioForm.baseCurrency.help")}
-        disabled={disabled}
+        description={t(
+          baseCurrencyLocked
+            ? "portfolioForm.baseCurrency.locked"
+            : "portfolioForm.baseCurrency.help",
+        )}
+        disabled={disabled || baseCurrencyLocked}
         error={errors.baseCurrency ? t("portfolioForm.baseCurrency.required") : undefined}
         label={t("portfolioForm.baseCurrency.label")}
         required
@@ -68,9 +84,11 @@ export function NewPortfolioFields({ form, disabled = false }: NewPortfolioField
                 <SelectValue placeholder={t("portfolioForm.baseCurrency.placeholder")} />
               </SelectTrigger>
               <SelectContent>
-                {BASE_CURRENCIES.map((currency) => (
+                {currencies.map((currency) => (
                   <SelectItem key={currency} value={currency}>
-                    {t(`portfolioForm.baseCurrency.options.${currency}`)}
+                    {t(`portfolioForm.baseCurrency.options.${currency}`, {
+                      defaultValue: currency,
+                    })}
                   </SelectItem>
                 ))}
               </SelectContent>

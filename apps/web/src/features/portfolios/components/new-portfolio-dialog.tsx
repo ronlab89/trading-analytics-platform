@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -15,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCreatePortfolio } from "../hooks/use-create-portfolio";
+import { useDiscardGuard, useReportDirty } from "../hooks/use-discard-guard";
 import {
   emptyPortfolioForm,
   portfolioFormSchema,
@@ -22,7 +22,7 @@ import {
   type PortfolioFormValues,
 } from "../lib/portfolio-form";
 import { DiscardPortfolioDialog } from "./discard-portfolio-dialog";
-import { NewPortfolioFields } from "./new-portfolio-fields";
+import { PortfolioFields } from "./portfolio-fields";
 
 interface NewPortfolioDialogProps {
   open: boolean;
@@ -38,41 +38,23 @@ interface NewPortfolioDialogProps {
  */
 export function NewPortfolioDialog({ open, onOpenChange }: NewPortfolioDialogProps) {
   const create = useCreatePortfolio();
-  const [dirty, setDirty] = useState(false);
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-
-  const close = () => {
-    setConfirmingDiscard(false);
-    onOpenChange(false);
-  };
+  const guard = useDiscardGuard({ locked: create.isPending, onOpenChange });
 
   return (
     <>
-      <Dialog
-        onOpenChange={(next) => {
-          if (create.isPending) {
-            return;
-          }
-          if (next) {
-            onOpenChange(true);
-          } else if (dirty) {
-            setConfirmingDiscard(true);
-          } else {
-            close();
-          }
-        }}
-        open={open}
-      >
+      <Dialog onOpenChange={guard.handleOpenChange} open={open}>
         <DialogContent aria-describedby={undefined}>
-          <NewPortfolioForm create={create} onCreated={close} onDirtyChange={setDirty} />
+          <NewPortfolioForm
+            create={create}
+            onCreated={guard.close}
+            onDirtyChange={guard.setDirty}
+          />
         </DialogContent>
       </Dialog>
       <DiscardPortfolioDialog
-        onDiscard={close}
-        onKeepEditing={() => {
-          setConfirmingDiscard(false);
-        }}
-        open={confirmingDiscard}
+        onDiscard={guard.close}
+        onKeepEditing={guard.keepEditing}
+        open={guard.confirmingDiscard}
       />
     </>
   );
@@ -92,16 +74,7 @@ function NewPortfolioForm({ create, onCreated, onDirtyChange }: NewPortfolioForm
     resolver: zodResolver(portfolioFormSchema),
     defaultValues: emptyPortfolioForm,
   });
-  const { isDirty } = form.formState;
-
-  useEffect(() => {
-    onDirtyChange(isDirty);
-  }, [isDirty, onDirtyChange]);
-  useEffect(() => {
-    return () => {
-      onDirtyChange(false);
-    };
-  }, [onDirtyChange]);
+  useReportDirty(form.formState.isDirty, onDirtyChange);
 
   const submit = form.handleSubmit((values) => {
     // The resolver has parsed the values, so they are the schema's output.
@@ -134,7 +107,7 @@ function NewPortfolioForm({ create, onCreated, onDirtyChange }: NewPortfolioForm
         <DialogDescription>{t("portfolioForm.subtitle")}</DialogDescription>
       </DialogHeader>
       <DialogBody className="gap-4">
-        <NewPortfolioFields disabled={create.isPending} form={form} />
+        <PortfolioFields disabled={create.isPending} form={form} />
       </DialogBody>
       <DialogFooter>
         <DialogClose asChild>
