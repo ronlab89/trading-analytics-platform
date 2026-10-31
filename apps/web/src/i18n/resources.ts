@@ -148,6 +148,17 @@ const en = {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
     new: "New portfolio",
+    newShort: "New",
+    mobile: {
+      empty: {
+        title: "There are no portfolios yet",
+        description: "Create your first portfolio to start recording transactions.",
+      },
+      failed: {
+        title: "We couldn't load the portfolios",
+        description: "There was a problem connecting to the server. Try again in a few seconds.",
+      },
+    },
     table: "Portfolios",
     loading: "Loading portfolios",
     empty: {
@@ -406,6 +417,18 @@ const es: Messages<typeof en> = {
     summary_one: "Administra tus portafolios · {{count}} en total",
     summary_other: "Administra tus portafolios · {{count}} en total",
     new: "Nuevo portafolio",
+    newShort: "Nuevo",
+    mobile: {
+      empty: {
+        title: "Aún no hay portafolios",
+        description: "Crea tu primer portafolio para empezar a registrar transacciones.",
+      },
+      failed: {
+        title: "No pudimos cargar los portafolios",
+        description:
+          "Hubo un problema al conectar con el servidor. Inténtalo de nuevo en unos segundos.",
+      },
+    },
     table: "Portafolios",
     loading: "Cargando portafolios",
     empty: {

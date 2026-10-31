@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { matchesText } from "@/components/data-table/filter-fns";
 import { useDataTable } from "@/components/data-table/use-data-table";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,11 +12,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArchivePortfolioDialog } from "@/features/portfolios/components/archive-portfolio-dialog";
 import { EditPortfolioDialog } from "@/features/portfolios/components/edit-portfolio-dialog";
 import { NewPortfolioDialog } from "@/features/portfolios/components/new-portfolio-dialog";
+import { PortfolioCardList } from "@/features/portfolios/components/portfolio-card-list";
+import { PortfoliosCardsSkeleton } from "@/features/portfolios/components/portfolios-cards-skeleton";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { PortfoliosTableSkeleton } from "@/features/portfolios/components/portfolios-table-skeleton";
 import { usePortfolioColumns } from "@/features/portfolios/hooks/use-portfolio-columns";
 import type { PortfolioRow } from "@/features/portfolios/types";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { usePortfolios } from "@/hooks/use-portfolios";
 
 const NO_PORTFOLIOS: PortfolioRow[] = [];
@@ -51,6 +55,109 @@ export function PortfoliosPage() {
 
   const matches = table.getRowCount();
   const search = String(table.state.globalFilter ?? "").trim();
+  const isMobile = useIsMobile();
+
+  const dialogs = (
+    <>
+      <NewPortfolioDialog onOpenChange={setDialogOpen} open={dialogOpen} />
+      <EditPortfolioDialog
+        onOpenChange={(open) => {
+          if (!open) setEditingId(null);
+        }}
+        open={editingId !== null}
+        portfolio={portfolios?.find((portfolio) => portfolio.id === editingId) ?? null}
+      />
+      <ArchivePortfolioDialog
+        onOpenChange={(open) => {
+          if (!open) setArchivingId(null);
+        }}
+        open={archivingId !== null}
+        portfolio={portfolios?.find((portfolio) => portfolio.id === archivingId) ?? null}
+      />
+    </>
+  );
+
+  if (isMobile) {
+    // The Figma mobile list: a title with a short "New" button, the search and a card of rows. No
+    // table, pagination, count or row menu; the edit and archive actions are not offered here.
+    const visible = (portfolios ?? NO_PORTFOLIOS).filter((portfolio) =>
+      matchesText(portfolio.name, search),
+    );
+
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl leading-8 font-semibold text-(--color-text-default)">
+            {t("nav.portfolios")}
+          </h1>
+          <Button onClick={openDialog} size="sm">
+            {t("portfolios.newShort")}
+          </Button>
+        </div>
+        {portfolios === undefined && isError ? (
+          <Alert
+            action={
+              <Button
+                onClick={() => {
+                  void refetch();
+                }}
+                size="sm"
+                variant="outline"
+              >
+                {t("portfolios.failed.retry")}
+              </Button>
+            }
+            description={t("portfolios.mobile.failed.description")}
+            title={t("portfolios.mobile.failed.title")}
+            tone="error"
+          />
+        ) : portfolios === undefined ? (
+          <>
+            <DataTableToolbar disabled searchLabel={t("portfolios.search")} table={table} />
+            <PortfoliosCardsSkeleton />
+          </>
+        ) : portfolios.length === 0 ? (
+          <section className="rounded-xl bg-(--color-surface-card) p-6">
+            <PortfoliosEmptyState
+              action={
+                <Button onClick={openDialog} size="sm" variant="outline">
+                  {t("portfolios.empty.action")}
+                </Button>
+              }
+              description={t("portfolios.mobile.empty.description")}
+              title={t("portfolios.mobile.empty.title")}
+            />
+          </section>
+        ) : (
+          <>
+            <DataTableToolbar searchLabel={t("portfolios.search")} table={table} />
+            {visible.length === 0 ? (
+              <section className="rounded-xl bg-(--color-surface-card) p-6">
+                <PortfoliosEmptyState
+                  action={
+                    <Button
+                      onClick={() => {
+                        table.setGlobalFilter("");
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {t("portfolios.noResults.clear")}
+                    </Button>
+                  }
+                  description={t("portfolios.noResults.description", { query: search })}
+                  title={t("portfolios.noResults.title")}
+                />
+              </section>
+            ) : (
+              <PortfolioCardList activeId={active?.id} portfolios={visible} />
+            )}
+          </>
+        )}
+        {dialogs}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -130,21 +237,7 @@ export function PortfoliosPage() {
           </>
         )}
       </section>
-      <NewPortfolioDialog onOpenChange={setDialogOpen} open={dialogOpen} />
-      <EditPortfolioDialog
-        onOpenChange={(open) => {
-          if (!open) setEditingId(null);
-        }}
-        open={editingId !== null}
-        portfolio={portfolios?.find((portfolio) => portfolio.id === editingId) ?? null}
-      />
-      <ArchivePortfolioDialog
-        onOpenChange={(open) => {
-          if (!open) setArchivingId(null);
-        }}
-        open={archivingId !== null}
-        portfolio={portfolios?.find((portfolio) => portfolio.id === archivingId) ?? null}
-      />
+      {dialogs}
     </div>
   );
 }
