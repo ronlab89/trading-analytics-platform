@@ -77,6 +77,21 @@ describe("EditPortfolioDialog", () => {
     );
   });
 
+  it("uses the description the Figma gives the mobile form", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      media: query,
+      matches: true,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    renderDialog(clientWith(saved).client);
+
+    expect(screen.getByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
+    expect(screen.getByText("Change the name or the description.")).toBeInTheDocument();
+    expect(screen.queryByText("Change the name of your portfolio.")).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("shows the base currency locked, with the reason", () => {
     renderDialog(clientWith(saved).client);
 

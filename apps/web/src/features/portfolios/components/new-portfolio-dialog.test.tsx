@@ -78,6 +78,23 @@ describe("NewPortfolioDialog", () => {
     );
   });
 
+  it("uses the title and description the Figma gives the mobile form", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      media: query,
+      matches: true,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    renderDialog(clientWith(() => Promise.resolve({ data: created })).client);
+
+    expect(screen.getByRole("dialog", { name: "Create portfolio" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Group your positions and choose their base currency."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("New portfolio")).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("renders nothing while it is closed", () => {
     renderDialog(clientWith(() => Promise.resolve({ data: created })).client, vi.fn(), false);
 

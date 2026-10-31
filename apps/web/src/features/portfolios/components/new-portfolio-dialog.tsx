@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { useCreatePortfolio } from "../hooks/use-create-portfolio";
 import { useDiscardGuard, useReportDirty } from "../hooks/use-discard-guard";
 import {
@@ -70,6 +71,8 @@ interface NewPortfolioFormProps {
 /** Mounted only while the dialog is open, so every opening starts from an empty form. */
 function NewPortfolioForm({ create, onCreated, onDirtyChange }: NewPortfolioFormProps) {
   const { t } = useTranslation();
+  // The Figma mobile form words its title and description differently from the desktop one.
+  const isMobile = useIsMobile();
   const form = useForm<PortfolioFormValues>({
     resolver: zodResolver(portfolioFormSchema),
     defaultValues: emptyPortfolioForm,
@@ -103,8 +106,12 @@ function NewPortfolioForm({ create, onCreated, onDirtyChange }: NewPortfolioForm
       }}
     >
       <DialogHeader>
-        <DialogTitle>{t("portfolioForm.title")}</DialogTitle>
-        <DialogDescription>{t("portfolioForm.subtitle")}</DialogDescription>
+        <DialogTitle>
+          {t(isMobile ? "portfolioForm.mobile.title" : "portfolioForm.title")}
+        </DialogTitle>
+        <DialogDescription>
+          {t(isMobile ? "portfolioForm.mobile.subtitle" : "portfolioForm.subtitle")}
+        </DialogDescription>
       </DialogHeader>
       <DialogBody className="gap-4">
         <PortfolioFields disabled={create.isPending} form={form} />

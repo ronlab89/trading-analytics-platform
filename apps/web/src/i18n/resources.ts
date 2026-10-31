@@ -80,6 +80,10 @@ const en = {
   portfolioForm: {
     title: "New portfolio",
     subtitle: "Group your positions and transactions in an independent portfolio.",
+    mobile: {
+      title: "Create portfolio",
+      subtitle: "Group your positions and choose their base currency.",
+    },
     cancel: "Cancel",
     submit: "Create portfolio",
     submitting: "Creating…",
@@ -129,6 +133,7 @@ const en = {
   portfolioEdit: {
     title: "Edit portfolio",
     subtitle: "Change the name of your portfolio.",
+    mobileSubtitle: "Change the name or the description.",
     submit: "Save changes",
     submitting: "Saving…",
     discardDescription:
@@ -329,6 +334,10 @@ const es: Messages<typeof en> = {
   portfolioForm: {
     title: "Nuevo portafolio",
     subtitle: "Agrupa tus posiciones y transacciones en un portafolio independiente.",
+    mobile: {
+      title: "Crear portafolio",
+      subtitle: "Agrupa tus posiciones y elige su moneda base.",
+    },
     cancel: "Cancelar",
     submit: "Crear portafolio",
     submitting: "Creando…",
@@ -382,6 +391,7 @@ const es: Messages<typeof en> = {
   portfolioEdit: {
     title: "Editar portafolio",
     subtitle: "Cambia el nombre de tu portafolio.",
+    mobileSubtitle: "Cambia el nombre o la descripción.",
     submit: "Guardar cambios",
     submitting: "Guardando…",
     discardDescription:
