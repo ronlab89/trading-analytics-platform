@@ -110,11 +110,13 @@ const en = {
   portfolios: {
     summary_one: "Manage your portfolios · {{count}} in total",
     summary_other: "Manage your portfolios · {{count}} in total",
+    new: "New portfolio",
     table: "Portfolios",
     loading: "Loading portfolios",
     empty: {
       title: "You have no portfolios yet",
       description: "Create your first portfolio to record positions and transactions.",
+      action: "Create portfolio",
     },
     noResults: {
       title: "No results",
@@ -322,11 +324,13 @@ const es: Messages<typeof en> = {
   portfolios: {
     summary_one: "Administra tus portafolios · {{count}} en total",
     summary_other: "Administra tus portafolios · {{count}} en total",
+    new: "Nuevo portafolio",
     table: "Portafolios",
     loading: "Cargando portafolios",
     empty: {
       title: "Aún no tienes portafolios",
       description: "Crea tu primer portafolio para registrar posiciones y transacciones.",
+      action: "Crear portafolio",
     },
     noResults: {
       title: "Sin resultados",

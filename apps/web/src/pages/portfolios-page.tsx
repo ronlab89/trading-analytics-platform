@@ -1,3 +1,5 @@
+import { Plus } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
@@ -6,6 +8,7 @@ import { useDataTable } from "@/components/data-table/use-data-table";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NewPortfolioDialog } from "@/features/portfolios/components/new-portfolio-dialog";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { PortfoliosTableSkeleton } from "@/features/portfolios/components/portfolios-table-skeleton";
 import { usePortfolioColumns } from "@/features/portfolios/hooks/use-portfolio-columns";
@@ -33,17 +36,28 @@ export function PortfoliosPage() {
     pageSize: PAGE_SIZE,
   });
 
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const openDialog = () => {
+    setDialogOpen(true);
+  };
+
   const matches = table.getRowCount();
   const search = String(table.state.globalFilter ?? "").trim();
 
   return (
     <div className="flex flex-col gap-6 p-6">
       <h1 className="sr-only">{t("nav.portfolios")}</h1>
-      {portfolios === undefined ? null : (
-        <p className="text-sm text-(--color-text-secondary)">
-          {t("portfolios.summary", { count: portfolios.length })}
-        </p>
-      )}
+      <div className="flex items-center justify-between gap-4">
+        {portfolios === undefined ? null : (
+          <p className="text-sm text-(--color-text-secondary)">
+            {t("portfolios.summary", { count: portfolios.length })}
+          </p>
+        )}
+        <Button className="ml-auto" onClick={openDialog}>
+          <Plus aria-hidden="true" />
+          {t("portfolios.new")}
+        </Button>
+      </div>
       <section className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-6">
         {portfolios === undefined && isError ? (
           <Alert
@@ -71,6 +85,11 @@ export function PortfoliosPage() {
           </>
         ) : portfolios.length === 0 ? (
           <PortfoliosEmptyState
+            action={
+              <Button onClick={openDialog} size="sm" variant="outline">
+                {t("portfolios.empty.action")}
+              </Button>
+            }
             description={t("portfolios.empty.description")}
             title={t("portfolios.empty.title")}
           />
@@ -103,6 +122,7 @@ export function PortfoliosPage() {
           </>
         )}
       </section>
+      <NewPortfolioDialog onOpenChange={setDialogOpen} open={dialogOpen} />
     </div>
   );
 }
