@@ -43,6 +43,14 @@ describe("Select", () => {
     );
   });
 
+  it("does not take the Input's editing border, because the Figma Select has no Editing state", () => {
+    render(<CurrencySelect />);
+
+    expect(screen.getByRole("combobox", { name: "Currency" }).className).not.toContain(
+      "input-border-editing",
+    );
+  });
+
   it("lists the options when opened and shows the one the user picks", async () => {
     const onValueChange = vi.fn();
     render(<CurrencySelect onValueChange={onValueChange} />);

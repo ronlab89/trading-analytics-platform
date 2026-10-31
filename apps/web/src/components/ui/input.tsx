@@ -11,6 +11,15 @@ import { useFieldControlProps } from "./field-context";
 export const inputControlClasses =
   "w-full rounded-md border border-(--color-input-border) outline-0 bg-(--color-input-background) text-(--color-text-default) transition-colors placeholder:text-(--color-text-secondary) hover:border-(--color-input-border-hover) keyboard:focus-visible:border-(--color-input-border-hover) keyboard:focus-visible:outline-2 keyboard:focus-visible:outline-offset-3 keyboard:focus-visible:outline-(--color-input-ring) aria-invalid:border-(--color-input-border-error) keyboard:aria-invalid:focus-visible:outline-(--color-input-ring-error) disabled:cursor-not-allowed disabled:border-(--color-input-border-disabled) disabled:bg-(--color-input-background-disabled) disabled:text-(--color-text-disabled) disabled:placeholder:text-(--color-text-disabled)";
 
+/**
+ * The Figma "Editing" state of the Input and the Textarea: while a pointer has the focus, the
+ * border turns dark and 2 px thick. Figma draws that stroke inside the box, so the second pixel is
+ * an inset shadow and the content does not move. Keyboard focus keeps its ring instead, and an
+ * invalid field keeps its error border. The Select does not take it: its Figma has no such state.
+ */
+export const inputEditingClasses =
+  "pointer:focus:not-aria-invalid:border-(--color-input-border-editing) pointer:focus:not-aria-invalid:shadow-[inset_0_0_0_1px_var(--color-input-border-editing)]";
+
 /** The Figma "Input": three sizes (32, 36 and 40 px). */
 const inputVariants = cva(inputControlClasses, {
   variants: {
@@ -30,7 +39,7 @@ function Input({ className, size, ...props }: InputProps) {
 
   return (
     <input
-      className={cn(inputVariants({ size }), className)}
+      className={cn(inputVariants({ size }), inputEditingClasses, className)}
       data-slot="input"
       {...props}
       {...control}

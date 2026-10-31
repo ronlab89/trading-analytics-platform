@@ -32,6 +32,19 @@ describe("Textarea", () => {
     expect(screen.getByRole("textbox", { name: "Description" })).toBeDisabled();
   });
 
+  it("draws the dark 2 px editing border when a pointer focuses it, as the Figma Editing state", () => {
+    render(<Textarea aria-label="Description" />);
+
+    const { className } = screen.getByRole("textbox", { name: "Description" });
+
+    expect(className).toContain(
+      "pointer:focus:not-aria-invalid:border-(--color-input-border-editing)",
+    );
+    expect(className).toContain(
+      "pointer:focus:not-aria-invalid:shadow-[inset_0_0_0_1px_var(--color-input-border-editing)]",
+    );
+  });
+
   it("keeps the invalid state it is given outside a field", () => {
     render(<Textarea aria-label="Description" aria-invalid />);
 

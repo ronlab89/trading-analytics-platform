@@ -100,6 +100,8 @@
  */
 /* Styles that apply only while the user navigates with the Tab key (lib/input-modality.ts). */
 @custom-variant keyboard (:where([data-input-modality="keyboard"]) &);
+/* The counterpart: styles that apply while the user works with a mouse, pen or finger. */
+@custom-variant pointer (:where([data-input-modality="pointer"]) &);
 
 @theme {
   --breakpoint-*: initial;
