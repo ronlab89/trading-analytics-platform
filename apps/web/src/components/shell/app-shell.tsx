@@ -61,7 +61,7 @@ export function AppShell() {
             userInitials={initials}
             userName={userName}
           />
-          <main className="min-h-0 flex-1 overflow-y-auto p-4 tablet:px-6 tablet:pt-2 tablet:pb-4 desktop:pr-4 desktop:pl-2">
+          <main className="relative min-h-0 flex-1 overflow-y-auto p-4 tablet:px-6 tablet:pt-2 tablet:pb-4 desktop:pr-4 desktop:pl-2">
             <Outlet />
           </main>
           <StatusBar
