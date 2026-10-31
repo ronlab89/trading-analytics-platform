@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 import { useFieldControlProps } from "./field-context";
-import { inputControlClasses } from "./input";
+import { inputControlClasses, inputEditingClasses } from "./input";
 
 /**
  * The Figma "Textarea": the Input's states over a box that is 80 px tall at least, with 8 px of
@@ -15,6 +15,7 @@ function Textarea({ className, ...props }: ComponentProps<"textarea">) {
     <textarea
       className={cn(
         inputControlClasses,
+        inputEditingClasses,
         "min-h-20 resize-y px-3 py-2 text-sm leading-5",
         className,
       )}
