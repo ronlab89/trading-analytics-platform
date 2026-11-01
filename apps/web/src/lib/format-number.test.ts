@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, formatQuantity } from "./format-number";
+import { currencySymbol, formatMoney, formatQuantity } from "./format-number";
 
 describe("formatMoney", () => {
   it("writes the currency symbol, the thousands separators and two decimals", () => {
@@ -37,5 +37,12 @@ describe("formatQuantity", () => {
   it("keeps the decimals of a fractional quantity, up to eight", () => {
     expect(formatQuantity(1.5)).toBe("1.5");
     expect(formatQuantity(0.12345678)).toBe("0.12345678");
+  });
+});
+
+describe("currencySymbol", () => {
+  it("gives the symbol an amount of the currency is written with", () => {
+    expect(currencySymbol("USD")).toBe("$");
+    expect(currencySymbol("EUR")).toBe("€");
   });
 });

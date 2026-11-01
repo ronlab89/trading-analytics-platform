@@ -85,6 +85,24 @@ const en = {
     empty: "No assets match your search.",
     failed: "Could not load assets. Try again.",
   },
+  transactionForm: {
+    optional: "Optional",
+    type: {
+      label: "Type",
+      placeholder: "Select a type",
+      options: { BUY: "Buy", SELL: "Sell" },
+      required: "Select a type.",
+    },
+    asset: { label: "Asset", required: "Select an asset." },
+    date: { label: "Date", invalid: "Enter a valid date." },
+    quantity: { label: "Quantity", unit: "units", invalid: "Enter a quantity greater than 0." },
+    price: { label: "Price per unit", invalid: "Enter a valid price." },
+    fees: {
+      label: "Fees",
+      help: "If you leave it empty, it is taken as {{amount}}.",
+      invalid: "Enter a valid fee.",
+    },
+  },
   transactionImpact: {
     title: "Impact summary",
     operation: "Operation ({{quantity}} × {{price}})",
@@ -404,6 +422,24 @@ const es: Messages<typeof en> = {
     searching: "Buscando…",
     empty: "Ningún activo coincide con tu búsqueda.",
     failed: "No pudimos cargar los activos. Intenta de nuevo.",
+  },
+  transactionForm: {
+    optional: "Opcional",
+    type: {
+      label: "Tipo",
+      placeholder: "Selecciona un tipo",
+      options: { BUY: "Compra", SELL: "Venta" },
+      required: "Selecciona un tipo.",
+    },
+    asset: { label: "Activo", required: "Selecciona un activo." },
+    date: { label: "Fecha", invalid: "Ingresa una fecha válida." },
+    quantity: { label: "Cantidad", unit: "uds", invalid: "Ingresa una cantidad mayor a 0." },
+    price: { label: "Precio por unidad", invalid: "Ingresa un precio válido." },
+    fees: {
+      label: "Comisión",
+      help: "Si la dejas vacía se toma {{amount}}.",
+      invalid: "Ingresa una comisión válida.",
+    },
   },
   transactionImpact: {
     title: "Resumen del impacto",

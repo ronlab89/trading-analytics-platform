@@ -26,7 +26,7 @@ interface AssetComboboxProps {
  */
 export function AssetCombobox({ value, onChange }: AssetComboboxProps) {
   const { t } = useTranslation();
-  const field = useFieldControlProps({});
+  const { required, ...field } = useFieldControlProps({});
   const listId = useId();
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState("");
@@ -74,6 +74,7 @@ export function AssetCombobox({ value, onChange }: AssetComboboxProps) {
           role="combobox"
           type="button"
           {...field}
+          {...(required ? { "aria-required": true } : {})}
         >
           <span className="truncate">{value ? label(value) : t("assetCombobox.placeholder")}</span>
           <ChevronsUpDown
