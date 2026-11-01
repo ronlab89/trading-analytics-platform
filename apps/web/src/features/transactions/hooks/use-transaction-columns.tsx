@@ -2,11 +2,10 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/avatar";
-import { Badge } from "@/components/badge";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
 import { formatDateTime } from "@/lib/format-date";
 import { formatMoney, formatQuantity } from "@/lib/format-number";
-import { transactionDisplayStatus } from "../lib/transaction-status";
+import { TransactionStatusBadge } from "../components/transaction-status-badge";
 import type { TransactionRow } from "../types";
 
 const column = createColumnHelper<DataTableFeatures, TransactionRow>();
@@ -38,18 +37,6 @@ function AssetCell({ symbol, name }: Pick<TransactionRow, "symbol" | "name">) {
 function TypeCell({ type }: Pick<TransactionRow, "type">) {
   const { t } = useTranslation();
   return t(`transactions.type.${type}`);
-}
-
-/** Settled is the one that reads as done; the failed one has no tone of its own until the badge has a danger tone. */
-function StatusBadge({ status }: Pick<TransactionRow, "status">) {
-  const { t } = useTranslation();
-  const display = transactionDisplayStatus(status);
-
-  return (
-    <Badge tone={display === "settled" ? "success" : "neutral"}>
-      {t(`transactions.status.${display}`)}
-    </Badge>
-  );
 }
 
 /**
@@ -102,7 +89,7 @@ export function useTransactionColumns() {
         column.accessor("status", {
           header: headerOf("status"),
           meta: { align: "center" },
-          cell: ({ getValue }) => <StatusBadge status={getValue()} />,
+          cell: ({ getValue }) => <TransactionStatusBadge status={getValue()} />,
         }),
       ]),
     [],
