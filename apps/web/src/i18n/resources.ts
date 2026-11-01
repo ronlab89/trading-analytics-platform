@@ -222,6 +222,21 @@ const en = {
       },
     },
   },
+  transactions: {
+    unknownAsset: "Unknown asset",
+    columns: {
+      date: "Date",
+      asset: "Asset",
+      type: "Type",
+      quantity: "Quantity",
+      price: "Price",
+      fees: "Fees",
+      total: "Total",
+      status: "Status",
+    },
+    type: { BUY: "Buy", SELL: "Sell" },
+    status: { settled: "Settled", failed: "Failed", pending: "Pending" },
+  },
   shell: {
     mainNavigation: "Main navigation",
     tabNavigation: "Main tabs",
@@ -495,6 +510,21 @@ const es: Messages<typeof en> = {
         retry: "Reintentar",
       },
     },
+  },
+  transactions: {
+    unknownAsset: "Activo desconocido",
+    columns: {
+      date: "Fecha",
+      asset: "Activo",
+      type: "Tipo",
+      quantity: "Cantidad",
+      price: "Precio",
+      fees: "Comisión",
+      total: "Total",
+      status: "Estado",
+    },
+    type: { BUY: "Compra", SELL: "Venta" },
+    status: { settled: "Liquidada", failed: "Fallida", pending: "Pendiente" },
   },
   shell: {
     mainNavigation: "Navegación principal",
