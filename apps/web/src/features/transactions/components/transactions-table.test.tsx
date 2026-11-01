@@ -30,8 +30,8 @@ describe("TransactionsTable", () => {
 
     expect(headers).toEqual([
       "Date",
-      "Asset",
       "Type",
+      "Asset",
       "Quantity",
       "Price",
       "Fees",

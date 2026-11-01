@@ -5,6 +5,7 @@ import { Avatar } from "@/components/avatar";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
 import { formatMoney, formatQuantity } from "@/lib/format-number";
 import { TransactionDate } from "../components/transaction-date";
+import { TransactionSide } from "../components/transaction-side";
 import { TransactionStatusBadge } from "../components/transaction-status-badge";
 import type { TransactionRow } from "../types";
 
@@ -34,9 +35,9 @@ function AssetCell({ symbol, name }: Pick<TransactionRow, "symbol" | "name">) {
   );
 }
 
-function TypeCell({ type }: Pick<TransactionRow, "type">) {
-  const { t } = useTranslation();
-  return t(`transactions.type.${type}`);
+/** The amounts of a row are medium weight in the Figma, the text around them regular. */
+function Figure({ children }: { children: string }) {
+  return <span className="font-medium">{children}</span>;
 }
 
 /**
@@ -53,42 +54,41 @@ export function useTransactionColumns() {
           header: headerOf("date"),
           cell: ({ getValue }) => <TransactionDate executedAt={getValue()} />,
         }),
+        column.accessor("type", {
+          header: headerOf("type"),
+          cell: ({ getValue }) => <TransactionSide size="md" type={getValue()} />,
+        }),
         column.accessor((row) => row.name ?? "", {
           id: "asset",
           header: headerOf("asset"),
           meta: { rowHeader: true },
           cell: ({ row }) => <AssetCell name={row.original.name} symbol={row.original.symbol} />,
         }),
-        column.accessor("type", {
-          header: headerOf("type"),
-          cell: ({ getValue }) => <TypeCell type={getValue()} />,
-        }),
         column.accessor("quantity", {
           header: headerOf("quantity"),
           meta: { align: "end", className: DESKTOP_ONLY },
-          cell: ({ getValue }) => formatQuantity(getValue()),
+          cell: ({ getValue }) => <Figure>{formatQuantity(getValue())}</Figure>,
         }),
         column.accessor((row) => row.price.amount, {
           id: "price",
           header: headerOf("price"),
           meta: { align: "end", className: DESKTOP_ONLY },
-          cell: ({ row }) => formatMoney(row.original.price),
+          cell: ({ row }) => <Figure>{formatMoney(row.original.price)}</Figure>,
         }),
         column.accessor((row) => row.fees.amount, {
           id: "fees",
           header: headerOf("fees"),
           meta: { align: "end", className: DESKTOP_ONLY },
-          cell: ({ row }) => formatMoney(row.original.fees),
+          cell: ({ row }) => <Figure>{formatMoney(row.original.fees)}</Figure>,
         }),
         column.accessor((row) => row.total.amount, {
           id: "total",
           header: headerOf("total"),
           meta: { align: "end" },
-          cell: ({ row }) => formatMoney(row.original.total),
+          cell: ({ row }) => <Figure>{formatMoney(row.original.total)}</Figure>,
         }),
         column.accessor("status", {
           header: headerOf("status"),
-          meta: { align: "center" },
           cell: ({ getValue }) => <TransactionStatusBadge status={getValue()} />,
         }),
       ]),
