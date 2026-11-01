@@ -34,6 +34,20 @@ const asset = (id: string, symbol: string, name: string) => ({
   metadata: {},
 });
 
+const transaction = (id: string, assetId: string) => ({
+  id,
+  portfolioId: "p1",
+  assetId,
+  type: "BUY",
+  quantity: 10,
+  price: { amount: "180.20", currency: "USD" },
+  fees: { amount: "1.00", currency: "USD" },
+  realizedPnL: null,
+  status: "COMPLETED",
+  executedAt: "2026-10-06T14:29:00.000Z",
+  createdAt: "2026-10-06T14:29:00.000Z",
+});
+
 const viewports = [
   { name: "mobile", width: 390, height: 800 },
   { name: "tablet", width: 768, height: 800 },
@@ -78,6 +92,21 @@ test.beforeEach(async ({ page }) => {
       ]),
     ),
   );
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/transactions?*", (route) =>
+    route.fulfill({
+      ...json(null),
+      body: JSON.stringify({
+        data: [
+          transaction("t1", "a1"),
+          transaction("t2", "a2"),
+          transaction("t3", "a3"),
+          transaction("t4", "a4"),
+          transaction("t5", "a5"),
+        ],
+        meta: { page: 1, pageSize: 10, total: 48, totalPages: 5 },
+      }),
+    }),
+  );
   await page.route("http://localhost:7001/api/v1/assets/*", (route) => {
     const id = route.request().url().split("/").pop() ?? "a1";
     return route.fulfill(json(asset(id, id.toUpperCase(), `Asset ${id.toUpperCase()}`)));
@@ -93,6 +122,11 @@ async function waitForPortfolios(page: Page, width: number) {
 async function waitForPositions(page: Page, width: number) {
   const role = width <= MOBILE_MAX ? "list" : "table";
   await page.getByRole(role, { name: /Positions|Posiciones/ }).waitFor();
+}
+
+async function waitForTransactions(page: Page, width: number) {
+  const role = width <= MOBILE_MAX ? "list" : "table";
+  await page.getByRole(role, { name: /Transactions|Transacciones/ }).waitFor();
 }
 
 /** The box of something that must be on screen; a missing one fails the test with a clear reason. */
@@ -130,6 +164,17 @@ for (const { name, width, height } of viewports) {
     await page.setViewportSize({ width, height });
     await page.goto("/portfolios/p1");
     await waitForPositions(page, width);
+
+    const size = await pageSize(page);
+
+    expect(size.scrollWidth).toBe(size.clientWidth);
+    expect(size.scrollHeight).toBe(size.clientHeight);
+  });
+
+  test(`the transactions do not scroll the page by itself on ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/transactions");
+    await waitForTransactions(page, width);
 
     const size = await pageSize(page);
 
@@ -195,6 +240,49 @@ test("on tablet and desktop the create form is a centered dialog, not a sheet", 
   const box = await boxOf(page.getByRole("dialog"));
   expect(box.x).toBeGreaterThan(0);
   expect(box.x + box.width).toBeLessThan(768);
+});
+
+test("on mobile the transactions are rows of one card inside the main area, not a table", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/transactions");
+  await waitForTransactions(page, 390);
+
+  await expect(page.getByRole("table")).toHaveCount(0);
+  const main = await boxOf(page.locator("main"));
+  const list = await boxOf(page.getByRole("list", { name: /Transactions|Transacciones/ }));
+  expect(list.x).toBeGreaterThanOrEqual(main.x);
+  expect(list.x + list.width).toBeLessThanOrEqual(main.x + main.width);
+});
+
+test("the tablet drops quantity, price and fees, and the desktop shows them", async ({ page }) => {
+  const dropped = /^(Quantity|Cantidad|Price|Precio|Fees|Comisión)$/;
+
+  await page.setViewportSize({ width: 768, height: 800 });
+  await page.goto("/transactions");
+  await waitForTransactions(page, 768);
+  await expect(page.getByRole("columnheader", { name: dropped })).toHaveCount(0);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.getByRole("columnheader", { name: dropped })).toHaveCount(3);
+});
+
+test("the pagination writes the page on the tablet and numbers the pages on the desktop", async ({
+  page,
+}) => {
+  const pageOf = page.getByText(/Page 1 of 5|Página 1 de 5/);
+  const numbered = page.getByRole("button", { name: /^(Page|Página) 5$/ });
+
+  await page.setViewportSize({ width: 768, height: 800 });
+  await page.goto("/transactions");
+  await waitForTransactions(page, 768);
+  await expect(pageOf).toBeVisible();
+  await expect(numbered).toBeHidden();
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(pageOf).toBeHidden();
+  await expect(numbered).toBeVisible();
 });
 
 test("on mobile the positions are cards and the detail header keeps its actions in one row", async ({
