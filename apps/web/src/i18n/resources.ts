@@ -224,6 +224,7 @@ const en = {
   },
   transactions: {
     table: "Transactions",
+    pagination: { rowsPerPage: "Rows per page" },
     unknownAsset: "Unknown asset",
     columns: {
       date: "Date",
@@ -514,6 +515,7 @@ const es: Messages<typeof en> = {
   },
   transactions: {
     table: "Transacciones",
+    pagination: { rowsPerPage: "Filas por página" },
     unknownAsset: "Activo desconocido",
     columns: {
       date: "Fecha",
