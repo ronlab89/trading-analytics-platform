@@ -6,6 +6,7 @@ import { HomePage } from "@/pages/home/home-page";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import { PortfolioDetailPage } from "@/pages/portfolios/portfolio-detail-page";
 import { PortfoliosPage } from "@/pages/portfolios/portfolios-page";
+import { TransactionsPage } from "@/pages/transactions/transactions-page";
 
 /**
  * Only the login is public and outside the shell; everything else, the not-found page
@@ -22,6 +23,7 @@ export const routes: RouteObject[] = [
           { path: "/", element: <HomePage /> },
           { path: "/portfolios", element: <PortfoliosPage /> },
           { path: "/portfolios/:portfolioId", element: <PortfolioDetailPage /> },
+          { path: "/transactions", element: <TransactionsPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },
