@@ -76,6 +76,15 @@ const en = {
     previousPage: "Previous page",
     nextPage: "Next page",
   },
+  assetCombobox: {
+    placeholder: "Search an asset",
+    search: "Search assets",
+    searchPlaceholder: "Search asset…",
+    list: "Assets",
+    searching: "Searching…",
+    empty: "No assets match your search.",
+    failed: "Could not load assets. Try again.",
+  },
   dialog: { close: "Close" },
   portfolioForm: {
     title: "New portfolio",
@@ -378,6 +387,15 @@ const es: Messages<typeof en> = {
     page: "Página {{page}} de {{pageCount}}",
     previousPage: "Página anterior",
     nextPage: "Página siguiente",
+  },
+  assetCombobox: {
+    placeholder: "Busca un activo",
+    search: "Buscar activos",
+    searchPlaceholder: "Buscar activo…",
+    list: "Activos",
+    searching: "Buscando…",
+    empty: "Ningún activo coincide con tu búsqueda.",
+    failed: "No pudimos cargar los activos. Intenta de nuevo.",
   },
   dialog: { close: "Cerrar" },
   portfolioForm: {
