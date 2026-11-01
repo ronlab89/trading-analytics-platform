@@ -36,8 +36,8 @@ describe("TransactionsPagination", () => {
   it("asks for the next and the previous page", async () => {
     const { onPageChange } = renderPagination();
 
-    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
-    await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Previous" }));
 
     expect(onPageChange).toHaveBeenNthCalledWith(1, 3);
     expect(onPageChange).toHaveBeenNthCalledWith(2, 1);
@@ -45,13 +45,34 @@ describe("TransactionsPagination", () => {
 
   it("disables the previous button on the first page and the next one on the last", () => {
     renderPagination({ meta: { page: 1, pageSize: 20, total: 45, totalPages: 3 } });
-    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Next page" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
   it("disables the next button on the last page", () => {
     renderPagination({ meta: { page: 3, pageSize: 20, total: 45, totalPages: 3 }, shown: 5 });
-    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
+  it("numbers the pages and marks the current one", () => {
+    renderPagination({ meta: { page: 5, pageSize: 10, total: 100, totalPages: 10 } });
+
+    const current = screen.getByRole("button", { name: "Page 5" });
+    expect(current).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Page 4" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("button", { name: "Page 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Page 10" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Page 2" })).not.toBeInTheDocument();
+  });
+
+  it("goes to the page of a number", async () => {
+    const { onPageChange } = renderPagination({
+      meta: { page: 5, pageSize: 10, total: 100, totalPages: 10 },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Page 10" }));
+
+    expect(onPageChange).toHaveBeenCalledWith(10);
   });
 
   it("shows the rows per page and asks for another size", async () => {

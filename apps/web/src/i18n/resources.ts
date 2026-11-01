@@ -224,7 +224,12 @@ const en = {
   },
   transactions: {
     table: "Transactions",
-    pagination: { rowsPerPage: "Rows per page" },
+    pagination: {
+      rowsPerPage: "Rows per page",
+      previous: "Previous",
+      next: "Next",
+      goToPage: "Page {{page}}",
+    },
     unknownAsset: "Unknown asset",
     columns: {
       date: "Date",
@@ -515,7 +520,12 @@ const es: Messages<typeof en> = {
   },
   transactions: {
     table: "Transacciones",
-    pagination: { rowsPerPage: "Filas por página" },
+    pagination: {
+      rowsPerPage: "Filas por página",
+      previous: "Anterior",
+      next: "Siguiente",
+      goToPage: "Página {{page}}",
+    },
     unknownAsset: "Activo desconocido",
     columns: {
       date: "Fecha",

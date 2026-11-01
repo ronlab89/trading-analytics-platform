@@ -1,5 +1,5 @@
 import type { PaginationMeta } from "@trading/contracts";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Ellipsis } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { pageWindow } from "../lib/page-window";
 
 export const PAGE_SIZES = [10, 20, 50] as const;
 
@@ -23,9 +24,11 @@ interface TransactionsPaginationProps {
 
 /**
  * The footer of the transactions table, as the Figma draws it: which rows are shown out of how
- * many, the rows per page and the page with its two buttons. The server pages the list, so this
- * reads the server's count instead of a table instance, and the page and the size are the view's to
- * keep. With no transactions it draws nothing, because the view says why there are none.
+ * many, the rows per page and the pages. Below the desktop width the pages are written as "Page 1
+ * of 5" between the two buttons, in two rows; on the desktop they are numbered buttons in a single
+ * row. The server pages the list, so this reads the server's count instead of a table instance, and
+ * the page and the size are the view's to keep. With no transactions it draws nothing, because the
+ * view says why there are none.
  */
 export function TransactionsPagination({
   meta,
@@ -40,10 +43,10 @@ export function TransactionsPagination({
   const to = from + shown - 1;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-(--color-text-secondary)">
-      <p>{t("dataTable.showing", { from, to, total: meta.total })}</p>
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3 text-sm text-(--color-text-secondary) desktop:flex-row desktop:items-center">
+      <div className="flex items-center justify-between desktop:contents">
+        <p className="desktop:mr-auto">{t("dataTable.showing", { from, to, total: meta.total })}</p>
+        <div className="flex items-center gap-2 desktop:mr-6">
           <span aria-hidden="true">{t("transactions.pagination.rowsPerPage")}</span>
           <Select
             onValueChange={(value) => {
@@ -53,7 +56,7 @@ export function TransactionsPagination({
           >
             <SelectTrigger
               aria-label={t("transactions.pagination.rowsPerPage")}
-              className="w-20"
+              className="w-auto border-transparent bg-transparent font-medium text-(--color-button-ghost-foreground)"
               size="sm"
             >
               <SelectValue />
@@ -67,32 +70,58 @@ export function TransactionsPagination({
             </SelectContent>
           </Select>
         </div>
-        <nav aria-label={t("dataTable.pagination")} className="flex items-center gap-2">
-          <p>{t("dataTable.page", { page: meta.page, pageCount: meta.totalPages })}</p>
-          <Button
-            aria-label={t("dataTable.previousPage")}
-            disabled={meta.page <= 1}
-            onClick={() => {
-              onPageChange(meta.page - 1);
-            }}
-            size="icon-sm"
-            variant="outline"
-          >
-            <ChevronLeft aria-hidden="true" />
-          </Button>
-          <Button
-            aria-label={t("dataTable.nextPage")}
-            disabled={meta.page >= meta.totalPages}
-            onClick={() => {
-              onPageChange(meta.page + 1);
-            }}
-            size="icon-sm"
-            variant="outline"
-          >
-            <ChevronRight aria-hidden="true" />
-          </Button>
-        </nav>
       </div>
+      <nav
+        aria-label={t("dataTable.pagination")}
+        className="flex items-center justify-between desktop:gap-1"
+      >
+        <Button
+          disabled={meta.page <= 1}
+          onClick={() => {
+            onPageChange(meta.page - 1);
+          }}
+          size="sm"
+          variant="ghost"
+        >
+          <ChevronLeft aria-hidden="true" />
+          {t("transactions.pagination.previous")}
+        </Button>
+        <p className="desktop:hidden">
+          {t("dataTable.page", { page: meta.page, pageCount: meta.totalPages })}
+        </p>
+        <ul className="flex items-center gap-1 max-desktop:hidden">
+          {pageWindow(meta.page, meta.totalPages).map((item, index) => (
+            <li key={item === "ellipsis" ? `ellipsis-${String(index)}` : item}>
+              {item === "ellipsis" ? (
+                <Ellipsis aria-hidden="true" className="mx-2 size-4" />
+              ) : (
+                <Button
+                  aria-current={item === meta.page ? "page" : undefined}
+                  aria-label={t("transactions.pagination.goToPage", { page: item })}
+                  onClick={() => {
+                    onPageChange(item);
+                  }}
+                  size="icon-sm"
+                  variant={item === meta.page ? "primary" : "ghost"}
+                >
+                  {item}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <Button
+          disabled={meta.page >= meta.totalPages}
+          onClick={() => {
+            onPageChange(meta.page + 1);
+          }}
+          size="sm"
+          variant="ghost"
+        >
+          {t("transactions.pagination.next")}
+          <ChevronRight aria-hidden="true" />
+        </Button>
+      </nav>
     </div>
   );
 }
