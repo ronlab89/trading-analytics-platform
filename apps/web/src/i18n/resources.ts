@@ -86,6 +86,23 @@ const en = {
     failed: "Could not load assets. Try again.",
   },
   transactionForm: {
+    title: "New transaction",
+    subtitle: "Record a purchase or a sale.",
+    cancel: "Cancel",
+    submit: "Record transaction",
+    submitting: "Recording…",
+    failed: {
+      title: "The transaction could not be recorded",
+      description: "Check your connection and try again. Your form data was kept.",
+      retry: "Try again",
+    },
+    discard: {
+      title: "Leave without saving?",
+      description:
+        "The transaction you are recording will be discarded. This action cannot be undone.",
+      keepEditing: "Keep editing",
+      confirm: "Leave without saving",
+    },
     optional: "Optional",
     type: {
       label: "Type",
@@ -424,6 +441,24 @@ const es: Messages<typeof en> = {
     failed: "No pudimos cargar los activos. Intenta de nuevo.",
   },
   transactionForm: {
+    title: "Nueva transacción",
+    subtitle: "Registra una compra o una venta.",
+    cancel: "Cancelar",
+    submit: "Registrar transacción",
+    submitting: "Registrando…",
+    failed: {
+      title: "No se pudo registrar la transacción",
+      description:
+        "Revisa tu conexión e inténtalo de nuevo. Tus datos del formulario se conservaron.",
+      retry: "Reintentar",
+    },
+    discard: {
+      title: "¿Salir sin guardar?",
+      description:
+        "Se descartará la transacción que estás registrando. Esta acción no se puede deshacer.",
+      keepEditing: "Seguir editando",
+      confirm: "Salir sin guardar",
+    },
     optional: "Opcional",
     type: {
       label: "Tipo",
