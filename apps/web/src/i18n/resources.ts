@@ -85,6 +85,14 @@ const en = {
     empty: "No assets match your search.",
     failed: "Could not load assets. Try again.",
   },
+  transactionImpact: {
+    title: "Impact summary",
+    operation: "Operation ({{quantity}} × {{price}})",
+    fees: "Fees",
+    total: "Total",
+    position: "Position in {{symbol}}",
+    to: "to",
+  },
   dialog: { close: "Close" },
   portfolioForm: {
     title: "New portfolio",
@@ -396,6 +404,14 @@ const es: Messages<typeof en> = {
     searching: "Buscando…",
     empty: "Ningún activo coincide con tu búsqueda.",
     failed: "No pudimos cargar los activos. Intenta de nuevo.",
+  },
+  transactionImpact: {
+    title: "Resumen del impacto",
+    operation: "Operación ({{quantity}} × {{price}})",
+    fees: "Comisión",
+    total: "Total",
+    position: "Posición en {{symbol}}",
+    to: "a",
   },
   dialog: { close: "Cerrar" },
   portfolioForm: {
