@@ -224,6 +224,7 @@ const en = {
   },
   transactions: {
     table: "Transactions",
+    loading: "Loading transactions",
     pagination: {
       rowsPerPage: "Rows per page",
       previous: "Previous",
@@ -520,6 +521,7 @@ const es: Messages<typeof en> = {
   },
   transactions: {
     table: "Transacciones",
+    loading: "Cargando transacciones",
     pagination: {
       rowsPerPage: "Filas por página",
       previous: "Anterior",
