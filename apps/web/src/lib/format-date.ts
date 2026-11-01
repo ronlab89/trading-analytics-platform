@@ -43,3 +43,22 @@ export function formatDateTime(iso: string, language: string, timeZone?: string)
 
   return `${day.format(moment)} · ${time.format(moment)}`;
 }
+
+const calendarDayFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A calendar day (`2026-10-14`, what a date input holds) as the Figma writes it: day, short month
+ * and year (`14 oct 2026`, `Oct 14, 2026`). It has no time zone: the day is read as written, so it
+ * never moves to the day before or after. A text that is not a day comes back as it is.
+ */
+export function formatCalendarDay(day: string, language: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return day;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (Number.isNaN(date.getTime())) return day;
+  return cached(calendarDayFormats, localeOf(language), "UTC", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
