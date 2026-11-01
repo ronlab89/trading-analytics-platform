@@ -40,14 +40,29 @@ describe("TransactionCardList", () => {
     expect(cards[1]).toHaveTextContent("Apple Inc.");
   });
 
-  it("writes the total, the type, the quantity, the price and the status of a transaction", () => {
+  it("writes the asset, the type, the total and the status of a transaction", () => {
     render(<TransactionCardList rows={[row()]} />);
 
     const card = screen.getByRole("listitem");
     expect(within(card).getByText("Apple Inc.")).toBeInTheDocument();
+    expect(within(card).getByText("Buy")).toBeInTheDocument();
     expect(within(card).getByText("$1,802.00")).toBeInTheDocument();
-    expect(within(card).getByText("Buy · 10 units · $180.20")).toBeInTheDocument();
     expect(within(card).getByText("Settled")).toBeInTheDocument();
+  });
+
+  it("writes a sale as a sale", () => {
+    render(<TransactionCardList rows={[row({ type: "SELL" })]} />);
+
+    expect(screen.getByText("Sell")).toBeInTheDocument();
+  });
+
+  it("leaves out the quantity, the price and the fees, as the Figma does", () => {
+    render(<TransactionCardList rows={[row()]} />);
+
+    const card = screen.getByRole("listitem");
+    expect(within(card).queryByText(/\$180\.20/)).not.toBeInTheDocument();
+    expect(within(card).queryByText(/\$1\.00/)).not.toBeInTheDocument();
+    expect(within(card).queryByText("10")).not.toBeInTheDocument();
   });
 
   it("marks the date as a time element with the instant the API sent", () => {

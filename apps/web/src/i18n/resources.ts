@@ -224,7 +224,6 @@ const en = {
   },
   transactions: {
     table: "Transactions",
-    mobile: { summary: "{{type}} · {{quantity}} units · {{price}}" },
     pagination: { rowsPerPage: "Rows per page" },
     unknownAsset: "Unknown asset",
     columns: {
@@ -516,7 +515,6 @@ const es: Messages<typeof en> = {
   },
   transactions: {
     table: "Transacciones",
-    mobile: { summary: "{{type}} · {{quantity}} uds. · {{price}}" },
     pagination: { rowsPerPage: "Filas por página" },
     unknownAsset: "Activo desconocido",
     columns: {
