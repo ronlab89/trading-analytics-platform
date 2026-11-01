@@ -223,6 +223,7 @@ const en = {
     },
   },
   transactions: {
+    table: "Transactions",
     unknownAsset: "Unknown asset",
     columns: {
       date: "Date",
@@ -512,6 +513,7 @@ const es: Messages<typeof en> = {
     },
   },
   transactions: {
+    table: "Transacciones",
     unknownAsset: "Activo desconocido",
     columns: {
       date: "Fecha",
