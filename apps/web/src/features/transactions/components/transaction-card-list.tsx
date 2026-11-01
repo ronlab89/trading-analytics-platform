@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/avatar";
-import { formatDateTime } from "@/lib/format-date";
 import { formatMoney, formatQuantity } from "@/lib/format-number";
 import type { TransactionRow } from "../types";
+import { TransactionDate } from "./transaction-date";
 import { TransactionStatusBadge } from "./transaction-status-badge";
 
 /**
@@ -34,12 +34,10 @@ export function TransactionCardList({ rows }: { rows: readonly TransactionRow[] 
             })}
           </p>
           <div className="flex items-center justify-between gap-3">
-            <time
+            <TransactionDate
               className="text-xs leading-4 text-(--color-text-secondary)"
-              dateTime={row.executedAt}
-            >
-              {formatDateTime(row.executedAt)}
-            </time>
+              executedAt={row.executedAt}
+            />
             <TransactionStatusBadge status={row.status} />
           </div>
         </li>

@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/avatar";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
-import { formatDateTime } from "@/lib/format-date";
 import { formatMoney, formatQuantity } from "@/lib/format-number";
+import { TransactionDate } from "../components/transaction-date";
 import { TransactionStatusBadge } from "../components/transaction-status-badge";
 import type { TransactionRow } from "../types";
 
@@ -51,7 +51,7 @@ export function useTransactionColumns() {
         column.accessor("executedAt", {
           id: "date",
           header: headerOf("date"),
-          cell: ({ getValue }) => formatDateTime(getValue()),
+          cell: ({ getValue }) => <TransactionDate executedAt={getValue()} />,
         }),
         column.accessor((row) => row.name ?? "", {
           id: "asset",
