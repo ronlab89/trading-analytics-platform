@@ -139,6 +139,13 @@ const en = {
     date: "Date",
     anyDate: "Any date",
     selectRange: "Select a date range",
+    chips: {
+      list: "Active filters",
+      type: "Type: {{value}}",
+      asset: "Asset: {{value}}",
+      date: "Date: {{value}}",
+      remove: "Remove filter {{filter}}",
+    },
   },
   dateRange: {
     presets: {
@@ -529,6 +536,13 @@ const es: Messages<typeof en> = {
     date: "Fecha",
     anyDate: "Cualquier fecha",
     selectRange: "Seleccionar rango de fechas",
+    chips: {
+      list: "Filtros activos",
+      type: "Tipo: {{value}}",
+      asset: "Activo: {{value}}",
+      date: "Fecha: {{value}}",
+      remove: "Quitar filtro {{filter}}",
+    },
   },
   dateRange: {
     presets: {
