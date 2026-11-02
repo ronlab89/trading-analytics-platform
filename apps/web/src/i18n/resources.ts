@@ -317,6 +317,12 @@ const en = {
     loading: "Loading transactions",
     summary_one: "History of {{portfolio}} · {{count}} transaction",
     summary_other: "History of {{portfolio}} · {{count}} transactions",
+    summaryFiltered: "History of {{portfolio}}",
+    noResults: {
+      title: "No results",
+      description: "No transactions match these filters. Review them or clear them.",
+      clear: "Clear filters",
+    },
     new: "New transaction",
     newShort: "New",
     empty: {
@@ -721,6 +727,12 @@ const es: Messages<typeof en> = {
     loading: "Cargando transacciones",
     summary_one: "Historial del portafolio {{portfolio}} · {{count}} transacción",
     summary_other: "Historial del portafolio {{portfolio}} · {{count}} transacciones",
+    summaryFiltered: "Historial del portafolio {{portfolio}}",
+    noResults: {
+      title: "Sin resultados",
+      description: "No hay transacciones que coincidan con estos filtros. Revísalos o límpialos.",
+      clear: "Limpiar filtros",
+    },
     new: "Nueva transacción",
     newShort: "Nueva",
     empty: {
