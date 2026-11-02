@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useAssets } from "@/hooks/use-assets";
+import type { TransactionFilters } from "../lib/transaction-filters";
 import { transactionTotal } from "../lib/transaction-total";
 import type { TransactionRow } from "../types";
 import { useTransactions, type TransactionsPage } from "./use-transactions";
@@ -12,8 +13,12 @@ const NO_ASSET_IDS: readonly string[] = [];
  * name, and an asset that fails to load leaves a null symbol and name instead of hiding the row.
  * Only a failed transactions request is an error; `meta` is the server's count for the paging.
  */
-export function useTransactionRows(portfolioId: string | undefined, paging: TransactionsPage) {
-  const transactions = useTransactions(portfolioId, paging);
+export function useTransactionRows(
+  portfolioId: string | undefined,
+  paging: TransactionsPage,
+  filters?: TransactionFilters,
+) {
+  const transactions = useTransactions(portfolioId, paging, filters);
   const { assets, isPending: assetsPending } = useAssets(
     transactions.data?.transactions.map(({ assetId }) => assetId) ?? NO_ASSET_IDS,
   );

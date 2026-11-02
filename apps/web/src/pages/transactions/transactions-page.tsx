@@ -5,6 +5,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
+import { TransactionFilterChips } from "@/features/transactions/components/transaction-filter-chips";
+import { TransactionFiltersButton } from "@/features/transactions/components/transaction-filters-button";
 import { TransactionCardList } from "@/features/transactions/components/transaction-card-list";
 import { TransactionsCardsSkeleton } from "@/features/transactions/components/transactions-cards-skeleton";
 import { TransactionsPagination } from "@/features/transactions/components/transactions-pagination";
@@ -12,6 +14,11 @@ import { TransactionsTable } from "@/features/transactions/components/transactio
 import { TransactionsTableSkeleton } from "@/features/transactions/components/transactions-table-skeleton";
 import { useAnnounceRecorded } from "@/features/transactions/hooks/use-announce-recorded";
 import { useTransactionRows } from "@/features/transactions/hooks/use-transaction-rows";
+import {
+  activeFilterCount,
+  NO_FILTERS,
+  type TransactionFilters,
+} from "@/features/transactions/lib/transaction-filters";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useIsMobile } from "@/hooks/use-media-query";
 
@@ -105,13 +112,48 @@ function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: Trans
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const transactions = useTransactionRows(portfolioId, { page, pageSize });
+  const [filters, setFilters] = useState(NO_FILTERS);
+  const transactions = useTransactionRows(portfolioId, { page, pageSize }, filters);
   const { rows, meta } = transactions;
+  const narrowed = activeFilterCount(filters) > 0;
 
   const changePageSize = (size: number) => {
     setPageSize(size);
     setPage(1);
   };
+
+  // Another set of filters is another list, so it starts on its first page.
+  const changeFilters = (next: TransactionFilters) => {
+    setFilters(next);
+    setPage(1);
+  };
+
+  const toolbar = (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center">
+        <TransactionFiltersButton onApply={changeFilters} value={filters} />
+      </div>
+      <TransactionFilterChips onChange={changeFilters} value={filters} />
+    </div>
+  );
+
+  const noResults = (
+    <PortfoliosEmptyState
+      action={
+        <Button
+          onClick={() => {
+            changeFilters(NO_FILTERS);
+          }}
+          size="sm"
+          variant="outline"
+        >
+          {t("transactions.noResults.clear")}
+        </Button>
+      }
+      description={t("transactions.noResults.description")}
+      title={t("transactions.noResults.title")}
+    />
+  );
 
   const pagination =
     meta !== undefined && rows !== undefined ? (
@@ -129,7 +171,10 @@ function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: Trans
         <div className="flex items-center justify-between gap-4">
           {meta === undefined ? null : (
             <p className="text-sm text-(--color-text-secondary)">
-              {t("transactions.summary", { count: meta.total, portfolio: portfolioName })}
+              {/* With filters, the total is the filtered one, so the history is not given a count. */}
+              {narrowed
+                ? t("transactions.summaryFiltered", { portfolio: portfolioName })
+                : t("transactions.summary", { count: meta.total, portfolio: portfolioName })}
             </p>
           )}
           <Button className="ml-auto" onClick={onNew}>
@@ -161,7 +206,7 @@ function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: Trans
         ) : (
           <TransactionsTableSkeleton />
         )
-      ) : rows.length === 0 ? (
+      ) : rows.length === 0 && !narrowed ? (
         <section className="rounded-xl bg-(--color-surface-card) p-6">
           <PortfoliosEmptyState
             action={
@@ -176,14 +221,30 @@ function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: Trans
           />
         </section>
       ) : isMobile ? (
-        <div className="overflow-hidden rounded-xl bg-(--color-surface-card)">
-          <TransactionCardList rows={rows} />
-          <div className="border-t border-(--color-border-default) p-4">{pagination}</div>
-        </div>
+        <>
+          {toolbar}
+          <div className="overflow-hidden rounded-xl bg-(--color-surface-card)">
+            {rows.length === 0 ? (
+              <div className="p-6">{noResults}</div>
+            ) : (
+              <>
+                <TransactionCardList rows={rows} />
+                <div className="border-t border-(--color-border-default) p-4">{pagination}</div>
+              </>
+            )}
+          </div>
+        </>
       ) : (
         <section className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-6">
-          <TransactionsTable rows={rows} />
-          {pagination}
+          {toolbar}
+          {rows.length === 0 ? (
+            noResults
+          ) : (
+            <>
+              <TransactionsTable rows={rows} />
+              {pagination}
+            </>
+          )}
         </section>
       )}
     </>

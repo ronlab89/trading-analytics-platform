@@ -3,6 +3,7 @@ import type { AssetResponse, TransactionResponse } from "@trading/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
+import { NO_FILTERS, type TransactionFilters } from "../lib/transaction-filters";
 import { useTransactionRows } from "./use-transaction-rows";
 
 function transaction(
@@ -120,6 +121,30 @@ describe("useTransactionRows", () => {
       expect.objectContaining({ operationId: "listTransactions" }),
       { params: { portfolioId: "p1" }, query: { page: 3, pageSize: 10 } },
     );
+  });
+
+  it("asks the server only for what the filters narrow, and again when they change", async () => {
+    const { client, call } = clientWith({});
+    const { result, rerender } = renderHook(
+      ({ filters }: { filters: TransactionFilters }) =>
+        useTransactionRows("p1", { page: 1, pageSize: 10 }, filters),
+      { initialProps: { filters: NO_FILTERS }, wrapper: tradingClientWrapper(client) },
+    );
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+
+    rerender({ filters: { ...NO_FILTERS, types: ["SELL"], asset: assets.get("a1") ?? null } });
+
+    await waitFor(() => {
+      expect(call).toHaveBeenLastCalledWith(
+        expect.objectContaining({ operationId: "listTransactions" }),
+        {
+          params: { portfolioId: "p1" },
+          query: { page: 1, pageSize: 10, type: "SELL", assetId: "a1" },
+        },
+      );
+    });
   });
 
   it("keeps the previous page's rows and meta while the next page loads", async () => {

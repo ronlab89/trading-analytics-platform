@@ -289,6 +289,96 @@ for (const { name, width, height } of viewports.filter((viewport) => viewport.wi
   });
 }
 
+const filtersButton = (page: Page) =>
+  page.getByRole("button", { name: /^(Filters|Filtros)( · \d+)?$/ });
+
+test("on mobile the transaction filters are a bottom sheet as wide as the screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/transactions");
+  await waitForTransactions(page, 390);
+
+  await filtersButton(page).click();
+
+  const sheet = page.getByRole("dialog", { name: /Filters|Filtros/ });
+  const box = await boxOf(sheet);
+  expect(box.x).toBe(0);
+  expect(box.width).toBe(390);
+  // The sheet slides up from the bottom edge, so wait for it to settle there.
+  await expect
+    .poll(async () => {
+      const settled = await boxOf(sheet);
+      return settled.y + settled.height;
+    })
+    .toBe(844);
+});
+
+for (const { name, width, height } of viewports.filter((viewport) => viewport.width > MOBILE_MAX)) {
+  test(`on ${name} the transaction filters are a 400 px panel under the button, inside the screen`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/transactions");
+    await waitForTransactions(page, width);
+
+    await filtersButton(page).click();
+
+    const panel = page.getByRole("dialog", { name: /Filters|Filtros/ });
+    const box = await boxOf(panel);
+    const button = await boxOf(filtersButton(page));
+    expect(box.width).toBe(400);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.y).toBeGreaterThanOrEqual(button.y + button.height);
+  });
+}
+
+for (const { name, width, height } of viewports) {
+  test(`the date range calendar fits inside the screen on ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/transactions");
+    await waitForTransactions(page, width);
+    await filtersButton(page).click();
+
+    await page.getByRole("button", { name: /^(Date|Fecha)/ }).click();
+
+    // The calendar is the last dialog opened: it sits in a layer over the filters.
+    const calendar = page.getByRole("dialog").last();
+    await expect(
+      calendar.getByRole("button", { name: /^(Last 7 days|Últimos 7 días)$/ }),
+    ).toBeVisible();
+    const box = await boxOf(calendar);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(height);
+  });
+
+  test(`applying a type filter asks the API for it and shows its chip on ${name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/transactions");
+    await waitForTransactions(page, width);
+    await filtersButton(page).click();
+
+    await page.getByRole("checkbox", { name: /^(Sell|Venta)$/ }).click();
+    const filtered = page.waitForRequest(
+      (request) =>
+        request.url().includes("/portfolios/p1/transactions") &&
+        request.url().includes("type=SELL"),
+    );
+    await page.getByRole("button", { name: /^(Apply filters|Aplicar filtros)$/ }).click();
+    await filtered;
+
+    await expect(page.getByText(/^(Type: Sell|Tipo: Venta)$/)).toBeVisible();
+    await expect(filtersButton(page)).toHaveText(/(Filters|Filtros) · 1/);
+    const size = await pageSize(page);
+    expect(size.scrollWidth).toBe(size.clientWidth);
+  });
+}
+
 test("on mobile the transactions are rows of one card inside the main area, not a table", async ({
   page,
 }) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCalendarDay, formatDateTime } from "./format-date";
+import { formatCalendarDay, formatCalendarRange, formatDateTime } from "./format-date";
 
 describe("formatDateTime", () => {
   it("writes the day, the short month and the 24-hour time, as the Figma does", () => {
@@ -44,5 +44,23 @@ describe("formatCalendarDay", () => {
   it("gives back a text that is not a day as it is", () => {
     expect(formatCalendarDay("", "en")).toBe("");
     expect(formatCalendarDay("14/10/2026", "en")).toBe("14/10/2026");
+  });
+});
+
+describe("formatCalendarRange", () => {
+  const today = new Date(2026, 9, 20);
+
+  it("leaves the year out when both ends are in the current year, as the Figma chip does", () => {
+    expect(formatCalendarRange("2026-10-01", "2026-10-14", "es", today)).toBe("1 oct – 14 oct");
+    expect(formatCalendarRange("2026-10-01", "2026-10-14", "en", today)).toBe("Oct 1 – Oct 14");
+  });
+
+  it("writes the year of both ends when either is not in the current year", () => {
+    expect(formatCalendarRange("2025-12-20", "2026-01-05", "es", today)).toBe(
+      "20 dic 2025 – 5 ene 2026",
+    );
+    expect(formatCalendarRange("2025-03-01", "2025-03-31", "en", today)).toBe(
+      "Mar 1, 2025 – Mar 31, 2025",
+    );
   });
 });

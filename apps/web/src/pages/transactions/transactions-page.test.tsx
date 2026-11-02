@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AssetResponse, TransactionResponse } from "@trading/contracts";
 import { MemoryRouter } from "react-router";
@@ -53,7 +53,8 @@ const apple: AssetResponse = {
 
 interface Answers {
   listPortfolios?: () => Promise<unknown>;
-  listTransactions?: (input?: CallInput) => Promise<unknown>;
+  /** Answers a request, or returns nothing to leave it to the default list. */
+  listTransactions?: (input?: CallInput) => Promise<unknown> | undefined;
 }
 
 function clientWith(answers: Answers = {}) {
@@ -108,9 +109,17 @@ beforeEach(() => {
   stubMobile(false);
 });
 
+// Not `unstubAllGlobals`: that would also drop the ResizeObserver stub `setup.ts` installs once.
 afterEach(() => {
-  vi.unstubAllGlobals();
+  vi.stubGlobal("matchMedia", undefined);
 });
+
+/** Opens the filters panel, checks Sell and applies it. */
+async function filterBySell() {
+  await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Sell" }));
+  await userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+}
 
 describe("TransactionsPage", () => {
   it("names the page and says whose history it is and how many transactions it holds", async () => {
@@ -167,6 +176,7 @@ describe("TransactionsPage", () => {
 
     expect(await screen.findByText("No transactions yet")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Filters" })).not.toBeInTheDocument();
   });
 
   it("keeps the failure inside the page and retries", async () => {
@@ -199,6 +209,75 @@ describe("TransactionsPage", () => {
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.queryByText(/History of/)).not.toBeInTheDocument();
+  });
+
+  it("asks the server for the filtered list from the first page, and shows what narrows it", async () => {
+    const { client, call } = clientWith();
+    renderPage(client);
+    await screen.findByRole("table", { name: "Transactions" });
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    await filterBySell();
+
+    await waitFor(() => {
+      expect(call).toHaveBeenLastCalledWith(
+        expect.objectContaining({ operationId: "listTransactions" }),
+        expect.objectContaining({ query: { page: 1, pageSize: 10, type: "SELL" } }),
+      );
+    });
+    expect(screen.getByText("Type: Sell")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters · 1" })).toBeInTheDocument();
+    expect(screen.getByText("History of Growth")).toBeInTheDocument();
+    expect(screen.queryByText(/48 transactions/)).not.toBeInTheDocument();
+  });
+
+  it("removes the filters from the chips with Clear all", async () => {
+    const { client, call } = clientWith();
+    renderPage(client);
+    await screen.findByRole("table", { name: "Transactions" });
+    await filterBySell();
+    await screen.findByText("Type: Sell");
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
+
+    await waitFor(() => {
+      expect(call).toHaveBeenLastCalledWith(
+        expect.objectContaining({ operationId: "listTransactions" }),
+        expect.objectContaining({ query: { page: 1, pageSize: 10 } }),
+      );
+    });
+    expect(screen.queryByText("Type: Sell")).not.toBeInTheDocument();
+  });
+
+  it("says there are no results for the filters, keeps them, and clears them on demand", async () => {
+    const { client } = clientWith({
+      listTransactions: (input) =>
+        input?.query?.type
+          ? Promise.resolve({
+              data: [],
+              meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 },
+            })
+          : undefined,
+    });
+    renderPage(client);
+    await screen.findByRole("table", { name: "Transactions" });
+
+    await filterBySell();
+
+    expect(await screen.findByText("No results")).toBeInTheDocument();
+    expect(screen.queryByText("No transactions yet")).not.toBeInTheDocument();
+    expect(screen.getByText("Type: Sell")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(await screen.findByRole("table", { name: "Transactions" })).toBeInTheDocument();
+  });
+
+  it("offers the filters above the cards on a phone", async () => {
+    stubMobile(true);
+    renderPage(clientWith().client);
+
+    await screen.findByRole("list", { name: "Transactions" });
+
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
   });
 
   it("opens the new transaction panel from the header button", async () => {

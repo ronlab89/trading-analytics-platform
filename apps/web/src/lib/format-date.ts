@@ -45,6 +45,7 @@ export function formatDateTime(iso: string, language: string, timeZone?: string)
 }
 
 const calendarDayFormats = new Map<string, Intl.DateTimeFormat>();
+const dayMonthFormats = new Map<string, Intl.DateTimeFormat>();
 
 /**
  * A calendar day (`2026-10-14`, what a date input holds) as the Figma writes it: day, short month
@@ -61,4 +62,30 @@ export function formatCalendarDay(day: string, language: string): string {
     month: "short",
     year: "numeric",
   }).format(date);
+}
+
+/**
+ * Two calendar days as the Figma filter chip writes them (`1 oct – 14 oct`). The year is left out
+ * while both ends are in the current year and written on both ends otherwise, so a range of 2025
+ * is never mistaken for this year's. `today` exists so a test does not depend on the date it runs.
+ */
+export function formatCalendarRange(
+  from: string,
+  to: string,
+  language: string,
+  today: Date = new Date(),
+): string {
+  const year = String(today.getFullYear());
+  if (!from.startsWith(year) || !to.startsWith(year)) {
+    return `${formatCalendarDay(from, language)} – ${formatCalendarDay(to, language)}`;
+  }
+  const format = cached(dayMonthFormats, localeOf(language), "UTC", {
+    day: "numeric",
+    month: "short",
+  });
+  const write = (day: string) => {
+    const [y = 0, m = 0, d = 0] = day.split("-").map(Number);
+    return format.format(new Date(Date.UTC(y, m - 1, d)));
+  };
+  return `${write(from)} – ${write(to)}`;
 }
