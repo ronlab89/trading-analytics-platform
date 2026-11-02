@@ -112,3 +112,31 @@ export function formatCalendarRange(
   };
   return `${write(from)} – ${write(to)}`;
 }
+
+const longDayFormats = new Map<string, Intl.DateTimeFormat>();
+const secondsFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A day with its weekday and month in full, for the dashboard header (`Lunes, 6 de octubre`,
+ * `Monday, October 6`). Spanish writes the weekday in lower case, so the first letter is raised to
+ * start the line the way the Figma does.
+ */
+export function formatLongDate(iso: string, language: string, timeZone?: string): string {
+  const text = cached(longDayFormats, localeOf(language), timeZone, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(iso));
+
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** The time of day to the second in 24 hours (`14:32:07`), for "Actualizado 14:32:07". */
+export function formatTimeOfDay(iso: string, language: string, timeZone?: string): string {
+  return cached(secondsFormats, localeOf(language), timeZone, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}

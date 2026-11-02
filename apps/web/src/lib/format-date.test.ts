@@ -4,7 +4,32 @@ import {
   formatCalendarRange,
   formatDateTime,
   formatFullDateTime,
+  formatLongDate,
+  formatTimeOfDay,
 } from "./format-date";
+
+describe("formatLongDate", () => {
+  it("writes the weekday, the day and the month in full, as the dashboard header does", () => {
+    expect(formatLongDate("2026-10-06T14:29:00.000Z", "es", "UTC")).toBe("Martes, 6 de octubre");
+    expect(formatLongDate("2026-10-06T14:29:00.000Z", "en", "UTC")).toBe("Tuesday, October 6");
+  });
+
+  it("writes the day in the given time zone", () => {
+    expect(formatLongDate("2026-10-07T02:00:00.000Z", "es", "America/Bogota")).toBe(
+      "Martes, 6 de octubre",
+    );
+  });
+});
+
+describe("formatTimeOfDay", () => {
+  it("writes the 24-hour time with seconds, as the dashboard's 'Actualizado' does", () => {
+    expect(formatTimeOfDay("2026-10-06T14:32:07.000Z", "es", "UTC")).toBe("14:32:07");
+  });
+
+  it("writes midnight as 00:00:00, not 24:00:00", () => {
+    expect(formatTimeOfDay("2026-10-06T00:00:00.000Z", "en", "UTC")).toBe("00:00:00");
+  });
+});
 
 describe("formatFullDateTime", () => {
   it("adds the year to the day, as the Figma detail does", () => {

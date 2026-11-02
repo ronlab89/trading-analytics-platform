@@ -360,6 +360,13 @@ const en = {
     actions: "Actions",
     viewDetails: "View the {{name}} transaction",
   },
+  dashboard: {
+    header: {
+      summary_one: "{{date}} · {{portfolio}} · {{count}} position",
+      summary_other: "{{date}} · {{portfolio}} · {{count}} positions",
+      updated: "Updated {{time}}",
+    },
+  },
   transactionDetail: {
     title: "Transaction details",
     type: "Type",
@@ -785,6 +792,13 @@ const es: Messages<typeof en> = {
     rowMenu: { label: "Acciones de la transacción de {{name}}", view: "Ver detalle" },
     actions: "Acciones",
     viewDetails: "Ver la transacción de {{name}}",
+  },
+  dashboard: {
+    header: {
+      summary_one: "{{date}} · {{portfolio}} · {{count}} posición",
+      summary_other: "{{date}} · {{portfolio}} · {{count}} posiciones",
+      updated: "Actualizado {{time}}",
+    },
   },
   transactionDetail: {
     title: "Detalle de la transacción",
