@@ -7,14 +7,15 @@ import {
 import { useRef } from "react";
 import { findOperation } from "@/api/find-operation";
 import { useTradingClient } from "@/api/trading-client-provider";
+import { overviewKeys } from "@/features/dashboard/hooks/use-overview";
 import { portfolioKeys } from "@/hooks/use-portfolios";
 import { transactionKeys } from "./use-transactions";
 
 const createTransactionOperation = findOperation(transactionOperations, "createTransaction");
 
 /**
- * Records a transaction in a portfolio and refreshes what it changes: the pages of the list and the
- * positions. The request carries an `Idempotency-Key`, so the HTTP client may retry it and a
+ * Records a transaction in a portfolio and refreshes what it changes: the pages of the list, the
+ * positions and the dashboard overview. The request carries an `Idempotency-Key`, so the HTTP client may retry it and a
  * second submit of the same request cannot record it twice. The key belongs to the request, not
  * to the call: the same body keeps the key until it succeeds, so a retry after a failure with an
  * unknown outcome (a timeout, a dropped connection) returns the stored answer; a changed body gets
@@ -43,6 +44,7 @@ export function useCreateTransaction(portfolioId: string) {
       attempt.current = null;
       void queryClient.invalidateQueries({ queryKey: transactionKeys.portfolio(portfolioId) });
       void queryClient.invalidateQueries({ queryKey: portfolioKeys.positions(portfolioId) });
+      void queryClient.invalidateQueries({ queryKey: overviewKeys.portfolio(portfolioId) });
     },
   });
 }

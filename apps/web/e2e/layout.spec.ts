@@ -48,6 +48,73 @@ const transaction = (id: string, assetId: string) => ({
   createdAt: "2026-10-06T14:29:00.000Z",
 });
 
+const usd = (amount: string) => ({ amount, currency: "USD" });
+
+/**
+ * The overview the dashboard draws from. The HTTP client checks every answer against the contract,
+ * so it is a whole valid overview: five positions, today's change, and the latest five transactions.
+ */
+const overview = () => ({
+  portfolio: portfolio("p1", "Conservador"),
+  summary: {
+    totalValue: usd("125430.25"),
+    investedValue: usd("107230.25"),
+    unrealizedPnL: usd("18200.00"),
+    unrealizedPnLPercent: 17,
+  },
+  positions: ["a1", "a2", "a3", "a4", "a5"].map((assetId, index) => ({
+    position: position(`s${String(index)}`, assetId),
+    asset: {
+      id: assetId,
+      symbol: assetId.toUpperCase(),
+      name: `Asset ${assetId}`,
+      assetType: "STOCK",
+    },
+    metrics: {
+      marketValue: usd("25086.00"),
+      costBasis: usd("21446.00"),
+      unrealizedPnL: usd("3640.00"),
+      unrealizedPnLPercent: 17,
+    },
+    allocationPercent: 20,
+    dailyChange: { changeValue: usd("468.02"), changePercent: 1.9 },
+  })),
+  allocation: { groupBy: "asset", groups: [] },
+  attribution: { totalUnrealizedPnL: usd("18200.00"), items: [] },
+  recentTransactions: ["a1", "a2", "a3", "a4", "a5"].map((assetId, index) => ({
+    transaction: transaction(`t${String(index)}`, assetId),
+    asset: {
+      id: assetId,
+      symbol: assetId.toUpperCase(),
+      name: `Asset ${assetId.toUpperCase()}`,
+      assetType: "STOCK",
+    },
+  })),
+  dailyChange: { changeValue: usd("2340.10"), changePercent: 1.9, excludedAssetIds: [] },
+  performance: {
+    asOf: "2026-10-05",
+    effectiveFrom: "2026-10-01",
+    status: "OK",
+    twrPercent: 6.12,
+    pnl: usd("7300.00"),
+    series: [],
+  },
+  pulse: {
+    performance: { classification: "POSITIVE", value: 17, explanation: "Up 17 % on cost." },
+    concentration: { classification: "LOW", value: 20, explanation: "Spread over five assets." },
+    volatility: { classification: "MODERATE", value: 14.2, explanation: "14.2 % over 30 days." },
+    drawdown: { classification: "LOW", value: 2, explanation: "2 % below the peak." },
+  },
+  whatChanged: {
+    asOf: "2026-10-05",
+    effectiveFrom: "2026-10-01",
+    status: "OK",
+    contributor: null,
+    detractor: null,
+    events: [],
+  },
+});
+
 const viewports = [
   { name: "mobile", width: 390, height: 800 },
   { name: "tablet", width: 768, height: 800 },
@@ -106,6 +173,9 @@ test.beforeEach(async ({ page }) => {
         meta: { page: 1, pageSize: 10, total: 48, totalPages: 5 },
       }),
     }),
+  );
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/overview", (route) =>
+    route.fulfill(json(overview())),
   );
   await page.route("http://localhost:7001/api/v1/assets/*", (route) => {
     const id = route.request().url().split("/").pop() ?? "a1";
@@ -494,4 +564,105 @@ test("on mobile the positions are cards and the detail header keeps its actions 
   );
   expect(Math.abs(back.y - actions.y)).toBeLessThan(back.height + actions.height);
   expect(actions.x + actions.width).toBeLessThanOrEqual(390);
+});
+
+const recentTransactions = (page: Page) =>
+  page.getByRole("region", { name: /Recent transactions|Transacciones recientes/ });
+
+async function waitForDashboard(page: Page) {
+  await recentTransactions(page).waitFor();
+}
+
+for (const { name, width, height } of viewports) {
+  test(`the dashboard does not scroll the page by itself on ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    await waitForDashboard(page);
+
+    const size = await pageSize(page);
+
+    expect(size.scrollWidth).toBe(size.clientWidth);
+    expect(size.scrollHeight).toBe(size.clientHeight);
+  });
+
+  test(`the dashboard panels stay inside the main area on ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    await waitForDashboard(page);
+
+    const main = await boxOf(page.locator("main"));
+    const regions = await page.locator("main").getByRole("region").all();
+    expect(regions).toHaveLength(3);
+    for (const region of regions) {
+      const box = await boxOf(region);
+      expect(box.x).toBeGreaterThanOrEqual(main.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+    }
+  });
+}
+
+test("on the desktop the value and the total return sit side by side, below it they stack", async ({
+  page,
+}) => {
+  const value = page.getByRole("region", { name: /^(Hello|Hola)/ });
+  const totalReturn = page.getByRole("region", { name: /Total return|Retorno total/ });
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await waitForDashboard(page);
+  const side = { value: await boxOf(value), totalReturn: await boxOf(totalReturn) };
+  expect(side.totalReturn.x).toBeGreaterThan(side.value.x + side.value.width - 1);
+
+  await page.setViewportSize({ width: 768, height: 800 });
+  const stacked = { value: await boxOf(value), totalReturn: await boxOf(totalReturn) };
+  expect(stacked.totalReturn.y).toBeGreaterThanOrEqual(stacked.value.y + stacked.value.height);
+  expect(stacked.totalReturn.x).toBe(stacked.value.x);
+});
+
+test("the recent transactions are a table from the tablet and cards on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/");
+  await waitForDashboard(page);
+  await expect(recentTransactions(page).getByRole("table")).toHaveCount(0);
+  await expect(recentTransactions(page).getByRole("listitem")).toHaveCount(5);
+
+  await page.setViewportSize({ width: 768, height: 800 });
+  await expect(recentTransactions(page).getByRole("table")).toHaveCount(1);
+  await expect(recentTransactions(page).getByRole("row")).toHaveCount(6);
+});
+
+test("the tablet drops quantity times price from the recent transactions, the desktop shows it", async ({
+  page,
+}) => {
+  const column = recentTransactions(page).getByRole("columnheader", {
+    name: /Quantity × price|Cantidad × precio/,
+  });
+
+  await page.setViewportSize({ width: 768, height: 800 });
+  await page.goto("/");
+  await waitForDashboard(page);
+  await expect(column).toHaveCount(0);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(column).toHaveCount(1);
+});
+
+test("on mobile tapping a recent transaction opens its detail as a bottom sheet", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await waitForDashboard(page);
+
+  await page
+    .getByRole("button", { name: /View the .* transaction|Ver la transacción de/ })
+    .first()
+    .click();
+
+  const sheet = page.getByRole("dialog", { name: /Transaction details|Detalle de la transacción/ });
+  const box = await boxOf(sheet);
+  expect(box.x).toBe(0);
+  expect(box.width).toBe(390);
 });

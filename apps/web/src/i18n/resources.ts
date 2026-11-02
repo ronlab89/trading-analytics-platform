@@ -360,6 +360,54 @@ const en = {
     actions: "Actions",
     viewDetails: "View the {{name}} transaction",
   },
+  dashboard: {
+    loading: "Loading the dashboard",
+    failed: {
+      title: "Couldn't load the dashboard",
+      description: "Check your connection and try again. Your data has not been changed.",
+      retry: "Retry",
+    },
+    value: {
+      greeting: "Hello, {{name}}",
+      greetingAnonymous: "Hello",
+      subtitle: "Here's how your portfolio is doing today",
+      today: "today",
+      view: "View portfolio",
+      empty: {
+        title: "Your portfolio is empty",
+        description: "Record your first transaction to see how your portfolio evolves.",
+      },
+    },
+    totalReturn: {
+      title: "Total return",
+      gain: "{{percent}} gain",
+      loss: "{{percent}} loss",
+      flat: "{{percent}} no change",
+      caption: "Unrealized result of your open positions",
+      empty: {
+        title: "No gains yet",
+        description: "The total return is worked out from your positions.",
+      },
+    },
+    recent: {
+      title: "Recent transactions",
+      subtitle_one: "Last {{count}}",
+      subtitle_other: "Last {{count}}",
+      viewAll: "View all",
+      quantityAtPrice: "Quantity × price",
+      quantityAtPriceValue: "{{quantity}} × {{price}}",
+      amount: "Amount",
+      empty: {
+        title: "No transactions",
+        description: "When you record operations they will show up here.",
+      },
+    },
+    header: {
+      summary_one: "{{date}} · {{portfolio}} · {{count}} position",
+      summary_other: "{{date}} · {{portfolio}} · {{count}} positions",
+      updated: "Updated {{time}}",
+    },
+  },
   transactionDetail: {
     title: "Transaction details",
     type: "Type",
@@ -785,6 +833,54 @@ const es: Messages<typeof en> = {
     rowMenu: { label: "Acciones de la transacción de {{name}}", view: "Ver detalle" },
     actions: "Acciones",
     viewDetails: "Ver la transacción de {{name}}",
+  },
+  dashboard: {
+    loading: "Cargando el panel de inicio",
+    failed: {
+      title: "No se pudo cargar el panel de inicio",
+      description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+      retry: "Reintentar",
+    },
+    value: {
+      greeting: "Hola, {{name}}",
+      greetingAnonymous: "Hola",
+      subtitle: "Así va tu portafolio hoy",
+      today: "hoy",
+      view: "Ver portafolio",
+      empty: {
+        title: "Tu portafolio está vacío",
+        description: "Registra tu primera transacción para ver cómo evoluciona tu portafolio.",
+      },
+    },
+    totalReturn: {
+      title: "Retorno total",
+      gain: "{{percent}} ganancia",
+      loss: "{{percent}} pérdida",
+      flat: "{{percent}} sin cambio",
+      caption: "Resultado sin realizar de tus posiciones abiertas",
+      empty: {
+        title: "Sin ganancias todavía",
+        description: "El retorno total se calcula con tus posiciones.",
+      },
+    },
+    recent: {
+      title: "Transacciones recientes",
+      subtitle_one: "Últimas {{count}}",
+      subtitle_other: "Últimas {{count}}",
+      viewAll: "Ver todas",
+      quantityAtPrice: "Cantidad × precio",
+      quantityAtPriceValue: "{{quantity}} × {{price}}",
+      amount: "Monto",
+      empty: {
+        title: "Sin transacciones",
+        description: "Cuando registres operaciones aparecerán aquí.",
+      },
+    },
+    header: {
+      summary_one: "{{date}} · {{portfolio}} · {{count}} posición",
+      summary_other: "{{date}} · {{portfolio}} · {{count}} posiciones",
+      updated: "Actualizado {{time}}",
+    },
   },
   transactionDetail: {
     title: "Detalle de la transacción",

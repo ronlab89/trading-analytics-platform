@@ -63,13 +63,13 @@ describe("routes", () => {
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
   });
 
-  it("shows the home page, inside the shell, to a signed-in user", () => {
+  it("shows the dashboard, inside the shell, to a signed-in user", () => {
     useSessionStore.setState({ status: "authenticated" });
 
     renderAt("/");
 
     expect(screen.getByRole("main")).toContainElement(
-      screen.getByRole("heading", { level: 1, name: "Trading Analytics Platform" }),
+      screen.getByRole("heading", { level: 1, name: "Home" }),
     );
   });
 
@@ -89,8 +89,6 @@ describe("routes", () => {
     renderAt("/login");
 
     expect(screen.queryByRole("heading", { name: "Sign in" })).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Trading Analytics Platform" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeInTheDocument();
   });
 });
