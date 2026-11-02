@@ -141,6 +141,20 @@ describe("ArchivePortfolioDialog", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
+  it("says why the API refused the archive instead of blaming the connection", async () => {
+    const reason = "An archived portfolio cannot be modified.";
+    const { client } = clientWith(() => Promise.reject(new ApiError("CONFLICT", reason, 409)));
+    renderDialog(client);
+
+    await userEvent.click(screen.getByRole("button", { name: "Archive" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Couldn't archive the portfolio", {
+        description: reason,
+      });
+    });
+  });
+
   it("has no accessibility violations", async () => {
     renderDialog(clientWith(archiveOk).client);
 

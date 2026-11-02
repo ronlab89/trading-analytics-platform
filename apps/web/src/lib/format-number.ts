@@ -43,3 +43,12 @@ const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: QU
 export function formatQuantity(quantity: number): string {
   return quantityFormat.format(quantity);
 }
+
+/** The symbol of a currency as an amount of it is written (`$` for USD, `€` for EUR). */
+export function currencySymbol(currency: string): string {
+  return (
+    moneyFormat(currency, MONEY_DECIMALS)
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? currency
+  );
+}

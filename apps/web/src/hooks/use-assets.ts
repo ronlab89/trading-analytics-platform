@@ -9,6 +9,7 @@ const getAssetOperation = findOperation(marketOperations, "getAsset");
 export const assetKeys = {
   all: ["assets"] as const,
   detail: (id: string) => [...assetKeys.all, "detail", id] as const,
+  search: (term: string) => [...assetKeys.all, "search", term] as const,
 };
 
 /**

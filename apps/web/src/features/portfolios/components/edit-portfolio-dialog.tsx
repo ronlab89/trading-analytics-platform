@@ -3,6 +3,7 @@ import type { PortfolioResponse } from "@trading/contracts";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { rejectionReason } from "@/api/rejection-reason";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -101,9 +102,9 @@ function EditPortfolioForm({ portfolio, update, onSaved, onDirtyChange }: EditPo
           });
           onSaved();
         },
-        onError: () => {
+        onError: (error) => {
           toast.error(t("portfolioEdit.saveFailed.title"), {
-            description: t("portfolioEdit.saveFailed.description"),
+            description: rejectionReason(error) ?? t("portfolioEdit.saveFailed.description"),
           });
         },
       },

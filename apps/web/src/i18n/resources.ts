@@ -76,6 +76,63 @@ const en = {
     previousPage: "Previous page",
     nextPage: "Next page",
   },
+  assetCombobox: {
+    placeholder: "Search an asset",
+    search: "Search assets",
+    searchPlaceholder: "Search asset…",
+    list: "Assets",
+    searching: "Searching…",
+    empty: "No assets match your search.",
+    failed: "Could not load assets. Try again.",
+  },
+  transactionForm: {
+    title: "New transaction",
+    subtitle: "Record a purchase or a sale.",
+    cancel: "Cancel",
+    submit: "Record transaction",
+    submitting: "Recording…",
+    recorded: {
+      title: "Transaction recorded",
+      description:
+        "{{type}} of {{quantity}} {{symbol}} for {{total}}. Your position and metrics were recalculated.",
+    },
+    failed: {
+      title: "The transaction could not be recorded",
+      description: "Check your connection and try again. Your form data was kept.",
+      retry: "Try again",
+    },
+    discard: {
+      title: "Leave without saving?",
+      description:
+        "The transaction you are recording will be discarded. This action cannot be undone.",
+      keepEditing: "Keep editing",
+      confirm: "Leave without saving",
+    },
+    optional: "Optional",
+    type: {
+      label: "Type",
+      placeholder: "Select a type",
+      options: { BUY: "Buy", SELL: "Sell" },
+      required: "Select a type.",
+    },
+    asset: { label: "Asset", required: "Select an asset." },
+    date: { label: "Date", invalid: "Enter a valid date." },
+    quantity: { label: "Quantity", unit: "units", invalid: "Enter a quantity greater than 0." },
+    price: { label: "Price per unit", invalid: "Enter a valid price." },
+    fees: {
+      label: "Fees",
+      help: "If you leave it empty, it is taken as {{amount}}.",
+      invalid: "Enter a valid fee.",
+    },
+  },
+  transactionImpact: {
+    title: "Impact summary",
+    operation: "Operation ({{quantity}} × {{price}})",
+    fees: "Fees",
+    total: "Total",
+    position: "Position in {{symbol}}",
+    to: "to",
+  },
   dialog: { close: "Close" },
   portfolioForm: {
     title: "New portfolio",
@@ -227,7 +284,10 @@ const en = {
     loading: "Loading transactions",
     summary_one: "History of {{portfolio}} · {{count}} transaction",
     summary_other: "History of {{portfolio}} · {{count}} transactions",
+    new: "New transaction",
+    newShort: "New",
     empty: {
+      action: "New transaction",
       title: "No transactions yet",
       description:
         "Record your first transaction to start building the history and the metrics of this portfolio.",
@@ -378,6 +438,64 @@ const es: Messages<typeof en> = {
     page: "Página {{page}} de {{pageCount}}",
     previousPage: "Página anterior",
     nextPage: "Página siguiente",
+  },
+  assetCombobox: {
+    placeholder: "Busca un activo",
+    search: "Buscar activos",
+    searchPlaceholder: "Buscar activo…",
+    list: "Activos",
+    searching: "Buscando…",
+    empty: "Ningún activo coincide con tu búsqueda.",
+    failed: "No pudimos cargar los activos. Intenta de nuevo.",
+  },
+  transactionForm: {
+    title: "Nueva transacción",
+    subtitle: "Registra una compra o una venta.",
+    cancel: "Cancelar",
+    submit: "Registrar transacción",
+    submitting: "Registrando…",
+    recorded: {
+      title: "Transacción registrada",
+      description:
+        "{{type}} de {{quantity}} {{symbol}} por {{total}}. Se recalcularon tu posición y tus métricas.",
+    },
+    failed: {
+      title: "No se pudo registrar la transacción",
+      description:
+        "Revisa tu conexión e inténtalo de nuevo. Tus datos del formulario se conservaron.",
+      retry: "Reintentar",
+    },
+    discard: {
+      title: "¿Salir sin guardar?",
+      description:
+        "Se descartará la transacción que estás registrando. Esta acción no se puede deshacer.",
+      keepEditing: "Seguir editando",
+      confirm: "Salir sin guardar",
+    },
+    optional: "Opcional",
+    type: {
+      label: "Tipo",
+      placeholder: "Selecciona un tipo",
+      options: { BUY: "Compra", SELL: "Venta" },
+      required: "Selecciona un tipo.",
+    },
+    asset: { label: "Activo", required: "Selecciona un activo." },
+    date: { label: "Fecha", invalid: "Ingresa una fecha válida." },
+    quantity: { label: "Cantidad", unit: "uds", invalid: "Ingresa una cantidad mayor a 0." },
+    price: { label: "Precio por unidad", invalid: "Ingresa un precio válido." },
+    fees: {
+      label: "Comisión",
+      help: "Si la dejas vacía se toma {{amount}}.",
+      invalid: "Ingresa una comisión válida.",
+    },
+  },
+  transactionImpact: {
+    title: "Resumen del impacto",
+    operation: "Operación ({{quantity}} × {{price}})",
+    fees: "Comisión",
+    total: "Total",
+    position: "Posición en {{symbol}}",
+    to: "a",
   },
   dialog: { close: "Cerrar" },
   portfolioForm: {
@@ -537,7 +655,10 @@ const es: Messages<typeof en> = {
     loading: "Cargando transacciones",
     summary_one: "Historial del portafolio {{portfolio}} · {{count}} transacción",
     summary_other: "Historial del portafolio {{portfolio}} · {{count}} transacciones",
+    new: "Nueva transacción",
+    newShort: "Nueva",
     empty: {
+      action: "Nueva transacción",
       title: "Aún no hay transacciones",
       description:
         "Registra tu primera transacción para empezar a construir el historial y las métricas de este portafolio.",

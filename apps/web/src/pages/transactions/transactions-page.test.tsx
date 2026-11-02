@@ -200,4 +200,40 @@ describe("TransactionsPage", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.queryByText(/History of/)).not.toBeInTheDocument();
   });
+
+  it("opens the new transaction panel from the header button", async () => {
+    renderPage(clientWith().client);
+    await screen.findByRole("table", { name: "Transactions" });
+
+    await userEvent.click(screen.getByRole("button", { name: "New transaction" }));
+
+    expect(await screen.findByRole("dialog", { name: "New transaction" })).toBeInTheDocument();
+  });
+
+  it("opens it from the short button on a phone", async () => {
+    stubMobile(true);
+    renderPage(clientWith().client);
+    await screen.findByRole("list", { name: "Transactions" });
+
+    await userEvent.click(screen.getByRole("button", { name: "New" }));
+
+    expect(await screen.findByRole("dialog", { name: "New transaction" })).toBeInTheDocument();
+  });
+
+  it("opens it from the empty state", async () => {
+    renderPage(
+      clientWith({
+        listTransactions: () =>
+          Promise.resolve({ data: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
+      }).client,
+    );
+    await screen.findByText("No transactions yet");
+
+    // The header button comes first; the empty state's action is the last one.
+    const emptyAction = screen.getAllByRole("button", { name: "New transaction" }).at(-1);
+    if (!emptyAction) throw new Error("The empty state has no action");
+    await userEvent.click(emptyAction);
+
+    expect(await screen.findByRole("dialog", { name: "New transaction" })).toBeInTheDocument();
+  });
 });

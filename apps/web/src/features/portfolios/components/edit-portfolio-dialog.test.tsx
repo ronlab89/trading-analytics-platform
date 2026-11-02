@@ -207,6 +207,21 @@ describe("EditPortfolioDialog", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
+  it("says why the API refused the change instead of blaming the connection", async () => {
+    const reason = "An archived portfolio cannot be modified.";
+    const { client } = clientWith(() => Promise.reject(new ApiError("CONFLICT", reason, 409)));
+    renderDialog(client);
+    await userEvent.type(nameBox(), " plus");
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Couldn't save the portfolio", {
+        description: reason,
+      });
+    });
+  });
+
   it("closes from Cancel straight away when nothing changed", async () => {
     const { onOpenChange } = renderDialog(clientWith(saved).client);
 
