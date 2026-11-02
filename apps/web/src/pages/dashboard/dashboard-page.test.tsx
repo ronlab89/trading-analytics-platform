@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -26,8 +26,26 @@ interface Answers {
 }
 
 /** The part of the overview the page reads so far: the positions, the summary and today's change. */
-const overviewOf = (positions: number) => ({
+const recentTransaction = {
+  transaction: {
+    id: "t1",
+    portfolioId: "p1",
+    assetId: "a1",
+    type: "BUY",
+    quantity: 10,
+    price: { amount: "180.20", currency: "USD" },
+    fees: { amount: "1.00", currency: "USD" },
+    realizedPnL: null,
+    status: "COMPLETED",
+    executedAt: "2026-10-06T14:29:00.000Z",
+    createdAt: "2026-10-06T14:29:00.000Z",
+  },
+  asset: { id: "a1", symbol: "AAPL", name: "Apple Inc.", assetType: "STOCK" },
+};
+
+const overviewOf = (positions: number, recent: readonly unknown[] = [recentTransaction]) => ({
   data: {
+    recentTransactions: recent,
     positions: Array.from({ length: positions }, (_, index) => ({ id: index })),
     summary: {
       totalValue: { amount: "125430.25", currency: "USD" },
@@ -143,8 +161,18 @@ describe("DashboardPage", () => {
     expect(screen.getByText("+17.00% gain")).toBeInTheDocument();
   });
 
+  it("lists the recent transactions with the asset the overview names", async () => {
+    renderPage(clientWith().client);
+
+    const table = await screen.findByRole("table", { name: "Recent transactions" });
+    expect(within(table).getByText("Apple Inc.")).toBeInTheDocument();
+    expect(within(table).getByText("$1,802.00")).toBeInTheDocument();
+  });
+
   it("offers a first transaction while the portfolio holds no positions", async () => {
-    renderPage(clientWith({ getPortfolioOverview: () => Promise.resolve(overviewOf(0)) }).client);
+    renderPage(
+      clientWith({ getPortfolioOverview: () => Promise.resolve(overviewOf(0, [])) }).client,
+    );
 
     // The header and the empty panel both offer it; either opens the same panel.
     const [header] = await screen.findAllByRole("button", { name: "New transaction" });

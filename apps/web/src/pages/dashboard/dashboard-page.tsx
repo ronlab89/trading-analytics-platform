@@ -5,10 +5,12 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
 import { PortfolioValuePanel } from "@/features/dashboard/components/portfolio-value-panel";
+import { RecentTransactionsPanel } from "@/features/dashboard/components/recent-transactions-panel";
 import { TotalReturnPanel } from "@/features/dashboard/components/total-return-panel";
 import { DashboardSkeleton } from "@/features/dashboard/components/dashboard-skeleton";
 import { useOverview } from "@/features/dashboard/hooks/use-overview";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
+import { toTransactionRow } from "@/features/transactions/lib/transaction-row";
 import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
 import { useAnnounceRecorded } from "@/features/transactions/hooks/use-announce-recorded";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
@@ -94,7 +96,10 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
     return <DashboardSkeleton />;
   }
 
-  const { positions, summary, dailyChange } = overview.data;
+  const { positions, summary, dailyChange, recentTransactions } = overview.data;
+  const recentRows = recentTransactions.map(({ transaction, asset }) =>
+    toTransactionRow(transaction, asset ?? undefined),
+  );
   const empty = positions.length === 0;
   const openPanel = () => {
     setPanelOpen(true);
@@ -132,6 +137,9 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
           percent={summary.unrealizedPnLPercent}
           profit={summary.unrealizedPnL}
         />
+        <div className="desktop:col-span-2">
+          <RecentTransactionsPanel onNew={openPanel} rows={recentRows} />
+        </div>
       </div>
       <NewTransactionPanel
         onOpenChange={setPanelOpen}

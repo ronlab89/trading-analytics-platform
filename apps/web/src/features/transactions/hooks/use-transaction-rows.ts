@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { useAssets } from "@/hooks/use-assets";
 import type { TransactionFilters } from "../lib/transaction-filters";
-import { transactionTotal } from "../lib/transaction-total";
-import type { TransactionRow } from "../types";
+import { toTransactionRow } from "../lib/transaction-row";
 import { useTransactions, type TransactionsPage } from "./use-transactions";
 
 const NO_ASSET_IDS: readonly string[] = [];
@@ -25,21 +24,9 @@ export function useTransactionRows(
 
   const rows = useMemo(
     () =>
-      transactions.data?.transactions.map<TransactionRow>((transaction) => {
-        const asset = assets.get(transaction.assetId);
-        return {
-          id: transaction.id,
-          executedAt: transaction.executedAt,
-          type: transaction.type,
-          symbol: asset?.symbol ?? null,
-          name: asset?.name ?? null,
-          quantity: transaction.quantity,
-          price: transaction.price,
-          fees: transaction.fees,
-          total: transactionTotal(transaction.price, transaction.quantity),
-          status: transaction.status,
-        };
-      }),
+      transactions.data?.transactions.map((transaction) =>
+        toTransactionRow(transaction, assets.get(transaction.assetId)),
+      ),
     [transactions.data, assets],
   );
 

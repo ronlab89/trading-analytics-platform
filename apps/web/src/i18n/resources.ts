@@ -389,6 +389,19 @@ const en = {
         description: "The total return is worked out from your positions.",
       },
     },
+    recent: {
+      title: "Recent transactions",
+      subtitle_one: "Last {{count}}",
+      subtitle_other: "Last {{count}}",
+      viewAll: "View all",
+      quantityAtPrice: "Quantity × price",
+      quantityAtPriceValue: "{{quantity}} × {{price}}",
+      amount: "Amount",
+      empty: {
+        title: "No transactions",
+        description: "When you record operations they will show up here.",
+      },
+    },
     header: {
       summary_one: "{{date}} · {{portfolio}} · {{count}} position",
       summary_other: "{{date}} · {{portfolio}} · {{count}} positions",
@@ -848,6 +861,19 @@ const es: Messages<typeof en> = {
       empty: {
         title: "Sin ganancias todavía",
         description: "El retorno total se calcula con tus posiciones.",
+      },
+    },
+    recent: {
+      title: "Transacciones recientes",
+      subtitle_one: "Últimas {{count}}",
+      subtitle_other: "Últimas {{count}}",
+      viewAll: "Ver todas",
+      quantityAtPrice: "Cantidad × precio",
+      quantityAtPriceValue: "{{quantity}} × {{price}}",
+      amount: "Monto",
+      empty: {
+        title: "Sin transacciones",
+        description: "Cuando registres operaciones aparecerán aquí.",
       },
     },
     header: {
