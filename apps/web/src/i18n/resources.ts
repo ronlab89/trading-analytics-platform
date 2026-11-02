@@ -125,6 +125,17 @@ const en = {
       invalid: "Enter a valid fee.",
     },
   },
+  dateRange: {
+    presets: {
+      last7: "Last 7 days",
+      last30: "Last 30 days",
+      last90: "Last 90 days",
+      thisYear: "This year",
+      custom: "Custom",
+    },
+    cancel: "Cancel",
+    apply: "Apply",
+  },
   transactionImpact: {
     title: "Impact summary",
     operation: "Operation ({{quantity}} × {{price}})",
@@ -488,6 +499,17 @@ const es: Messages<typeof en> = {
       help: "Si la dejas vacía se toma {{amount}}.",
       invalid: "Ingresa una comisión válida.",
     },
+  },
+  dateRange: {
+    presets: {
+      last7: "Últimos 7 días",
+      last30: "Últimos 30 días",
+      last90: "Últimos 90 días",
+      thisYear: "Este año",
+      custom: "Personalizado",
+    },
+    cancel: "Cancelar",
+    apply: "Aplicar",
   },
   transactionImpact: {
     title: "Resumen del impacto",
