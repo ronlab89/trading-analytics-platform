@@ -362,6 +362,14 @@ const en = {
   },
   dashboard: {
     loading: "Loading the dashboard",
+    movers: {
+      title: "Top movers",
+      subtitle: "Change today by position",
+      empty: {
+        title: "No movement yet today",
+        description: "Positions appear here once they have a price for the day.",
+      },
+    },
     monthly: {
       title: "Monthly performance",
       chartLabel: "Return of each of the last months",
@@ -891,6 +899,14 @@ const es: Messages<typeof en> = {
   },
   dashboard: {
     loading: "Cargando el panel de inicio",
+    movers: {
+      title: "Mayores movimientos",
+      subtitle: "Variación hoy por posición",
+      empty: {
+        title: "Aún no hay movimientos hoy",
+        description: "Las posiciones aparecen aquí cuando tienen precio del día.",
+      },
+    },
     monthly: {
       title: "Rendimiento mensual",
       chartLabel: "Retorno de cada uno de los últimos meses",
