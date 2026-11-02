@@ -13,10 +13,16 @@ function transactionId(row: TransactionRow) {
  * nor sorts: it draws the rows it is given, in the order it gets them. The pagination bar and the
  * loading, empty and error states belong to the page.
  */
-export function TransactionsTable({ rows }: { rows: readonly TransactionRow[] }) {
+export function TransactionsTable({
+  rows,
+  onView,
+}: {
+  rows: readonly TransactionRow[];
+  onView: (transaction: TransactionRow) => void;
+}) {
   const { t } = useTranslation();
   const table = useDataTable({
-    columns: useTransactionColumns(),
+    columns: useTransactionColumns(onView),
     data: rows,
     getRowId: transactionId,
   });

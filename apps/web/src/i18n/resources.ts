@@ -356,6 +356,9 @@ const en = {
     },
     type: { BUY: "Buy", SELL: "Sell" },
     status: { settled: "Settled", failed: "Failed", pending: "Pending" },
+    rowMenu: { label: "Actions for the {{name}} transaction", view: "View details" },
+    actions: "Actions",
+    viewDetails: "View the {{name}} transaction",
   },
   transactionDetail: {
     title: "Transaction details",
@@ -779,6 +782,9 @@ const es: Messages<typeof en> = {
     },
     type: { BUY: "Compra", SELL: "Venta" },
     status: { settled: "Liquidada", failed: "Fallida", pending: "Pendiente" },
+    rowMenu: { label: "Acciones de la transacción de {{name}}", view: "Ver detalle" },
+    actions: "Acciones",
+    viewDetails: "Ver la transacción de {{name}}",
   },
   transactionDetail: {
     title: "Detalle de la transacción",

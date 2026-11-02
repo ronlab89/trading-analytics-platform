@@ -5,6 +5,7 @@ import { Avatar } from "@/components/avatar";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
 import { formatMoney, formatQuantity } from "@/lib/format-number";
 import { TransactionDate } from "../components/transaction-date";
+import { TransactionRowMenu } from "../components/transaction-row-menu";
 import { TransactionSide } from "../components/transaction-side";
 import { TransactionStatusBadge } from "../components/transaction-status-badge";
 import type { TransactionRow } from "../types";
@@ -22,6 +23,12 @@ function headerOf(key: ColumnKey) {
     const { t } = useTranslation();
     return t(`transactions.columns.${key}`);
   };
+}
+
+/** The Figma header of the menu column is blank; screen readers still get a name for it. */
+function ActionsHeader() {
+  const { t } = useTranslation();
+  return <span className="sr-only">{t("transactions.actions")}</span>;
 }
 
 function AssetCell({ symbol, name }: Pick<TransactionRow, "symbol" | "name">) {
@@ -45,7 +52,7 @@ function Figure({ children }: { children: string }) {
  * list, so none of them sorts here. Quantity, price and fees are the ones the tablet drops. Nothing
  * depends on the data, so the columns are built once, which the table needs to stay stable.
  */
-export function useTransactionColumns() {
+export function useTransactionColumns(onView: (transaction: TransactionRow) => void) {
   return useMemo(
     () =>
       column.columns([
@@ -91,7 +98,13 @@ export function useTransactionColumns() {
           header: headerOf("status"),
           cell: ({ getValue }) => <TransactionStatusBadge status={getValue()} />,
         }),
+        column.display({
+          id: "actions",
+          header: ActionsHeader,
+          meta: { align: "end" },
+          cell: ({ row }) => <TransactionRowMenu onView={onView} transaction={row.original} />,
+        }),
       ]),
-    [],
+    [onView],
   );
 }

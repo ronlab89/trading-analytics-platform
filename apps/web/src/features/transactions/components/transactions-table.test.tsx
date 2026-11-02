@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import type { TransactionRow } from "../types";
 import { TransactionsTable } from "./transactions-table";
@@ -22,7 +23,7 @@ function row(overrides: Partial<TransactionRow> = {}): TransactionRow {
 
 describe("TransactionsTable", () => {
   it("draws the eight columns of the Figma", () => {
-    render(<TransactionsTable rows={[row()]} />);
+    render(<TransactionsTable onView={vi.fn()} rows={[row()]} />);
 
     const headers = within(screen.getByRole("table", { name: "Transactions" }))
       .getAllByRole("columnheader")
@@ -37,11 +38,24 @@ describe("TransactionsTable", () => {
       "Fees",
       "Total",
       "Status",
+      // The Figma header of the menu column is blank; only screen readers get a name for it.
+      "Actions",
     ]);
   });
 
+  it("gives every row a menu that opens that transaction", async () => {
+    const onView = vi.fn();
+    const other = row({ id: "t2", name: "Bitcoin", symbol: "BTC" });
+    render(<TransactionsTable onView={onView} rows={[row(), other]} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Actions for the Bitcoin/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "View details" }));
+
+    expect(onView).toHaveBeenCalledExactlyOnceWith(other);
+  });
+
   it("writes the money, the quantity, the type and the status of a transaction", () => {
-    render(<TransactionsTable rows={[row()]} />);
+    render(<TransactionsTable onView={vi.fn()} rows={[row()]} />);
 
     const line = screen.getByRole("row", { name: /Apple Inc\./ });
     expect(within(line).getByText("Apple Inc.")).toBeInTheDocument();
@@ -56,6 +70,7 @@ describe("TransactionsTable", () => {
   it("keeps the order of the rows it is given", () => {
     render(
       <TransactionsTable
+        onView={vi.fn()}
         rows={[
           row({ id: "b", name: "Bitcoin", symbol: "BTC" }),
           row({ id: "a", name: "Apple Inc." }),
@@ -69,14 +84,16 @@ describe("TransactionsTable", () => {
   });
 
   it("shows a sale and a pending transaction in their own words", () => {
-    render(<TransactionsTable rows={[row({ type: "SELL", status: "PROCESSING" })]} />);
+    render(
+      <TransactionsTable onView={vi.fn()} rows={[row({ type: "SELL", status: "PROCESSING" })]} />,
+    );
 
     expect(screen.getByText("Sell")).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
   });
 
   it("names an asset that did not load", () => {
-    render(<TransactionsTable rows={[row({ name: null, symbol: null })]} />);
+    render(<TransactionsTable onView={vi.fn()} rows={[row({ name: null, symbol: null })]} />);
 
     expect(screen.getByText("Unknown asset")).toBeInTheDocument();
   });
