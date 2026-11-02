@@ -52,3 +52,41 @@ export function currencySymbol(currency: string): string {
       .find((part) => part.type === "currency")?.value ?? currency
   );
 }
+
+const signedMoneyFormats = new Map<string, Intl.NumberFormat>();
+
+/**
+ * A change in money, signed: `+$2,340.10` for a gain, `-$1,958.00` for a loss and `$0.00` for none.
+ * Like `formatMoney`, the amount goes to `Intl` as the decimal string it is.
+ */
+export function formatSignedMoney({ amount, currency }: MoneyDto): string {
+  const decimals = Math.max(MONEY_DECIMALS, amount.split(".")[1]?.length ?? 0);
+  const key = `${currency}:${String(decimals)}`;
+  let format = signedMoneyFormats.get(key);
+  if (!format) {
+    format = new Intl.NumberFormat(LOCALE, {
+      style: "currency",
+      currency,
+      signDisplay: "exceptZero",
+      minimumFractionDigits: MONEY_DECIMALS,
+      maximumFractionDigits: decimals,
+    });
+    signedMoneyFormats.set(key, format);
+  }
+  return format.format(amount as `${number}`);
+}
+
+const signedPercentFormat = new Intl.NumberFormat(LOCALE, {
+  signDisplay: "exceptZero",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/**
+ * Percentage points as the API sends them (`1.9` is 1.9 %), signed and with two decimals. A change
+ * that rounds to zero is written as zero, not as `-0.00%`.
+ */
+export function formatSignedPercent(points: number): string {
+  const rounded = Math.round(points * 100) / 100;
+  return `${signedPercentFormat.format(rounded === 0 ? 0 : rounded)}%`;
+}

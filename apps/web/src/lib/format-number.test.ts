@@ -1,5 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { currencySymbol, formatMoney, formatQuantity } from "./format-number";
+import {
+  currencySymbol,
+  formatMoney,
+  formatQuantity,
+  formatSignedMoney,
+  formatSignedPercent,
+} from "./format-number";
+
+describe("formatSignedMoney", () => {
+  it("writes a gain with a plus and a loss with a minus before the symbol", () => {
+    expect(formatSignedMoney({ amount: "2340.10", currency: "USD" })).toBe("+$2,340.10");
+    expect(formatSignedMoney({ amount: "-1958.00", currency: "USD" })).toBe("-$1,958.00");
+  });
+
+  it("writes zero without a sign", () => {
+    expect(formatSignedMoney({ amount: "0.00", currency: "USD" })).toBe("$0.00");
+  });
+
+  it("does not round an amount through a floating point number", () => {
+    expect(formatSignedMoney({ amount: "12345678901234567.89", currency: "USD" })).toBe(
+      "+$12,345,678,901,234,567.89",
+    );
+  });
+});
+
+describe("formatSignedPercent", () => {
+  it("writes percentage points with two decimals and the sign of the change", () => {
+    expect(formatSignedPercent(1.9)).toBe("+1.90%");
+    expect(formatSignedPercent(-0.8)).toBe("-0.80%");
+    expect(formatSignedPercent(17)).toBe("+17.00%");
+  });
+
+  it("writes zero without a sign", () => {
+    expect(formatSignedPercent(0)).toBe("0.00%");
+  });
+
+  it("does not show a minus for a change that rounds to zero", () => {
+    expect(formatSignedPercent(-0.001)).toBe("0.00%");
+  });
+});
 
 describe("formatMoney", () => {
   it("writes the currency symbol, the thousands separators and two decimals", () => {

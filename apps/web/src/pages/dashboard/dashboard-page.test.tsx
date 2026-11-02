@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
 import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
+import { useSessionStore } from "@/stores/session-store";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { DashboardPage } from "./dashboard-page";
 
@@ -24,9 +25,13 @@ interface Answers {
   getPortfolioOverview?: () => Promise<unknown>;
 }
 
-/** The overview the page needs for its header: how many positions the portfolio holds. */
+/** The part of the overview the page reads so far: the positions, the summary and today's change. */
 const overviewOf = (positions: number) => ({
-  data: { positions: Array.from({ length: positions }, (_, index) => ({ id: index })) },
+  data: {
+    positions: Array.from({ length: positions }, (_, index) => ({ id: index })),
+    summary: { totalValue: { amount: "125430.25", currency: "USD" } },
+    dailyChange: { changeValue: { amount: "2340.10", currency: "USD" }, changePercent: 1.9 },
+  },
 });
 
 function clientWith(answers: Answers = {}) {
@@ -70,6 +75,7 @@ function stubMobile(isMobile: boolean) {
 
 beforeEach(() => {
   useActivePortfolioStore.setState({ selectedId: undefined });
+  useSessionStore.getState().signOut();
   stubMobile(false);
 });
 
@@ -114,10 +120,25 @@ describe("DashboardPage", () => {
     expect(screen.queryByRole("status", { name: "Loading the dashboard" })).not.toBeInTheDocument();
   });
 
+  it("greets the user by first name and shows the value of the portfolio", async () => {
+    useSessionStore.getState().signIn({
+      user: { id: "u-1", email: "jane@example.com", displayName: "Jane Doe", role: "TRADER" },
+      session: { accessToken: "token", expiresAt: "2099-01-01T00:00:00.000Z" },
+    });
+    renderPage(clientWith().client);
+
+    expect(await screen.findByRole("heading", { name: "Hello, Jane" })).toBeInTheDocument();
+    expect(screen.getByText("$125,430.25")).toBeInTheDocument();
+    expect(screen.getByText("+$2,340.10")).toBeInTheDocument();
+  });
+
   it("offers a first transaction while the portfolio holds no positions", async () => {
     renderPage(clientWith({ getPortfolioOverview: () => Promise.resolve(overviewOf(0)) }).client);
 
-    await userEvent.click(await screen.findByRole("button", { name: "New transaction" }));
+    // The header and the empty panel both offer it; either opens the same panel.
+    const [header] = await screen.findAllByRole("button", { name: "New transaction" });
+    if (!header) throw new Error("the header should offer a first transaction");
+    await userEvent.click(header);
 
     expect(await screen.findByRole("dialog", { name: "New transaction" })).toBeInTheDocument();
   });

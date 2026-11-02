@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
+import { PortfolioValuePanel } from "@/features/dashboard/components/portfolio-value-panel";
 import { DashboardSkeleton } from "@/features/dashboard/components/dashboard-skeleton";
 import { useOverview } from "@/features/dashboard/hooks/use-overview";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
@@ -11,6 +12,7 @@ import { NewTransactionPanel } from "@/features/transactions/components/new-tran
 import { useAnnounceRecorded } from "@/features/transactions/hooks/use-announce-recorded";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useIsMobile } from "@/hooks/use-media-query";
+import { useCurrentUser } from "@/hooks/use-session";
 
 /**
  * The home screen: the dashboard of the active portfolio. The portfolio is the `key` of the
@@ -62,6 +64,7 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
   const overview = useOverview(portfolioId);
   const [panelOpen, setPanelOpen] = useState(false);
   const announceRecorded = useAnnounceRecorded();
+  const firstName = useCurrentUser()?.displayName.trim().split(/\s+/)[0] ?? "";
   // Taken once, so the header does not change its day under the user's eyes.
   const [today] = useState(() => new Date().toISOString());
 
@@ -90,7 +93,11 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
     return <DashboardSkeleton />;
   }
 
-  const empty = overview.data.positions.length === 0;
+  const { positions, summary, dailyChange } = overview.data;
+  const empty = positions.length === 0;
+  const openPanel = () => {
+    setPanelOpen(true);
+  };
 
   return (
     <>
@@ -98,22 +105,28 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
         <DashboardHeader
           action={
             empty ? (
-              <Button
-                onClick={() => {
-                  setPanelOpen(true);
-                }}
-              >
+              <Button onClick={openPanel}>
                 <Plus aria-hidden="true" />
                 {t("transactions.new")}
               </Button>
             ) : null
           }
           portfolioName={portfolioName}
-          positionCount={overview.data.positions.length}
+          positionCount={positions.length}
           today={today}
           updatedAt={overview.dataUpdatedAt}
         />
       )}
+      <div className="grid gap-4 desktop:grid-cols-2 desktop:gap-6">
+        <PortfolioValuePanel
+          dailyChange={dailyChange}
+          empty={empty}
+          firstName={firstName}
+          onNew={openPanel}
+          portfolioId={portfolioId}
+          totalValue={summary.totalValue}
+        />
+      </div>
       <NewTransactionPanel
         onOpenChange={setPanelOpen}
         onRecorded={announceRecorded}

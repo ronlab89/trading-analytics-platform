@@ -367,6 +367,17 @@ const en = {
       description: "Check your connection and try again. Your data has not been changed.",
       retry: "Retry",
     },
+    value: {
+      greeting: "Hello, {{name}}",
+      greetingAnonymous: "Hello",
+      subtitle: "Here's how your portfolio is doing today",
+      today: "today",
+      view: "View portfolio",
+      empty: {
+        title: "Your portfolio is empty",
+        description: "Record your first transaction to see how your portfolio evolves.",
+      },
+    },
     header: {
       summary_one: "{{date}} · {{portfolio}} · {{count}} position",
       summary_other: "{{date}} · {{portfolio}} · {{count}} positions",
@@ -805,6 +816,17 @@ const es: Messages<typeof en> = {
       title: "No se pudo cargar el panel de inicio",
       description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
       retry: "Reintentar",
+    },
+    value: {
+      greeting: "Hola, {{name}}",
+      greetingAnonymous: "Hola",
+      subtitle: "Así va tu portafolio hoy",
+      today: "hoy",
+      view: "Ver portafolio",
+      empty: {
+        title: "Tu portafolio está vacío",
+        description: "Registra tu primera transacción para ver cómo evoluciona tu portafolio.",
+      },
     },
     header: {
       summary_one: "{{date}} · {{portfolio}} · {{count}} posición",
