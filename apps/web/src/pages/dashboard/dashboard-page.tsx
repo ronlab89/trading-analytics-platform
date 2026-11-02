@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
 import { PortfolioValuePanel } from "@/features/dashboard/components/portfolio-value-panel";
+import { TotalReturnPanel } from "@/features/dashboard/components/total-return-panel";
 import { DashboardSkeleton } from "@/features/dashboard/components/dashboard-skeleton";
 import { useOverview } from "@/features/dashboard/hooks/use-overview";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
@@ -125,6 +126,11 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
           onNew={openPanel}
           portfolioId={portfolioId}
           totalValue={summary.totalValue}
+        />
+        <TotalReturnPanel
+          empty={empty}
+          percent={summary.unrealizedPnLPercent}
+          profit={summary.unrealizedPnL}
         />
       </div>
       <NewTransactionPanel

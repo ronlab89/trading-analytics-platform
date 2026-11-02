@@ -29,7 +29,11 @@ interface Answers {
 const overviewOf = (positions: number) => ({
   data: {
     positions: Array.from({ length: positions }, (_, index) => ({ id: index })),
-    summary: { totalValue: { amount: "125430.25", currency: "USD" } },
+    summary: {
+      totalValue: { amount: "125430.25", currency: "USD" },
+      unrealizedPnL: { amount: "18200.00", currency: "USD" },
+      unrealizedPnLPercent: 17,
+    },
     dailyChange: { changeValue: { amount: "2340.10", currency: "USD" }, changePercent: 1.9 },
   },
 });
@@ -130,6 +134,13 @@ describe("DashboardPage", () => {
     expect(await screen.findByRole("heading", { name: "Hello, Jane" })).toBeInTheDocument();
     expect(screen.getByText("$125,430.25")).toBeInTheDocument();
     expect(screen.getByText("+$2,340.10")).toBeInTheDocument();
+  });
+
+  it("shows the total return of the open positions", async () => {
+    renderPage(clientWith().client);
+
+    expect(await screen.findByText("+$18,200.00")).toBeInTheDocument();
+    expect(screen.getByText("+17.00% gain")).toBeInTheDocument();
   });
 
   it("offers a first transaction while the portfolio holds no positions", async () => {

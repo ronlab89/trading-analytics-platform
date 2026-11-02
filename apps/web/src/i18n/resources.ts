@@ -378,6 +378,17 @@ const en = {
         description: "Record your first transaction to see how your portfolio evolves.",
       },
     },
+    totalReturn: {
+      title: "Total return",
+      gain: "{{percent}} gain",
+      loss: "{{percent}} loss",
+      flat: "{{percent}} no change",
+      caption: "Unrealized result of your open positions",
+      empty: {
+        title: "No gains yet",
+        description: "The total return is worked out from your positions.",
+      },
+    },
     header: {
       summary_one: "{{date}} · {{portfolio}} · {{count}} position",
       summary_other: "{{date}} · {{portfolio}} · {{count}} positions",
@@ -826,6 +837,17 @@ const es: Messages<typeof en> = {
       empty: {
         title: "Tu portafolio está vacío",
         description: "Registra tu primera transacción para ver cómo evoluciona tu portafolio.",
+      },
+    },
+    totalReturn: {
+      title: "Retorno total",
+      gain: "{{percent}} ganancia",
+      loss: "{{percent}} pérdida",
+      flat: "{{percent}} sin cambio",
+      caption: "Resultado sin realizar de tus posiciones abiertas",
+      empty: {
+        title: "Sin ganancias todavía",
+        description: "El retorno total se calcula con tus posiciones.",
       },
     },
     header: {
