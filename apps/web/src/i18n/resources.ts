@@ -371,6 +371,16 @@ const en = {
         description: "The weight of each asset appears once the portfolio holds positions.",
       },
     },
+    risk: {
+      title: "Risk level",
+      alert: "Alert",
+      low: "Low",
+      moderate: "Moderate",
+      high: "High",
+      unknown: "No data yet",
+      volatility: "Annualized volatility {{value}}",
+      volatilityUnknown: "Volatility needs more days of history",
+    },
     movers: {
       title: "Top movers",
       subtitle: "Change today by position",
@@ -916,6 +926,16 @@ const es: Messages<typeof en> = {
         title: "Aún no hay nada que distribuir",
         description: "El peso de cada activo aparece cuando el portafolio tiene posiciones.",
       },
+    },
+    risk: {
+      title: "Nivel de riesgo",
+      alert: "Alerta",
+      low: "Bajo",
+      moderate: "Moderado",
+      high: "Alto",
+      unknown: "Sin datos aún",
+      volatility: "Volatilidad anualizada {{value}}",
+      volatilityUnknown: "La volatilidad necesita más días de historial",
     },
     movers: {
       title: "Mayores movimientos",
