@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   currencySymbol,
+  formatAxisMoney,
   formatMoney,
   formatQuantity,
   formatSignedMoney,
@@ -83,5 +84,22 @@ describe("currencySymbol", () => {
   it("gives the symbol an amount of the currency is written with", () => {
     expect(currencySymbol("USD")).toBe("$");
     expect(currencySymbol("EUR")).toBe("€");
+  });
+});
+
+describe("formatAxisMoney", () => {
+  it("shortens thousands and millions with one decimal at most", () => {
+    expect(formatAxisMoney(124_000, "USD")).toBe("$124k");
+    expect(formatAxisMoney(8_500, "USD")).toBe("$8.5k");
+    expect(formatAxisMoney(1_200_000, "USD")).toBe("$1.2M");
+  });
+
+  it("writes small amounts whole, without cents", () => {
+    expect(formatAxisMoney(800.4, "USD")).toBe("$800");
+    expect(formatAxisMoney(0, "USD")).toBe("$0");
+  });
+
+  it("puts the minus before the symbol", () => {
+    expect(formatAxisMoney(-2_500, "USD")).toBe("-$2.5k");
   });
 });

@@ -362,6 +362,61 @@ const en = {
   },
   dashboard: {
     loading: "Loading the dashboard",
+    monthly: {
+      title: "Monthly performance",
+      chartLabel: "Return of each of the last months",
+      current: "current month",
+      loading: "Loading the monthly performance",
+      failed: "Couldn't load the monthly performance.",
+      retry: "Retry",
+    },
+    dailyReturns: {
+      title: "Daily performance",
+      subtitle: "Last 30 business days",
+      chartLabel: "Daily return of the portfolio, one bar per day",
+      summary:
+        "{{count}} days from {{from}} to {{to}}: {{positive}} positive. Best day {{best}} on {{bestDate}}, worst day {{worst}} on {{worstDate}}.",
+      loading: "Loading the daily performance",
+      empty: {
+        title: "Not enough data yet",
+        description: "The daily returns appear once your portfolio has a day of history.",
+      },
+      failed: {
+        title: "Couldn't load the daily performance",
+        description: "Check your connection and try again. Your data has not been changed.",
+        retry: "Retry",
+      },
+      stats: {
+        best: "Best day",
+        worst: "Worst day",
+        positive: "Positive days",
+        average: "Daily average",
+        streak: "Current streak",
+        streakUp_one: "{{count}} day up",
+        streakUp_other: "{{count}} days up",
+        streakDown_one: "{{count}} day down",
+        streakDown_other: "{{count}} days down",
+        streakFlat: "No movement",
+      },
+    },
+    performance: {
+      title: "Performance",
+      periodLabel: "Period",
+      periods: { "1W": "1W", "1M": "1M", "3M": "3M", YTD: "YTD", ALL: "All" },
+      chartLabel: "Portfolio value over the selected period",
+      summary:
+        "From {{from}} to {{to}} the value went from {{start}} to {{end}} ({{change}}). High {{high}}, low {{low}}.",
+      loading: "Loading the performance",
+      empty: {
+        title: "Not enough data yet",
+        description: "The chart appears once your portfolio has at least two days of history.",
+      },
+      failed: {
+        title: "Couldn't load the performance",
+        description: "Check your connection and try again. Your data has not been changed.",
+        retry: "Retry",
+      },
+    },
     failed: {
       title: "Couldn't load the dashboard",
       description: "Check your connection and try again. Your data has not been changed.",
@@ -836,6 +891,63 @@ const es: Messages<typeof en> = {
   },
   dashboard: {
     loading: "Cargando el panel de inicio",
+    monthly: {
+      title: "Rendimiento mensual",
+      chartLabel: "Retorno de cada uno de los últimos meses",
+      current: "mes en curso",
+      loading: "Cargando el rendimiento mensual",
+      failed: "No se pudo cargar el rendimiento mensual.",
+      retry: "Reintentar",
+    },
+    dailyReturns: {
+      title: "Rendimiento diario",
+      subtitle: "Últimos 30 días hábiles",
+      chartLabel: "Retorno diario del portafolio, una barra por día",
+      summary:
+        "{{count}} días del {{from}} al {{to}}: {{positive}} positivos. Mejor día {{best}} el {{bestDate}}, peor día {{worst}} el {{worstDate}}.",
+      loading: "Cargando el rendimiento diario",
+      empty: {
+        title: "Aún no hay datos suficientes",
+        description:
+          "Los retornos diarios aparecen cuando tu portafolio tiene un día de historial.",
+      },
+      failed: {
+        title: "No se pudo cargar el rendimiento diario",
+        description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+        retry: "Reintentar",
+      },
+      stats: {
+        best: "Mejor día",
+        worst: "Peor día",
+        positive: "Días positivos",
+        average: "Promedio diario",
+        streak: "Racha actual",
+        streakUp_one: "{{count}} día al alza",
+        streakUp_other: "{{count}} días al alza",
+        streakDown_one: "{{count}} día a la baja",
+        streakDown_other: "{{count}} días a la baja",
+        streakFlat: "Sin movimiento",
+      },
+    },
+    performance: {
+      title: "Rendimiento",
+      periodLabel: "Período",
+      periods: { "1W": "1S", "1M": "1M", "3M": "3M", YTD: "Año", ALL: "Todo" },
+      chartLabel: "Valor del portafolio en el período elegido",
+      summary:
+        "Del {{from}} al {{to}} el valor pasó de {{start}} a {{end}} ({{change}}). Máximo {{high}}, mínimo {{low}}.",
+      loading: "Cargando el rendimiento",
+      empty: {
+        title: "Aún no hay datos suficientes",
+        description:
+          "El gráfico aparece cuando tu portafolio tiene al menos dos días de historial.",
+      },
+      failed: {
+        title: "No se pudo cargar el rendimiento",
+        description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+        retry: "Reintentar",
+      },
+    },
     failed: {
       title: "No se pudo cargar el panel de inicio",
       description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",

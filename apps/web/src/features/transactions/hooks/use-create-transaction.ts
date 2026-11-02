@@ -8,6 +8,7 @@ import { useRef } from "react";
 import { findOperation } from "@/api/find-operation";
 import { useTradingClient } from "@/api/trading-client-provider";
 import { overviewKeys } from "@/features/dashboard/hooks/use-overview";
+import { performanceKeys } from "@/features/dashboard/hooks/use-performance";
 import { portfolioKeys } from "@/hooks/use-portfolios";
 import { transactionKeys } from "./use-transactions";
 
@@ -45,6 +46,7 @@ export function useCreateTransaction(portfolioId: string) {
       void queryClient.invalidateQueries({ queryKey: transactionKeys.portfolio(portfolioId) });
       void queryClient.invalidateQueries({ queryKey: portfolioKeys.positions(portfolioId) });
       void queryClient.invalidateQueries({ queryKey: overviewKeys.portfolio(portfolioId) });
+      void queryClient.invalidateQueries({ queryKey: performanceKeys.portfolio(portfolioId) });
     },
   });
 }

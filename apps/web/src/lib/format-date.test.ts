@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   formatCalendarDay,
   formatCalendarRange,
+  formatDayMonth,
   formatDateTime,
   formatFullDateTime,
   formatLongDate,
+  formatShortMonth,
   formatTimeOfDay,
 } from "./format-date";
 
@@ -108,5 +110,27 @@ describe("formatCalendarRange", () => {
     expect(formatCalendarRange("2025-03-01", "2025-03-31", "en", today)).toBe(
       "Mar 1, 2025 – Mar 31, 2025",
     );
+  });
+});
+
+describe("formatDayMonth", () => {
+  it("writes the day and the short month without the year", () => {
+    expect(formatDayMonth("2026-09-28", "en")).toBe("Sep 28");
+    expect(formatDayMonth("2026-09-28", "es")).toBe("28 sep");
+  });
+
+  it("returns a text that is not a day as it is", () => {
+    expect(formatDayMonth("soon", "en")).toBe("soon");
+  });
+});
+
+describe("formatShortMonth", () => {
+  it("writes the short name of the month", () => {
+    expect(formatShortMonth("2026-10", "en")).toBe("Oct");
+    expect(formatShortMonth("2026-10", "es").toLowerCase()).toContain("oct");
+  });
+
+  it("returns a text that is not a month as it is", () => {
+    expect(formatShortMonth("soon", "en")).toBe("soon");
   });
 });

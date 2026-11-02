@@ -90,3 +90,23 @@ export function formatSignedPercent(points: number): string {
   const rounded = Math.round(points * 100) / 100;
   return `${signedPercentFormat.format(rounded === 0 ? 0 : rounded)}%`;
 }
+
+const THOUSAND = 1_000;
+const MILLION = 1_000_000;
+
+function trimmed(value: number): string {
+  return String(Math.round(value * 10) / 10);
+}
+
+/**
+ * An amount short enough for a chart axis: `$124k`, `$1.2M`, `$800`. It is only a label to read a
+ * scale by, so it rounds to one decimal and never shows cents.
+ */
+export function formatAxisMoney(value: number, currency: string): string {
+  const abs = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
+  const symbol = currencySymbol(currency);
+  if (abs >= MILLION) return `${sign}${symbol}${trimmed(abs / MILLION)}M`;
+  if (abs >= THOUSAND) return `${sign}${symbol}${trimmed(abs / THOUSAND)}k`;
+  return `${sign}${symbol}${String(Math.round(abs))}`;
+}

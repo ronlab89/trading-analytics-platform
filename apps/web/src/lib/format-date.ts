@@ -113,6 +113,29 @@ export function formatCalendarRange(
   return `${write(from)} – ${write(to)}`;
 }
 
+/** A calendar day without its year, as a chart axis writes it (`28 sep`, `Sep 28`). */
+export function formatDayMonth(day: string, language: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return day;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (Number.isNaN(date.getTime())) return day;
+  return cached(dayMonthFormats, localeOf(language), "UTC", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
+const shortMonthFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** A month (`2026-10`) as its short name, for the label under a monthly bar (`oct`, `Oct`). */
+export function formatShortMonth(month: string, language: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return month;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  if (Number.isNaN(date.getTime())) return month;
+  return cached(shortMonthFormats, localeOf(language), "UTC", { month: "short" }).format(date);
+}
+
 const longDayFormats = new Map<string, Intl.DateTimeFormat>();
 const secondsFormats = new Map<string, Intl.DateTimeFormat>();
 
