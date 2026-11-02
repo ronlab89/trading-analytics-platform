@@ -638,7 +638,7 @@ for (const { name, width, height } of viewports) {
   });
 }
 
-test("on the desktop the value and the total return sit side by side, below it they stack", async ({
+test("on the desktop the total return sits under the value and beside the daily bars, below it they stack", async ({
   page,
 }) => {
   const value = page.getByRole("region", { name: /^(Hello|Hola)/ });
@@ -647,8 +647,14 @@ test("on the desktop the value and the total return sit side by side, below it t
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/");
   await waitForDashboard(page);
-  const side = { value: await boxOf(value), totalReturn: await boxOf(totalReturn) };
-  expect(side.totalReturn.x).toBeGreaterThan(side.value.x + side.value.width - 1);
+  const side = {
+    value: await boxOf(value),
+    totalReturn: await boxOf(totalReturn),
+    daily: await boxOf(dailyReturns(page)),
+  };
+  expect(side.totalReturn.x).toBe(side.value.x);
+  expect(side.totalReturn.y).toBeGreaterThanOrEqual(side.value.y + side.value.height);
+  expect(side.daily.x).toBeGreaterThan(side.totalReturn.x + side.totalReturn.width - 1);
 
   await page.setViewportSize({ width: 768, height: 800 });
   const stacked = { value: await boxOf(value), totalReturn: await boxOf(totalReturn) };
