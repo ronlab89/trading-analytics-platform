@@ -1,6 +1,7 @@
 import type { PortfolioResponse } from "@trading/contracts";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { rejectionReason } from "@/api/rejection-reason";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,9 +46,9 @@ export function ArchivePortfolioDialog({
         });
         onOpenChange(false);
       },
-      onError: () => {
+      onError: (error) => {
         toast.error(t("portfolioArchive.failed.title"), {
-          description: t("portfolioArchive.failed.description"),
+          description: rejectionReason(error) ?? t("portfolioArchive.failed.description"),
         });
       },
     });

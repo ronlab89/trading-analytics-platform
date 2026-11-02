@@ -204,6 +204,23 @@ describe("NewPortfolioDialog", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
+  it("says why the API refused the portfolio instead of blaming the connection", async () => {
+    const reason = "Portfolio name is required.";
+    const { client } = clientWith(() =>
+      Promise.reject(new ApiError("VALIDATION_ERROR", reason, 422)),
+    );
+    renderDialog(client);
+    await fillAndPick("Fixed income");
+
+    await userEvent.click(screen.getByRole("button", { name: "Create portfolio" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Couldn't create the portfolio", {
+        description: reason,
+      });
+    });
+  });
+
   it("closes from Cancel without creating anything", async () => {
     const { client, createCalls } = clientWith(() => Promise.resolve({ data: created }));
     const { onOpenChange } = renderDialog(client);

@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { rejectionReason } from "@/api/rejection-reason";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -89,9 +90,9 @@ function NewPortfolioForm({ create, onCreated, onDirtyChange }: NewPortfolioForm
         });
         onCreated();
       },
-      onError: () => {
+      onError: (error) => {
         toast.error(t("portfolioForm.createFailed.title"), {
-          description: t("portfolioForm.createFailed.description"),
+          description: rejectionReason(error) ?? t("portfolioForm.createFailed.description"),
         });
       },
     });

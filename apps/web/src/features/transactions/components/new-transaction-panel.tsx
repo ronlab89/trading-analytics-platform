@@ -3,7 +3,7 @@ import type { AssetResponse, CreateTransactionResponse } from "@trading/contract
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { ApiError } from "@/api/trading-client";
+import { rejectionReason } from "@/api/rejection-reason";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,10 +115,7 @@ function NewTransactionForm({
   // the reason, and sending the same transaction again cannot change the answer. Anything else
   // (a dropped connection, a timeout, a server error) says nothing about the transaction, so it
   // keeps the generic text and "Reintentar".
-  const rejection =
-    create.error instanceof ApiError && create.error.code === "VALIDATION_ERROR"
-      ? create.error.message
-      : null;
+  const rejection = rejectionReason(create.error);
 
   // An asset the portfolio does not hold yet starts from zero; until the positions arrive it is unknown.
   const held = asset
