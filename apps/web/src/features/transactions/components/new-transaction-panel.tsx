@@ -38,8 +38,11 @@ interface NewTransactionPanelProps {
   portfolioId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The API recorded the transaction; the panel closes itself right after. */
-  onRecorded: (response: CreateTransactionResponse) => void;
+  /**
+   * The API recorded the transaction; the panel closes itself right after. The asset comes along
+   * because the response only carries its id, and the caller may want its symbol.
+   */
+  onRecorded: (response: CreateTransactionResponse, asset: AssetResponse) => void;
 }
 
 /**
@@ -65,8 +68,8 @@ export function NewTransactionPanel({
           <NewTransactionForm
             create={create}
             onDirtyChange={guard.setDirty}
-            onRecorded={(response) => {
-              onRecorded(response);
+            onRecorded={(response, asset) => {
+              onRecorded(response, asset);
               guard.close();
             }}
             portfolioId={portfolioId}
@@ -85,7 +88,7 @@ export function NewTransactionPanel({
 interface NewTransactionFormProps {
   portfolioId: string;
   create: ReturnType<typeof useCreateTransaction>;
-  onRecorded: (response: CreateTransactionResponse) => void;
+  onRecorded: (response: CreateTransactionResponse, asset: AssetResponse) => void;
   /** Whether the user has changed anything from the empty form, so leaving can ask first. */
   onDirtyChange: (dirty: boolean) => void;
 }
@@ -122,7 +125,11 @@ function NewTransactionForm({
       asset.currency,
       openedAt,
     );
-    create.mutate(body, { onSuccess: onRecorded });
+    create.mutate(body, {
+      onSuccess: (response) => {
+        onRecorded(response, asset);
+      },
+    });
   });
 
   return (

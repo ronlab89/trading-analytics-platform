@@ -1,13 +1,16 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
+import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
 import { TransactionCardList } from "@/features/transactions/components/transaction-card-list";
 import { TransactionsCardsSkeleton } from "@/features/transactions/components/transactions-cards-skeleton";
 import { TransactionsPagination } from "@/features/transactions/components/transactions-pagination";
 import { TransactionsTable } from "@/features/transactions/components/transactions-table";
 import { TransactionsTableSkeleton } from "@/features/transactions/components/transactions-table-skeleton";
+import { useAnnounceRecorded } from "@/features/transactions/hooks/use-announce-recorded";
 import { useTransactionRows } from "@/features/transactions/hooks/use-transaction-rows";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useIsMobile } from "@/hooks/use-media-query";
@@ -23,23 +26,44 @@ export function TransactionsPage() {
   const { t } = useTranslation();
   const { active, isPending, isError, retry } = useActivePortfolio();
   const isMobile = useIsMobile();
+  const [panelOpen, setPanelOpen] = useState(false);
+  const announceRecorded = useAnnounceRecorded();
+  const openPanel = () => {
+    setPanelOpen(true);
+  };
 
   return (
     <div className="flex flex-col gap-4 desktop:gap-6">
       {isMobile ? (
-        <h1 className="text-2xl leading-8 font-semibold text-(--color-text-default)">
-          {t("nav.transactions")}
-        </h1>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl leading-8 font-semibold text-(--color-text-default)">
+            {t("nav.transactions")}
+          </h1>
+          {active !== undefined ? (
+            <Button onClick={openPanel} size="sm">
+              {t("transactions.newShort")}
+            </Button>
+          ) : null}
+        </div>
       ) : (
         <h1 className="sr-only">{t("nav.transactions")}</h1>
       )}
       {active !== undefined ? (
-        <TransactionsList
-          key={active.id}
-          isMobile={isMobile}
-          portfolioId={active.id}
-          portfolioName={active.name}
-        />
+        <>
+          <TransactionsList
+            key={active.id}
+            isMobile={isMobile}
+            onNew={openPanel}
+            portfolioId={active.id}
+            portfolioName={active.name}
+          />
+          <NewTransactionPanel
+            onOpenChange={setPanelOpen}
+            onRecorded={announceRecorded}
+            open={panelOpen}
+            portfolioId={active.id}
+          />
+        </>
       ) : isError ? (
         <Alert
           action={
@@ -73,9 +97,11 @@ interface TransactionsListProps {
   portfolioId: string;
   portfolioName: string;
   isMobile: boolean;
+  /** Opens the "Nueva transacción" panel, which the page owns. */
+  onNew: () => void;
 }
 
-function TransactionsList({ portfolioId, portfolioName, isMobile }: TransactionsListProps) {
+function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: TransactionsListProps) {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -99,10 +125,18 @@ function TransactionsList({ portfolioId, portfolioName, isMobile }: Transactions
 
   return (
     <>
-      {isMobile || meta === undefined ? null : (
-        <p className="text-sm text-(--color-text-secondary)">
-          {t("transactions.summary", { count: meta.total, portfolio: portfolioName })}
-        </p>
+      {isMobile ? null : (
+        <div className="flex items-center justify-between gap-4">
+          {meta === undefined ? null : (
+            <p className="text-sm text-(--color-text-secondary)">
+              {t("transactions.summary", { count: meta.total, portfolio: portfolioName })}
+            </p>
+          )}
+          <Button className="ml-auto" onClick={onNew}>
+            <Plus aria-hidden="true" />
+            {t("transactions.new")}
+          </Button>
+        </div>
       )}
       {transactions.isError ? (
         <Alert
@@ -130,6 +164,11 @@ function TransactionsList({ portfolioId, portfolioName, isMobile }: Transactions
       ) : rows.length === 0 ? (
         <section className="rounded-xl bg-(--color-surface-card) p-6">
           <PortfoliosEmptyState
+            action={
+              <Button onClick={onNew} size="sm" variant="outline">
+                {t("transactions.empty.action")}
+              </Button>
+            }
             description={t(
               isMobile ? "transactions.empty.mobileDescription" : "transactions.empty.description",
             )}

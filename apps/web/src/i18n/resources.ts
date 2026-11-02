@@ -91,6 +91,11 @@ const en = {
     cancel: "Cancel",
     submit: "Record transaction",
     submitting: "Recording…",
+    recorded: {
+      title: "Transaction recorded",
+      description:
+        "{{type}} of {{quantity}} {{symbol}} for {{total}}. Your position and metrics were recalculated.",
+    },
     failed: {
       title: "The transaction could not be recorded",
       description: "Check your connection and try again. Your form data was kept.",
@@ -279,7 +284,10 @@ const en = {
     loading: "Loading transactions",
     summary_one: "History of {{portfolio}} · {{count}} transaction",
     summary_other: "History of {{portfolio}} · {{count}} transactions",
+    new: "New transaction",
+    newShort: "New",
     empty: {
+      action: "New transaction",
       title: "No transactions yet",
       description:
         "Record your first transaction to start building the history and the metrics of this portfolio.",
@@ -446,6 +454,11 @@ const es: Messages<typeof en> = {
     cancel: "Cancelar",
     submit: "Registrar transacción",
     submitting: "Registrando…",
+    recorded: {
+      title: "Transacción registrada",
+      description:
+        "{{type}} de {{quantity}} {{symbol}} por {{total}}. Se recalcularon tu posición y tus métricas.",
+    },
     failed: {
       title: "No se pudo registrar la transacción",
       description:
@@ -642,7 +655,10 @@ const es: Messages<typeof en> = {
     loading: "Cargando transacciones",
     summary_one: "Historial del portafolio {{portfolio}} · {{count}} transacción",
     summary_other: "Historial del portafolio {{portfolio}} · {{count}} transacciones",
+    new: "Nueva transacción",
+    newShort: "Nueva",
     empty: {
+      action: "Nueva transacción",
       title: "Aún no hay transacciones",
       description:
         "Registra tu primera transacción para empezar a construir el historial y las métricas de este portafolio.",

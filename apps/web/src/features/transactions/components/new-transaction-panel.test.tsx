@@ -119,7 +119,10 @@ describe("NewTransactionPanel", () => {
     await submit(user);
 
     await waitFor(() => {
-      expect(onRecorded).toHaveBeenCalledWith(recorded);
+      expect(onRecorded).toHaveBeenCalledWith(
+        recorded,
+        expect.objectContaining({ symbol: "AAPL" }),
+      );
     });
     const [, input] = createCalls()[0] ?? [];
     expect(input?.params).toEqual({ portfolioId: "p1" });
@@ -175,7 +178,10 @@ describe("NewTransactionPanel", () => {
     await user.click(screen.getByRole("button", { name: "Try again" }));
 
     await waitFor(() => {
-      expect(onRecorded).toHaveBeenCalledWith(recorded);
+      expect(onRecorded).toHaveBeenCalledWith(
+        recorded,
+        expect.objectContaining({ symbol: "AAPL" }),
+      );
     });
     expect(create).toHaveBeenCalledTimes(2);
     expect(create.mock.calls[1]?.[0]?.idempotencyKey).toBe(
