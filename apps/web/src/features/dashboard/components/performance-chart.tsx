@@ -18,7 +18,7 @@ interface PerformanceChartProps {
   series: ValueSeries;
 }
 
-const CHART_HEIGHT = 256;
+const MIN_CHART_HEIGHT = 256;
 
 /**
  * The Figma "Rendimiento (línea + área)": the value of the portfolio as a dark line over an orange
@@ -34,12 +34,12 @@ export function PerformanceChart({ series }: PerformanceChartProps) {
   const money = (value: number) => formatMoney({ amount: value.toFixed(2), currency });
 
   return (
-    <figure className="m-0 flex flex-col gap-2">
+    <figure className="m-0 flex flex-1 flex-col gap-2">
       <div
         aria-label={t("dashboard.performance.chartLabel")}
-        className="text-xs"
+        className="min-h-0 flex-1 text-xs"
         role="img"
-        style={{ height: CHART_HEIGHT }}
+        style={{ minHeight: MIN_CHART_HEIGHT }}
       >
         <ResponsiveContainer height="100%" width="100%">
           <AreaChart data={points} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>

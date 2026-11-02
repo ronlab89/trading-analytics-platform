@@ -23,7 +23,26 @@ const growth = {
 interface Answers {
   listPortfolios?: () => Promise<unknown>;
   getPortfolioOverview?: () => Promise<unknown>;
+  getPortfolioPerformance?: () => Promise<unknown>;
 }
+
+const performanceData = {
+  data: {
+    asOf: "2026-10-06",
+    effectiveFrom: "2026-09-07",
+    status: "OK",
+    twrPercent: 4,
+    pnl: { amount: "5000.00", currency: "USD" },
+    series: [
+      { date: "2026-09-07", value: { amount: "120000.00", currency: "USD" }, returnPercent: 1 },
+      {
+        date: "2026-09-08",
+        value: { amount: "125000.00", currency: "USD" },
+        returnPercent: 4.1667,
+      },
+    ],
+  },
+};
 
 /** The part of the overview the page reads so far: the positions, the summary and today's change. */
 const recentTransaction = {
@@ -64,6 +83,8 @@ function clientWith(answers: Answers = {}) {
           return answers.listPortfolios?.() ?? Promise.resolve({ data: [growth] });
         case "getPortfolioOverview":
           return answers.getPortfolioOverview?.() ?? Promise.resolve(overviewOf(5));
+        case "getPortfolioPerformance":
+          return answers.getPortfolioPerformance?.() ?? Promise.resolve(performanceData);
         default:
           return Promise.reject(new Error(`unexpected ${operation.operationId}`));
       }
@@ -203,6 +224,40 @@ describe("DashboardPage", () => {
       expect(screen.queryByText("Couldn't load the dashboard")).not.toBeInTheDocument();
     });
     expect(await screen.findByText(/· Growth · 5 positions$/)).toBeInTheDocument();
+  });
+
+  it("draws the performance charts once the portfolio holds positions", async () => {
+    renderPage(clientWith().client);
+
+    expect(await screen.findByRole("heading", { name: "Performance" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Daily performance" })).toBeInTheDocument();
+    expect(await screen.findByRole("list", { name: /last months/i })).toBeInTheDocument();
+  });
+
+  it("leaves the performance charts out while the portfolio holds no positions", async () => {
+    const { client, call } = clientWith({
+      getPortfolioOverview: () => Promise.resolve(overviewOf(0, [])),
+    });
+    renderPage(client);
+    await screen.findAllByRole("button", { name: "New transaction" });
+
+    expect(screen.queryByRole("heading", { name: "Performance" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Daily performance" })).not.toBeInTheDocument();
+    expect(call.mock.calls.some(([op]) => op.operationId === "getPortfolioPerformance")).toBe(
+      false,
+    );
+  });
+
+  it("keeps the rest of the dashboard when the performance fails, and retries only that panel", async () => {
+    const getPortfolioPerformance = vi
+      .fn<() => Promise<unknown>>()
+      .mockRejectedValue(new ApiError("DEPENDENCY_ERROR", "Unavailable", 503));
+    renderPage(clientWith({ getPortfolioPerformance }).client);
+
+    expect(await screen.findAllByText("Couldn't load the performance")).toHaveLength(1);
+    expect(screen.queryByText("Couldn't load the dashboard")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hello" })).toBeInTheDocument();
+    expect(screen.getByText("$125,430.25")).toBeInTheDocument();
   });
 
   it("asks for a portfolio when the user has none", async () => {

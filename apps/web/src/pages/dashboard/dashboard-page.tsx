@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
+import { DailyReturnsPanel } from "@/features/dashboard/components/daily-returns-panel";
+import { MonthlyReturns } from "@/features/dashboard/components/monthly-returns";
+import { PerformancePanel } from "@/features/dashboard/components/performance-panel";
 import { PortfolioValuePanel } from "@/features/dashboard/components/portfolio-value-panel";
 import { RecentTransactionsPanel } from "@/features/dashboard/components/recent-transactions-panel";
 import { TotalReturnPanel } from "@/features/dashboard/components/total-return-panel";
@@ -131,12 +134,16 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
           onNew={openPanel}
           portfolioId={portfolioId}
           totalValue={summary.totalValue}
-        />
+        >
+          <MonthlyReturns portfolioId={portfolioId} />
+        </PortfolioValuePanel>
+        {empty ? null : <PerformancePanel portfolioId={portfolioId} />}
         <TotalReturnPanel
           empty={empty}
           percent={summary.unrealizedPnLPercent}
           profit={summary.unrealizedPnL}
         />
+        {empty ? null : <DailyReturnsPanel portfolioId={portfolioId} />}
         <div className="desktop:col-span-2">
           <RecentTransactionsPanel onNew={openPanel} rows={recentRows} />
         </div>

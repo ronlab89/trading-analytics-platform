@@ -17,7 +17,7 @@ function Stat({ label, tone = "neutral", children }: StatProps) {
       <dt className="text-xs text-(--color-text-secondary)">{label}</dt>
       <dd
         className={cn(
-          "text-lg leading-6 font-medium",
+          "text-base leading-6 font-medium whitespace-nowrap",
           tone === "gain" && "text-(--color-chart-gain)",
           tone === "loss" && "text-(--color-chart-loss)",
           tone === "neutral" && "text-(--color-text-default)",

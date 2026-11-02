@@ -14,7 +14,7 @@ function day(date: string, returnPercent: number) {
 
 function performance(status: "OK" | "INSUFFICIENT_DATA" = "OK") {
   return {
-    asOf: "2026-10-06T00:00:00.000Z",
+    asOf: "2026-10-06",
     effectiveFrom: "2026-08-01",
     status,
     twrPercent: 1,

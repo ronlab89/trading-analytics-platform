@@ -133,6 +133,32 @@ const json = (data: unknown) => ({
   body: JSON.stringify({ data }),
 });
 
+/**
+ * The performance the charts draw from: 40 business days across three months, each with a value
+ * and a daily return that goes up and down, so the bars have both colors.
+ */
+const performance = () => {
+  const series = [];
+  const day = new Date(Date.UTC(2026, 7, 17));
+  for (let i = 0; series.length < 40; i += 1) {
+    day.setUTCDate(day.getUTCDate() + 1);
+    if (day.getUTCDay() === 0 || day.getUTCDay() === 6) continue;
+    series.push({
+      date: day.toISOString().slice(0, 10),
+      value: { amount: (120000 + i * 150).toFixed(2), currency: "USD" },
+      returnPercent: i % 3 === 0 ? -0.6 : 0.5,
+    });
+  }
+  return {
+    asOf: "2026-10-06",
+    effectiveFrom: "2026-08-18",
+    status: "OK",
+    twrPercent: 4,
+    pnl: { amount: "5000.00", currency: "USD" },
+    series,
+  };
+};
+
 /** The portfolio list and its detail, with the names the three layouts need to show. */
 test.beforeEach(async ({ page }) => {
   await mockApi(page, { refresh: signedInReply });
@@ -176,6 +202,9 @@ test.beforeEach(async ({ page }) => {
   );
   await page.route("http://localhost:7001/api/v1/portfolios/p1/overview", (route) =>
     route.fulfill(json(overview())),
+  );
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/analytics/performance?*", (route) =>
+    route.fulfill(json(performance())),
   );
   await page.route("http://localhost:7001/api/v1/assets/*", (route) => {
     const id = route.request().url().split("/").pop() ?? "a1";
@@ -569,8 +598,16 @@ test("on mobile the positions are cards and the detail header keeps its actions 
 const recentTransactions = (page: Page) =>
   page.getByRole("region", { name: /Recent transactions|Transacciones recientes/ });
 
+const performancePanel = (page: Page) =>
+  page.getByRole("region", { name: /^(Performance|Rendimiento)$/ });
+const dailyReturns = (page: Page) =>
+  page.getByRole("region", { name: /Daily performance|Rendimiento diario/ });
+
 async function waitForDashboard(page: Page) {
   await recentTransactions(page).waitFor();
+  await performancePanel(page).locator(".recharts-surface").waitFor();
+  await dailyReturns(page).locator(".recharts-surface").waitFor();
+  await page.getByRole("list", { name: /last months|últimos meses/ }).waitFor();
 }
 
 for (const { name, width, height } of viewports) {
@@ -592,7 +629,7 @@ for (const { name, width, height } of viewports) {
 
     const main = await boxOf(page.locator("main"));
     const regions = await page.locator("main").getByRole("region").all();
-    expect(regions).toHaveLength(3);
+    expect(regions).toHaveLength(5);
     for (const region of regions) {
       const box = await boxOf(region);
       expect(box.x).toBeGreaterThanOrEqual(main.x);
@@ -665,4 +702,52 @@ test("on mobile tapping a recent transaction opens its detail as a bottom sheet"
   const box = await boxOf(sheet);
   expect(box.x).toBe(0);
   expect(box.width).toBe(390);
+});
+
+test("on the desktop the value and the performance sit side by side, below it they stack", async ({
+  page,
+}) => {
+  const value = page.getByRole("region", { name: /^(Hello|Hola)/ });
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await waitForDashboard(page);
+  const side = { value: await boxOf(value), chart: await boxOf(performancePanel(page)) };
+  expect(side.chart.x).toBeGreaterThan(side.value.x + side.value.width - 1);
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  const stacked = { value: await boxOf(value), chart: await boxOf(performancePanel(page)) };
+  expect(stacked.chart.y).toBeGreaterThanOrEqual(stacked.value.y + stacked.value.height);
+  expect(stacked.chart.x).toBe(stacked.value.x);
+});
+
+for (const { name, width, height } of viewports) {
+  test(`the charts fit their panels on ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    await waitForDashboard(page);
+
+    for (const panel of [performancePanel(page), dailyReturns(page)]) {
+      const box = await boxOf(panel);
+      const surface = await boxOf(panel.locator(".recharts-surface"));
+      expect(surface.width).toBeGreaterThan(200);
+      expect(surface.x + surface.width).toBeLessThanOrEqual(box.x + box.width);
+    }
+    const months = page.getByRole("list", { name: /last months|últimos meses/ });
+    await expect(months.getByRole("listitem")).toHaveCount(3);
+  });
+}
+
+test("picking another period asks for it and keeps the chart", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await waitForDashboard(page);
+
+  const request = page.waitForRequest(
+    (r) => r.url().includes("period=3M") && r.url().includes("performance"),
+  );
+  await performancePanel(page).getByRole("button", { name: "3M" }).click();
+  await request;
+
+  await expect(performancePanel(page).locator(".recharts-surface")).toBeVisible();
 });

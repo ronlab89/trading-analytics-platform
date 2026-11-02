@@ -42,3 +42,7 @@ What the Figma draws and this slice does not, with the reason and where it belon
 
 - L1 (2026-11-02): "si vamos con el dashboard" → partition approved: FE2.1 base + number panels, FE2.2 charts, FE2.3 distribution and risk.
 - L2 (2026-11-02): "lo que dejes fuera porque aun no existe con que conectar o algo por el estilo dejalo anotado para poder retomarlo en el futuro" → the table above.
+
+## Resolved in FE2.2
+
+The monthly bars, the "Rendimiento" line (without the S&P 500 line), the daily bars with their five stats and the per-panel errors were done in FE2.2. See `fe2-2-dashboard-charts.md`.
