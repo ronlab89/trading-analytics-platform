@@ -289,6 +289,62 @@ for (const { name, width, height } of viewports.filter((viewport) => viewport.wi
   });
 }
 
+const detailName = /Transaction details|Detalle de la transacción/;
+
+test("on mobile tapping a transaction opens its detail as a bottom sheet as wide as the screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/transactions");
+  await waitForTransactions(page, 390);
+
+  await page
+    .getByRole("button", { name: /View the .* transaction|Ver la transacción de/ })
+    .first()
+    .click();
+
+  const sheet = page.getByRole("dialog", { name: detailName });
+  const box = await boxOf(sheet);
+  expect(box.x).toBe(0);
+  expect(box.width).toBe(390);
+  // The sheet slides up from the bottom edge, so wait for it to settle there.
+  await expect
+    .poll(async () => {
+      const settled = await boxOf(sheet);
+      return settled.y + settled.height;
+    })
+    .toBe(844);
+});
+
+for (const { name, width, height } of viewports.filter((viewport) => viewport.width > MOBILE_MAX)) {
+  test(`on ${name} the row menu opens the transaction detail in a 440 px drawer at the right`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/transactions");
+    await waitForTransactions(page, width);
+
+    await page
+      .getByRole("button", { name: /Actions for the|Acciones de la transacción/ })
+      .first()
+      .click();
+    await page.getByRole("menuitem", { name: /View details|Ver detalle/ }).click();
+
+    const dialog = page.getByRole("dialog", { name: detailName });
+    // The drawer slides in from the right edge, so wait for it to settle there.
+    await expect
+      .poll(async () => {
+        const settled = await boxOf(dialog);
+        return settled.x + settled.width;
+      })
+      .toBe(width);
+    const box = await boxOf(dialog);
+    expect(box.width).toBe(440);
+    expect(box.y).toBe(0);
+    expect(box.height).toBe(height);
+  });
+}
+
 const filtersButton = (page: Page) =>
   page.getByRole("button", { name: /^(Filters|Filtros)( · \d+)?$/ });
 

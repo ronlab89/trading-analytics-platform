@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import type { TransactionRow } from "../types";
 import { TransactionCardList } from "./transaction-card-list";
@@ -24,6 +25,7 @@ describe("TransactionCardList", () => {
   it("draws one card per transaction, in the order it gets them", () => {
     render(
       <TransactionCardList
+        onView={vi.fn()}
         rows={[
           row({ id: "b", name: "Bitcoin", symbol: "BTC" }),
           row({ id: "a", name: "Apple Inc." }),
@@ -41,7 +43,7 @@ describe("TransactionCardList", () => {
   });
 
   it("writes the asset, the type, the total and the status of a transaction", () => {
-    render(<TransactionCardList rows={[row()]} />);
+    render(<TransactionCardList onView={vi.fn()} rows={[row()]} />);
 
     const card = screen.getByRole("listitem");
     expect(within(card).getByText("Apple Inc.")).toBeInTheDocument();
@@ -50,14 +52,24 @@ describe("TransactionCardList", () => {
     expect(within(card).getByText("Settled")).toBeInTheDocument();
   });
 
+  it("opens the transaction of a card when it is tapped", async () => {
+    const onView = vi.fn();
+    const bitcoin = row({ id: "b", name: "Bitcoin", symbol: "BTC" });
+    render(<TransactionCardList onView={onView} rows={[row(), bitcoin]} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "View the Bitcoin transaction" }));
+
+    expect(onView).toHaveBeenCalledExactlyOnceWith(bitcoin);
+  });
+
   it("writes a sale as a sale", () => {
-    render(<TransactionCardList rows={[row({ type: "SELL" })]} />);
+    render(<TransactionCardList onView={vi.fn()} rows={[row({ type: "SELL" })]} />);
 
     expect(screen.getByText("Sell")).toBeInTheDocument();
   });
 
   it("leaves out the quantity, the price and the fees, as the Figma does", () => {
-    render(<TransactionCardList rows={[row()]} />);
+    render(<TransactionCardList onView={vi.fn()} rows={[row()]} />);
 
     const card = screen.getByRole("listitem");
     expect(within(card).queryByText(/\$180\.20/)).not.toBeInTheDocument();
@@ -66,7 +78,7 @@ describe("TransactionCardList", () => {
   });
 
   it("marks the date as a time element with the instant the API sent", () => {
-    render(<TransactionCardList rows={[row()]} />);
+    render(<TransactionCardList onView={vi.fn()} rows={[row()]} />);
 
     expect(screen.getByRole("listitem").querySelector("time")).toHaveAttribute(
       "datetime",
@@ -75,7 +87,7 @@ describe("TransactionCardList", () => {
   });
 
   it("names an asset that did not load", () => {
-    render(<TransactionCardList rows={[row({ name: null, symbol: null })]} />);
+    render(<TransactionCardList onView={vi.fn()} rows={[row({ name: null, symbol: null })]} />);
 
     expect(screen.getByText("Unknown asset")).toBeInTheDocument();
   });

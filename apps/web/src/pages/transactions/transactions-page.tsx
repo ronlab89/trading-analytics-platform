@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
 import { TransactionFilterChips } from "@/features/transactions/components/transaction-filter-chips";
+import { TransactionDetailPanel } from "@/features/transactions/components/transaction-detail-panel";
 import { TransactionFiltersButton } from "@/features/transactions/components/transaction-filters-button";
 import { TransactionCardList } from "@/features/transactions/components/transaction-card-list";
 import { TransactionsCardsSkeleton } from "@/features/transactions/components/transactions-cards-skeleton";
@@ -19,6 +20,7 @@ import {
   NO_FILTERS,
   type TransactionFilters,
 } from "@/features/transactions/lib/transaction-filters";
+import type { TransactionRow } from "@/features/transactions/types";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useIsMobile } from "@/hooks/use-media-query";
 
@@ -113,6 +115,8 @@ function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: Trans
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [filters, setFilters] = useState(NO_FILTERS);
+  // The transaction whose detail is open; the list already holds everything the panel shows.
+  const [viewing, setViewing] = useState<TransactionRow | null>(null);
   const transactions = useTransactionRows(portfolioId, { page, pageSize }, filters);
   const { rows, meta } = transactions;
   const narrowed = activeFilterCount(filters) > 0;
@@ -228,7 +232,7 @@ function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: Trans
               <div className="p-6">{noResults}</div>
             ) : (
               <>
-                <TransactionCardList rows={rows} />
+                <TransactionCardList onView={setViewing} rows={rows} />
                 <div className="border-t border-(--color-border-default) p-4">{pagination}</div>
               </>
             )}
@@ -241,12 +245,18 @@ function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: Trans
             noResults
           ) : (
             <>
-              <TransactionsTable rows={rows} />
+              <TransactionsTable onView={setViewing} rows={rows} />
               {pagination}
             </>
           )}
         </section>
       )}
+      <TransactionDetailPanel
+        onClose={() => {
+          setViewing(null);
+        }}
+        transaction={viewing}
+      />
     </>
   );
 }

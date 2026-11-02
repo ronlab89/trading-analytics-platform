@@ -9,3 +9,19 @@ export function transactionTotal(price: MoneyDto, quantity: number): MoneyDto {
   const cents = Math.round(Number(price.amount) * quantity * 100);
   return { amount: (cents / 100).toFixed(2), currency: price.currency };
 }
+
+/**
+ * What the transaction costs or brings in once the fees count, for the Figma detail "Total": a
+ * purchase costs the operation plus the fees, a sale brings in the operation minus them. The form
+ * summary says the same, so the amount a user saw before recording is the one the detail shows.
+ */
+export function transactionNetTotal(
+  type: "BUY" | "SELL",
+  operation: MoneyDto,
+  fees: MoneyDto,
+): MoneyDto {
+  const sign = type === "SELL" ? -1 : 1;
+  const cents =
+    Math.round(Number(operation.amount) * 100) + sign * Math.round(Number(fees.amount) * 100);
+  return { amount: (cents / 100).toFixed(2), currency: operation.currency };
+}

@@ -44,6 +44,29 @@ export function formatDateTime(iso: string, language: string, timeZone?: string)
   return `${day.format(moment)} · ${time.format(moment)}`;
 }
 
+const fullDayFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A moment with its year, for the detail of one transaction (`6 oct 2026, 14:29`, `Oct 6, 2026,
+ * 14:29`): the list leaves the year out, the detail has the room to say it.
+ */
+export function formatFullDateTime(iso: string, language: string, timeZone?: string): string {
+  const locale = localeOf(language);
+  const moment = new Date(iso);
+  const day = cached(fullDayFormats, locale, timeZone, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const time = cached(timeFormats, locale, timeZone, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return `${day.format(moment)}, ${time.format(moment)}`;
+}
+
 const calendarDayFormats = new Map<string, Intl.DateTimeFormat>();
 const dayMonthFormats = new Map<string, Intl.DateTimeFormat>();
 
