@@ -24,6 +24,7 @@ interface Answers {
   listPortfolios?: () => Promise<unknown>;
   getPortfolioOverview?: () => Promise<unknown>;
   getPortfolioPerformance?: () => Promise<unknown>;
+  listNotifications?: () => Promise<unknown>;
 }
 
 const performanceData = {
@@ -110,6 +111,8 @@ function clientWith(answers: Answers = {}) {
           return answers.getPortfolioOverview?.() ?? Promise.resolve(overviewOf(5));
         case "getPortfolioPerformance":
           return answers.getPortfolioPerformance?.() ?? Promise.resolve(performanceData);
+        case "listNotifications":
+          return answers.listNotifications?.() ?? Promise.resolve({ data: [] });
         default:
           return Promise.reject(new Error(`unexpected ${operation.operationId}`));
       }
@@ -267,6 +270,13 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("heading", { name: "Top movers" })).toBeInTheDocument();
   });
 
+  it("shows what needs attention beside the daily performance", async () => {
+    renderPage(clientWith().client);
+
+    expect(await screen.findByRole("heading", { name: "Needs attention" })).toBeInTheDocument();
+    expect(await screen.findByText("Nothing needs your attention")).toBeInTheDocument();
+  });
+
   it("leaves those panels out while the portfolio holds no positions", async () => {
     renderPage(
       clientWith({ getPortfolioOverview: () => Promise.resolve(overviewOf(0, [])) }).client,
@@ -276,6 +286,7 @@ describe("DashboardPage", () => {
     expect(screen.queryByRole("heading", { name: "Distribution" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Risk level" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Top movers" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Needs attention" })).not.toBeInTheDocument();
   });
 
   it("leaves the performance charts out while the portfolio holds no positions", async () => {

@@ -381,6 +381,21 @@ const en = {
       volatility: "Annualized volatility {{value}}",
       volatilityUnknown: "Volatility needs more days of history",
     },
+    attention: {
+      title: "Needs attention",
+      count: "{{count}} unread",
+      loading: "Loading the notifications",
+      kinds: { alert: "Alert", info: "Info", completed: "Completed" },
+      empty: {
+        title: "Nothing needs your attention",
+        description: "New alerts and events appear here.",
+      },
+      failed: {
+        title: "Couldn't load the notifications",
+        description: "Check your connection and try again. Your data has not been changed.",
+        retry: "Retry",
+      },
+    },
     movers: {
       title: "Top movers",
       subtitle: "Change today by position",
@@ -936,6 +951,21 @@ const es: Messages<typeof en> = {
       unknown: "Sin datos aún",
       volatility: "Volatilidad anualizada {{value}}",
       volatilityUnknown: "La volatilidad necesita más días de historial",
+    },
+    attention: {
+      title: "Requiere atención",
+      count: "{{count}} sin leer",
+      loading: "Cargando las notificaciones",
+      kinds: { alert: "Alerta", info: "Info", completed: "Completado" },
+      empty: {
+        title: "Nada requiere tu atención",
+        description: "Las nuevas alertas y eventos aparecen aquí.",
+      },
+      failed: {
+        title: "No se pudieron cargar las notificaciones",
+        description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+        retry: "Reintentar",
+      },
     },
     movers: {
       title: "Mayores movimientos",

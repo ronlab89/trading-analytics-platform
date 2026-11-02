@@ -6,6 +6,7 @@ import {
   formatDateTime,
   formatFullDateTime,
   formatLongDate,
+  formatRelativeTime,
   formatShortMonth,
   formatTimeOfDay,
 } from "./format-date";
@@ -132,5 +133,28 @@ describe("formatShortMonth", () => {
 
   it("returns a text that is not a month as it is", () => {
     expect(formatShortMonth("soon", "en")).toBe("soon");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  const now = new Date("2026-10-06T12:00:00.000Z");
+
+  it("writes how long ago in the largest whole unit", () => {
+    expect(formatRelativeTime("2026-10-04T12:00:00.000Z", "en", now)).toBe("2 days ago");
+    expect(formatRelativeTime("2026-10-06T09:00:00.000Z", "en", now)).toBe("3 hr. ago");
+    expect(formatRelativeTime("2026-10-06T11:55:00.000Z", "en", now)).toBe("5 min. ago");
+  });
+
+  it("says now for less than a minute", () => {
+    expect(formatRelativeTime("2026-10-06T11:59:30.000Z", "en", now)).toBe("now");
+  });
+
+  it("writes it in the language of the user", () => {
+    expect(formatRelativeTime("2026-10-03T12:00:00.000Z", "es", now)).toContain("3");
+    expect(formatRelativeTime("2026-10-03T12:00:00.000Z", "es", now)).not.toContain("ago");
+  });
+
+  it("returns a text that is not a date as it is", () => {
+    expect(formatRelativeTime("soon", "en", now)).toBe("soon");
   });
 });

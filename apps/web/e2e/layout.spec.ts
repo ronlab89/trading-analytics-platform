@@ -217,6 +217,27 @@ test.beforeEach(async ({ page }) => {
   await page.route("http://localhost:7001/api/v1/portfolios/p1/analytics/performance?*", (route) =>
     route.fulfill(json(performance())),
   );
+  await page.route("http://localhost:7001/api/v1/notifications*", (route) =>
+    route.fulfill(
+      json(
+        [
+          ["n1", "WARNING", "Risk threshold exceeded"],
+          ["n2", "INFO", "Pending purchase of AAPL"],
+          ["n3", "SUCCESS", "Rebalance applied"],
+        ].map(([id, severity, title], index) => ({
+          id,
+          userId: "u1",
+          type: "TEST",
+          title,
+          message: "Message",
+          severity,
+          readAt: null,
+          createdAt: new Date(Date.now() - (index + 1) * 3_600_000).toISOString(),
+          metadata: {},
+        })),
+      ),
+    ),
+  );
   await page.route("http://localhost:7001/api/v1/assets/*", (route) => {
     const id = route.request().url().split("/").pop() ?? "a1";
     return route.fulfill(json(asset(id, id.toUpperCase(), `Asset ${id.toUpperCase()}`)));
@@ -616,6 +637,8 @@ const dailyReturns = (page: Page) =>
 
 const distribution = (page: Page) =>
   page.getByRole("region", { name: /^(Distribution|Distribución)$/ });
+const attention = (page: Page) =>
+  page.getByRole("region", { name: /Needs attention|Requiere atención/ });
 const riskLevel = (page: Page) => page.getByRole("region", { name: /Risk level|Nivel de riesgo/ });
 const movers = (page: Page) => page.getByRole("region", { name: /Top movers|Mayores movimientos/ });
 
@@ -624,6 +647,7 @@ async function waitForDashboard(page: Page) {
   await performancePanel(page).locator(".recharts-surface").waitFor();
   await dailyReturns(page).locator(".recharts-surface").waitFor();
   await distribution(page).locator(".recharts-surface").waitFor();
+  await attention(page).getByRole("listitem").first().waitFor();
   await page.getByRole("list", { name: /last months|últimos meses/ }).waitFor();
 }
 
@@ -646,7 +670,7 @@ for (const { name, width, height } of viewports) {
 
     const main = await boxOf(page.locator("main"));
     const regions = await page.locator("main").getByRole("region").all();
-    expect(regions).toHaveLength(8);
+    expect(regions).toHaveLength(9);
     for (const region of regions) {
       const box = await boxOf(region);
       expect(box.x).toBeGreaterThanOrEqual(main.x);
@@ -699,6 +723,25 @@ test("on the desktop the recent transactions and the top movers share a row, on 
     movers: await boxOf(movers(page)),
   };
   expect(stacked.movers.y).toBeGreaterThanOrEqual(stacked.recent.y + stacked.recent.height);
+});
+
+test("on the desktop what needs attention sits beside the daily performance, on mobile below it", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await waitForDashboard(page);
+  const side = { daily: await boxOf(dailyReturns(page)), attention: await boxOf(attention(page)) };
+  expect(side.attention.x).toBeGreaterThan(side.daily.x + side.daily.width - 1);
+  expect(Math.abs(side.attention.y - side.daily.y)).toBeLessThan(2);
+  await expect(attention(page).getByRole("listitem")).toHaveCount(3);
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  const stacked = {
+    daily: await boxOf(dailyReturns(page)),
+    attention: await boxOf(attention(page)),
+  };
+  expect(stacked.attention.y).toBeGreaterThanOrEqual(stacked.daily.y + stacked.daily.height);
 });
 
 test("the top movers list the biggest moves first with their sign", async ({ page }) => {

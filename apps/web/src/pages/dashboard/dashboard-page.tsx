@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
+import { AttentionPanel } from "@/features/dashboard/components/attention-panel";
 import { DailyReturnsPanel } from "@/features/dashboard/components/daily-returns-panel";
 import { DistributionPanel } from "@/features/dashboard/components/distribution-panel";
 import { MonthlyReturns } from "@/features/dashboard/components/monthly-returns";
@@ -165,8 +166,11 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
             <div className="desktop:col-span-6 flex flex-col *:flex-1">
               <DistributionPanel allocation={allocation} investedValue={summary.investedValue} />
             </div>
-            <div className="desktop:col-span-12 flex flex-col *:flex-1">
+            <div className="desktop:col-span-8 flex flex-col *:flex-1">
               <DailyReturnsPanel portfolioId={portfolioId} />
+            </div>
+            <div className="desktop:col-span-4 flex flex-col *:flex-1">
+              <AttentionPanel />
             </div>
           </>
         )}
