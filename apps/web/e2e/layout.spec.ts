@@ -242,6 +242,53 @@ test("on tablet and desktop the create form is a centered dialog, not a sheet", 
   expect(box.x + box.width).toBeLessThan(768);
 });
 
+test("on mobile the new transaction panel is a bottom sheet as wide as the screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/transactions");
+  await waitForTransactions(page, 390);
+
+  await page.getByRole("button", { name: /^(New|Nueva)$/ }).click();
+
+  const dialog = page.getByRole("dialog", { name: /New transaction|Nueva transacción/ });
+  const box = await boxOf(dialog);
+  expect(box.x).toBe(0);
+  expect(box.width).toBe(390);
+  // The sheet slides up from the bottom edge, so wait for it to settle there.
+  await expect
+    .poll(async () => {
+      const settled = await boxOf(dialog);
+      return settled.y + settled.height;
+    })
+    .toBe(844);
+});
+
+for (const { name, width, height } of viewports.filter((viewport) => viewport.width > MOBILE_MAX)) {
+  test(`on ${name} the new transaction panel is a 440 px drawer at the right, as tall as the screen`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/transactions");
+    await waitForTransactions(page, width);
+
+    await page.getByRole("button", { name: /New transaction|Nueva transacción/ }).click();
+
+    const dialog = page.getByRole("dialog", { name: /New transaction|Nueva transacción/ });
+    // The drawer slides in from the right edge, so wait for it to settle there.
+    await expect
+      .poll(async () => {
+        const settled = await boxOf(dialog);
+        return settled.x + settled.width;
+      })
+      .toBe(width);
+    const box = await boxOf(dialog);
+    expect(box.width).toBe(440);
+    expect(box.y).toBe(0);
+    expect(box.height).toBe(height);
+  });
+}
+
 test("on mobile the transactions are rows of one card inside the main area, not a table", async ({
   page,
 }) => {
