@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { formatCalendarDay, formatCalendarRange, formatDateTime } from "./format-date";
+import {
+  formatCalendarDay,
+  formatCalendarRange,
+  formatDateTime,
+  formatFullDateTime,
+} from "./format-date";
+
+describe("formatFullDateTime", () => {
+  it("adds the year to the day, as the Figma detail does", () => {
+    expect(formatFullDateTime("2026-10-06T14:29:00.000Z", "es", "UTC")).toBe("6 oct 2026, 14:29");
+  });
+
+  it("writes the month in the language of the person", () => {
+    expect(formatFullDateTime("2026-10-06T14:29:00.000Z", "en", "UTC")).toBe("Oct 6, 2026, 14:29");
+  });
+
+  it("writes the moment in the given time zone", () => {
+    expect(formatFullDateTime("2026-10-06T14:29:00.000Z", "es", "America/Bogota")).toBe(
+      "6 oct 2026, 09:29",
+    );
+  });
+});
 
 describe("formatDateTime", () => {
   it("writes the day, the short month and the 24-hour time, as the Figma does", () => {
