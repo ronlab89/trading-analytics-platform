@@ -362,6 +362,35 @@ const en = {
   },
   dashboard: {
     loading: "Loading the dashboard",
+    dailyReturns: {
+      title: "Daily performance",
+      subtitle: "Last 30 business days",
+      chartLabel: "Daily return of the portfolio, one bar per day",
+      summary:
+        "{{count}} days from {{from}} to {{to}}: {{positive}} positive. Best day {{best}} on {{bestDate}}, worst day {{worst}} on {{worstDate}}.",
+      loading: "Loading the daily performance",
+      empty: {
+        title: "Not enough data yet",
+        description: "The daily returns appear once your portfolio has a day of history.",
+      },
+      failed: {
+        title: "Couldn't load the daily performance",
+        description: "Check your connection and try again. Your data has not been changed.",
+        retry: "Retry",
+      },
+      stats: {
+        best: "Best day",
+        worst: "Worst day",
+        positive: "Positive days",
+        average: "Daily average",
+        streak: "Current streak",
+        streakUp_one: "{{count}} day up",
+        streakUp_other: "{{count}} days up",
+        streakDown_one: "{{count}} day down",
+        streakDown_other: "{{count}} days down",
+        streakFlat: "No movement",
+      },
+    },
     performance: {
       title: "Performance",
       periodLabel: "Period",
@@ -854,6 +883,36 @@ const es: Messages<typeof en> = {
   },
   dashboard: {
     loading: "Cargando el panel de inicio",
+    dailyReturns: {
+      title: "Rendimiento diario",
+      subtitle: "Últimos 30 días hábiles",
+      chartLabel: "Retorno diario del portafolio, una barra por día",
+      summary:
+        "{{count}} días del {{from}} al {{to}}: {{positive}} positivos. Mejor día {{best}} el {{bestDate}}, peor día {{worst}} el {{worstDate}}.",
+      loading: "Cargando el rendimiento diario",
+      empty: {
+        title: "Aún no hay datos suficientes",
+        description:
+          "Los retornos diarios aparecen cuando tu portafolio tiene un día de historial.",
+      },
+      failed: {
+        title: "No se pudo cargar el rendimiento diario",
+        description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+        retry: "Reintentar",
+      },
+      stats: {
+        best: "Mejor día",
+        worst: "Peor día",
+        positive: "Días positivos",
+        average: "Promedio diario",
+        streak: "Racha actual",
+        streakUp_one: "{{count}} día al alza",
+        streakUp_other: "{{count}} días al alza",
+        streakDown_one: "{{count}} día a la baja",
+        streakDown_other: "{{count}} días a la baja",
+        streakFlat: "Sin movimiento",
+      },
+    },
     performance: {
       title: "Rendimiento",
       periodLabel: "Período",

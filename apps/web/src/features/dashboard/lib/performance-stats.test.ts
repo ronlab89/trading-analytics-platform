@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { dailyStats, monthlyReturns, type PerformancePoint } from "./performance-stats";
+import {
+  dailyStats,
+  lastReturns,
+  monthlyReturns,
+  type PerformancePoint,
+} from "./performance-stats";
 
 function point(date: string, returnPercent: number | null): PerformancePoint {
   return { date, value: null, returnPercent };
@@ -68,5 +73,19 @@ describe("monthlyReturns", () => {
     expect(months.map((m) => m.month)).toEqual(["2026-09", "2026-10"]);
     expect(months[0]?.percent).toBeCloseTo(21, 10);
     expect(months[1]?.percent).toBeCloseTo(-19, 10);
+  });
+});
+
+describe("lastReturns", () => {
+  it("keeps the latest days that have a return, oldest first", () => {
+    const series = [
+      point("2026-10-01", 1),
+      point("2026-10-02", null),
+      point("2026-10-03", 2),
+      point("2026-10-04", 3),
+    ];
+
+    expect(lastReturns(series, 2).map((p) => p.date)).toEqual(["2026-10-03", "2026-10-04"]);
+    expect(lastReturns(series, 10)).toHaveLength(3);
   });
 });

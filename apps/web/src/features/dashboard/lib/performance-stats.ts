@@ -84,3 +84,11 @@ export function monthlyReturns(series: readonly PerformancePoint[]): MonthReturn
   }
   return [...growth].map(([month, factor]) => ({ month, percent: (factor - 1) * 100 }));
 }
+
+/** The latest `count` days that have a return, oldest first: the window of the daily returns chart. */
+export function lastReturns(
+  series: readonly PerformancePoint[],
+  count: number,
+): PerformancePoint[] {
+  return series.filter((point) => point.returnPercent !== null).slice(-count);
+}
