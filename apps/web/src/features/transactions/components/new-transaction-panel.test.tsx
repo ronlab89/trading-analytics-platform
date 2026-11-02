@@ -189,6 +189,23 @@ describe("NewTransactionPanel", () => {
     );
   });
 
+  it("says why the API refused the transaction, and does not offer to try again", async () => {
+    const reason = "Cannot sell 10 units: the portfolio would hold only 0 at that point.";
+    const create = vi
+      .fn<(input?: CallInput) => Promise<unknown>>()
+      .mockRejectedValue(new ApiError("VALIDATION_ERROR", reason, 422));
+    const { user } = setup(create);
+    await fill(user);
+
+    await submit(user);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("The transaction could not be recorded");
+    expect(alert).toHaveTextContent(reason);
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /Quantity/ })).toHaveValue("10");
+  });
+
   it("closes straight away when nothing was typed", async () => {
     const { user, onOpenChange } = setup();
 

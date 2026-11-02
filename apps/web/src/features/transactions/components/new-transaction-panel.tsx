@@ -3,6 +3,7 @@ import type { AssetResponse, CreateTransactionResponse } from "@trading/contract
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { ApiError } from "@/api/trading-client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,6 +111,14 @@ function NewTransactionForm({
     defaultValues: emptyTransactionForm(openedAt),
   });
   useReportDirty(form.formState.isDirty, onDirtyChange);
+  // The API understood the request and refused it (selling more than is held, say): its message is
+  // the reason, and sending the same transaction again cannot change the answer. Anything else
+  // (a dropped connection, a timeout, a server error) says nothing about the transaction, so it
+  // keeps the generic text and "Reintentar".
+  const rejection =
+    create.error instanceof ApiError && create.error.code === "VALIDATION_ERROR"
+      ? create.error.message
+      : null;
 
   // An asset the portfolio does not hold yet starts from zero; until the positions arrive it is unknown.
   const held = asset
@@ -148,18 +157,20 @@ function NewTransactionForm({
         {create.isError ? (
           <Alert
             action={
-              <Button
-                onClick={() => {
-                  void submit();
-                }}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                {t("transactionForm.failed.retry")}
-              </Button>
+              rejection === null ? (
+                <Button
+                  onClick={() => {
+                    void submit();
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {t("transactionForm.failed.retry")}
+                </Button>
+              ) : null
             }
-            description={t("transactionForm.failed.description")}
+            description={rejection ?? t("transactionForm.failed.description")}
             title={t("transactionForm.failed.title")}
             tone="error"
           />
