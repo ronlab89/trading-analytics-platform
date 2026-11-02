@@ -362,6 +362,15 @@ const en = {
   },
   dashboard: {
     loading: "Loading the dashboard",
+    distribution: {
+      title: "Distribution",
+      subtitle: "Weight by asset · {{invested}} invested",
+      others: "Others",
+      empty: {
+        title: "Nothing to distribute yet",
+        description: "The weight of each asset appears once the portfolio holds positions.",
+      },
+    },
     movers: {
       title: "Top movers",
       subtitle: "Change today by position",
@@ -899,6 +908,15 @@ const es: Messages<typeof en> = {
   },
   dashboard: {
     loading: "Cargando el panel de inicio",
+    distribution: {
+      title: "Distribución",
+      subtitle: "Peso por activo · {{invested}} invertidos",
+      others: "Otros",
+      empty: {
+        title: "Aún no hay nada que distribuir",
+        description: "El peso de cada activo aparece cuando el portafolio tiene posiciones.",
+      },
+    },
     movers: {
       title: "Mayores movimientos",
       subtitle: "Variación hoy por posición",
