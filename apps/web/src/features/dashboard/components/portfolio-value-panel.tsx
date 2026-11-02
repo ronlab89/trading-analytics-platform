@@ -40,7 +40,7 @@ export function PortfolioValuePanel({
   return (
     <section
       aria-labelledby="dashboard-value-title"
-      className="flex min-h-72 flex-col gap-4 rounded-xl bg-(--color-surface-card) p-5"
+      className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-5 desktop:min-h-72"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">

@@ -12,7 +12,7 @@ FE2 is split in three slices: FE2.1 (this one: base, value, total return, recent
 - [x] T3 "Hola, Jane" value panel
 - [x] T4 "Retorno total" panel
 - [x] T5 "Transacciones recientes" panel
-- [ ] T6 e2e layout at the three widths, look against the Figma, `pr-body.md`
+- [x] T6 e2e layout at the three widths, look against the Figma, `pr-body.md`
 
 ## Left out on purpose (pick these up later)
 
@@ -35,6 +35,7 @@ What the Figma draws and this slice does not, with the reason and where it belon
 | Opening the transaction detail from the desktop and tablet table of "Transacciones recientes"                                        | The Figma draws no row action there; on the phone the card opens the detail                                                                                                                     | decide with the Figma         |
 | "Retorno total" since the start of the portfolio (realized plus unrealized)                                                          | The overview has the unrealized result (`summary.unrealizedPnL`) and `performance.pnl` for a period, not the all-time total. The panel says "Resultado sin realizar de tus posiciones abiertas" | needs a backend field         |
 | The three-tab row layout of the Figma (Retorno total, Nivel de riesgo, Distribución side by side) and the top row Hola + Rendimiento | Only two of the panels exist, so the grid is two columns for now                                                                                                                                | rearranged in FE2.2 and FE2.3 |
+| Mobile order of the panels (Figma: value, Rendimiento, recent transactions, Retorno total, risk)                                     | Only three panels exist; they stack in the order value, Retorno total, recent transactions                                                                                                      | rearranged in FE2.2 and FE2.3 |
 | Sorting arrows on the headers of "Transacciones recientes"                                                                           | The overview sends the latest five in a fixed order                                                                                                                                             | not planned                   |
 
 ## Log
