@@ -1,5 +1,6 @@
 import type { MoneyDto } from "@trading/contracts";
 import { ArrowDownRight, ArrowUpRight, Plus } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Badge } from "@/components/badge";
@@ -17,12 +18,14 @@ interface PortfolioValuePanelProps {
   /** The portfolio holds no positions, so there is no value to show. */
   empty: boolean;
   onNew: () => void;
+  /** What goes under the value, the monthly bars of the dashboard; left out of an empty portfolio. */
+  children?: ReactNode;
 }
 
 /**
- * The Figma "Hola, Jane": a greeting, the value of the portfolio and how much it moved today. The
- * monthly bars the Figma draws under them are charts and arrive with FE2.2. An empty portfolio
- * shows the Figma empty state with the way to its first transaction instead.
+ * The Figma "Hola, Jane": a greeting, the value of the portfolio, how much it moved today and, under
+ * them, whatever the page puts as children (the monthly bars). An empty portfolio shows the Figma
+ * empty state with the way to its first transaction instead.
  */
 export function PortfolioValuePanel({
   firstName,
@@ -31,6 +34,7 @@ export function PortfolioValuePanel({
   dailyChange,
   empty,
   onNew,
+  children,
 }: PortfolioValuePanelProps) {
   const { t } = useTranslation();
   const title = firstName
@@ -80,6 +84,7 @@ export function PortfolioValuePanel({
             {formatMoney(totalValue)}
           </p>
           {dailyChange ? <DailyChange change={dailyChange} /> : null}
+          {children}
         </div>
       )}
     </section>

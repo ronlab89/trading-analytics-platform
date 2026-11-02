@@ -125,6 +125,17 @@ export function formatDayMonth(day: string, language: string): string {
   }).format(date);
 }
 
+const shortMonthFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** A month (`2026-10`) as its short name, for the label under a monthly bar (`oct`, `Oct`). */
+export function formatShortMonth(month: string, language: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return month;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  if (Number.isNaN(date.getTime())) return month;
+  return cached(shortMonthFormats, localeOf(language), "UTC", { month: "short" }).format(date);
+}
+
 const longDayFormats = new Map<string, Intl.DateTimeFormat>();
 const secondsFormats = new Map<string, Intl.DateTimeFormat>();
 

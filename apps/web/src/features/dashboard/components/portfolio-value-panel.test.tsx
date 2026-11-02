@@ -87,3 +87,17 @@ describe("PortfolioValuePanel", () => {
     expect(onNew).toHaveBeenCalledOnce();
   });
 });
+
+describe("PortfolioValuePanel children", () => {
+  it("puts them under the value", () => {
+    renderPanel({ children: <p>Monthly bars</p> });
+
+    expect(screen.getByText("Monthly bars")).toBeInTheDocument();
+  });
+
+  it("leaves them out of an empty portfolio", () => {
+    renderPanel({ empty: true, children: <p>Monthly bars</p> });
+
+    expect(screen.queryByText("Monthly bars")).not.toBeInTheDocument();
+  });
+});

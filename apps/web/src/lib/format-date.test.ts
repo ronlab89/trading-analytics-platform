@@ -6,6 +6,7 @@ import {
   formatDateTime,
   formatFullDateTime,
   formatLongDate,
+  formatShortMonth,
   formatTimeOfDay,
 } from "./format-date";
 
@@ -120,5 +121,16 @@ describe("formatDayMonth", () => {
 
   it("returns a text that is not a day as it is", () => {
     expect(formatDayMonth("soon", "en")).toBe("soon");
+  });
+});
+
+describe("formatShortMonth", () => {
+  it("writes the short name of the month", () => {
+    expect(formatShortMonth("2026-10", "en")).toBe("Oct");
+    expect(formatShortMonth("2026-10", "es").toLowerCase()).toContain("oct");
+  });
+
+  it("returns a text that is not a month as it is", () => {
+    expect(formatShortMonth("soon", "en")).toBe("soon");
   });
 });

@@ -362,6 +362,14 @@ const en = {
   },
   dashboard: {
     loading: "Loading the dashboard",
+    monthly: {
+      title: "Monthly performance",
+      chartLabel: "Return of each of the last months",
+      current: "current month",
+      loading: "Loading the monthly performance",
+      failed: "Couldn't load the monthly performance.",
+      retry: "Retry",
+    },
     dailyReturns: {
       title: "Daily performance",
       subtitle: "Last 30 business days",
@@ -883,6 +891,14 @@ const es: Messages<typeof en> = {
   },
   dashboard: {
     loading: "Cargando el panel de inicio",
+    monthly: {
+      title: "Rendimiento mensual",
+      chartLabel: "Retorno de cada uno de los últimos meses",
+      current: "mes en curso",
+      loading: "Cargando el rendimiento mensual",
+      failed: "No se pudo cargar el rendimiento mensual.",
+      retry: "Reintentar",
+    },
     dailyReturns: {
       title: "Rendimiento diario",
       subtitle: "Últimos 30 días hábiles",
