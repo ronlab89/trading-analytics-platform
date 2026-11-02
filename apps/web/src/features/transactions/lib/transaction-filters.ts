@@ -64,6 +64,20 @@ export function toFilterQuery({ types, asset, range }: TransactionFilters): Tran
   };
 }
 
+/**
+ * Whether two sets of filters ask the API for the same transactions: no type and both types are
+ * the same, and the asset counts by its id, not by the object that holds it.
+ */
+export function sameFilters(a: TransactionFilters, b: TransactionFilters): boolean {
+  const type = ({ types }: TransactionFilters) => (narrowsType(types) ? types[0] : undefined);
+  return (
+    type(a) === type(b) &&
+    a.asset?.id === b.asset?.id &&
+    a.range?.from === b.range?.from &&
+    a.range?.to === b.range?.to
+  );
+}
+
 /** How many filters narrow the list, for "Filtros · 3". */
 export function activeFilterCount({ types, asset, range }: TransactionFilters): number {
   return (narrowsType(types) ? 1 : 0) + (asset ? 1 : 0) + (range ? 1 : 0);

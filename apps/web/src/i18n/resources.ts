@@ -125,6 +125,19 @@ const en = {
       invalid: "Enter a valid fee.",
     },
   },
+  transactionFilters: {
+    title: "Filters",
+    clearAll: "Clear all",
+    clear: "Clear",
+    cancel: "Cancel",
+    apply: "Apply filters",
+    type: "Type",
+    asset: "Asset",
+    allAssets: "All assets",
+    date: "Date",
+    anyDate: "Any date",
+    selectRange: "Select a date range",
+  },
   dateRange: {
     presets: {
       last7: "Last 7 days",
@@ -499,6 +512,19 @@ const es: Messages<typeof en> = {
       help: "Si la dejas vacía se toma {{amount}}.",
       invalid: "Ingresa una comisión válida.",
     },
+  },
+  transactionFilters: {
+    title: "Filtros",
+    clearAll: "Limpiar todo",
+    clear: "Limpiar",
+    cancel: "Cancelar",
+    apply: "Aplicar filtros",
+    type: "Tipo",
+    asset: "Activo",
+    allAssets: "Todos los activos",
+    date: "Fecha",
+    anyDate: "Cualquier fecha",
+    selectRange: "Seleccionar rango de fechas",
   },
   dateRange: {
     presets: {

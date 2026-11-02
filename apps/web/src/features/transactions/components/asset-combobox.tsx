@@ -17,6 +17,8 @@ interface AssetComboboxProps {
   /** The asset chosen, or null while none is. The form keeps it, because it also needs its currency. */
   value: AssetResponse | null;
   onChange: (asset: AssetResponse) => void;
+  /** What the box says while no asset is chosen; "Busca un activo" unless the screen needs another. */
+  placeholder?: string;
 }
 
 /**
@@ -24,7 +26,7 @@ interface AssetComboboxProps {
  * once the person pauses typing, and the list moves with the arrow keys, as a listbox does. It
  * takes its id, description and invalid state from the `Field` around it, like the Select.
  */
-export function AssetCombobox({ value, onChange }: AssetComboboxProps) {
+export function AssetCombobox({ value, onChange, placeholder }: AssetComboboxProps) {
   const { t } = useTranslation();
   const { required, ...field } = useFieldControlProps({});
   const listId = useId();
@@ -76,7 +78,9 @@ export function AssetCombobox({ value, onChange }: AssetComboboxProps) {
           {...field}
           {...(required ? { "aria-required": true } : {})}
         >
-          <span className="truncate">{value ? label(value) : t("assetCombobox.placeholder")}</span>
+          <span className="truncate">
+            {value ? label(value) : (placeholder ?? t("assetCombobox.placeholder"))}
+          </span>
           <ChevronsUpDown
             aria-hidden="true"
             className="size-4 shrink-0 text-(--color-text-secondary)"

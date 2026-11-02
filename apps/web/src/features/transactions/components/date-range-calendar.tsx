@@ -20,9 +20,9 @@ interface DateRangeCalendarProps {
   onApply: (range: DateRange) => void;
   onCancel: () => void;
   /** Months side by side: two from the desktop width, one where there is no room for more. */
-  months?: 1 | 2;
+  months?: 1 | 2 | undefined;
   /** The day "today" means for the presets and the calendar; a test fixes it. */
-  today?: Date;
+  today?: Date | undefined;
 }
 
 const DAY =

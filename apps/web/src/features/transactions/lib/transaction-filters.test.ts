@@ -1,6 +1,6 @@
 import type { AssetResponse } from "@trading/contracts";
 import { describe, expect, it } from "vitest";
-import { activeFilterCount, NO_FILTERS, toFilterQuery } from "./transaction-filters";
+import { activeFilterCount, NO_FILTERS, sameFilters, toFilterQuery } from "./transaction-filters";
 
 const apple: AssetResponse = {
   id: "a1",
@@ -47,6 +47,26 @@ describe("toFilterQuery", () => {
     });
 
     expect(Object.keys(query).sort()).toEqual(["assetId", "dateFrom", "dateTo", "type"]);
+  });
+});
+
+describe("sameFilters", () => {
+  it("is true for filters that ask the API for the same transactions", () => {
+    expect(sameFilters(NO_FILTERS, { ...NO_FILTERS, types: ["BUY", "SELL"] })).toBe(true);
+    expect(
+      sameFilters({ ...NO_FILTERS, asset: apple }, { ...NO_FILTERS, asset: { ...apple } }),
+    ).toBe(true);
+  });
+
+  it("is false when the type, the asset or the range differ", () => {
+    expect(sameFilters(NO_FILTERS, { ...NO_FILTERS, types: ["SELL"] })).toBe(false);
+    expect(sameFilters(NO_FILTERS, { ...NO_FILTERS, asset: apple })).toBe(false);
+    expect(
+      sameFilters(
+        { ...NO_FILTERS, range: { from: "2026-10-01", to: "2026-10-14" } },
+        { ...NO_FILTERS, range: { from: "2026-10-01", to: "2026-10-15" } },
+      ),
+    ).toBe(false);
   });
 });
 
