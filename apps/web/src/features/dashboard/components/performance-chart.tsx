@@ -41,7 +41,7 @@ export function PerformanceChart({ series }: PerformanceChartProps) {
         role="img"
         style={{ minHeight: MIN_CHART_HEIGHT }}
       >
-        <ResponsiveContainer height="100%" width="100%">
+        <ResponsiveContainer height="100%" minHeight={MIN_CHART_HEIGHT} width="100%">
           <AreaChart data={points} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id="performance-area" x1="0" x2="0" y1="0" y2="1">

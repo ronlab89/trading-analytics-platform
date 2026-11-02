@@ -163,3 +163,27 @@ export function formatTimeOfDay(iso: string, language: string, timeZone?: string
     hour12: false,
   }).format(new Date(iso));
 }
+
+const relativeFormats = new Map<string, Intl.RelativeTimeFormat>();
+
+/**
+ * How long ago a moment was, in the largest whole unit (`2 days ago`, `3 hr. ago`, `now`), for the
+ * line under a notification. `now` exists so a test does not depend on the time it runs. A text
+ * that is not a date comes back as it is.
+ */
+export function formatRelativeTime(iso: string, language: string, now: Date = new Date()): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
+  const locale = localeOf(language);
+  let format = relativeFormats.get(locale);
+  if (!format) {
+    format = new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" });
+    relativeFormats.set(locale, format);
+  }
+  const seconds = Math.trunc((then - now.getTime()) / 1000);
+  const abs = Math.abs(seconds);
+  if (abs < 60) return format.format(0, "second");
+  if (abs < 3600) return format.format(Math.trunc(seconds / 60), "minute");
+  if (abs < 86400) return format.format(Math.trunc(seconds / 3600), "hour");
+  return format.format(Math.trunc(seconds / 86400), "day");
+}

@@ -24,6 +24,7 @@ interface Answers {
   listPortfolios?: () => Promise<unknown>;
   getPortfolioOverview?: () => Promise<unknown>;
   getPortfolioPerformance?: () => Promise<unknown>;
+  listNotifications?: () => Promise<unknown>;
 }
 
 const performanceData = {
@@ -65,9 +66,34 @@ const recentTransaction = {
 const overviewOf = (positions: number, recent: readonly unknown[] = [recentTransaction]) => ({
   data: {
     recentTransactions: recent,
-    positions: Array.from({ length: positions }, (_, index) => ({ id: index })),
+    positions: Array.from({ length: positions }, (_, index) => ({
+      id: index,
+      asset: {
+        id: `a${String(index)}`,
+        symbol: `S${String(index)}`,
+        name: "Asset",
+        assetType: "STOCK",
+      },
+      dailyChange: {
+        changeValue: { amount: "1.00", currency: "USD" },
+        changePercent: index + 1,
+      },
+    })),
+    allocation: {
+      groupBy: "asset",
+      groups: [
+        {
+          key: "a0",
+          label: "S0",
+          marketValue: { amount: "100.00", currency: "USD" },
+          percentage: 100,
+        },
+      ],
+    },
+    pulse: { volatility: { classification: "MODERATE", value: 14.2, explanation: "" } },
     summary: {
       totalValue: { amount: "125430.25", currency: "USD" },
+      investedValue: { amount: "107230.25", currency: "USD" },
       unrealizedPnL: { amount: "18200.00", currency: "USD" },
       unrealizedPnLPercent: 17,
     },
@@ -85,6 +111,8 @@ function clientWith(answers: Answers = {}) {
           return answers.getPortfolioOverview?.() ?? Promise.resolve(overviewOf(5));
         case "getPortfolioPerformance":
           return answers.getPortfolioPerformance?.() ?? Promise.resolve(performanceData);
+        case "listNotifications":
+          return answers.listNotifications?.() ?? Promise.resolve({ data: [] });
         default:
           return Promise.reject(new Error(`unexpected ${operation.operationId}`));
       }
@@ -232,6 +260,33 @@ describe("DashboardPage", () => {
     expect(await screen.findByRole("heading", { name: "Performance" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Daily performance" })).toBeInTheDocument();
     expect(await screen.findByRole("list", { name: /last months/i })).toBeInTheDocument();
+  });
+
+  it("shows the distribution, the risk level and the top movers from the overview", async () => {
+    renderPage(clientWith().client);
+
+    expect(await screen.findByRole("heading", { name: "Distribution" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Risk level" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Top movers" })).toBeInTheDocument();
+  });
+
+  it("shows what needs attention beside the daily performance", async () => {
+    renderPage(clientWith().client);
+
+    expect(await screen.findByRole("heading", { name: "Needs attention" })).toBeInTheDocument();
+    expect(await screen.findByText("Nothing needs your attention")).toBeInTheDocument();
+  });
+
+  it("leaves those panels out while the portfolio holds no positions", async () => {
+    renderPage(
+      clientWith({ getPortfolioOverview: () => Promise.resolve(overviewOf(0, [])) }).client,
+    );
+    await screen.findAllByRole("button", { name: "New transaction" });
+
+    expect(screen.queryByRole("heading", { name: "Distribution" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Risk level" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Top movers" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Needs attention" })).not.toBeInTheDocument();
   });
 
   it("leaves the performance charts out while the portfolio holds no positions", async () => {

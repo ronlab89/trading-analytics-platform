@@ -362,6 +362,48 @@ const en = {
   },
   dashboard: {
     loading: "Loading the dashboard",
+    distribution: {
+      title: "Distribution",
+      subtitle: "Weight by asset · {{invested}} invested",
+      others: "Others",
+      empty: {
+        title: "Nothing to distribute yet",
+        description: "The weight of each asset appears once the portfolio holds positions.",
+      },
+    },
+    risk: {
+      title: "Risk level",
+      alert: "Alert",
+      low: "Low",
+      moderate: "Moderate",
+      high: "High",
+      unknown: "No data yet",
+      volatility: "Annualized volatility {{value}}",
+      volatilityUnknown: "Volatility needs more days of history",
+    },
+    attention: {
+      title: "Needs attention",
+      count: "{{count}} unread",
+      loading: "Loading the notifications",
+      kinds: { alert: "Alert", info: "Info", completed: "Completed" },
+      empty: {
+        title: "Nothing needs your attention",
+        description: "New alerts and events appear here.",
+      },
+      failed: {
+        title: "Couldn't load the notifications",
+        description: "Check your connection and try again. Your data has not been changed.",
+        retry: "Retry",
+      },
+    },
+    movers: {
+      title: "Top movers",
+      subtitle: "Change today by position",
+      empty: {
+        title: "No movement yet today",
+        description: "Positions appear here once they have a price for the day.",
+      },
+    },
     monthly: {
       title: "Monthly performance",
       chartLabel: "Return of each of the last months",
@@ -891,6 +933,48 @@ const es: Messages<typeof en> = {
   },
   dashboard: {
     loading: "Cargando el panel de inicio",
+    distribution: {
+      title: "Distribución",
+      subtitle: "Peso por activo · {{invested}} invertidos",
+      others: "Otros",
+      empty: {
+        title: "Aún no hay nada que distribuir",
+        description: "El peso de cada activo aparece cuando el portafolio tiene posiciones.",
+      },
+    },
+    risk: {
+      title: "Nivel de riesgo",
+      alert: "Alerta",
+      low: "Bajo",
+      moderate: "Moderado",
+      high: "Alto",
+      unknown: "Sin datos aún",
+      volatility: "Volatilidad anualizada {{value}}",
+      volatilityUnknown: "La volatilidad necesita más días de historial",
+    },
+    attention: {
+      title: "Requiere atención",
+      count: "{{count}} sin leer",
+      loading: "Cargando las notificaciones",
+      kinds: { alert: "Alerta", info: "Info", completed: "Completado" },
+      empty: {
+        title: "Nada requiere tu atención",
+        description: "Las nuevas alertas y eventos aparecen aquí.",
+      },
+      failed: {
+        title: "No se pudieron cargar las notificaciones",
+        description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+        retry: "Reintentar",
+      },
+    },
+    movers: {
+      title: "Mayores movimientos",
+      subtitle: "Variación hoy por posición",
+      empty: {
+        title: "Aún no hay movimientos hoy",
+        description: "Las posiciones aparecen aquí cuando tienen precio del día.",
+      },
+    },
     monthly: {
       title: "Rendimiento mensual",
       chartLabel: "Retorno de cada uno de los últimos meses",

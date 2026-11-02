@@ -4,14 +4,19 @@ import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
+import { AttentionPanel } from "@/features/dashboard/components/attention-panel";
 import { DailyReturnsPanel } from "@/features/dashboard/components/daily-returns-panel";
+import { DistributionPanel } from "@/features/dashboard/components/distribution-panel";
 import { MonthlyReturns } from "@/features/dashboard/components/monthly-returns";
+import { MoversPanel } from "@/features/dashboard/components/movers-panel";
 import { PerformancePanel } from "@/features/dashboard/components/performance-panel";
 import { PortfolioValuePanel } from "@/features/dashboard/components/portfolio-value-panel";
 import { RecentTransactionsPanel } from "@/features/dashboard/components/recent-transactions-panel";
+import { RiskPanel } from "@/features/dashboard/components/risk-panel";
 import { TotalReturnPanel } from "@/features/dashboard/components/total-return-panel";
 import { DashboardSkeleton } from "@/features/dashboard/components/dashboard-skeleton";
 import { useOverview } from "@/features/dashboard/hooks/use-overview";
+import { topMovers } from "@/features/dashboard/lib/top-movers";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { toTransactionRow } from "@/features/transactions/lib/transaction-row";
 import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
@@ -99,7 +104,7 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
     return <DashboardSkeleton />;
   }
 
-  const { positions, summary, dailyChange, recentTransactions } = overview.data;
+  const { positions, summary, dailyChange, recentTransactions, allocation, pulse } = overview.data;
   const recentRows = recentTransactions.map(({ transaction, asset }) =>
     toTransactionRow(transaction, asset ?? undefined),
   );
@@ -126,27 +131,59 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
           updatedAt={overview.dataUpdatedAt}
         />
       )}
-      <div className="grid gap-4 desktop:grid-cols-2 desktop:gap-6">
-        <PortfolioValuePanel
-          dailyChange={dailyChange}
-          empty={empty}
-          firstName={firstName}
-          onNew={openPanel}
-          portfolioId={portfolioId}
-          totalValue={summary.totalValue}
+      <div className="grid gap-4 desktop:grid-cols-12 desktop:gap-6">
+        <div className="desktop:col-span-6 flex flex-col *:flex-1">
+          <PortfolioValuePanel
+            dailyChange={dailyChange}
+            empty={empty}
+            firstName={firstName}
+            onNew={openPanel}
+            portfolioId={portfolioId}
+            totalValue={summary.totalValue}
+          >
+            <MonthlyReturns portfolioId={portfolioId} />
+          </PortfolioValuePanel>
+        </div>
+        {empty ? null : (
+          <div className="desktop:col-span-6 flex flex-col *:flex-1">
+            <PerformancePanel portfolioId={portfolioId} />
+          </div>
+        )}
+        <div
+          className={`flex flex-col *:flex-1 ${empty ? "desktop:col-span-6" : "desktop:col-span-3"}`}
         >
-          <MonthlyReturns portfolioId={portfolioId} />
-        </PortfolioValuePanel>
-        {empty ? null : <PerformancePanel portfolioId={portfolioId} />}
-        <TotalReturnPanel
-          empty={empty}
-          percent={summary.unrealizedPnLPercent}
-          profit={summary.unrealizedPnL}
-        />
-        {empty ? null : <DailyReturnsPanel portfolioId={portfolioId} />}
-        <div className="desktop:col-span-2">
+          <TotalReturnPanel
+            empty={empty}
+            percent={summary.unrealizedPnLPercent}
+            profit={summary.unrealizedPnL}
+          />
+        </div>
+        {empty ? null : (
+          <>
+            <div className="desktop:col-span-3 flex flex-col *:flex-1">
+              <RiskPanel volatility={pulse.volatility} />
+            </div>
+            <div className="desktop:col-span-6 flex flex-col *:flex-1">
+              <DistributionPanel allocation={allocation} investedValue={summary.investedValue} />
+            </div>
+            <div className="desktop:col-span-8 flex flex-col *:flex-1">
+              <DailyReturnsPanel portfolioId={portfolioId} />
+            </div>
+            <div className="desktop:col-span-4 flex flex-col *:flex-1">
+              <AttentionPanel />
+            </div>
+          </>
+        )}
+        <div
+          className={`flex flex-col *:flex-1 ${empty ? "desktop:col-span-12" : "desktop:col-span-8"}`}
+        >
           <RecentTransactionsPanel onNew={openPanel} rows={recentRows} />
         </div>
+        {empty ? null : (
+          <div className="desktop:col-span-4 flex flex-col *:flex-1">
+            <MoversPanel movers={topMovers(positions, 5)} />
+          </div>
+        )}
       </div>
       <NewTransactionPanel
         onOpenChange={setPanelOpen}
