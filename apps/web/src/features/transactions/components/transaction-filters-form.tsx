@@ -129,7 +129,8 @@ export function TransactionFiltersForm({
             placeholder={t(
               isSheet ? "transactionFilters.selectRange" : "transactionFilters.anyDate",
             )}
-            side={isSheet ? "bottom" : "right"}
+            // Two months beside the panel only where there is room for both; elsewhere it opens below.
+            side={!isSheet && months === 2 ? "right" : "bottom"}
             today={today}
             value={draft.range}
           />
@@ -206,7 +207,7 @@ function DateRangeField({
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
           align="start"
-          className="z-50 max-w-[calc(100vw-1rem)] rounded-xl border border-(--color-border-default) bg-(--color-surface-card) shadow-dialog outline-hidden"
+          className="z-50 max-h-(--radix-popover-content-available-height) max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-(--color-border-default) bg-(--color-surface-card) shadow-dialog outline-hidden"
           collisionPadding={8}
           side={side}
           sideOffset={8}

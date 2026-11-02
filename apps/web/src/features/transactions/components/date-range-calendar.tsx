@@ -84,8 +84,8 @@ export function DateRangeCalendar({
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-wrap gap-6 p-4">
-        <div className="flex w-40 flex-col gap-1">
+      <div className="flex flex-col gap-4 p-4 tablet:flex-row tablet:gap-6">
+        <div className="flex flex-wrap gap-1 tablet:w-40 tablet:flex-col">
           {RANGE_PRESETS.map((name) => (
             <PresetButton
               key={name}

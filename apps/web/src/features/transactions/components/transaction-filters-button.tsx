@@ -48,7 +48,12 @@ export function TransactionFiltersButton({ value, onApply, today }: TransactionF
     return (
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent aria-describedby={undefined} mobileSheet>
+        {/* The Figma sheet hugs its content, pinned to the bottom, instead of filling the screen. */}
+        <DialogContent
+          aria-describedby={undefined}
+          className="max-tablet:top-auto max-tablet:max-h-[calc(100%-7.5rem)]"
+          mobileSheet
+        >
           <DialogTitle className="sr-only">{t("transactionFilters.title")}</DialogTitle>
           <TransactionFiltersForm
             layout="sheet"
