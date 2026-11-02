@@ -32,9 +32,9 @@ interface TransactionFiltersFormProps {
    */
   layout?: "panel" | "sheet";
   /** Months the date calendar shows side by side; the container knows how much room there is. */
-  months?: 1 | 2;
+  months?: 1 | 2 | undefined;
   /** The day "today" means for the date presets; a test fixes it. */
-  today?: Date;
+  today?: Date | undefined;
 }
 
 /**

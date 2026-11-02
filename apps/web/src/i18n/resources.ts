@@ -126,6 +126,8 @@ const en = {
     },
   },
   transactionFilters: {
+    trigger: "Filters",
+    triggerCount: "Filters · {{count}}",
     title: "Filters",
     clearAll: "Clear all",
     clear: "Clear",
@@ -514,6 +516,8 @@ const es: Messages<typeof en> = {
     },
   },
   transactionFilters: {
+    trigger: "Filtros",
+    triggerCount: "Filtros · {{count}}",
     title: "Filtros",
     clearAll: "Limpiar todo",
     clear: "Limpiar",
