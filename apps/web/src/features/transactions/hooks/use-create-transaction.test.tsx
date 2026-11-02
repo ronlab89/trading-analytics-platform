@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { CreateTransactionRequestBody } from "@trading/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
+import { useOverview } from "@/features/dashboard/hooks/use-overview";
 import { usePositions } from "@/features/portfolios/hooks/use-positions";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { useCreateTransaction } from "./use-create-transaction";
@@ -43,6 +44,7 @@ function render(client: TradingClient) {
       create: useCreateTransaction("p1"),
       list: useTransactions("p1", { page: 1, pageSize: 10 }),
       positions: usePositions("p1"),
+      overview: useOverview("p1"),
     }),
     { wrapper: tradingClientWrapper(client) },
   );
@@ -111,12 +113,13 @@ describe("useCreateTransaction", () => {
     expect(second).not.toBe(first);
   });
 
-  it("refreshes the transactions and the positions of the portfolio", async () => {
+  it("refreshes the transactions, the positions and the overview of the portfolio", async () => {
     const { client, callsOf } = clientWith(() => Promise.resolve({ data: created }));
     const { result } = render(client);
     await waitFor(() => {
       expect(callsOf("listTransactions")).toHaveLength(1);
       expect(callsOf("listPositions")).toHaveLength(1);
+      expect(callsOf("getPortfolioOverview")).toHaveLength(1);
     });
 
     await act(() => result.current.create.mutateAsync(body));
@@ -124,6 +127,7 @@ describe("useCreateTransaction", () => {
     await waitFor(() => {
       expect(callsOf("listTransactions")).toHaveLength(2);
       expect(callsOf("listPositions")).toHaveLength(2);
+      expect(callsOf("getPortfolioOverview")).toHaveLength(2);
     });
   });
 
@@ -140,5 +144,6 @@ describe("useCreateTransaction", () => {
 
     expect(callsOf("listTransactions")).toHaveLength(1);
     expect(callsOf("listPositions")).toHaveLength(1);
+    expect(callsOf("getPortfolioOverview")).toHaveLength(1);
   });
 });

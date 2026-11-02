@@ -361,6 +361,12 @@ const en = {
     viewDetails: "View the {{name}} transaction",
   },
   dashboard: {
+    loading: "Loading the dashboard",
+    failed: {
+      title: "Couldn't load the dashboard",
+      description: "Check your connection and try again. Your data has not been changed.",
+      retry: "Retry",
+    },
     header: {
       summary_one: "{{date}} · {{portfolio}} · {{count}} position",
       summary_other: "{{date}} · {{portfolio}} · {{count}} positions",
@@ -794,6 +800,12 @@ const es: Messages<typeof en> = {
     viewDetails: "Ver la transacción de {{name}}",
   },
   dashboard: {
+    loading: "Cargando el panel de inicio",
+    failed: {
+      title: "No se pudo cargar el panel de inicio",
+      description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+      retry: "Reintentar",
+    },
     header: {
       summary_one: "{{date}} · {{portfolio}} · {{count}} posición",
       summary_other: "{{date}} · {{portfolio}} · {{count}} posiciones",

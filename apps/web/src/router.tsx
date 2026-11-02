@@ -2,7 +2,7 @@ import { createBrowserRouter, type RouteObject } from "react-router";
 import { AppShell } from "@/components/shell/app-shell";
 import { RequireAuth } from "@/features/auth/components/require-auth";
 import { LoginPage } from "@/pages/auth/login-page";
-import { HomePage } from "@/pages/home/home-page";
+import { DashboardPage } from "@/pages/dashboard/dashboard-page";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import { PortfolioDetailPage } from "@/pages/portfolios/portfolio-detail-page";
 import { PortfoliosPage } from "@/pages/portfolios/portfolios-page";
@@ -20,7 +20,7 @@ export const routes: RouteObject[] = [
       {
         element: <AppShell />,
         children: [
-          { path: "/", element: <HomePage /> },
+          { path: "/", element: <DashboardPage /> },
           { path: "/portfolios", element: <PortfoliosPage /> },
           { path: "/portfolios/:portfolioId", element: <PortfolioDetailPage /> },
           { path: "/transactions", element: <TransactionsPage /> },
