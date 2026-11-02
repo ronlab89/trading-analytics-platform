@@ -362,6 +362,24 @@ const en = {
   },
   dashboard: {
     loading: "Loading the dashboard",
+    performance: {
+      title: "Performance",
+      periodLabel: "Period",
+      periods: { "1W": "1W", "1M": "1M", "3M": "3M", YTD: "YTD", ALL: "All" },
+      chartLabel: "Portfolio value over the selected period",
+      summary:
+        "From {{from}} to {{to}} the value went from {{start}} to {{end}} ({{change}}). High {{high}}, low {{low}}.",
+      loading: "Loading the performance",
+      empty: {
+        title: "Not enough data yet",
+        description: "The chart appears once your portfolio has at least two days of history.",
+      },
+      failed: {
+        title: "Couldn't load the performance",
+        description: "Check your connection and try again. Your data has not been changed.",
+        retry: "Retry",
+      },
+    },
     failed: {
       title: "Couldn't load the dashboard",
       description: "Check your connection and try again. Your data has not been changed.",
@@ -836,6 +854,25 @@ const es: Messages<typeof en> = {
   },
   dashboard: {
     loading: "Cargando el panel de inicio",
+    performance: {
+      title: "Rendimiento",
+      periodLabel: "Período",
+      periods: { "1W": "1S", "1M": "1M", "3M": "3M", YTD: "Año", ALL: "Todo" },
+      chartLabel: "Valor del portafolio en el período elegido",
+      summary:
+        "Del {{from}} al {{to}} el valor pasó de {{start}} a {{end}} ({{change}}). Máximo {{high}}, mínimo {{low}}.",
+      loading: "Cargando el rendimiento",
+      empty: {
+        title: "Aún no hay datos suficientes",
+        description:
+          "El gráfico aparece cuando tu portafolio tiene al menos dos días de historial.",
+      },
+      failed: {
+        title: "No se pudo cargar el rendimiento",
+        description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+        retry: "Reintentar",
+      },
+    },
     failed: {
       title: "No se pudo cargar el panel de inicio",
       description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",

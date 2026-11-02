@@ -113,6 +113,18 @@ export function formatCalendarRange(
   return `${write(from)} – ${write(to)}`;
 }
 
+/** A calendar day without its year, as a chart axis writes it (`28 sep`, `Sep 28`). */
+export function formatDayMonth(day: string, language: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return day;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (Number.isNaN(date.getTime())) return day;
+  return cached(dayMonthFormats, localeOf(language), "UTC", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
 const longDayFormats = new Map<string, Intl.DateTimeFormat>();
 const secondsFormats = new Map<string, Intl.DateTimeFormat>();
 
