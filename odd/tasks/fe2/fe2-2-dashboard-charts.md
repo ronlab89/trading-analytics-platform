@@ -22,15 +22,15 @@ Source: Figma pages "Inicio" (desktop `105:21881`) and "Gráficos · Especificac
 
 ## Left out, to pick up later
 
-| Left out                                                                                           | Why                                                                                           | When                  |
-| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------- |
-| S&P 500 dashed line, legend with each series' % and "+4.10%"                                       | The API has no benchmark series                                                               | needs a backend field |
-| Legend above the line ("Portafolio +6.12%")                                                        | Only the portfolio series exists; add with the benchmark                                      | with the benchmark    |
-| Subtitle "Valor del portafolio vs S&P 500 · 1M · USD" on "Rendimiento"                             | Depends on the benchmark                                                                      | with the benchmark    |
-| ↗ button on "Rendimiento" and on "Rendimiento diario"                                              | Needs the Analytics page                                                                      | FE3                   |
-| Daily best/worst day with one decimal (`+2.4%`)                                                    | Written with two decimals like the rest of the percentages                                    | decide with design    |
-| Streak written "4 días ▲"                                                                          | Written "2 days up ▲" so the direction is also text                                           | decide with design    |
-| Daily bars window is the last 30 days with a return, not strictly business days                    | The series already holds only market days; revisit if it ever includes weekends               | if the API changes    |
-| Figma panel arrangement (value + chart on row 1, total return + risk + distribution on row 2, ...) | Risk and distribution panels arrive in FE2.3; for now total return sits beside the daily bars | FE2.3                 |
-| "Mayores movimientos", "Nivel de riesgo", "Distribución"                                           | Planned slice                                                                                 | FE2.3                 |
-| Tab selector as Radix Tabs                                                                         | Toggle buttons were enough                                                                    | optional              |
+| Left out                                                                        | Why                                                                             | When                  |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------- |
+| S&P 500 dashed line, legend with each series' % and "+4.10%"                    | The API has no benchmark series                                                 | needs a backend field |
+| Legend above the line ("Portafolio +6.12%")                                     | Only the portfolio series exists; add with the benchmark                        | with the benchmark    |
+| Subtitle "Valor del portafolio vs S&P 500 · 1M · USD" on "Rendimiento"          | Depends on the benchmark                                                        | with the benchmark    |
+| ↗ button on "Rendimiento" and on "Rendimiento diario"                           | Needs the Analytics page                                                        | FE3                   |
+| Daily best/worst day with one decimal (`+2.4%`)                                 | Written with two decimals like the rest of the percentages                      | decide with design    |
+| Streak written "4 días ▲"                                                       | Written "2 days up ▲" so the direction is also text                             | decide with design    |
+| Daily bars window is the last 30 days with a return, not strictly business days | The series already holds only market days; revisit if it ever includes weekends | if the API changes    |
+| Figma panel arrangement                                                         | Done in FE2.3 (12-column layout)                                                | done                  |
+| "Mayores movimientos", "Nivel de riesgo", "Distribución"                        | Done in FE2.3                                                                   | done                  |
+| Tab selector as Radix Tabs                                                      | Toggle buttons were enough                                                      | optional              |

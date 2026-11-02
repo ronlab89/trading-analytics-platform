@@ -32,7 +32,7 @@ const SLOPE = "[clip-path:polygon(0_0,0_100%,100%_100%)]";
 
 const ACTIVE_COLOR = {
   LOW: "var(--color-chart-gain)",
-  MODERATE: "var(--color-status-warning)",
+  MODERATE: "var(--color-status-warning-solid)",
   HIGH: "var(--color-chart-loss)",
 } as const;
 
@@ -64,7 +64,7 @@ export function RiskPanel({ volatility }: RiskPanelProps) {
       <div className="flex min-h-72 flex-1 flex-col items-center gap-4 rounded-b-xl rounded-tr-xl bg-(--color-surface-inverse) p-6 text-(--color-text-on-primary)">
         <div className="flex h-6 w-full">
           {alert ? (
-            <span className="flex items-center gap-1 rounded-md bg-(--color-status-warning) px-2 text-xs font-medium text-(--color-text-on-warning)">
+            <span className="flex items-center gap-1 rounded-md bg-(--color-status-warning-solid) px-2 text-xs font-medium text-(--color-text-on-warning)">
               <TriangleAlert aria-hidden="true" className="size-3.5" />
               {t("dashboard.risk.alert")}
             </span>

@@ -77,9 +77,20 @@ const overview = () => ({
       unrealizedPnLPercent: 17,
     },
     allocationPercent: 20,
-    dailyChange: { changeValue: usd("468.02"), changePercent: 1.9 },
+    dailyChange: {
+      changeValue: usd("468.02"),
+      changePercent: [3.8, 2.1, 1.2, -0.6, -1.4][index] ?? 0,
+    },
   })),
-  allocation: { groupBy: "asset", groups: [] },
+  allocation: {
+    groupBy: "asset",
+    groups: ["a1", "a2", "a3", "a4", "a5"].map((assetId, index) => ({
+      key: assetId,
+      label: assetId.toUpperCase(),
+      marketValue: usd(String(25000 - index * 2000) + ".00"),
+      percentage: 30 - index * 5,
+    })),
+  },
   attribution: { totalUnrealizedPnL: usd("18200.00"), items: [] },
   recentTransactions: ["a1", "a2", "a3", "a4", "a5"].map((assetId, index) => ({
     transaction: transaction(`t${String(index)}`, assetId),
@@ -603,10 +614,16 @@ const performancePanel = (page: Page) =>
 const dailyReturns = (page: Page) =>
   page.getByRole("region", { name: /Daily performance|Rendimiento diario/ });
 
+const distribution = (page: Page) =>
+  page.getByRole("region", { name: /^(Distribution|Distribución)$/ });
+const riskLevel = (page: Page) => page.getByRole("region", { name: /Risk level|Nivel de riesgo/ });
+const movers = (page: Page) => page.getByRole("region", { name: /Top movers|Mayores movimientos/ });
+
 async function waitForDashboard(page: Page) {
   await recentTransactions(page).waitFor();
   await performancePanel(page).locator(".recharts-surface").waitFor();
   await dailyReturns(page).locator(".recharts-surface").waitFor();
+  await distribution(page).locator(".recharts-surface").waitFor();
   await page.getByRole("list", { name: /last months|últimos meses/ }).waitFor();
 }
 
@@ -629,7 +646,7 @@ for (const { name, width, height } of viewports) {
 
     const main = await boxOf(page.locator("main"));
     const regions = await page.locator("main").getByRole("region").all();
-    expect(regions).toHaveLength(5);
+    expect(regions).toHaveLength(8);
     for (const region of regions) {
       const box = await boxOf(region);
       expect(box.x).toBeGreaterThanOrEqual(main.x);
@@ -638,7 +655,7 @@ for (const { name, width, height } of viewports) {
   });
 }
 
-test("on the desktop the total return sits under the value and beside the daily bars, below it they stack", async ({
+test("on the desktop the total return, the risk level and the distribution share a row, below it they stack", async ({
   page,
 }) => {
   const value = page.getByRole("region", { name: /^(Hello|Hola)/ });
@@ -647,19 +664,53 @@ test("on the desktop the total return sits under the value and beside the daily 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/");
   await waitForDashboard(page);
-  const side = {
+  const row = {
     value: await boxOf(value),
     totalReturn: await boxOf(totalReturn),
-    daily: await boxOf(dailyReturns(page)),
+    risk: await boxOf(riskLevel(page)),
+    distribution: await boxOf(distribution(page)),
   };
-  expect(side.totalReturn.x).toBe(side.value.x);
-  expect(side.totalReturn.y).toBeGreaterThanOrEqual(side.value.y + side.value.height);
-  expect(side.daily.x).toBeGreaterThan(side.totalReturn.x + side.totalReturn.width - 1);
+  expect(row.totalReturn.x).toBe(row.value.x);
+  expect(row.totalReturn.y).toBeGreaterThanOrEqual(row.value.y + row.value.height);
+  expect(row.risk.x).toBeGreaterThan(row.totalReturn.x + row.totalReturn.width - 1);
+  expect(row.distribution.x).toBeGreaterThan(row.risk.x + row.risk.width - 1);
+  expect(Math.abs(row.risk.y - row.totalReturn.y)).toBeLessThan(2);
+  expect(Math.abs(row.distribution.y - row.totalReturn.y)).toBeLessThan(2);
 
   await page.setViewportSize({ width: 768, height: 800 });
   const stacked = { value: await boxOf(value), totalReturn: await boxOf(totalReturn) };
   expect(stacked.totalReturn.y).toBeGreaterThanOrEqual(stacked.value.y + stacked.value.height);
   expect(stacked.totalReturn.x).toBe(stacked.value.x);
+});
+
+test("on the desktop the recent transactions and the top movers share a row, on mobile they stack", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await waitForDashboard(page);
+  const side = { recent: await boxOf(recentTransactions(page)), movers: await boxOf(movers(page)) };
+  expect(side.movers.x).toBeGreaterThan(side.recent.x + side.recent.width - 1);
+  expect(side.recent.width).toBeGreaterThan(side.movers.width);
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  const stacked = {
+    recent: await boxOf(recentTransactions(page)),
+    movers: await boxOf(movers(page)),
+  };
+  expect(stacked.movers.y).toBeGreaterThanOrEqual(stacked.recent.y + stacked.recent.height);
+});
+
+test("the top movers list the biggest moves first with their sign", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await waitForDashboard(page);
+
+  const items = movers(page).getByRole("listitem");
+  await expect(items).toHaveCount(5);
+  await expect(items.first()).toContainText("A1");
+  await expect(items.first()).toContainText("+3.80%");
+  await expect(items.last()).toContainText("-0.60%");
 });
 
 test("the recent transactions are a table from the tablet and cards on mobile", async ({
@@ -733,7 +784,7 @@ for (const { name, width, height } of viewports) {
     await page.goto("/");
     await waitForDashboard(page);
 
-    for (const panel of [performancePanel(page), dailyReturns(page)]) {
+    for (const panel of [performancePanel(page), dailyReturns(page), distribution(page)]) {
       const box = await boxOf(panel);
       const surface = await boxOf(panel.locator(".recharts-surface"));
       expect(surface.width).toBeGreaterThan(200);

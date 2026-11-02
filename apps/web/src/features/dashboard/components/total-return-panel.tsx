@@ -67,7 +67,7 @@ function Return({ profit, percent }: Pick<TotalReturnPanelProps, "profit" | "per
 
   return (
     <div className="flex flex-1 flex-col justify-end gap-3">
-      <p className="text-4xl leading-tight font-medium tracking-tight desktop:text-5xl">
+      <p className="text-4xl leading-tight font-medium tracking-tight">
         {formatSignedMoney(profit)}
       </p>
       <p className="flex h-7 items-center gap-1 rounded-md bg-(--color-brand-brand-overlay) px-3 text-sm">
