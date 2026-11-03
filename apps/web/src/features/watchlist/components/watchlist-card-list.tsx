@@ -1,26 +1,33 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/avatar";
 import { exchangeLabel } from "@/lib/exchange-label";
 import { formatMoney } from "@/lib/format-number";
 import type { WatchlistRow } from "../types";
 import { PriceChangeBadge } from "./price-change-badge";
-import { WatchlistRemoveButton } from "./watchlist-remove-button";
 
-interface WatchlistCardListProps {
-  rows: readonly WatchlistRow[];
-  onRemove: (row: WatchlistRow) => void;
+interface WatchlistCardListProps<TRow extends WatchlistRow> {
+  rows: readonly TRow[];
+  /** The star at the end of each row: the watchlist's removes, the catalog's adds or removes. */
+  renderAction: (row: TRow) => ReactNode;
+  /** Names the list; the watchlist's unless the caller says otherwise. */
+  label?: string;
 }
 
 /**
  * The Figma mobile list: a card of rows (symbol, name with its type and exchange under it, price
- * with today's change under it, and the star) instead of a table.
+ * with today's change under it, and the star) instead of a table. The star is the caller's.
  */
-export function WatchlistCardList({ rows, onRemove }: WatchlistCardListProps) {
+export function WatchlistCardList<TRow extends WatchlistRow>({
+  rows,
+  renderAction,
+  label,
+}: WatchlistCardListProps<TRow>) {
   const { t } = useTranslation();
 
   return (
     <ul
-      aria-label={t("markets.watchlistTable")}
+      aria-label={label ?? t("markets.watchlistTable")}
       className="flex flex-col overflow-hidden rounded-xl bg-(--color-surface-card)"
     >
       {rows.map((row) => {
@@ -51,7 +58,7 @@ export function WatchlistCardList({ rows, onRemove }: WatchlistCardListProps) {
               </span>
               <PriceChangeBadge percent={row.changePercent} />
             </span>
-            <WatchlistRemoveButton onRemove={onRemove} row={row} />
+            {renderAction(row)}
           </li>
         );
       })}

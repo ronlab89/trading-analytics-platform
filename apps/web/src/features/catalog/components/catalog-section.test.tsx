@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { toast } from "sonner";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput } from "@/api/trading-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
@@ -314,5 +314,76 @@ describe("CatalogSection", () => {
     await user.click(screen.getByRole("button", { name: "Try again" }));
 
     expect(await screen.findByText("Apple Inc.")).toBeVisible();
+  });
+});
+
+function mockPhone() {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
+
+describe("CatalogSection on a phone", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the loading cards, with the search waiting", () => {
+    mockPhone();
+    renderSection({ list: () => new Promise(() => undefined) });
+
+    expect(screen.getByRole("status", { name: "Loading the catalog" })).toBeVisible();
+    expect(screen.getByRole("searchbox", { name: "Search by symbol or name" })).toBeDisabled();
+  });
+
+  it("draws the catalog as cards with the stars and the paging", async () => {
+    mockPhone();
+    renderSection();
+
+    expect(await screen.findByText("Apple Inc.")).toBeVisible();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "All assets" })).getAllByRole("listitem"),
+    ).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Add AAPL to the watchlist" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Remove VOO from the watchlist" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Next/ })).toBeVisible();
+  });
+
+  it("adds an asset from its card", async () => {
+    mockPhone();
+    const user = userEvent.setup();
+    const call = renderSection();
+    await screen.findByText("Apple Inc.");
+
+    await user.click(screen.getByRole("button", { name: "Add AAPL to the watchlist" }));
+
+    await waitFor(() => {
+      expect(callsOf(call, "addToWatchlist")).toHaveLength(1);
+    });
+  });
+
+  it("says nothing matches when the page has no assets", async () => {
+    mockPhone();
+    renderSection({
+      list: () =>
+        Promise.resolve({ data: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
+    });
+
+    expect(await screen.findByText("No results")).toBeVisible();
+  });
+
+  it("shows the alert with a retry when the catalog cannot load", async () => {
+    mockPhone();
+    renderSection({ list: () => Promise.reject(new ApiError("INTERNAL_ERROR", "Server error")) });
+
+    expect(await screen.findByText("Could not load the catalog")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
   });
 });

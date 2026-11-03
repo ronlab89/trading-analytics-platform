@@ -3,13 +3,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const ROWS = 6;
 
-/** The Figma mobile "Cargando" card: six rows with the avatar, two lines and the price at the right. */
-export function WatchlistCardsSkeleton() {
+/**
+ * The Figma mobile "Cargando" card (the watchlist's unless the caller labels it otherwise): six rows with the avatar, two lines and the price at the right.
+ */
+export function WatchlistCardsSkeleton({ label }: { label?: string }) {
   const { t } = useTranslation();
 
   return (
     <div
-      aria-label={t("markets.loading")}
+      aria-label={label ?? t("markets.loading")}
       className="flex flex-col overflow-hidden rounded-xl bg-(--color-surface-card)"
       role="status"
     >
