@@ -243,4 +243,76 @@ describe("CatalogSection", () => {
     });
     expect(callsOf(call, "listAssets").at(-1)?.[1]?.query).not.toHaveProperty("assetType");
   });
+
+  it("says the asset was added, with a toast whose 'Undo' removes it again", async () => {
+    const user = userEvent.setup();
+    const call = renderSection();
+    await screen.findByText("Apple Inc.");
+
+    await user.click(screen.getByRole("button", { name: "Add AAPL to the watchlist" }));
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        "AAPL added to your watchlist",
+        expect.objectContaining({
+          description: "You will see its price in real time in Watchlist.",
+        }),
+      );
+    });
+    const options = vi.mocked(toast).mock.calls[0]?.[1] as unknown as {
+      action: { onClick: () => void };
+    };
+    options.action.onClick();
+    await waitFor(() => {
+      expect(callsOf(call, "removeFromWatchlist")).toHaveLength(1);
+    });
+    expect(callsOf(call, "removeFromWatchlist")[0]?.[1]?.params).toEqual({ assetId: "a1" });
+  });
+
+  it("holds the place of the table while the first page loads, with the search waiting", () => {
+    renderSection({ list: () => new Promise(() => undefined) });
+
+    expect(screen.getByRole("status", { name: "Loading the catalog" })).toBeVisible();
+    expect(screen.getByRole("searchbox", { name: "Search by symbol or name" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Filters" })).toBeDisabled();
+  });
+
+  it("says nothing matches, and the button clears the search and the filters", async () => {
+    const user = userEvent.setup();
+    const call = renderSection({
+      list: (input) =>
+        Promise.resolve(
+          input?.query?.search === "zzz"
+            ? { data: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }
+            : { data: [apple, voo], meta: meta() },
+        ),
+    });
+    await screen.findByText("Apple Inc.");
+
+    await user.type(screen.getByRole("searchbox", { name: "Search by symbol or name" }), "zzz");
+    expect(await screen.findByText("No results")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Clear search and filters" }));
+
+    expect(await screen.findByText("Apple Inc.")).toBeVisible();
+    expect(screen.getByRole("searchbox", { name: "Search by symbol or name" })).toHaveValue("");
+    expect(callsOf(call, "listAssets").at(-1)?.[1]?.query).not.toHaveProperty("search");
+  });
+
+  it("shows an alert with a retry when the catalog cannot load", async () => {
+    const user = userEvent.setup();
+    let fail = true;
+    renderSection({
+      list: () =>
+        fail
+          ? Promise.reject(new ApiError("INTERNAL_ERROR", "Server error"))
+          : Promise.resolve({ data: [apple], meta: meta() }),
+    });
+
+    expect(await screen.findByText("Could not load the catalog")).toBeVisible();
+    fail = false;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("Apple Inc.")).toBeVisible();
+  });
 });

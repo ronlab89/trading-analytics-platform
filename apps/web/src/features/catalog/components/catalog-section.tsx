@@ -1,7 +1,16 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
+import { WatchlistTableSkeleton } from "@/features/watchlist/components/watchlist-table-skeleton";
 import { TransactionsPagination } from "@/features/transactions/components/transactions-pagination";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import type { CatalogFilters } from "../lib/catalog-filters";
+import {
+  activeCatalogFilterCount,
+  NO_CATALOG_FILTERS,
+  type CatalogFilters,
+} from "../lib/catalog-filters";
 import { useCatalogRows } from "../hooks/use-catalog-rows";
 import { useToggleWatchlist } from "../hooks/use-toggle-watchlist";
 import { CatalogFilterChips } from "./catalog-filter-chips";
@@ -28,7 +37,12 @@ export function CatalogSection({ filters, onFiltersChange }: CatalogSectionProps
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const term = useDebouncedValue(search, SEARCH_DELAY_MS);
-  const { rows, meta, canToggle } = useCatalogRows({ page, pageSize }, filters, term);
+  const { t } = useTranslation();
+  const { rows, meta, canToggle, isPending, isError, refetch } = useCatalogRows(
+    { page, pageSize },
+    filters,
+    term,
+  );
   const toggle = useToggleWatchlist();
 
   const changeSearch = (value: string) => {
@@ -42,19 +56,58 @@ export function CatalogSection({ filters, onFiltersChange }: CatalogSectionProps
     setPage(1);
   };
 
+  const clearAll = () => {
+    changeSearch("");
+    changeFilters(NO_CATALOG_FILTERS);
+  };
+
   const changePageSize = (size: number) => {
     setPageSize(size);
     setPage(1);
   };
 
+  const loading = isPending;
+  const empty = rows?.length === 0;
+
   return (
     <section className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-6">
       <div className="flex items-center gap-4">
-        <CatalogSearch onChange={changeSearch} value={search} />
-        <CatalogFiltersButton onApply={changeFilters} value={filters} />
+        <CatalogSearch disabled={loading} onChange={changeSearch} value={search} />
+        <CatalogFiltersButton disabled={loading} onApply={changeFilters} value={filters} />
       </div>
       <CatalogFilterChips onChange={changeFilters} value={filters} />
-      {rows === undefined || meta === undefined ? null : (
+      {isError ? (
+        <Alert
+          action={
+            <Button
+              onClick={() => {
+                void refetch();
+              }}
+              size="sm"
+              variant="outline"
+            >
+              {t("markets.failed.retry")}
+            </Button>
+          }
+          description={t("markets.catalogFailed.description")}
+          title={t("markets.catalogFailed.title")}
+          tone="error"
+        />
+      ) : loading ? (
+        <WatchlistTableSkeleton label={t("markets.catalogLoading")} />
+      ) : rows === undefined || meta === undefined ? null : empty ? (
+        <PortfoliosEmptyState
+          action={
+            search.trim() !== "" || activeCatalogFilterCount(filters) > 0 ? (
+              <Button onClick={clearAll} size="sm" variant="outline">
+                {t("markets.catalogNoResults.clear")}
+              </Button>
+            ) : undefined
+          }
+          description={t("markets.catalogNoResults.description")}
+          title={t("markets.catalogNoResults.title")}
+        />
+      ) : (
         <>
           <CatalogTable canToggle={canToggle} onToggle={toggle} rows={rows} />
           <TransactionsPagination

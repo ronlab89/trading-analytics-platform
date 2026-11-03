@@ -369,6 +369,21 @@ const en = {
     },
     removeFailed: "Could not remove {{asset}} from your watchlist",
     undoFailed: "Could not add {{asset}} back to your watchlist",
+    added: {
+      title: "{{asset}} added to your watchlist",
+      description: "You will see its price in real time in Watchlist.",
+      undo: "Undo",
+    },
+    catalogLoading: "Loading the catalog",
+    catalogNoResults: {
+      title: "No results",
+      description: "No asset matches your search or filters. Review them or clear them.",
+      clear: "Clear search and filters",
+    },
+    catalogFailed: {
+      title: "Could not load the catalog",
+      description: "There was a problem reaching the server. Try again.",
+    },
     watchlistTable: "Watchlist",
     unknownAsset: "Unknown asset",
     remove: "Remove {{asset}} from the watchlist",
@@ -1010,6 +1025,21 @@ const es: Messages<typeof en> = {
     },
     removeFailed: "No se pudo quitar {{asset}} de tu watchlist",
     undoFailed: "No se pudo volver a añadir {{asset}} a tu watchlist",
+    added: {
+      title: "{{asset}} añadido a tu watchlist",
+      description: "Verás su precio en tiempo real en Watchlist.",
+      undo: "Deshacer",
+    },
+    catalogLoading: "Cargando el catálogo",
+    catalogNoResults: {
+      title: "Sin resultados",
+      description: "Ningún activo coincide con tu búsqueda o filtros. Revísalos o límpialos.",
+      clear: "Limpiar búsqueda y filtros",
+    },
+    catalogFailed: {
+      title: "No se pudo cargar el catálogo",
+      description: "Hubo un problema al conectar con el servidor. Inténtalo de nuevo.",
+    },
     watchlistTable: "Watchlist",
     unknownAsset: "Activo desconocido",
     remove: "Quitar {{asset}} de la watchlist",
