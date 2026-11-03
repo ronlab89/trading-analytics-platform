@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AnalyticsAllocationPanel } from "@/features/analytics/components/analytics-allocation-panel";
+import { AnalyticsAttributionPanel } from "@/features/analytics/components/analytics-attribution-panel";
 import { AnalyticsDrawdownPanel } from "@/features/analytics/components/analytics-drawdown-panel";
 import { AnalyticsKpis } from "@/features/analytics/components/analytics-kpis";
 import { AnalyticsPeriodSelector } from "@/features/analytics/components/analytics-period-selector";
@@ -109,11 +110,18 @@ function Analytics({ portfolioId, portfolioName }: AnalyticsProps) {
         />
         <AnalyticsAllocationPanel portfolioId={portfolioId} />
       </div>
-      <AnalyticsDrawdownPanel
-        emptyPortfolio={emptyPortfolio}
-        period={period}
-        portfolioId={portfolioId}
-      />
+      <div className="grid gap-4 desktop:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] desktop:gap-6">
+        <AnalyticsAttributionPanel
+          emptyPortfolio={emptyPortfolio}
+          period={period}
+          portfolioId={portfolioId}
+        />
+        <AnalyticsDrawdownPanel
+          emptyPortfolio={emptyPortfolio}
+          period={period}
+          portfolioId={portfolioId}
+        />
+      </div>
       <NewTransactionPanel
         onOpenChange={setPanelOpen}
         onRecorded={announceRecorded}
