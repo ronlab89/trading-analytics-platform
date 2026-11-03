@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
@@ -168,5 +168,46 @@ describe("WatchlistSection", () => {
       expect(toast.error).toHaveBeenCalledWith("Could not remove KO from your watchlist");
     });
     expect(toast).not.toHaveBeenCalled();
+  });
+});
+
+function mockPhone() {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
+
+describe("WatchlistSection on a phone", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the loading cards until the rows are ready", () => {
+    mockPhone();
+    renderSection({ watchlist: () => new Promise(() => undefined) });
+
+    expect(screen.getByRole("status", { name: "Loading your watchlist" })).toBeVisible();
+  });
+
+  it("draws the watchlist as cards", async () => {
+    mockPhone();
+    renderSection();
+
+    expect(await screen.findByText("Apple Inc.")).toBeVisible();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  it("explains an empty watchlist", async () => {
+    mockPhone();
+    renderSection({ watchlist: () => Promise.resolve({ data: [] }) });
+
+    expect(await screen.findByText("Your watchlist is empty")).toBeVisible();
   });
 });

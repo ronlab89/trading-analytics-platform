@@ -317,6 +317,11 @@ const en = {
     watchlistSummary_other: "{{count}} assets on your watchlist · simulated prices",
     watchlistSearch: "Search your watchlist",
     loading: "Loading your watchlist",
+    noResults: {
+      title: "No results",
+      description: 'No asset on your watchlist matches "{{query}}".',
+      clear: "Clear the search",
+    },
     empty: {
       title: "Your watchlist is empty",
       description: "Add assets from the catalog to follow their price and change.",
@@ -922,6 +927,11 @@ const es: Messages<typeof en> = {
     watchlistSummary_other: "{{count}} activos en tu watchlist · precios simulados",
     watchlistSearch: "Buscar en tu watchlist",
     loading: "Cargando tu watchlist",
+    noResults: {
+      title: "Sin resultados",
+      description: "Ningún activo de tu watchlist coincide con «{{query}}».",
+      clear: "Limpiar la búsqueda",
+    },
     empty: {
       title: "Tu watchlist está vacía",
       description: "Añade activos del catálogo para seguir su precio y su variación.",

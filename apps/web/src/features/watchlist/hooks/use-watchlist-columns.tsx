@@ -1,13 +1,12 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Star } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/avatar";
 import { Badge } from "@/components/badge";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
-import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/format-number";
 import { PriceChangeBadge } from "../components/price-change-badge";
+import { WatchlistRemoveButton } from "../components/watchlist-remove-button";
 import type { WatchlistRow } from "../types";
 
 const column = createColumnHelper<DataTableFeatures, WatchlistRow>();
@@ -34,7 +33,9 @@ function AssetCell({ symbol, name }: Pick<WatchlistRow, "symbol" | "name">) {
   return (
     <span className="flex items-center gap-3">
       <Avatar initials={symbol ?? "—"} shape="square" size="lg" />
-      <span>{name ?? t("markets.unknownAsset")}</span>
+      <span className="max-desktop:max-w-36 max-desktop:truncate">
+        {name ?? t("markets.unknownAsset")}
+      </span>
     </span>
   );
 }
@@ -43,31 +44,6 @@ function TypeBadge({ assetType }: Pick<WatchlistRow, "assetType">) {
   const { t } = useTranslation();
   if (assetType === null) return <span aria-hidden="true">—</span>;
   return <Badge>{t(`markets.assetType.${assetType}`)}</Badge>;
-}
-
-function RemoveButton({
-  row,
-  onRemove,
-}: {
-  row: WatchlistRow;
-  onRemove: (row: WatchlistRow) => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <Button
-      aria-label={t("markets.remove", {
-        asset: row.symbol ?? row.name ?? t("markets.unknownAsset"),
-      })}
-      onClick={() => {
-        onRemove(row);
-      }}
-      size="icon-sm"
-      variant="ghost"
-    >
-      <Star aria-hidden="true" className="fill-(--color-brand-brand) text-(--color-brand-brand)" />
-    </Button>
-  );
 }
 
 /**
@@ -90,14 +66,12 @@ export function useWatchlistColumns(onRemove: (row: WatchlistRow) => void) {
           id: "type",
           header: headerOf("type"),
           enableGlobalFilter: false,
-          meta: { className: "max-desktop:hidden" },
           cell: ({ row }) => <TypeBadge assetType={row.original.assetType} />,
         }),
         column.accessor((row) => row.exchange ?? "", {
           id: "exchange",
           header: headerOf("exchange"),
           enableGlobalFilter: false,
-          meta: { className: "max-desktop:hidden" },
         }),
         column.accessor((row) => (row.price === null ? undefined : Number(row.price.amount)), {
           id: "price",
@@ -122,7 +96,7 @@ export function useWatchlistColumns(onRemove: (row: WatchlistRow) => void) {
           id: "actions",
           header: ActionsHeader,
           meta: { align: "end" },
-          cell: ({ row }) => <RemoveButton onRemove={onRemove} row={row.original} />,
+          cell: ({ row }) => <WatchlistRemoveButton onRemove={onRemove} row={row.original} />,
         }),
       ]),
     [onRemove],
