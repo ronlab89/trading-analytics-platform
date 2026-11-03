@@ -28,8 +28,14 @@ const performance = {
   status: "OK",
   twrPercent: 6.12,
   pnl: { amount: "2500.00", currency: "USD" },
-  series: [],
+  series: [
+    { date: "2026-10-01", value: { amount: "118000.00", currency: "USD" }, returnPercent: null },
+    { date: "2026-10-02", value: { amount: "121000.00", currency: "USD" }, returnPercent: 2.54 },
+    { date: "2026-10-03", value: { amount: "119000.00", currency: "USD" }, returnPercent: -1.65 },
+  ],
 };
+
+const noData = { ...performance, status: "INSUFFICIENT_DATA", twrPercent: null, series: [] };
 
 const risk = {
   asOf: "2026-10-14",
@@ -45,11 +51,12 @@ const risk = {
 interface Answers {
   listPortfolios?: () => Promise<unknown>;
   listPositions?: () => Promise<unknown>;
+  performance?: (input?: CallInput) => Promise<unknown>;
 }
 
 function clientWith(answers: Answers = {}) {
   const call = vi.fn<(operation: { operationId: string }, input?: CallInput) => Promise<unknown>>(
-    (operation) => {
+    (operation, input) => {
       switch (operation.operationId) {
         case "listPortfolios":
           return answers.listPortfolios?.() ?? Promise.resolve({ data: [growth] });
@@ -58,7 +65,7 @@ function clientWith(answers: Answers = {}) {
             answers.listPositions?.() ?? Promise.resolve({ data: [position("s1"), position("s2")] })
           );
         case "getPortfolioPerformance":
-          return Promise.resolve({ data: performance });
+          return answers.performance?.(input) ?? Promise.resolve({ data: performance });
         case "getPortfolioRisk":
           return Promise.resolve({ data: risk });
         case "getPortfolioAllocation":
@@ -123,7 +130,7 @@ describe("AnalyticsPage", () => {
     const user = userEvent.setup();
     const { client, call } = clientWith();
     renderPage(client);
-    await screen.findByText("+6.12%");
+    await within(await screen.findByRole("region", { name: "Period return" })).findByText("+6.12%");
     expect(callsOf(call, "getPortfolioRisk")[0]?.[1]).toMatchObject({ query: { period: "1M" } });
 
     await user.click(screen.getByRole("button", { name: "3M" }));
@@ -145,6 +152,65 @@ describe("AnalyticsPage", () => {
     );
 
     expect(await screen.findByText("Summary of Growth · 0 positions")).toBeVisible();
+  });
+
+  it("draws the value and the drawdown panels under the indicators", async () => {
+    renderPage(clientWith().client);
+
+    expect(await screen.findByRole("heading", { name: "Portfolio value" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Drawdown" })).toBeVisible();
+    expect(await screen.findByRole("img", { name: /Portfolio value over/ })).toBeVisible();
+    expect(await screen.findByRole("img", { name: /Drawdown of the portfolio/ })).toBeVisible();
+  });
+
+  it("gives the panels the period that is chosen", async () => {
+    const user = userEvent.setup();
+    const { client, call } = clientWith();
+    renderPage(client);
+    await screen.findByRole("heading", { name: "Drawdown" });
+
+    await user.click(screen.getByRole("button", { name: "6M" }));
+
+    await waitFor(() => {
+      expect(callsOf(call, "getPortfolioPerformance").at(-1)?.[1]).toMatchObject({
+        query: { period: "6M" },
+      });
+    });
+  });
+
+  it("offers a first transaction in the value panel while the portfolio holds no positions", async () => {
+    const user = userEvent.setup();
+    renderPage(
+      clientWith({
+        listPositions: () => Promise.resolve({ data: [] }),
+        performance: () => Promise.resolve({ data: noData }),
+      }).client,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "New transaction" }));
+
+    expect(await screen.findByRole("dialog", { name: "New transaction" })).toBeInTheDocument();
+  });
+
+  it("goes back to the last month from the value panel when the period has no data", async () => {
+    const user = userEvent.setup();
+    const { client } = clientWith({
+      performance: (input) =>
+        Promise.resolve({
+          data:
+            (input?.query as { period?: string } | undefined)?.period === "1M"
+              ? performance
+              : noData,
+        }),
+    });
+    renderPage(client);
+    await screen.findByRole("img", { name: /Portfolio value over/ });
+
+    await user.click(screen.getByRole("button", { name: "6M" }));
+    await user.click(await screen.findByRole("button", { name: "See the last month" }));
+
+    expect(await screen.findByRole("img", { name: /Portfolio value over/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: "1M" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("asks for a portfolio when the user has none", async () => {
@@ -182,7 +248,11 @@ describe("AnalyticsPage on a phone", () => {
     );
     renderPage(clientWith().client);
 
-    expect(await screen.findByText("+6.12%")).toBeVisible();
+    expect(
+      await within(await screen.findByRole("region", { name: "Period return" })).findByText(
+        "+6.12%",
+      ),
+    ).toBeVisible();
     expect(screen.getByRole("heading", { level: 1, name: "Analytics" })).toHaveClass("text-2xl");
     expect(screen.queryByText(/^Summary of Growth/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Custom" })).toBeVisible();

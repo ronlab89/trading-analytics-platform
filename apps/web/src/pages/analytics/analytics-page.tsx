@@ -2,14 +2,18 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { AnalyticsDrawdownPanel } from "@/features/analytics/components/analytics-drawdown-panel";
 import { AnalyticsKpis } from "@/features/analytics/components/analytics-kpis";
 import { AnalyticsPeriodSelector } from "@/features/analytics/components/analytics-period-selector";
+import { AnalyticsValuePanel } from "@/features/analytics/components/analytics-value-panel";
 import {
   DEFAULT_ANALYTICS_PERIOD,
   type AnalyticsPeriod,
 } from "@/features/analytics/lib/analytics-period";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { usePositions } from "@/features/portfolios/hooks/use-positions";
+import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
+import { useAnnounceRecorded } from "@/features/transactions/hooks/use-announce-recorded";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useIsMobile } from "@/hooks/use-media-query";
 
@@ -66,8 +70,11 @@ function Analytics({ portfolioId, portfolioName }: AnalyticsProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [period, setPeriod] = useState<AnalyticsPeriod>(DEFAULT_ANALYTICS_PERIOD);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const announceRecorded = useAnnounceRecorded();
   const positions = usePositions(portfolioId);
   const positionCount = positions.data?.length;
+  const emptyPortfolio = positionCount === 0;
 
   return (
     <>
@@ -82,10 +89,32 @@ function Analytics({ portfolioId, portfolioName }: AnalyticsProps) {
         <AnalyticsPeriodSelector onChange={setPeriod} value={period} />
       </div>
       <AnalyticsKpis
-        emptyPortfolio={positionCount === 0}
+        emptyPortfolio={emptyPortfolio}
         period={period}
         portfolioId={portfolioId}
         portfolioName={portfolioName}
+      />
+      <AnalyticsValuePanel
+        emptyPortfolio={emptyPortfolio}
+        onNew={() => {
+          setPanelOpen(true);
+        }}
+        onShowLastMonth={() => {
+          setPeriod(DEFAULT_ANALYTICS_PERIOD);
+        }}
+        period={period}
+        portfolioId={portfolioId}
+      />
+      <AnalyticsDrawdownPanel
+        emptyPortfolio={emptyPortfolio}
+        period={period}
+        portfolioId={portfolioId}
+      />
+      <NewTransactionPanel
+        onOpenChange={setPanelOpen}
+        onRecorded={announceRecorded}
+        open={panelOpen}
+        portfolioId={portfolioId}
       />
     </>
   );
