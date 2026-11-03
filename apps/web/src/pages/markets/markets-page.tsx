@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { WatchlistSection } from "@/features/watchlist/components/watchlist-section";
 import { useWatchlistRows } from "@/features/watchlist/hooks/use-watchlist-rows";
 import { useIsMobile } from "@/hooks/use-media-query";
 
@@ -27,6 +28,7 @@ export function MarketsPage() {
           )}
         </>
       )}
+      <WatchlistSection />
     </div>
   );
 }

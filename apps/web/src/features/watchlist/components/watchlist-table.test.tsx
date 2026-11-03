@@ -102,6 +102,6 @@ describe("WatchlistTable", () => {
 
     await user.click(screen.getByRole("button", { name: "Remove KO from the watchlist" }));
 
-    expect(onRemove).toHaveBeenCalledExactlyOnceWith("a2");
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith(rows[1]);
   });
 });

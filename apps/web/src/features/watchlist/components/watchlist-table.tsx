@@ -19,7 +19,7 @@ export function WatchlistTable({
   onRemove,
 }: {
   rows: readonly WatchlistRow[];
-  onRemove: (assetId: string) => void;
+  onRemove: (row: WatchlistRow) => void;
 }) {
   const { t } = useTranslation();
   const table = useDataTable({

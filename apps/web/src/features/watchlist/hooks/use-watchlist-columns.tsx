@@ -50,7 +50,7 @@ function RemoveButton({
   onRemove,
 }: {
   row: WatchlistRow;
-  onRemove: (assetId: string) => void;
+  onRemove: (row: WatchlistRow) => void;
 }) {
   const { t } = useTranslation();
 
@@ -60,7 +60,7 @@ function RemoveButton({
         asset: row.symbol ?? row.name ?? t("markets.unknownAsset"),
       })}
       onClick={() => {
-        onRemove(row.assetId);
+        onRemove(row);
       }}
       size="icon-sm"
       variant="ghost"
@@ -76,7 +76,7 @@ function RemoveButton({
  * no arrows). The search reads the asset column, which holds the name and the symbol. They depend
  * only on the remove action, which must be stable, or the columns rebuild.
  */
-export function useWatchlistColumns(onRemove: (assetId: string) => void) {
+export function useWatchlistColumns(onRemove: (row: WatchlistRow) => void) {
   return useMemo(
     () =>
       column.columns([
