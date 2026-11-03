@@ -12,13 +12,14 @@ function row(
   price: string | null,
   changePercent: number | null,
   assetType: WatchlistRow["assetType"] = "STOCK",
+  exchange = "NASDAQ",
 ): WatchlistRow {
   return {
     assetId,
     symbol,
     name,
     assetType,
-    exchange: "NASDAQ",
+    exchange,
     price: price === null ? null : { amount: price, currency: "USD" },
     changePercent,
   };
@@ -158,5 +159,22 @@ describe("WatchlistView on a phone", () => {
 
     expect(screen.getByText("No results")).toBeVisible();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
+});
+
+describe("WatchlistView exchange names", () => {
+  const voo = row("a9", "VOO", "Vanguard S&P 500", "500.00", 0.3, "ETF", "NYSEARCA");
+
+  it("writes the exchange as people do in the table", () => {
+    render(<WatchlistView onRemove={vi.fn()} rows={[voo]} />);
+
+    expect(screen.getByText("NYSE Arca")).toBeVisible();
+    expect(screen.queryByText("NYSEARCA")).not.toBeInTheDocument();
+  });
+
+  it("writes it the same way in the phone cards", () => {
+    render(<WatchlistView mobile onRemove={vi.fn()} rows={[voo]} />);
+
+    expect(screen.getByText("ETF · NYSE Arca")).toBeVisible();
   });
 });

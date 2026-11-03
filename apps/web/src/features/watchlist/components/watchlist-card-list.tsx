@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/avatar";
+import { exchangeLabel } from "@/lib/exchange-label";
 import { formatMoney } from "@/lib/format-number";
 import type { WatchlistRow } from "../types";
 import { PriceChangeBadge } from "./price-change-badge";
@@ -25,7 +26,7 @@ export function WatchlistCardList({ rows, onRemove }: WatchlistCardListProps) {
       {rows.map((row) => {
         const detail = [
           row.assetType === null ? null : t(`markets.assetType.${row.assetType}`),
-          row.exchange,
+          row.exchange === null ? null : exchangeLabel(row.exchange),
         ]
           .filter((part) => part !== null)
           .join(" · ");

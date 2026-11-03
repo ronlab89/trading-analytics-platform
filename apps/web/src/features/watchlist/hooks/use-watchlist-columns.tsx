@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/avatar";
 import { Badge } from "@/components/badge";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
+import { exchangeLabel } from "@/lib/exchange-label";
 import { formatMoney } from "@/lib/format-number";
 import { PriceChangeBadge } from "../components/price-change-badge";
 import { WatchlistRemoveButton } from "../components/watchlist-remove-button";
@@ -68,7 +69,7 @@ export function useWatchlistColumns(onRemove: (row: WatchlistRow) => void) {
           enableGlobalFilter: false,
           cell: ({ row }) => <TypeBadge assetType={row.original.assetType} />,
         }),
-        column.accessor((row) => row.exchange ?? "", {
+        column.accessor((row) => (row.exchange === null ? "" : exchangeLabel(row.exchange)), {
           id: "exchange",
           header: headerOf("exchange"),
           enableGlobalFilter: false,
