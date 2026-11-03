@@ -333,6 +333,66 @@ test.beforeEach(async ({ page }) => {
       ),
     ),
   );
+  await page.route("http://localhost:7001/api/v1/decisions/d1/replay", (route) =>
+    route.fulfill(
+      json({
+        decision: {
+          id: "d1",
+          portfolioId: "p1",
+          assetId: "a1",
+          title: "Buy the dip",
+          thesis: "Services keep growing and the results should beat the forecast.",
+          direction: "LONG",
+          entryPrice: usd("162.40"),
+          targetPrice: usd("190.00"),
+          stopPrice: usd("158.00"),
+          riskLevel: "MODERATE",
+          createdAt: "2026-08-12T10:05:00.000Z",
+          closedAt: null,
+          outcome: null,
+          notes: "Review the stop above $170.",
+        },
+        events: [
+          {
+            id: "e1",
+            decisionId: "d1",
+            timestamp: "2026-08-12T10:05:00.000Z",
+            type: "DECISION_CREATED",
+            payload: {},
+          },
+          {
+            id: "e2",
+            decisionId: "d1",
+            timestamp: "2026-08-14T15:40:00.000Z",
+            type: "POSITION_OPENED",
+            payload: { quantity: "236", price: "162.40" },
+          },
+          {
+            id: "e3",
+            decisionId: "d1",
+            timestamp: "2026-08-28T09:30:00.000Z",
+            type: "RISK_CHANGED",
+            payload: { riskLevel: "HIGH" },
+          },
+        ],
+        currency: "USD",
+        initialState: {
+          currentIndex: -1,
+          totalEvents: 3,
+          currentEvent: null,
+          phase: "PLANNED",
+          thesis: null,
+          riskLevel: null,
+          notes: [],
+          position: null,
+          lastPrice: null,
+          unrealizedPnL: null,
+          realizedPnL: null,
+          issues: [],
+        },
+      }),
+    ),
+  );
   await page.route("http://localhost:7001/api/v1/assets?*", (route) =>
     route.fulfill({
       ...json(null),
@@ -690,6 +750,42 @@ test("the search narrows the decisions by title, symbol or asset name", async ({
 
   await expect(page.getByRole("table", { name: "Decisions" }).getByRole("row")).toHaveCount(2);
   await expect(page.getByRole("row", { name: /Cut the loss/ })).toBeVisible();
+});
+
+test("the decision detail lays out its indicators, thesis and events inside the main area on every width", async ({
+  page,
+}) => {
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions/d1");
+    await page.getByRole("region", { name: "Entry", exact: true }).waitFor();
+
+    const main = await boxOf(page.locator("main"));
+    const boxes = [];
+    for (const name of ["Entry", "Target", "Stop", "Risk"]) {
+      boxes.push(await boxOf(page.getByRole("region", { name, exact: true })));
+    }
+    const thesis = await boxOf(page.getByRole("region", { name: "Thesis and context" }));
+    const events = await boxOf(page.getByRole("region", { name: "Position evolution" }));
+    for (const box of [...boxes, thesis, events]) {
+      expect(box.x).toBeGreaterThanOrEqual(main.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+    }
+
+    const [entry, target] = boxes;
+    if (width >= 1280) {
+      // Four indicators on one row, the thesis beside the events.
+      expect(Math.abs((entry?.y ?? 0) - (target?.y ?? 99))).toBeLessThan(2);
+      expect(Math.abs((boxes[3]?.y ?? 99) - (entry?.y ?? 0))).toBeLessThan(2);
+      expect(events.x).toBeGreaterThanOrEqual(thesis.x + thesis.width);
+      expect(Math.abs(events.y - thesis.y)).toBeLessThan(2);
+    } else {
+      // Two by two, the events under the thesis.
+      expect(Math.abs((boxes[2]?.y ?? 0) - (entry?.y ?? 99))).toBeGreaterThan(20);
+      expect(events.y).toBeGreaterThanOrEqual(thesis.y + thesis.height);
+    }
+    await expect(page.getByText("236 units at $162.40")).toBeVisible();
+  }
 });
 
 test("on mobile the custom period is a bottom sheet with one month", async ({ page }) => {

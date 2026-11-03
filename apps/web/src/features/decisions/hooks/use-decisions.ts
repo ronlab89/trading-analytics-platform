@@ -9,6 +9,7 @@ const listDecisionsOperation = findOperation(decisionOperations, "listDecisions"
 export const decisionKeys = {
   all: ["decisions"] as const,
   portfolio: (portfolioId: string) => [...decisionKeys.all, portfolioId] as const,
+  replay: (decisionId: string) => [...decisionKeys.all, "replay", decisionId] as const,
 };
 
 /**
