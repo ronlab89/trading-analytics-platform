@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -5,6 +6,7 @@ import { CatalogSection } from "@/features/catalog/components/catalog-section";
 import { CatalogSummary } from "@/features/catalog/components/catalog-summary";
 import { WatchlistSection } from "@/features/watchlist/components/watchlist-section";
 import { WatchlistSummary } from "@/features/watchlist/components/watchlist-summary";
+import { NO_CATALOG_FILTERS, type CatalogFilters } from "@/features/catalog/lib/catalog-filters";
 import { useIsMobile } from "@/hooks/use-media-query";
 
 const TAB_PARAM = "tab";
@@ -31,6 +33,8 @@ export function MarketsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [tab, selectTab] = useMarketsTab();
+  // The catalog filters live here, as the header line counts what they leave.
+  const [catalogFilters, setCatalogFilters] = useState<CatalogFilters>(NO_CATALOG_FILTERS);
 
   const tabs = (
     <TabsList aria-label={t("markets.tabsLabel")} className={isMobile ? "w-full" : undefined}>
@@ -62,7 +66,7 @@ export function MarketsPage() {
         <>
           <h1 className="sr-only">{t("nav.markets")}</h1>
           <div className="flex items-center justify-between gap-4">
-            {tab === "all" ? <CatalogSummary /> : <WatchlistSummary />}
+            {tab === "all" ? <CatalogSummary filters={catalogFilters} /> : <WatchlistSummary />}
             {tabs}
           </div>
         </>
@@ -71,7 +75,7 @@ export function MarketsPage() {
         <WatchlistSection />
       </TabsContent>
       <TabsContent value="all">
-        <CatalogSection />
+        <CatalogSection filters={catalogFilters} onFiltersChange={setCatalogFilters} />
       </TabsContent>
     </Tabs>
   );

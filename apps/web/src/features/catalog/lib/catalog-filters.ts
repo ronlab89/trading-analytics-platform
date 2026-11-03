@@ -11,6 +11,12 @@ export interface CatalogFilters {
   exchange: string | null;
 }
 
+/** The types of asset the filters offer, in the order of the Figma panel. */
+export const CATALOG_ASSET_TYPES: readonly CatalogAssetType[] = ["STOCK", "ETF", "CRYPTO", "FOREX"];
+
+/** The exchanges the filters offer, as the API names them; `exchangeLabel` gives their names. */
+export const CATALOG_EXCHANGES: readonly string[] = ["NASDAQ", "NYSE", "NYSEARCA", "CRYPTO"];
+
 export const NO_CATALOG_FILTERS: CatalogFilters = { assetType: null, exchange: null };
 
 /** The filter and search part of the `listAssets` query. */
@@ -39,4 +45,9 @@ export function toCatalogQuery(
 /** How many filters narrow the list, for "Filtros · 2". The search does not count: it has its own box. */
 export function activeCatalogFilterCount({ assetType, exchange }: CatalogFilters): number {
   return (assetType === null ? 0 : 1) + (exchange === null ? 0 : 1);
+}
+
+/** Whether two sets of filters ask the API for the same assets. */
+export function sameCatalogFilters(a: CatalogFilters, b: CatalogFilters): boolean {
+  return a.assetType === b.assetType && a.exchange === b.exchange;
 }

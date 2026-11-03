@@ -1,11 +1,19 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput } from "@/api/trading-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
+import { NO_CATALOG_FILTERS, type CatalogFilters } from "../lib/catalog-filters";
 import { CatalogSection } from "./catalog-section";
+
+/** The page keeps the filters; this stands in for it. */
+function SectionWithFilters() {
+  const [filters, setFilters] = useState<CatalogFilters>(NO_CATALOG_FILTERS);
+  return <CatalogSection filters={filters} onFiltersChange={setFilters} />;
+}
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }));
 
@@ -65,7 +73,7 @@ function renderSection(answers: Answers = {}) {
       }
     },
   );
-  render(<CatalogSection />, { wrapper: tradingClientWrapper({ call }) });
+  render(<SectionWithFilters />, { wrapper: tradingClientWrapper({ call }) });
   return call;
 }
 
@@ -197,5 +205,42 @@ describe("CatalogSection", () => {
         pageSize: 20,
       });
     });
+  });
+
+  it("asks the API for the filters chosen, from the first page, and shows them as chips", async () => {
+    const user = userEvent.setup();
+    const call = renderSection();
+    await screen.findByText("Apple Inc.");
+    await user.click(screen.getByRole("button", { name: /Next/ }));
+
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByRole("checkbox", { name: "ETF" }));
+    await user.click(screen.getByRole("button", { name: "Apply filters" }));
+
+    await waitFor(() => {
+      expect(callsOf(call, "listAssets").at(-1)?.[1]?.query).toMatchObject({
+        assetType: "ETF",
+        page: 1,
+      });
+    });
+    expect(screen.getByText("Type: ETF")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Filters · 1" })).toBeVisible();
+  });
+
+  it("drops the filters with 'Clear all' on the chips", async () => {
+    const user = userEvent.setup();
+    const call = renderSection();
+    await screen.findByText("Apple Inc.");
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByRole("checkbox", { name: "ETF" }));
+    await user.click(screen.getByRole("button", { name: "Apply filters" }));
+    await screen.findByText("Type: ETF");
+
+    await user.click(screen.getByRole("button", { name: "Clear all" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Type: ETF")).not.toBeInTheDocument();
+    });
+    expect(callsOf(call, "listAssets").at(-1)?.[1]?.query).not.toHaveProperty("assetType");
   });
 });

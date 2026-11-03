@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   activeCatalogFilterCount,
+  sameCatalogFilters,
   NO_CATALOG_FILTERS,
   toCatalogQuery,
   type CatalogFilters,
@@ -45,5 +46,17 @@ describe("activeCatalogFilterCount", () => {
     expect(activeCatalogFilterCount(NO_CATALOG_FILTERS)).toBe(0);
     expect(activeCatalogFilterCount({ assetType: "ETF", exchange: null })).toBe(1);
     expect(activeCatalogFilterCount(etfOnNasdaq)).toBe(2);
+  });
+});
+
+describe("sameCatalogFilters", () => {
+  it("is true for filters that ask the API for the same assets", () => {
+    expect(sameCatalogFilters(etfOnNasdaq, { assetType: "ETF", exchange: "NASDAQ" })).toBe(true);
+    expect(sameCatalogFilters(NO_CATALOG_FILTERS, { assetType: null, exchange: null })).toBe(true);
+  });
+
+  it("is false when the type or the exchange differs", () => {
+    expect(sameCatalogFilters(etfOnNasdaq, { assetType: "STOCK", exchange: "NASDAQ" })).toBe(false);
+    expect(sameCatalogFilters(etfOnNasdaq, { assetType: "ETF", exchange: null })).toBe(false);
   });
 });
