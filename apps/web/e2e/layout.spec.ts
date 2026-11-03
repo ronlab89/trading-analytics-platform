@@ -238,6 +238,33 @@ test.beforeEach(async ({ page }) => {
       ),
     ),
   );
+  await page.route("http://localhost:7001/api/v1/watchlist", (route) =>
+    route.fulfill(
+      json(
+        ["a1", "a2", "a3", "a4", "a5"].map((assetId) => ({
+          id: `w-${assetId}`,
+          userId: "u-1",
+          assetId,
+          createdAt: "2026-11-01T10:00:00.000Z",
+        })),
+      ),
+    ),
+  );
+  await page.route("http://localhost:7001/api/v1/market/prices?*", (route) =>
+    route.fulfill(
+      json(
+        ["a1", "a2", "a3", "a4", "a5"].map((assetId, index) => ({
+          assetId,
+          price: usd("180.70"),
+          previousPrice: usd("177.00"),
+          change: usd("3.70"),
+          changePercent: index % 2 === 0 ? 2.1 : -0.6,
+          timestamp: "2026-11-03T14:32:07.000Z",
+          source: "SIMULATED",
+        })),
+      ),
+    ),
+  );
   await page.route("http://localhost:7001/api/v1/assets/*", (route) => {
     const id = route.request().url().split("/").pop() ?? "a1";
     return route.fulfill(json(asset(id, id.toUpperCase(), `Asset ${id.toUpperCase()}`)));
@@ -258,6 +285,11 @@ async function waitForPositions(page: Page, width: number) {
 async function waitForTransactions(page: Page, width: number) {
   const role = width <= MOBILE_MAX ? "list" : "table";
   await page.getByRole(role, { name: /Transactions|Transacciones/ }).waitFor();
+}
+
+async function waitForWatchlist(page: Page, width: number) {
+  const role = width <= MOBILE_MAX ? "list" : "table";
+  await page.getByRole(role, { name: "Watchlist" }).waitFor();
 }
 
 /** The box of something that must be on screen; a missing one fails the test with a clear reason. */
@@ -313,6 +345,17 @@ for (const { name, width, height } of viewports) {
     expect(size.scrollHeight).toBe(size.clientHeight);
   });
 
+  test(`the watchlist does not scroll the page by itself on ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/markets");
+    await waitForWatchlist(page, width);
+
+    const size = await pageSize(page);
+
+    expect(size.scrollWidth).toBe(size.clientWidth);
+    expect(size.scrollHeight).toBe(size.clientHeight);
+  });
+
   test(`opening the portfolio selector does not move the layout on ${name}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.goto("/portfolios");
@@ -326,6 +369,35 @@ for (const { name, width, height } of viewports) {
     expect(await main.boundingBox()).toEqual(before);
   });
 }
+
+test("on mobile the watchlist is a card list inside the main area, not a table", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/markets");
+  await waitForWatchlist(page, 390);
+
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Watchlist" }).getByRole("listitem")).toHaveCount(5);
+  const main = await boxOf(page.locator("main"));
+  const list = await boxOf(page.getByRole("list", { name: "Watchlist" }));
+  expect(list.x).toBeGreaterThanOrEqual(main.x);
+  expect(list.x + list.width).toBeLessThanOrEqual(main.x + main.width);
+});
+
+test("on tablet and desktop the watchlist shows every column", async ({ page }) => {
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/markets");
+    await waitForWatchlist(page, width);
+
+    const headers = page.getByRole("table", { name: "Watchlist" }).getByRole("columnheader");
+    await expect(headers.filter({ hasText: "Type" })).toBeVisible();
+    await expect(headers.filter({ hasText: "Exchange" })).toBeVisible();
+    await expect(headers.filter({ hasText: "Price" })).toBeVisible();
+    await expect(headers.filter({ hasText: "Change today" })).toBeVisible();
+  }
+});
 
 test("on mobile the portfolios are cards inside the main area, not a table", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });

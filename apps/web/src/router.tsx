@@ -3,6 +3,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { RequireAuth } from "@/features/auth/components/require-auth";
 import { LoginPage } from "@/pages/auth/login-page";
 import { DashboardPage } from "@/pages/dashboard/dashboard-page";
+import { MarketsPage } from "@/pages/markets/markets-page";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import { PortfolioDetailPage } from "@/pages/portfolios/portfolio-detail-page";
 import { PortfoliosPage } from "@/pages/portfolios/portfolios-page";
@@ -24,6 +25,7 @@ export const routes: RouteObject[] = [
           { path: "/portfolios", element: <PortfoliosPage /> },
           { path: "/portfolios/:portfolioId", element: <PortfolioDetailPage /> },
           { path: "/transactions", element: <TransactionsPage /> },
+          { path: "/markets", element: <MarketsPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },
