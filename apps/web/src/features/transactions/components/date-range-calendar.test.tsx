@@ -25,6 +25,24 @@ describe("DateRangeCalendar", () => {
     expect(screen.getAllByRole("grid")).toHaveLength(2);
   });
 
+  it("leaves the presets out when it is told to, and keeps the calendar and its buttons", () => {
+    render(
+      <DateRangeCalendar
+        months={1}
+        onApply={vi.fn()}
+        onCancel={vi.fn()}
+        presets={false}
+        today={today}
+        value={null}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Last 7 days" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Custom" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("grid")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Apply" })).toBeVisible();
+  });
+
   it("cannot be applied until both ends of the range are chosen", async () => {
     const { user } = setup();
     expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();

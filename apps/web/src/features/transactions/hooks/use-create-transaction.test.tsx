@@ -2,6 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { CreateTransactionRequestBody } from "@trading/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
+import { useRisk } from "@/features/analytics/hooks/use-risk";
+import { DEFAULT_ANALYTICS_PERIOD } from "@/features/analytics/lib/analytics-period";
 import { useOverview } from "@/features/dashboard/hooks/use-overview";
 import { usePerformance } from "@/features/dashboard/hooks/use-performance";
 import { usePositions } from "@/features/portfolios/hooks/use-positions";
@@ -132,6 +134,26 @@ describe("useCreateTransaction", () => {
       expect(callsOf("listPositions")).toHaveLength(2);
       expect(callsOf("getPortfolioOverview")).toHaveLength(2);
       expect(callsOf("getPortfolioPerformance")).toHaveLength(2);
+    });
+  });
+
+  it("refreshes the analytics of the portfolio, whatever their period", async () => {
+    const { client, callsOf } = clientWith(() => Promise.resolve({ data: created }));
+    const { result } = renderHook(
+      () => ({
+        create: useCreateTransaction("p1"),
+        risk: useRisk("p1", DEFAULT_ANALYTICS_PERIOD),
+      }),
+      { wrapper: tradingClientWrapper(client) },
+    );
+    await waitFor(() => {
+      expect(callsOf("getPortfolioRisk")).toHaveLength(1);
+    });
+
+    await act(() => result.current.create.mutateAsync(body));
+
+    await waitFor(() => {
+      expect(callsOf("getPortfolioRisk")).toHaveLength(2);
     });
   });
 

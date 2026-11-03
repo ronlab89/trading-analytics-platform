@@ -3,6 +3,7 @@ import {
   currencySymbol,
   formatAxisMoney,
   formatMoney,
+  formatPercent,
   formatQuantity,
   formatSignedMoney,
   formatSignedPercent,
@@ -38,6 +39,18 @@ describe("formatSignedPercent", () => {
 
   it("does not show a minus for a change that rounds to zero", () => {
     expect(formatSignedPercent(-0.001)).toBe("0.00%");
+  });
+});
+
+describe("formatPercent", () => {
+  it("writes percentage points with one decimal and a minus only when negative", () => {
+    expect(formatPercent(14.2)).toBe("14.2%");
+    expect(formatPercent(-8.4)).toBe("-8.4%");
+    expect(formatPercent(32)).toBe("32.0%");
+  });
+
+  it("does not show a minus for a value that rounds to zero", () => {
+    expect(formatPercent(-0.01)).toBe("0.0%");
   });
 });
 
