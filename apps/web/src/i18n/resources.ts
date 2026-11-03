@@ -446,6 +446,23 @@ const en = {
   },
   decisions: {
     table: "Decisions",
+    summary: {
+      registered_one: "{{count}} decision recorded",
+      registered_other: "{{count}} decisions recorded",
+      open_one: "{{count}} open",
+      open_other: "{{count}} open",
+    },
+    loading: "Loading the decisions",
+    empty: {
+      title: "No decisions yet",
+      description: "When you record a decision, you will be able to replay it here.",
+      action: "New transaction",
+    },
+    failed: {
+      title: "Could not load the decisions",
+      description: "There was a problem reaching the server. Try again in a moment.",
+      retry: "Try again",
+    },
     search: "Search decisions",
     unknownAsset: "Unknown asset",
     columns: {
@@ -1242,6 +1259,23 @@ const es: Messages<typeof en> = {
   },
   decisions: {
     table: "Decisiones",
+    summary: {
+      registered_one: "{{count}} decisión registrada",
+      registered_other: "{{count}} decisiones registradas",
+      open_one: "{{count}} abierta",
+      open_other: "{{count}} abiertas",
+    },
+    loading: "Cargando las decisiones",
+    empty: {
+      title: "Aún no hay decisiones",
+      description: "Cuando registres una decisión, podrás reproducirla aquí.",
+      action: "Nueva transacción",
+    },
+    failed: {
+      title: "No se pudieron cargar las decisiones",
+      description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      retry: "Reintentar",
+    },
     search: "Buscar decisiones",
     unknownAsset: "Activo desconocido",
     columns: {
