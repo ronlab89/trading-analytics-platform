@@ -194,6 +194,25 @@ const en = {
       noTransactions: "No transactions",
       unavailable: "Could not be loaded",
     },
+    value: {
+      title: "Portfolio value",
+      subtitle: "Evolution in {{currency}} · {{period}}",
+      legend: "Portfolio",
+      loading: "Loading the portfolio value",
+      empty: {
+        title: "Your portfolio is empty",
+        description: "Record your first transaction to see how its value evolves.",
+      },
+      noRange: {
+        title: "No data in this range",
+        description: "There is no activity in this period. Try another one.",
+        action: "See the last month",
+      },
+      failed: {
+        title: "Could not load the portfolio value",
+        description: "There was a problem reaching the server. Your other data is still available.",
+      },
+    },
     header: {
       summary_one: "Summary of {{portfolio}} · {{count}} position",
       summary_other: "Summary of {{portfolio}} · {{count}} positions",
@@ -882,6 +901,26 @@ const es: Messages<typeof en> = {
       noData: "Sin datos en el rango",
       noTransactions: "Sin transacciones",
       unavailable: "No se pudo cargar",
+    },
+    value: {
+      title: "Valor del portafolio",
+      subtitle: "Evolución en {{currency}} · {{period}}",
+      legend: "Portafolio",
+      loading: "Cargando el valor del portafolio",
+      empty: {
+        title: "Tu portafolio está vacío",
+        description: "Registra tu primera transacción para ver cómo evoluciona su valor.",
+      },
+      noRange: {
+        title: "Sin datos en este rango",
+        description: "No hay movimientos en este período. Prueba con otro.",
+        action: "Ver el último mes",
+      },
+      failed: {
+        title: "No se pudo cargar el valor del portafolio",
+        description:
+          "Hubo un problema al conectar con el servidor. Tus demás datos siguen disponibles.",
+      },
     },
     header: {
       summary_one: "Resumen de {{portfolio}} · {{count}} posición",
