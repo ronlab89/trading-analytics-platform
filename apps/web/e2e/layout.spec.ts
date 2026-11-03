@@ -518,6 +518,26 @@ test("on mobile the analytics show the title, the selector and the indicators tw
   expect(third.x).toBeCloseTo(first.x, 0);
 });
 
+test("the value and drawdown panels draw their charts inside the main area on every width", async ({
+  page,
+}) => {
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/analytics");
+    const value = page.getByRole("region", { name: "Portfolio value", exact: true });
+    const drawdown = page.getByRole("region", { name: "Drawdown", exact: true });
+    await expect(value.getByRole("img", { name: /Portfolio value over/ })).toBeVisible();
+    await expect(drawdown.getByRole("img", { name: /Drawdown of the portfolio/ })).toBeVisible();
+
+    const main = await boxOf(page.locator("main"));
+    for (const panel of [value, drawdown]) {
+      const box = await boxOf(panel);
+      expect(box.x).toBeGreaterThanOrEqual(main.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+    }
+  }
+});
+
 test("on mobile the custom period is a bottom sheet with one month", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/analytics");
