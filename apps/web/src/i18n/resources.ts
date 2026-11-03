@@ -315,6 +315,10 @@ const en = {
   markets: {
     watchlistSummary_one: "{{count}} asset on your watchlist · simulated prices",
     watchlistSummary_other: "{{count}} assets on your watchlist · simulated prices",
+    catalogSummary_one: "{{count}} asset available · simulated prices",
+    catalogSummary_other: "{{count}} assets available · simulated prices",
+    tabsLabel: "Markets sections",
+    tabs: { watchlist: "Watchlist", all: "All assets" },
     watchlistSearch: "Search your watchlist",
     loading: "Loading your watchlist",
     noResults: {
@@ -925,6 +929,10 @@ const es: Messages<typeof en> = {
   markets: {
     watchlistSummary_one: "{{count}} activo en tu watchlist · precios simulados",
     watchlistSummary_other: "{{count}} activos en tu watchlist · precios simulados",
+    catalogSummary_one: "{{count}} activo disponible · precios simulados",
+    catalogSummary_other: "{{count}} activos disponibles · precios simulados",
+    tabsLabel: "Secciones de Mercados",
+    tabs: { watchlist: "Watchlist", all: "Todos los activos" },
     watchlistSearch: "Buscar en tu watchlist",
     loading: "Cargando tu watchlist",
     noResults: {
