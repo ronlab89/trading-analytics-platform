@@ -312,6 +312,10 @@ const en = {
       },
     },
   },
+  markets: {
+    watchlistSummary_one: "{{count}} asset on your watchlist · simulated prices",
+    watchlistSummary_other: "{{count}} assets on your watchlist · simulated prices",
+  },
   transactions: {
     table: "Transactions",
     loading: "Loading transactions",
@@ -882,6 +886,10 @@ const es: Messages<typeof en> = {
         retry: "Reintentar",
       },
     },
+  },
+  markets: {
+    watchlistSummary_one: "{{count}} activo en tu watchlist · precios simulados",
+    watchlistSummary_other: "{{count}} activos en tu watchlist · precios simulados",
   },
   transactions: {
     table: "Transacciones",
