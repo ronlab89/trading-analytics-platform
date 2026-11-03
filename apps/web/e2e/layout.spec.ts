@@ -242,6 +242,21 @@ test.beforeEach(async ({ page }) => {
       }),
     ),
   );
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/analytics/attribution?*", (route) =>
+    route.fulfill(
+      json({
+        asOf: "2026-10-14",
+        effectiveFrom: "2026-09-14",
+        status: "OK",
+        groupBy: "asset",
+        pnl: usd("2500.00"),
+        groups: [
+          { key: "a1", label: "AAPL", contribution: usd("4300.00") },
+          { key: "a2", label: "MSFT", contribution: usd("-700.00") },
+        ],
+      }),
+    ),
+  );
   await page.route("http://localhost:7001/api/v1/notifications*", (route) =>
     route.fulfill(
       json(
@@ -560,6 +575,36 @@ test("the allocation sits beside the value on desktop and under it on tablet and
     } else {
       expect(box.y).toBeGreaterThanOrEqual(valueBox.y + valueBox.height);
       expect(Math.abs(box.x - valueBox.x)).toBeLessThan(2);
+    }
+  }
+});
+
+test("the attribution sits beside the drawdown on desktop and under it on tablet and mobile", async ({
+  page,
+}) => {
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/analytics");
+    const drawdown = page.getByRole("region", { name: "Drawdown", exact: true });
+    const attribution = page.getByRole("region", { name: "Performance attribution" });
+    const table = attribution.getByRole("table");
+    await expect(table.getByRole("cell", { name: "AAPL" })).toBeVisible();
+    await expect(table.getByText("+$4,300.00")).toBeVisible();
+    await expect(table.getByText("-$700.00")).toBeVisible();
+
+    const main = await boxOf(page.locator("main"));
+    const drawdownBox = await boxOf(drawdown);
+    const box = await boxOf(attribution);
+    const tableBox = await boxOf(table);
+    expect(box.x).toBeGreaterThanOrEqual(main.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+    expect(tableBox.x + tableBox.width).toBeLessThanOrEqual(box.x + box.width);
+    if (width >= 1280) {
+      expect(drawdownBox.x).toBeGreaterThanOrEqual(box.x + box.width);
+      expect(Math.abs(box.y - drawdownBox.y)).toBeLessThan(2);
+    } else {
+      expect(drawdownBox.y).toBeGreaterThanOrEqual(box.y + box.height);
+      expect(Math.abs(box.x - drawdownBox.x)).toBeLessThan(2);
     }
   }
 });

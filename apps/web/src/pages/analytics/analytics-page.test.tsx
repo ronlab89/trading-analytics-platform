@@ -48,6 +48,15 @@ const risk = {
   troughDate: "2026-09-22",
 };
 
+const attribution = {
+  asOf: "2026-10-14",
+  effectiveFrom: "2026-09-14",
+  status: "OK",
+  groupBy: "asset",
+  pnl: { amount: "2500.00", currency: "USD" },
+  groups: [{ key: "a1", label: "AAPL", contribution: { amount: "4300.00", currency: "USD" } }],
+};
+
 interface Answers {
   listPortfolios?: () => Promise<unknown>;
   listPositions?: () => Promise<unknown>;
@@ -68,6 +77,8 @@ function clientWith(answers: Answers = {}) {
           return answers.performance?.(input) ?? Promise.resolve({ data: performance });
         case "getPortfolioRisk":
           return Promise.resolve({ data: risk });
+        case "getPortfolioAttribution":
+          return Promise.resolve({ data: attribution });
         case "getPortfolioAllocation":
           return Promise.resolve({
             data: {
@@ -182,6 +193,26 @@ describe("AnalyticsPage", () => {
       });
     });
     expect(callsOf(call, "getPortfolioAllocation")).toHaveLength(1);
+  });
+
+  it("draws the attribution next to the drawdown and asks for it again when the period changes", async () => {
+    const user = userEvent.setup();
+    const { client, call } = clientWith();
+    renderPage(client);
+
+    expect(await screen.findByRole("heading", { name: "Performance attribution" })).toBeVisible();
+    expect(await screen.findByText("+$4,300.00")).toBeVisible();
+    expect(callsOf(call, "getPortfolioAttribution")[0]?.[1]).toMatchObject({
+      query: { period: "1M", groupBy: "asset" },
+    });
+
+    await user.click(screen.getByRole("button", { name: "3M" }));
+
+    await waitFor(() => {
+      expect(callsOf(call, "getPortfolioAttribution").at(-1)?.[1]).toMatchObject({
+        query: { period: "3M", groupBy: "asset" },
+      });
+    });
   });
 
   it("gives the panels the period that is chosen", async () => {
