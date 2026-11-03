@@ -215,6 +215,21 @@ const en = {
         description: "There was a problem reaching the server. Your other data is still available.",
       },
     },
+    allocation: {
+      title: "Allocation",
+      subtitle: "Weight over {{total}} invested",
+      groupBy: "Group the allocation by",
+      tabs: { asset: "Asset", assetType: "Type", currency: "Currency" },
+      loading: "Loading the allocation",
+      empty: {
+        title: "Nothing to allocate yet",
+        description: "It shows from your first position.",
+      },
+      failed: {
+        title: "Could not load the allocation",
+        description: "There was a problem reaching the server. Your other data is still available.",
+      },
+    },
     value: {
       title: "Portfolio value",
       subtitle: "Evolution in {{currency}} · {{period}}",
@@ -941,6 +956,22 @@ const es: Messages<typeof en> = {
       },
       failed: {
         title: "No se pudo cargar el drawdown",
+        description:
+          "Hubo un problema al conectar con el servidor. Tus demás datos siguen disponibles.",
+      },
+    },
+    allocation: {
+      title: "Asignación",
+      subtitle: "Peso sobre {{total}} invertidos",
+      groupBy: "Agrupar la asignación por",
+      tabs: { asset: "Activo", assetType: "Tipo", currency: "Moneda" },
+      loading: "Cargando la asignación",
+      empty: {
+        title: "Nada que asignar todavía",
+        description: "Se muestra a partir de tu primera posición.",
+      },
+      failed: {
+        title: "No se pudo cargar la asignación",
         description:
           "Hubo un problema al conectar con el servidor. Tus demás datos siguen disponibles.",
       },
