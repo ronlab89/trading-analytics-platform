@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CatalogSection } from "@/features/catalog/components/catalog-section";
 import { CatalogSummary } from "@/features/catalog/components/catalog-summary";
 import { WatchlistSection } from "@/features/watchlist/components/watchlist-section";
 import { WatchlistSummary } from "@/features/watchlist/components/watchlist-summary";
@@ -69,7 +70,9 @@ export function MarketsPage() {
       <TabsContent value="watchlist">
         <WatchlistSection />
       </TabsContent>
-      <TabsContent value="all" />
+      <TabsContent value="all">
+        <CatalogSection />
+      </TabsContent>
     </Tabs>
   );
 }
