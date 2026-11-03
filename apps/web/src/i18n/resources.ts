@@ -164,6 +164,13 @@ const en = {
       remove: "Remove filter {{filter}}",
     },
   },
+  analytics: {
+    period: {
+      label: "Period",
+      presets: { "1W": "1W", "1M": "1M", "3M": "3M", "6M": "6M", "1Y": "1Y" },
+      custom: "Custom",
+    },
+  },
   dateRange: {
     presets: {
       last7: "Last 7 days",
@@ -811,6 +818,13 @@ const es: Messages<typeof en> = {
       asset: "Activo: {{value}}",
       date: "Fecha: {{value}}",
       remove: "Quitar filtro {{filter}}",
+    },
+  },
+  analytics: {
+    period: {
+      label: "Período",
+      presets: { "1W": "1S", "1M": "1M", "3M": "3M", "6M": "6M", "1Y": "1A" },
+      custom: "Personalizado",
     },
   },
   dateRange: {
