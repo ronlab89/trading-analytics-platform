@@ -215,6 +215,26 @@ const en = {
         description: "There was a problem reaching the server. Your other data is still available.",
       },
     },
+    attribution: {
+      title: "Performance attribution",
+      subtitle: "What each asset added to the result of the period",
+      subtitleTotal: "What each asset added to the result of the period · {{total}}",
+      caption: "Contribution of each asset to the result of the period, in money",
+      columns: { asset: "Asset", contribution: "Contribution" },
+      loading: "Loading the attribution",
+      empty: {
+        title: "No attribution yet",
+        description: "It is calculated once you record your first transactions.",
+      },
+      noRange: {
+        title: "No data in this range",
+        description: "There are no results to attribute in this period.",
+      },
+      failed: {
+        title: "Could not load the attribution",
+        description: "There was a problem reaching the server. Your other data is still available.",
+      },
+    },
     allocation: {
       title: "Allocation",
       subtitle: "Weight over {{total}} invested",
@@ -956,6 +976,27 @@ const es: Messages<typeof en> = {
       },
       failed: {
         title: "No se pudo cargar el drawdown",
+        description:
+          "Hubo un problema al conectar con el servidor. Tus demás datos siguen disponibles.",
+      },
+    },
+    attribution: {
+      title: "Atribución del rendimiento",
+      subtitle: "Cuánto aportó cada activo al resultado del período",
+      subtitleTotal: "Cuánto aportó cada activo al resultado del período · {{total}}",
+      caption: "Aporte de cada activo al resultado del período, en dinero",
+      columns: { asset: "Activo", contribution: "Contribución" },
+      loading: "Cargando la atribución",
+      empty: {
+        title: "Sin atribución",
+        description: "Se calcula cuando registres tus primeras transacciones.",
+      },
+      noRange: {
+        title: "Sin datos en este rango",
+        description: "No hay resultados que atribuir en este período.",
+      },
+      failed: {
+        title: "No se pudo cargar la atribución",
         description:
           "Hubo un problema al conectar con el servidor. Tus demás datos siguen disponibles.",
       },
