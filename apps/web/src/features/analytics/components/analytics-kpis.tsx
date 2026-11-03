@@ -13,6 +13,8 @@ interface AnalyticsKpisProps {
   portfolioId: string;
   portfolioName: string;
   period: AnalyticsPeriod;
+  /** The portfolio has no positions, so a missing figure is because there are no transactions. */
+  emptyPortfolio?: boolean;
 }
 
 const toneOf = (points: number): KpiTone => (points > 0 ? "gain" : points < 0 ? "loss" : "neutral");
@@ -23,14 +25,19 @@ const toneOf = (points: number): KpiTone => (points > 0 ? "gain" : points < 0 ? 
  * little history shows a dash and says so without taking the others down. The return, the
  * volatility and the drawdown follow the period; the concentration is the current allocation.
  */
-export function AnalyticsKpis({ portfolioId, portfolioName, period }: AnalyticsKpisProps) {
+export function AnalyticsKpis({
+  portfolioId,
+  portfolioName,
+  period,
+  emptyPortfolio = false,
+}: AnalyticsKpisProps) {
   const { t, i18n } = useTranslation();
   const performance = usePeriodPerformance(portfolioId, period);
   const risk = useRisk(portfolioId, period);
   const allocation = useAllocation(portfolioId, "asset");
   const label = periodLabel(period, t, i18n.language);
   const unavailable = t("analytics.kpi.unavailable");
-  const noData = t("analytics.kpi.noData");
+  const noData = t(emptyPortfolio ? "analytics.kpi.noTransactions" : "analytics.kpi.noData");
 
   const twr = performance.data?.twrPercent ?? null;
   const volatility = risk.data?.volatilityPercent ?? null;

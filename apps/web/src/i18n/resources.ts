@@ -188,8 +188,18 @@ const en = {
       drawdownNote: "From the period's high",
       concentrationNote: "Largest weight: {{asset}} · {{level}} risk",
       levels: { LOW: "low", MODERATE: "moderate", HIGH: "high" },
-      noData: "Not enough data",
+      noData: "No data in this range",
+      noTransactions: "No transactions",
       unavailable: "Could not be loaded",
+    },
+    header: {
+      summary_one: "Summary of {{portfolio}} · {{count}} position",
+      summary_other: "Summary of {{portfolio}} · {{count}} positions",
+    },
+    failed: {
+      title: "Could not load the analytics",
+      description: "Check your connection and try again. Your data has not been changed.",
+      retry: "Try again",
     },
   },
   dateRange: {
@@ -865,8 +875,18 @@ const es: Messages<typeof en> = {
       drawdownNote: "Desde el máximo del período",
       concentrationNote: "Mayor peso: {{asset}} · riesgo {{level}}",
       levels: { LOW: "bajo", MODERATE: "moderado", HIGH: "alto" },
-      noData: "Sin datos suficientes",
+      noData: "Sin datos en el rango",
+      noTransactions: "Sin transacciones",
       unavailable: "No se pudo cargar",
+    },
+    header: {
+      summary_one: "Resumen de {{portfolio}} · {{count}} posición",
+      summary_other: "Resumen de {{portfolio}} · {{count}} posiciones",
+    },
+    failed: {
+      title: "No se pudo cargar el análisis",
+      description: "Revisa tu conexión e inténtalo de nuevo. Tus datos no se han modificado.",
+      retry: "Reintentar",
     },
   },
   dateRange: {

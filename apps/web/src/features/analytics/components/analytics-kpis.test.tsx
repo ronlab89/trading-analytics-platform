@@ -44,7 +44,11 @@ interface Answers {
 
 const month: AnalyticsPeriod = { kind: "preset", period: "1M" };
 
-function renderKpis(answers: Answers = {}, period: AnalyticsPeriod = month) {
+function renderKpis(
+  answers: Answers = {},
+  period: AnalyticsPeriod = month,
+  emptyPortfolio = false,
+) {
   const call = vi.fn<(operation: { operationId: string }, input?: CallInput) => Promise<unknown>>(
     (operation) => {
       switch (operation.operationId) {
@@ -57,9 +61,17 @@ function renderKpis(answers: Answers = {}, period: AnalyticsPeriod = month) {
       }
     },
   );
-  render(<AnalyticsKpis period={period} portfolioId="p1" portfolioName="Growth" />, {
-    wrapper: tradingClientWrapper({ call }),
-  });
+  render(
+    <AnalyticsKpis
+      emptyPortfolio={emptyPortfolio}
+      period={period}
+      portfolioId="p1"
+      portfolioName="Growth"
+    />,
+    {
+      wrapper: tradingClientWrapper({ call }),
+    },
+  );
   return call;
 }
 
@@ -119,11 +131,28 @@ describe("AnalyticsKpis", () => {
       allocation: () => Promise.resolve({ data: { groupBy: "asset", groups: [] } }),
     });
 
-    expect(await card("Period return").findByText("Not enough data")).toBeVisible();
-    expect(await card("Volatility").findByText("Not enough data")).toBeVisible();
-    expect(await card("Maximum drawdown").findByText("Not enough data")).toBeVisible();
-    expect(await card("Concentration").findByText("Not enough data")).toBeVisible();
+    expect(await card("Period return").findByText("No data in this range")).toBeVisible();
+    expect(await card("Volatility").findByText("No data in this range")).toBeVisible();
+    expect(await card("Maximum drawdown").findByText("No data in this range")).toBeVisible();
+    expect(await card("Concentration").findByText("No data in this range")).toBeVisible();
     expect(card("Volatility").getByText("—")).toBeVisible();
+  });
+
+  it("says there are no transactions, not that the range is empty, for a portfolio with no positions", async () => {
+    renderKpis(
+      {
+        performance: () =>
+          Promise.resolve({
+            data: { ...performance, status: "INSUFFICIENT_DATA", twrPercent: null },
+          }),
+        allocation: () => Promise.resolve({ data: { groupBy: "asset", groups: [] } }),
+      },
+      month,
+      true,
+    );
+
+    expect(await card("Period return").findByText("No transactions")).toBeVisible();
+    expect(await card("Concentration").findByText("No transactions")).toBeVisible();
   });
 
   it("marks a failed indicator without taking the others down", async () => {
