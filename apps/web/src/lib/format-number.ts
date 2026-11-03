@@ -110,3 +110,18 @@ export function formatAxisMoney(value: number, currency: string): string {
   if (abs >= THOUSAND) return `${sign}${symbol}${trimmed(abs / THOUSAND)}k`;
   return `${sign}${symbol}${String(Math.round(abs))}`;
 }
+
+const percentFormat = new Intl.NumberFormat(LOCALE, {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/**
+ * Percentage points as the API sends them (`14.2` is 14.2 %), with one decimal and a minus sign
+ * only when negative: the figure of a risk or a weight, which is not a change to sign. A value
+ * that rounds to zero is written as zero, not as `-0.0%`.
+ */
+export function formatPercent(points: number): string {
+  const rounded = Math.round(points * 10) / 10;
+  return `${percentFormat.format(rounded === 0 ? 0 : rounded)}%`;
+}

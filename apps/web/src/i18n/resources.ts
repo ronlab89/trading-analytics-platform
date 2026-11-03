@@ -167,8 +167,29 @@ const en = {
   analytics: {
     period: {
       label: "Period",
-      presets: { "1W": "1W", "1M": "1M", "3M": "3M", "6M": "6M", "1Y": "1Y" },
+      presets: {
+        "1W": "1W",
+        "1M": "1M",
+        "3M": "3M",
+        "6M": "6M",
+        "1Y": "1Y",
+        YTD: "YTD",
+        ALL: "All",
+      },
       custom: "Custom",
+    },
+    kpi: {
+      return: "Period return",
+      volatility: "Volatility",
+      drawdown: "Maximum drawdown",
+      concentration: "Concentration",
+      returnNote: "{{portfolio}} · {{period}}",
+      volatilityNote: "Annualized · {{period}}",
+      drawdownNote: "From the period's high",
+      concentrationNote: "Largest weight: {{asset}} · {{level}} risk",
+      levels: { LOW: "low", MODERATE: "moderate", HIGH: "high" },
+      noData: "Not enough data",
+      unavailable: "Could not be loaded",
     },
   },
   dateRange: {
@@ -823,8 +844,29 @@ const es: Messages<typeof en> = {
   analytics: {
     period: {
       label: "Período",
-      presets: { "1W": "1S", "1M": "1M", "3M": "3M", "6M": "6M", "1Y": "1A" },
+      presets: {
+        "1W": "1S",
+        "1M": "1M",
+        "3M": "3M",
+        "6M": "6M",
+        "1Y": "1A",
+        YTD: "Año",
+        ALL: "Todo",
+      },
       custom: "Personalizado",
+    },
+    kpi: {
+      return: "Rendimiento del período",
+      volatility: "Volatilidad",
+      drawdown: "Drawdown máximo",
+      concentration: "Concentración",
+      returnNote: "{{portfolio}} · {{period}}",
+      volatilityNote: "Anualizada · {{period}}",
+      drawdownNote: "Desde el máximo del período",
+      concentrationNote: "Mayor peso: {{asset}} · riesgo {{level}}",
+      levels: { LOW: "bajo", MODERATE: "moderado", HIGH: "alto" },
+      noData: "Sin datos suficientes",
+      unavailable: "No se pudo cargar",
     },
   },
   dateRange: {
