@@ -305,6 +305,34 @@ test.beforeEach(async ({ page }) => {
       ),
     ),
   );
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/decisions*", (route) =>
+    route.fulfill(
+      json(
+        [
+          { id: "d1", assetId: "a1", title: "Buy the dip", closedAt: null, outcome: null },
+          {
+            id: "d2",
+            assetId: "a2",
+            title: "Cut the loss",
+            closedAt: "2026-06-20T14:00:00.000Z",
+            outcome: "Stop reached",
+          },
+          { id: "d3", assetId: "a3", title: "Wait and see", closedAt: null, outcome: null },
+        ].map((decision) => ({
+          portfolioId: "p1",
+          thesis: "A thesis.",
+          direction: "LONG",
+          entryPrice: usd("150.00"),
+          targetPrice: usd("170.00"),
+          stopPrice: usd("140.00"),
+          riskLevel: null,
+          createdAt: "2026-06-01T14:00:00.000Z",
+          notes: null,
+          ...decision,
+        })),
+      ),
+    ),
+  );
   await page.route("http://localhost:7001/api/v1/assets?*", (route) =>
     route.fulfill({
       ...json(null),
@@ -341,6 +369,11 @@ async function waitForTransactions(page: Page, width: number) {
 async function waitForCatalog(page: Page, width: number) {
   const role = width <= MOBILE_MAX ? "list" : "table";
   await page.getByRole(role, { name: "All assets" }).waitFor();
+}
+
+async function waitForDecisions(page: Page, width: number) {
+  const role = width <= MOBILE_MAX ? "list" : "table";
+  await page.getByRole(role, { name: "Decisions" }).waitFor();
 }
 
 async function waitForWatchlist(page: Page, width: number) {
@@ -607,6 +640,56 @@ test("the attribution sits beside the drawdown on desktop and under it on tablet
       expect(Math.abs(box.x - drawdownBox.x)).toBeLessThan(2);
     }
   }
+});
+
+test("on tablet and desktop the decisions are a table inside the main area, with the prices from the desktop", async ({
+  page,
+}) => {
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions");
+    await waitForDecisions(page, width);
+
+    const table = page.getByRole("table", { name: "Decisions" });
+    await expect(table.getByRole("row")).toHaveCount(4);
+    await expect(table.getByText("Stop reached")).toBeVisible();
+    const main = await boxOf(page.locator("main"));
+    const box = await boxOf(table);
+    expect(box.x).toBeGreaterThanOrEqual(main.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+    await expect(table.getByRole("columnheader", { name: "Entry" })).toBeVisible({
+      visible: width >= 1280,
+    });
+  }
+});
+
+test("on mobile the decisions are a card list inside the main area, not a table", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/decisions");
+  await waitForDecisions(page, 390);
+
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Decisions" }).getByRole("listitem")).toHaveCount(3);
+  const main = await boxOf(page.locator("main"));
+  const list = await boxOf(page.getByRole("list", { name: "Decisions" }));
+  const search = await boxOf(page.getByRole("searchbox", { name: "Search decisions" }));
+  for (const box of [list, search]) {
+    expect(box.x).toBeGreaterThanOrEqual(main.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+  }
+});
+
+test("the search narrows the decisions by title, symbol or asset name", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/decisions");
+  await waitForDecisions(page, 1280);
+
+  await page.getByRole("searchbox", { name: "Search decisions" }).fill("asset a2");
+
+  await expect(page.getByRole("table", { name: "Decisions" }).getByRole("row")).toHaveCount(2);
+  await expect(page.getByRole("row", { name: /Cut the loss/ })).toBeVisible();
 });
 
 test("on mobile the custom period is a bottom sheet with one month", async ({ page }) => {
