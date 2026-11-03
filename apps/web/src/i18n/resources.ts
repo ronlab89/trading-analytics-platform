@@ -448,6 +448,11 @@ const en = {
     table: "Decisions",
     detail: {
       back: "Back to decisions",
+      loading: "Loading the decision",
+      failed: {
+        title: "Could not load the decision",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
       indicators: { entry: "Entry", target: "Target", stop: "Stop", risk: "Risk" },
       notes: {
         entryOpened: "{{date}} · {{quantity}} units",
@@ -1303,6 +1308,11 @@ const es: Messages<typeof en> = {
     table: "Decisiones",
     detail: {
       back: "Volver a decisiones",
+      loading: "Cargando la decisión",
+      failed: {
+        title: "No se pudo cargar la decisión",
+        description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      },
       indicators: { entry: "Entrada", target: "Objetivo", stop: "Stop", risk: "Riesgo" },
       notes: {
         entryOpened: "{{date}} · {{quantity}} uds",

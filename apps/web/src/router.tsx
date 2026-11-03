@@ -4,6 +4,7 @@ import { RequireAuth } from "@/features/auth/components/require-auth";
 import { LoginPage } from "@/pages/auth/login-page";
 import { AnalyticsPage } from "@/pages/analytics/analytics-page";
 import { DashboardPage } from "@/pages/dashboard/dashboard-page";
+import { DecisionDetailPage } from "@/pages/decisions/decision-detail-page";
 import { DecisionsPage } from "@/pages/decisions/decisions-page";
 import { MarketsPage } from "@/pages/markets/markets-page";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
@@ -30,6 +31,7 @@ export const routes: RouteObject[] = [
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/markets", element: <MarketsPage /> },
           { path: "/decisions", element: <DecisionsPage /> },
+          { path: "/decisions/:decisionId", element: <DecisionDetailPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },
