@@ -217,6 +217,31 @@ test.beforeEach(async ({ page }) => {
   await page.route("http://localhost:7001/api/v1/portfolios/p1/analytics/performance?*", (route) =>
     route.fulfill(json(performance())),
   );
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/analytics/risk?*", (route) =>
+    route.fulfill(
+      json({
+        asOf: "2026-10-14",
+        effectiveFrom: "2026-09-14",
+        status: "OK",
+        volatilityPercent: 14.2,
+        maxDrawdownPercent: -8.4,
+        currentDrawdownPercent: -1,
+        peakDate: "2026-09-10",
+        troughDate: "2026-09-22",
+      }),
+    ),
+  );
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/analytics/allocation?*", (route) =>
+    route.fulfill(
+      json({
+        groupBy: "asset",
+        groups: [
+          { key: "a1", label: "AAPL", marketValue: usd("42646.00"), percentage: 34 },
+          { key: "a2", label: "MSFT", marketValue: usd("27595.00"), percentage: 22 },
+        ],
+      }),
+    ),
+  );
   await page.route("http://localhost:7001/api/v1/notifications*", (route) =>
     route.fulfill(
       json(
@@ -383,6 +408,17 @@ for (const { name, width, height } of viewports) {
     expect(size.scrollHeight).toBe(size.clientHeight);
   });
 
+  test(`the analytics do not scroll the page by itself on ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/analytics");
+    await page.getByRole("region", { name: "Period return" }).getByText("+4.00%").waitFor();
+
+    const size = await pageSize(page);
+
+    expect(size.scrollWidth).toBe(size.clientWidth);
+    expect(size.scrollHeight).toBe(size.clientHeight);
+  });
+
   test(`opening the portfolio selector does not move the layout on ${name}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.goto("/portfolios");
@@ -457,6 +493,66 @@ test("on tablet and desktop the catalog shows every column and the filters open"
 
     await page.getByRole("button", { name: "Filters" }).click();
     await expect(page.getByRole("checkbox", { name: "NYSE Arca" })).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).click();
+  }
+});
+
+test("on mobile the analytics show the title, the selector and the indicators two by two", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/analytics");
+  await page.getByRole("region", { name: "Period return" }).getByText("+4.00%").waitFor();
+
+  await expect(page.getByRole("heading", { level: 1, name: "Analytics" })).toBeVisible();
+  await expect(page.getByText(/^Summary of /)).toHaveCount(0);
+  const main = await boxOf(page.locator("main"));
+  const selector = await boxOf(page.getByRole("group", { name: "Period" }));
+  expect(selector.x).toBeGreaterThanOrEqual(main.x);
+  expect(selector.x + selector.width).toBeLessThanOrEqual(main.x + main.width);
+  const first = await boxOf(page.getByRole("region", { name: "Period return" }));
+  const second = await boxOf(page.getByRole("region", { name: "Volatility" }));
+  const third = await boxOf(page.getByRole("region", { name: "Maximum drawdown" }));
+  expect(second.y).toBeCloseTo(first.y, 0);
+  expect(third.y).toBeGreaterThan(first.y);
+  expect(third.x).toBeCloseTo(first.x, 0);
+});
+
+test("on mobile the custom period is a bottom sheet with one month", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/analytics");
+  await page.getByRole("region", { name: "Period return" }).getByText("+4.00%").waitFor();
+
+  await page.getByRole("button", { name: "Custom" }).click();
+
+  const sheet = page.getByRole("dialog", { name: "Choose a period" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole("grid")).toHaveCount(1);
+  // The sheet slides in, so its bottom edge settles on the bottom of the screen.
+  await expect
+    .poll(async () => {
+      const box = await boxOf(sheet);
+      return box.y + box.height;
+    })
+    .toBeCloseTo(844, 0);
+  expect((await boxOf(sheet)).width).toBe(390);
+});
+
+test("on tablet and desktop the analytics show four indicators and the custom period opens", async ({
+  page,
+}) => {
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/analytics");
+    await page.getByRole("region", { name: "Period return" }).getByText("+4.00%").waitFor();
+
+    await expect(page.getByText("Summary of Conservador · 5 positions")).toBeVisible();
+    for (const name of ["Period return", "Volatility", "Maximum drawdown", "Concentration"]) {
+      await expect(page.getByRole("region", { name })).toBeVisible();
+    }
+    await page.getByRole("button", { name: "Custom" }).click();
+    await expect(page.getByRole("button", { name: "Last 7 days" })).toBeVisible();
+    await expect(page.getByRole("grid")).toHaveCount(width >= 901 ? 2 : 1);
     await page.getByRole("button", { name: "Cancel" }).click();
   }
 });
