@@ -11,6 +11,7 @@ import {
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { usePositions } from "@/features/portfolios/hooks/use-positions";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
+import { useIsMobile } from "@/hooks/use-media-query";
 
 /**
  * The Analytics screen: the indicators of the active portfolio over a period the user chooses. The
@@ -19,11 +20,18 @@ import { useActivePortfolio } from "@/hooks/use-active-portfolio";
  */
 export function AnalyticsPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { active, isPending, isError, retry } = useActivePortfolio();
 
   return (
     <div className="flex flex-col gap-4 desktop:gap-6">
-      <h1 className="sr-only">{t("nav.analytics")}</h1>
+      <h1
+        className={
+          isMobile ? "text-2xl leading-8 font-semibold text-(--color-text-default)" : "sr-only"
+        }
+      >
+        {t("nav.analytics")}
+      </h1>
       {active !== undefined ? (
         <Analytics key={active.id} portfolioId={active.id} portfolioName={active.name} />
       ) : isError ? (
@@ -56,6 +64,7 @@ interface AnalyticsProps {
 
 function Analytics({ portfolioId, portfolioName }: AnalyticsProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [period, setPeriod] = useState<AnalyticsPeriod>(DEFAULT_ANALYTICS_PERIOD);
   const positions = usePositions(portfolioId);
   const positionCount = positions.data?.length;
@@ -63,11 +72,13 @@ function Analytics({ portfolioId, portfolioName }: AnalyticsProps) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-(--color-text-secondary)">
-          {positionCount === undefined
-            ? portfolioName
-            : t("analytics.header.summary", { portfolio: portfolioName, count: positionCount })}
-        </p>
+        {isMobile ? null : (
+          <p className="text-sm text-(--color-text-secondary)">
+            {positionCount === undefined
+              ? portfolioName
+              : t("analytics.header.summary", { portfolio: portfolioName, count: positionCount })}
+          </p>
+        )}
         <AnalyticsPeriodSelector onChange={setPeriod} value={period} />
       </div>
       <AnalyticsKpis

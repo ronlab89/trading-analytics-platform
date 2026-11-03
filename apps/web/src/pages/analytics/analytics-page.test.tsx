@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
 import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
@@ -162,5 +162,29 @@ describe("AnalyticsPage", () => {
 
     expect(await screen.findByText("Could not load the analytics")).toBeVisible();
     expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
+  });
+});
+
+describe("AnalyticsPage on a phone", () => {
+  afterEach(() => {
+    vi.stubGlobal("matchMedia", undefined);
+  });
+
+  it("shows the title and leaves the summary line out, as the Figma does", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query.includes("max-width"),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    renderPage(clientWith().client);
+
+    expect(await screen.findByText("+6.12%")).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Analytics" })).toHaveClass("text-2xl");
+    expect(screen.queryByText(/^Summary of Growth/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Custom" })).toBeVisible();
   });
 });

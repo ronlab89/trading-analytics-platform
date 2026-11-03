@@ -177,6 +177,8 @@ const en = {
         ALL: "All",
       },
       custom: "Custom",
+      sheetTitle: "Choose a period",
+      sheetDescription: "Select the start and end dates.",
     },
     kpi: {
       return: "Period return",
@@ -864,6 +866,8 @@ const es: Messages<typeof en> = {
         ALL: "Todo",
       },
       custom: "Personalizado",
+      sheetTitle: "Elegir período",
+      sheetDescription: "Selecciona la fecha de inicio y de fin.",
     },
     kpi: {
       return: "Rendimiento del período",

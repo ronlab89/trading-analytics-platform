@@ -23,6 +23,8 @@ interface DateRangeCalendarProps {
   months?: 1 | 2 | undefined;
   /** The day "today" means for the presets and the calendar; a test fixes it. */
   today?: Date | undefined;
+  /** Whether the presets ("Últimos 7 días" and the rest) are offered beside the calendar. */
+  presets?: boolean | undefined;
 }
 
 const DAY =
@@ -63,6 +65,7 @@ export function DateRangeCalendar({
   onCancel,
   months = 2,
   today = new Date(),
+  presets = true,
 }: DateRangeCalendarProps) {
   const { t, i18n } = useTranslation();
   const [draft, setDraft] = useState<PickerRange | undefined>(
@@ -85,25 +88,27 @@ export function DateRangeCalendar({
   return (
     <div className="flex flex-col">
       <div className="flex flex-col gap-4 p-4 tablet:flex-row tablet:gap-6">
-        <div className="flex flex-wrap gap-1 tablet:w-40 tablet:flex-col">
-          {RANGE_PRESETS.map((name) => (
+        {presets ? (
+          <div className="flex flex-wrap gap-1 tablet:w-40 tablet:flex-col">
+            {RANGE_PRESETS.map((name) => (
+              <PresetButton
+                key={name}
+                label={t(`dateRange.presets.${name}`)}
+                onClick={() => {
+                  choosePreset(name);
+                }}
+                selected={preset === name}
+              />
+            ))}
             <PresetButton
-              key={name}
-              label={t(`dateRange.presets.${name}`)}
+              label={t("dateRange.presets.custom")}
               onClick={() => {
-                choosePreset(name);
+                setDraft(undefined);
               }}
-              selected={preset === name}
+              selected={preset === null}
             />
-          ))}
-          <PresetButton
-            label={t("dateRange.presets.custom")}
-            onClick={() => {
-              setDraft(undefined);
-            }}
-            selected={preset === null}
-          />
-        </div>
+          </div>
+        ) : null}
         <DayPicker
           classNames={PICKER_CLASSES}
           locale={i18n.language.startsWith("es") ? es : enUS}

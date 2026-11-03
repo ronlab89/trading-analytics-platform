@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
 import { DEFAULT_ANALYTICS_PERIOD, type AnalyticsPeriod } from "../lib/analytics-period";
@@ -79,5 +79,53 @@ describe("AnalyticsPeriodSelector", () => {
     const { container } = renderSelector();
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+function mockPhone() {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
+
+describe("AnalyticsPeriodSelector on a phone", () => {
+  afterEach(() => {
+    vi.stubGlobal("matchMedia", undefined);
+  });
+
+  it("opens the bottom sheet 'Choose a period' with one month and no presets", async () => {
+    mockPhone();
+    const user = userEvent.setup();
+    renderSelector();
+
+    await user.click(screen.getByRole("button", { name: "Custom" }));
+
+    expect(await screen.findByRole("dialog", { name: "Choose a period" })).toBeVisible();
+    expect(screen.getByText("Select the start and end dates.")).toBeVisible();
+    expect(screen.getAllByRole("grid")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Last 7 days" })).not.toBeInTheDocument();
+  });
+
+  it("applies the range chosen in the sheet as a custom period", async () => {
+    mockPhone();
+    const user = userEvent.setup();
+    const { onChange } = renderSelector();
+
+    await user.click(screen.getByRole("button", { name: "Custom" }));
+    await user.click(await screen.findByRole("button", { name: /October 6th, 2026/ }));
+    await user.click(screen.getByRole("button", { name: /October 9th, 2026/ }));
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      kind: "custom",
+      from: "2026-10-06",
+      to: "2026-10-09",
+    });
   });
 });

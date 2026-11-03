@@ -45,7 +45,7 @@ export function AnalyticsKpis({
   const concentration = allocation.data ? concentrationOf(allocation.data.groups) : null;
 
   return (
-    <div className="grid grid-cols-4 gap-4 max-desktop:grid-cols-2 max-tablet:grid-cols-1">
+    <div className="grid grid-cols-4 gap-4 max-desktop:grid-cols-2">
       <AnalyticsKpiCard
         label={t("analytics.kpi.return")}
         loading={performance.isPending}
