@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useWatchlistColumns } from "../hooks/use-watchlist-columns";
 import type { WatchlistRow } from "../types";
 import { WatchlistCardList } from "./watchlist-card-list";
+import { WatchlistRemoveButton } from "./watchlist-remove-button";
 
 function assetId(row: WatchlistRow) {
   return row.assetId;
@@ -65,7 +66,10 @@ export function WatchlistView({
           noResults
         )
       ) : mobile ? (
-        <WatchlistCardList onRemove={onRemove} rows={visible} />
+        <WatchlistCardList
+          renderAction={(row) => <WatchlistRemoveButton onRemove={onRemove} row={row} />}
+          rows={visible}
+        />
       ) : (
         <DataTable aria-label={t("markets.watchlistTable")} table={table} />
       )}

@@ -265,6 +265,17 @@ test.beforeEach(async ({ page }) => {
       ),
     ),
   );
+  await page.route("http://localhost:7001/api/v1/assets?*", (route) =>
+    route.fulfill({
+      ...json(null),
+      body: JSON.stringify({
+        data: ["a1", "a2", "a3", "a4", "a5", "a6"].map((id) =>
+          asset(id, id.toUpperCase(), `Asset ${id.toUpperCase()}`),
+        ),
+        meta: { page: 1, pageSize: 10, total: 24, totalPages: 3 },
+      }),
+    }),
+  );
   await page.route("http://localhost:7001/api/v1/assets/*", (route) => {
     const id = route.request().url().split("/").pop() ?? "a1";
     return route.fulfill(json(asset(id, id.toUpperCase(), `Asset ${id.toUpperCase()}`)));
@@ -285,6 +296,11 @@ async function waitForPositions(page: Page, width: number) {
 async function waitForTransactions(page: Page, width: number) {
   const role = width <= MOBILE_MAX ? "list" : "table";
   await page.getByRole(role, { name: /Transactions|Transacciones/ }).waitFor();
+}
+
+async function waitForCatalog(page: Page, width: number) {
+  const role = width <= MOBILE_MAX ? "list" : "table";
+  await page.getByRole(role, { name: "All assets" }).waitFor();
 }
 
 async function waitForWatchlist(page: Page, width: number) {
@@ -356,6 +372,17 @@ for (const { name, width, height } of viewports) {
     expect(size.scrollHeight).toBe(size.clientHeight);
   });
 
+  test(`the catalog does not scroll the page by itself on ${name}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/markets?tab=all");
+    await waitForCatalog(page, width);
+
+    const size = await pageSize(page);
+
+    expect(size.scrollWidth).toBe(size.clientWidth);
+    expect(size.scrollHeight).toBe(size.clientHeight);
+  });
+
   test(`opening the portfolio selector does not move the layout on ${name}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.goto("/portfolios");
@@ -396,6 +423,41 @@ test("on tablet and desktop the watchlist shows every column", async ({ page }) 
     await expect(headers.filter({ hasText: "Exchange" })).toBeVisible();
     await expect(headers.filter({ hasText: "Price" })).toBeVisible();
     await expect(headers.filter({ hasText: "Change today" })).toBeVisible();
+  }
+});
+
+test("on mobile the catalog is a card list inside the main area, not a table", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/markets?tab=all");
+  await waitForCatalog(page, 390);
+
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "All assets" }).getByRole("listitem")).toHaveCount(6);
+  const main = await boxOf(page.locator("main"));
+  const list = await boxOf(page.getByRole("list", { name: "All assets" }));
+  expect(list.x).toBeGreaterThanOrEqual(main.x);
+  expect(list.x + list.width).toBeLessThanOrEqual(main.x + main.width);
+  const search = await boxOf(page.getByRole("searchbox", { name: "Search by symbol or name" }));
+  expect(search.x + search.width).toBeLessThanOrEqual(main.x + main.width);
+});
+
+test("on tablet and desktop the catalog shows every column and the filters open", async ({
+  page,
+}) => {
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/markets?tab=all");
+    await waitForCatalog(page, width);
+
+    const headers = page.getByRole("table", { name: "All assets" }).getByRole("columnheader");
+    await expect(headers.filter({ hasText: "Type" })).toBeVisible();
+    await expect(headers.filter({ hasText: "Exchange" })).toBeVisible();
+    await expect(headers.filter({ hasText: "Price" })).toBeVisible();
+    await expect(headers.filter({ hasText: "Change today" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Filters" }).click();
+    await expect(page.getByRole("checkbox", { name: "NYSE Arca" })).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).click();
   }
 });
 
