@@ -194,6 +194,27 @@ const en = {
       noTransactions: "No transactions",
       unavailable: "Could not be loaded",
     },
+    drawdown: {
+      title: "Drawdown",
+      subtitle: "Fall from the previous high",
+      subtitleDeepest: "Fall from the previous high · low {{value}} on {{date}}",
+      chartLabel: "Drawdown of the portfolio over the selected period",
+      summary:
+        "From {{from}} to {{to}} the portfolio fell at most {{deepest}} below its previous high, on {{date}}; it ends {{end}} below it.",
+      loading: "Loading the drawdown",
+      empty: {
+        title: "No drawdown yet",
+        description: "It shows from your first day with positions.",
+      },
+      noRange: {
+        title: "No data in this range",
+        description: "There are no falls to show in this period.",
+      },
+      failed: {
+        title: "Could not load the drawdown",
+        description: "There was a problem reaching the server. Your other data is still available.",
+      },
+    },
     value: {
       title: "Portfolio value",
       subtitle: "Evolution in {{currency}} · {{period}}",
@@ -901,6 +922,28 @@ const es: Messages<typeof en> = {
       noData: "Sin datos en el rango",
       noTransactions: "Sin transacciones",
       unavailable: "No se pudo cargar",
+    },
+    drawdown: {
+      title: "Drawdown",
+      subtitle: "Caída desde el máximo anterior",
+      subtitleDeepest: "Caída desde el máximo anterior · mínimo {{value}} el {{date}}",
+      chartLabel: "Drawdown del portafolio en el período elegido",
+      summary:
+        "Del {{from}} al {{to}} el portafolio cayó como máximo {{deepest}} bajo su máximo anterior, el {{date}}; termina {{end}} por debajo.",
+      loading: "Cargando el drawdown",
+      empty: {
+        title: "Sin drawdown",
+        description: "Se muestra a partir de tu primer día con posiciones.",
+      },
+      noRange: {
+        title: "Sin datos en este rango",
+        description: "No hay caídas que mostrar en este período.",
+      },
+      failed: {
+        title: "No se pudo cargar el drawdown",
+        description:
+          "Hubo un problema al conectar con el servidor. Tus demás datos siguen disponibles.",
+      },
     },
     value: {
       title: "Valor del portafolio",
