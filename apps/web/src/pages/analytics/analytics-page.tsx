@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { AnalyticsAllocationPanel } from "@/features/analytics/components/analytics-allocation-panel";
 import { AnalyticsDrawdownPanel } from "@/features/analytics/components/analytics-drawdown-panel";
 import { AnalyticsKpis } from "@/features/analytics/components/analytics-kpis";
 import { AnalyticsPeriodSelector } from "@/features/analytics/components/analytics-period-selector";
@@ -94,17 +95,20 @@ function Analytics({ portfolioId, portfolioName }: AnalyticsProps) {
         portfolioId={portfolioId}
         portfolioName={portfolioName}
       />
-      <AnalyticsValuePanel
-        emptyPortfolio={emptyPortfolio}
-        onNew={() => {
-          setPanelOpen(true);
-        }}
-        onShowLastMonth={() => {
-          setPeriod(DEFAULT_ANALYTICS_PERIOD);
-        }}
-        period={period}
-        portfolioId={portfolioId}
-      />
+      <div className="grid gap-4 desktop:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] desktop:gap-6">
+        <AnalyticsValuePanel
+          emptyPortfolio={emptyPortfolio}
+          onNew={() => {
+            setPanelOpen(true);
+          }}
+          onShowLastMonth={() => {
+            setPeriod(DEFAULT_ANALYTICS_PERIOD);
+          }}
+          period={period}
+          portfolioId={portfolioId}
+        />
+        <AnalyticsAllocationPanel portfolioId={portfolioId} />
+      </div>
       <AnalyticsDrawdownPanel
         emptyPortfolio={emptyPortfolio}
         period={period}
