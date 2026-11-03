@@ -538,6 +538,32 @@ test("the value and drawdown panels draw their charts inside the main area on ev
   }
 });
 
+test("the allocation sits beside the value on desktop and under it on tablet and mobile", async ({
+  page,
+}) => {
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/analytics");
+    const value = page.getByRole("region", { name: "Portfolio value", exact: true });
+    const allocation = page.getByRole("region", { name: "Allocation", exact: true });
+    await expect(allocation.getByText("AAPL")).toBeVisible();
+    await expect(allocation.getByRole("tab", { name: "Asset" })).toBeVisible();
+
+    const main = await boxOf(page.locator("main"));
+    const valueBox = await boxOf(value);
+    const box = await boxOf(allocation);
+    expect(box.x).toBeGreaterThanOrEqual(main.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+    if (width >= 1280) {
+      expect(box.x).toBeGreaterThanOrEqual(valueBox.x + valueBox.width);
+      expect(Math.abs(box.y - valueBox.y)).toBeLessThan(2);
+    } else {
+      expect(box.y).toBeGreaterThanOrEqual(valueBox.y + valueBox.height);
+      expect(Math.abs(box.x - valueBox.x)).toBeLessThan(2);
+    }
+  }
+});
+
 test("on mobile the custom period is a bottom sheet with one month", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/analytics");

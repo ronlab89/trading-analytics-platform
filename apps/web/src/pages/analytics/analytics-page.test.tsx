@@ -163,6 +163,27 @@ describe("AnalyticsPage", () => {
     expect(await screen.findByRole("img", { name: /Drawdown of the portfolio/ })).toBeVisible();
   });
 
+  it("draws the allocation next to the value, by asset first, and keeps it when the period changes", async () => {
+    const user = userEvent.setup();
+    const { client, call } = clientWith();
+    renderPage(client);
+
+    expect(await screen.findByRole("heading", { name: "Allocation" })).toBeVisible();
+    expect(await screen.findByText("Weight over $100.00 invested")).toBeVisible();
+    expect(callsOf(call, "getPortfolioAllocation")[0]?.[1]).toMatchObject({
+      query: { groupBy: "asset" },
+    });
+
+    await user.click(screen.getByRole("button", { name: "3M" }));
+
+    await waitFor(() => {
+      expect(callsOf(call, "getPortfolioPerformance").at(-1)?.[1]).toMatchObject({
+        query: { period: "3M" },
+      });
+    });
+    expect(callsOf(call, "getPortfolioAllocation")).toHaveLength(1);
+  });
+
   it("gives the panels the period that is chosen", async () => {
     const user = userEvent.setup();
     const { client, call } = clientWith();
