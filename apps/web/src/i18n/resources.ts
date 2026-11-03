@@ -315,6 +315,19 @@ const en = {
   markets: {
     watchlistSummary_one: "{{count}} asset on your watchlist · simulated prices",
     watchlistSummary_other: "{{count}} assets on your watchlist · simulated prices",
+    watchlistSearch: "Search your watchlist",
+    watchlistTable: "Watchlist",
+    unknownAsset: "Unknown asset",
+    remove: "Remove {{asset}} from the watchlist",
+    columns: {
+      asset: "Asset",
+      type: "Type",
+      exchange: "Exchange",
+      price: "Price",
+      change: "Change today",
+      actions: "Actions",
+    },
+    assetType: { STOCK: "Stock", ETF: "ETF", CRYPTO: "Crypto", FOREX: "Forex" },
   },
   transactions: {
     table: "Transactions",
@@ -890,6 +903,19 @@ const es: Messages<typeof en> = {
   markets: {
     watchlistSummary_one: "{{count}} activo en tu watchlist · precios simulados",
     watchlistSummary_other: "{{count}} activos en tu watchlist · precios simulados",
+    watchlistSearch: "Buscar en tu watchlist",
+    watchlistTable: "Watchlist",
+    unknownAsset: "Activo desconocido",
+    remove: "Quitar {{asset}} de la watchlist",
+    columns: {
+      asset: "Activo",
+      type: "Tipo",
+      exchange: "Bolsa",
+      price: "Precio",
+      change: "Variación hoy",
+      actions: "Acciones",
+    },
+    assetType: { STOCK: "Acción", ETF: "ETF", CRYPTO: "Cripto", FOREX: "Divisa" },
   },
   transactions: {
     table: "Transacciones",
