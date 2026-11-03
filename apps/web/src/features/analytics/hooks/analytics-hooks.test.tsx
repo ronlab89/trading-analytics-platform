@@ -4,6 +4,7 @@ import { ApiError, type CallInput, type TradingClient } from "@/api/trading-clie
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import type { AnalyticsPeriod } from "../lib/analytics-period";
 import { useAllocation } from "./use-allocation";
+import { useAttribution } from "./use-attribution";
 import { usePeriodPerformance } from "./use-period-performance";
 import { useRisk } from "./use-risk";
 
@@ -115,5 +116,47 @@ describe("useAllocation", () => {
       params: { portfolioId: "p1" },
       query: { groupBy: "assetType" },
     });
+  });
+});
+
+describe("useAttribution", () => {
+  it("asks for the range attribution by asset, so the API answers over the period", async () => {
+    const { client, call } = clientAnswering(() =>
+      Promise.resolve({ data: { status: "OK", groups: [] } }),
+    );
+    const { result } = renderHook(() => useAttribution("p1", month), {
+      wrapper: tradingClientWrapper(client),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(call.mock.calls[0]?.[0].operationId).toBe("getPortfolioAttribution");
+    expect(call.mock.calls[0]?.[1]).toEqual({
+      params: { portfolioId: "p1" },
+      query: { period: "1M", groupBy: "asset" },
+    });
+  });
+
+  it("sends a custom range as `from` and `to`, never with a period", async () => {
+    const { client, call } = clientAnswering(() =>
+      Promise.resolve({ data: { status: "OK", groups: [] } }),
+    );
+    renderHook(() => useAttribution("p1", range), { wrapper: tradingClientWrapper(client) });
+
+    await waitFor(() => {
+      expect(call).toHaveBeenCalledTimes(1);
+    });
+    expect(call.mock.calls[0]?.[1]).toEqual({
+      params: { portfolioId: "p1" },
+      query: { from: "2026-10-01", to: "2026-10-14", groupBy: "asset" },
+    });
+  });
+
+  it("stays idle without a portfolio", () => {
+    const { client, call } = clientAnswering(() => Promise.resolve({ data: {} }));
+    renderHook(() => useAttribution(undefined, month), { wrapper: tradingClientWrapper(client) });
+
+    expect(call).not.toHaveBeenCalled();
   });
 });
