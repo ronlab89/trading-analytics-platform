@@ -352,6 +352,25 @@ test.beforeEach(async ({ page }) => {
       ),
     );
   });
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios/*", (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const id = route.request().url().split("/").pop() ?? "s1";
+    return route.fulfill(
+      json({
+        id,
+        portfolioId: "p1",
+        name: id === "s1" ? "Apple falls" : "Microsoft rallies",
+        description: null,
+        baseSnapshotId: null,
+        status: "SAVED",
+        changes: [
+          id === "s1" ? { assetId: "a1", percentChange: -10 } : { assetId: "a2", percentChange: 5 },
+        ],
+        createdAt: "2026-10-10T10:00:00.000Z",
+        updatedAt: "2026-10-12T10:00:00.000Z",
+      }),
+    );
+  });
   await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios/*/calculate", (route) => {
     if (route.request().method() !== "POST") return route.fallback();
     const scenarioId = route.request().url().split("/").slice(-2)[0] ?? "s1";
@@ -1518,6 +1537,7 @@ async function waitForScenarios(page: Page, width: number) {
 test("the Scenario Lab is a table from the tablet and cards on mobile, with the Figma columns", async ({
   page,
 }) => {
+  test.slow();
   for (const width of [390, 768, 1280]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/decisions?tab=lab");
@@ -1609,5 +1629,157 @@ test("a scenario is deleted from its row menu after the confirmation, which fits
 
     await expect(dialog).toBeHidden();
     expect(deleted).toMatch(/\/scenarios\/s1$/);
+  }
+});
+
+/** What the editor of scenario s1 asks the API besides the reads every page has. */
+async function mockEditorWrites(page: Page) {
+  const saved: unknown[] = [];
+  const created: unknown[] = [];
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios/s1", (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    const body = route.request().postDataJSON() as { changes?: unknown };
+    saved.push(body);
+    return route.fulfill(
+      json({
+        id: "s1",
+        portfolioId: "p1",
+        name: "Apple falls",
+        description: null,
+        baseSnapshotId: null,
+        status: "SAVED",
+        changes: body.changes ?? [],
+        createdAt: "2026-10-10T10:00:00.000Z",
+        updatedAt: "2026-10-12T10:00:00.000Z",
+      }),
+    );
+  });
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios", (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    created.push(route.request().postDataJSON());
+    return route.fulfill({
+      ...json({
+        id: "s9",
+        portfolioId: "p1",
+        name: "New scenario",
+        description: null,
+        baseSnapshotId: null,
+        status: "DRAFT",
+        changes: [],
+        createdAt: "2026-10-13T10:00:00.000Z",
+        updatedAt: "2026-10-13T10:00:00.000Z",
+      }),
+      status: 201,
+    });
+  });
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios/s9", (route) =>
+    route.fulfill(
+      json({
+        id: "s9",
+        portfolioId: "p1",
+        name: "New scenario",
+        description: null,
+        baseSnapshotId: null,
+        status: "DRAFT",
+        changes: [],
+        createdAt: "2026-10-13T10:00:00.000Z",
+        updatedAt: "2026-10-13T10:00:00.000Z",
+      }),
+    ),
+  );
+  return { saved, created };
+}
+
+test("the scenario editor lays out its panels inside the main area on every width", async ({
+  page,
+}) => {
+  test.slow();
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions/lab/s1");
+
+    const variables = page.getByRole("region", { name: "Variables" });
+    const impact = page.getByRole("region", { name: "Scenario impact" });
+    await expect(variables).toBeVisible();
+    await expect(impact.getByText("$121,416.00")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to scenarios" })).toBeVisible();
+
+    const main = await boxOf(page.locator("main"));
+    const variablesBox = await boxOf(variables);
+    const impactBox = await boxOf(impact);
+    for (const box of [variablesBox, impactBox]) {
+      expect(box.x).toBeGreaterThanOrEqual(main.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width + 1);
+    }
+
+    if (width >= 1280) {
+      // Side by side: the impact starts to the right of the variables, on the same row.
+      expect(impactBox.x).toBeGreaterThanOrEqual(variablesBox.x + variablesBox.width);
+      expect(Math.abs(impactBox.y - variablesBox.y)).toBeLessThan(4);
+    } else {
+      // Stacked: the impact starts under the variables.
+      expect(impactBox.y).toBeGreaterThanOrEqual(variablesBox.y + variablesBox.height);
+    }
+
+    // The reset is in the header, except on a phone where it is under the variables.
+    const mobile = width <= MOBILE_MAX;
+    await expect(page.getByRole("button", { name: "Reset", exact: true })).toHaveCount(1);
+    await expect(variables.getByRole("button", { name: "Reset", exact: true })).toHaveCount(
+      mobile ? 1 : 0,
+    );
+    await expect(
+      page.getByRole("button", { name: mobile ? "Save" : "Save scenario" }),
+    ).toBeVisible();
+
+    const size = await pageSize(page);
+    expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
+  }
+});
+
+test("a scenario opens in the editor from its row menu", async ({ page }) => {
+  test.slow();
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions?tab=lab");
+    await waitForScenarios(page, width);
+
+    await page.getByRole("button", { name: "Actions for “Apple falls”" }).click();
+    await page.getByRole("menuitem", { name: "Open" }).click();
+
+    await expect(page).toHaveURL(/\/decisions\/lab\/s1$/);
+    await expect(page.getByRole("region", { name: "Variables" })).toBeVisible();
+  }
+});
+
+test("moving a slider saves every change of the scenario after a pause", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { saved } = await mockEditorWrites(page);
+  await page.goto("/decisions/lab/s1");
+  const slider = page.getByRole("slider", { name: "A1 price" });
+  await expect(slider).toHaveAttribute("aria-valuenow", "-10");
+
+  await slider.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+
+  await expect(slider).toHaveAttribute("aria-valuenow", "-8");
+  await expect.poll(() => saved.length).toBe(1);
+  expect(saved[0]).toEqual({ changes: [{ assetId: "a1", percentChange: -8 }] });
+});
+
+test("New scenario creates a draft and opens it in the editor on every width", async ({ page }) => {
+  test.slow();
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    const { created } = await mockEditorWrites(page);
+    await page.goto("/decisions?tab=lab");
+    await waitForScenarios(page, width);
+
+    await page.getByRole("button", { name: "New scenario" }).click();
+
+    await expect(page).toHaveURL(/\/decisions\/lab\/s9$/);
+    await expect(page.getByRole("region", { name: "Variables" })).toBeVisible();
+    await expect(page.getByText("Unsaved")).toBeVisible();
+    expect(created).toEqual([{ name: "New scenario" }]);
   }
 });

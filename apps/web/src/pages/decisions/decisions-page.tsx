@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -83,6 +84,16 @@ function Decisions({ portfolioId, portfolioName }: { portfolioId: string; portfo
       </TabsTrigger>
     </TabsList>
   );
+  const newScenario = (
+    <Button
+      className={isMobile ? "w-full" : undefined}
+      loading={scenarioActions.creating}
+      onClick={scenarioActions.create}
+    >
+      <Plus aria-hidden="true" />
+      {t("scenarios.empty.action")}
+    </Button>
+  );
   const summary =
     tab === "lab" ? (
       <ScenariosSummary portfolioName={portfolioName} rows={scenarios.rows} />
@@ -106,11 +117,15 @@ function Decisions({ portfolioId, portfolioName }: { portfolioId: string; portfo
           <>
             {tabs}
             {tab === "replay" ? summary : null}
+            {tab === "lab" ? newScenario : null}
           </>
         ) : (
           <div className="flex min-h-9 items-center justify-between gap-4">
             {summary ?? <span />}
-            {tabs}
+            <div className="flex items-center gap-3">
+              {tab === "lab" ? newScenario : null}
+              {tabs}
+            </div>
           </div>
         )}
         <TabsContent className="flex flex-col gap-4" value="replay">
@@ -129,6 +144,7 @@ function Decisions({ portfolioId, portfolioName }: { portfolioId: string; portfo
           <ScenariosSection
             actions={scenarioActions.actions}
             isError={scenarios.isError}
+            onNew={scenarioActions.create}
             onRetry={() => {
               void scenarios.refetch();
             }}

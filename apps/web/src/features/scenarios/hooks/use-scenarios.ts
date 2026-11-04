@@ -9,6 +9,8 @@ const listScenariosOperation = findOperation(scenarioOperations, "listScenarios"
 export const scenarioKeys = {
   all: ["scenarios"] as const,
   portfolio: (portfolioId: string) => [...scenarioKeys.all, portfolioId] as const,
+  detail: (portfolioId: string, scenarioId: string) =>
+    [...scenarioKeys.all, portfolioId, "detail", scenarioId] as const,
   impact: (portfolioId: string, scenarioId: string) =>
     [...scenarioKeys.all, portfolioId, "impact", scenarioId] as const,
 };

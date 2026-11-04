@@ -137,7 +137,12 @@ describe("ScenariosView", () => {
   });
 
   it("has a menu in each row when it is given something to do", () => {
-    render(<ScenariosView actions={{ onDuplicate: vi.fn(), onDelete: vi.fn() }} rows={rows} />);
+    render(
+      <ScenariosView
+        actions={{ onOpen: vi.fn(), onDuplicate: vi.fn(), onDelete: vi.fn() }}
+        rows={rows}
+      />,
+    );
 
     expect(screen.getAllByRole("button", { name: /^Actions for/ })).toHaveLength(3);
     expect(screen.getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
@@ -148,7 +153,11 @@ describe("ScenariosView", () => {
     expect(screen.queryByRole("button", { name: /^Actions for/ })).not.toBeInTheDocument();
 
     rerender(
-      <ScenariosView actions={{ onDuplicate: vi.fn(), onDelete: vi.fn() }} mobile rows={rows} />,
+      <ScenariosView
+        actions={{ onOpen: vi.fn(), onDuplicate: vi.fn(), onDelete: vi.fn() }}
+        mobile
+        rows={rows}
+      />,
     );
     expect(screen.queryByRole("button", { name: /^Actions for/ })).not.toBeInTheDocument();
   });

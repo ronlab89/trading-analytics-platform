@@ -18,9 +18,11 @@ import type { ScenarioRow } from "../types";
 interface DeleteScenarioDialogProps {
   portfolioId: string;
   /** The scenario to delete; the dialog renders nothing without one. */
-  scenario: ScenarioRow | null;
+  scenario: Pick<ScenarioRow, "id" | "name"> | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called after the scenario is gone, for a screen that showed it and has nothing left to show. */
+  onDeleted?: (() => void) | undefined;
 }
 
 /**
@@ -34,6 +36,7 @@ export function DeleteScenarioDialog({
   scenario,
   open,
   onOpenChange,
+  onDeleted,
 }: DeleteScenarioDialogProps) {
   const { t } = useTranslation();
   const remove = useDeleteScenario(portfolioId);
@@ -48,6 +51,7 @@ export function DeleteScenarioDialog({
           description: t("scenarios.delete.done.description", { name: scenario.name }),
         });
         onOpenChange(false);
+        onDeleted?.();
       },
       onError: (error) => {
         toast.error(t("scenarios.delete.failed.title"), {

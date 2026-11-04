@@ -1,4 +1,4 @@
-import { Copy, Ellipsis, Trash2 } from "lucide-react";
+import { Copy, Ellipsis, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,8 +16,8 @@ interface ScenarioRowMenuProps {
 }
 
 /**
- * The "⋯" menu at the end of a scenario row, as the Figma draws it: "Duplicar", and "Eliminar" apart
- * and in red. "Abrir" is not offered until there is an editor to open.
+ * The "⋯" menu at the end of a scenario row, as the Figma draws it: "Abrir" the editor, "Duplicar",
+ * and "Eliminar" apart and in red.
  */
 export function ScenarioRowMenu({ scenario, actions }: ScenarioRowMenuProps) {
   const { t } = useTranslation();
@@ -34,6 +34,14 @@ export function ScenarioRowMenu({ scenario, actions }: ScenarioRowMenuProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-53.5">
+        <DropdownMenuItem
+          onSelect={() => {
+            actions.onOpen(scenario);
+          }}
+        >
+          <Pencil aria-hidden="true" />
+          {t("scenarios.rowMenu.open")}
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
             actions.onDuplicate(scenario);

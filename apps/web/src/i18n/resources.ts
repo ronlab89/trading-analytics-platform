@@ -618,7 +618,19 @@ const en = {
       description: "There was a problem reaching the server. Try again in a moment.",
       retry: "Try again",
     },
-    rowMenu: { label: "Actions for “{{name}}”", duplicate: "Duplicate", delete: "Delete" },
+    new: {
+      name: "New scenario",
+      failed: {
+        title: "Could not create the scenario",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
+    },
+    rowMenu: {
+      label: "Actions for “{{name}}”",
+      open: "Open",
+      duplicate: "Duplicate",
+      delete: "Delete",
+    },
     duplicate: {
       copyName: "{{name}} (copy)",
       done: { title: "Scenario duplicated", description: "“{{name}}” was created." },
@@ -638,6 +650,58 @@ const en = {
       failed: {
         title: "Could not delete the scenario",
         description: "There was a problem reaching the server. Try again in a moment.",
+      },
+    },
+    save: {
+      title: "Save scenario",
+      description: "Give it a name to find it later in your list of scenarios.",
+      name: { label: "Name", required: "Give the scenario a name." },
+      descriptionField: {
+        label: "Description",
+        placeholder: "E.g. Stress test of the tech holdings",
+      },
+      cancel: "Cancel",
+      submit: "Save scenario",
+      saving: "Saving…",
+      done: { title: "Scenario saved", description: "“{{name}}” is in your list of scenarios." },
+      failed: {
+        title: "Could not save the scenario",
+        description: "There was a problem reaching the server. Your changes are kept. Try again.",
+      },
+    },
+    editor: {
+      back: "Back to scenarios",
+      reset: "Reset",
+      save: "Save scenario",
+      saveShort: "Save",
+      more: "More actions",
+      delete: "Delete",
+      loading: "Loading the scenario",
+      failed: {
+        title: "Could not open the scenario",
+        description: "There was a problem reaching the server. Try again in a moment.",
+        retry: "Try again",
+      },
+      variables: {
+        title: "Variables",
+        description: "Move each control to change the scenario",
+        unsaved: "Unsaved",
+        empty: "No assets to change",
+        base: "Base",
+        reset: "Reset {{name}}",
+      },
+      impact: {
+        title: "Scenario impact",
+        description: "Against the base · recalculated when you move a control",
+        value: "Portfolio value",
+        return: "Return",
+        recalculating: "Recalculating…",
+        loading: "Calculating the scenario",
+        failedTitle: "Could not calculate the scenario",
+        failedDescription: "Your changes are kept. Check your connection and try again.",
+        retry: "Try again",
+        isolatedTitle: "Isolated scenario",
+        isolatedDescription: "The changes do not modify your transactions or your real portfolio.",
       },
     },
     noResults: {
@@ -1596,7 +1660,19 @@ const es: Messages<typeof en> = {
       description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
       retry: "Reintentar",
     },
-    rowMenu: { label: "Acciones de «{{name}}»", duplicate: "Duplicar", delete: "Eliminar" },
+    new: {
+      name: "Nuevo escenario",
+      failed: {
+        title: "No se pudo crear el escenario",
+        description: "Hubo un problema al conectar con el servidor. Inténtalo en un momento.",
+      },
+    },
+    rowMenu: {
+      label: "Acciones de «{{name}}»",
+      open: "Abrir",
+      duplicate: "Duplicar",
+      delete: "Eliminar",
+    },
     duplicate: {
       copyName: "{{name}} (copia)",
       done: { title: "Escenario duplicado", description: "Se creó «{{name}}»." },
@@ -1616,6 +1692,62 @@ const es: Messages<typeof en> = {
       failed: {
         title: "No se pudo eliminar el escenario",
         description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      },
+    },
+    save: {
+      title: "Guardar escenario",
+      description: "Dale un nombre para encontrarlo después en tu lista de escenarios.",
+      name: { label: "Nombre", required: "Dale un nombre al escenario." },
+      descriptionField: {
+        label: "Descripción",
+        placeholder: "Ej. Prueba de estrés de la tecnología",
+      },
+      cancel: "Cancelar",
+      submit: "Guardar escenario",
+      saving: "Guardando…",
+      done: {
+        title: "Escenario guardado",
+        description: "«{{name}}» está en tu lista de escenarios.",
+      },
+      failed: {
+        title: "No se pudo guardar el escenario",
+        description:
+          "Hubo un problema al conectar con el servidor. Tus cambios se conservan. Inténtalo de nuevo.",
+      },
+    },
+    editor: {
+      back: "Volver a escenarios",
+      reset: "Restablecer",
+      save: "Guardar escenario",
+      saveShort: "Guardar",
+      more: "Más acciones",
+      delete: "Eliminar",
+      loading: "Cargando el escenario",
+      failed: {
+        title: "No se pudo abrir el escenario",
+        description: "Hubo un problema al conectar con el servidor. Inténtalo en un momento.",
+        retry: "Reintentar",
+      },
+      variables: {
+        title: "Variables",
+        description: "Mueve cada control para cambiar el escenario",
+        unsaved: "Sin guardar",
+        empty: "No hay activos para cambiar",
+        base: "Base",
+        reset: "Restablecer {{name}}",
+      },
+      impact: {
+        title: "Impacto del escenario",
+        description: "Frente a la base · se recalcula al mover un control",
+        value: "Valor del portafolio",
+        return: "Rendimiento",
+        recalculating: "Recalculando…",
+        loading: "Calculando el escenario",
+        failedTitle: "No se pudo calcular el escenario",
+        failedDescription: "Tus cambios se conservan. Revisa tu conexión e inténtalo de nuevo.",
+        retry: "Reintentar",
+        isolatedTitle: "Escenario aislado",
+        isolatedDescription: "Los cambios no modifican tus transacciones ni tu portafolio real.",
       },
     },
     noResults: {

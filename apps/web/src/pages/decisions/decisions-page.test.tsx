@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
+import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
@@ -8,6 +9,8 @@ import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
 import { useSessionStore } from "@/stores/session-store";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { DecisionsPage } from "./decisions-page";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const growth = {
   id: "p1",
@@ -77,6 +80,7 @@ interface Answers {
   listPortfolios?: () => Promise<unknown>;
   listDecisions?: () => Promise<unknown>;
   listScenarios?: () => Promise<unknown>;
+  createScenario?: () => Promise<unknown>;
 }
 
 function clientWith(answers: Answers = {}) {
@@ -92,7 +96,10 @@ function clientWith(answers: Answers = {}) {
         case "getScenario":
           return Promise.resolve({ data: scenario("s1", "Apple falls") });
         case "createScenario":
-          return Promise.resolve({ data: scenario("s9", "Apple falls (copy)", "DRAFT") });
+          return (
+            answers.createScenario?.() ??
+            Promise.resolve({ data: scenario("s9", "Apple falls (copy)", "DRAFT") })
+          );
         case "updateScenario":
           return Promise.resolve({ data: scenario("s9", "Apple falls (copy)") });
         case "deleteScenario":
@@ -109,12 +116,18 @@ function clientWith(answers: Answers = {}) {
   return { client: { call } as TradingClient, call };
 }
 
+/** Shows where the router is, so a test can tell that a click went to another page. */
+function Where() {
+  return <output data-testid="path">{useLocation().pathname}</output>;
+}
+
 function renderPage(client: TradingClient, address = "/decisions") {
   const Wrapper = tradingClientWrapper(client);
   return render(
     <Wrapper>
       <MemoryRouter initialEntries={[address]}>
         <DecisionsPage />
+        <Where />
       </MemoryRouter>
     </Wrapper>,
   );
@@ -264,6 +277,76 @@ describe("DecisionsPage, the Scenario Lab", () => {
     );
 
     expect(await screen.findByText("Could not load the scenarios")).toBeVisible();
+  });
+
+  it("creates a draft with a New scenario button on the Lab tab only, and opens it", async () => {
+    const user = userEvent.setup();
+    const { client, call } = clientWith({
+      listScenarios: () => Promise.resolve({ data: [scenario("s1", "Apple falls")] }),
+    });
+    renderPage(client);
+
+    expect(screen.queryByRole("button", { name: "New scenario" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("tab", { name: "Scenario Lab" }));
+    await user.click(await screen.findByRole("button", { name: "New scenario" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("path")).toHaveTextContent("/decisions/lab/s9");
+    });
+    const created = call.mock.calls.filter(([op]) => op.operationId === "createScenario");
+    expect(created).toHaveLength(1);
+    expect(created[0]?.[1]).toEqual({
+      params: { portfolioId: "p1" },
+      body: { name: "New scenario" },
+    });
+  });
+
+  it("offers the same from the empty state of the Lab", async () => {
+    const user = userEvent.setup();
+    renderPage(clientWith().client, "/decisions?tab=lab");
+
+    await screen.findByText("No scenarios yet");
+    const panel = within(screen.getByRole("tabpanel", { name: "Scenario Lab" }));
+    await user.click(panel.getByRole("button", { name: "New scenario" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("path")).toHaveTextContent("/decisions/lab/s9");
+    });
+  });
+
+  it("stays on the list and says why when the draft cannot be created", async () => {
+    const user = userEvent.setup();
+    renderPage(
+      clientWith({
+        listScenarios: () => Promise.resolve({ data: [scenario("s1", "Apple falls")] }),
+        createScenario: () =>
+          Promise.reject(new ApiError("CONFLICT", "The portfolio is archived.", 409)),
+      }).client,
+      "/decisions?tab=lab",
+    );
+
+    await user.click(await screen.findByRole("button", { name: "New scenario" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Could not create the scenario", {
+        description: "The portfolio is archived.",
+      });
+    });
+    expect(screen.getByTestId("path")).toHaveTextContent("/decisions");
+    expect(screen.getByTestId("path")).not.toHaveTextContent("lab");
+  });
+
+  it("opens the editor of a scenario from the menu of its row", async () => {
+    const user = userEvent.setup();
+    const { client } = clientWith({
+      listScenarios: () => Promise.resolve({ data: [scenario("s1", "Apple falls")] }),
+    });
+    renderPage(client, "/decisions?tab=lab");
+
+    await user.click(await screen.findByRole("button", { name: "Actions for “Apple falls”" }));
+    await user.click(screen.getByRole("menuitem", { name: "Open" }));
+
+    expect(screen.getByTestId("path")).toHaveTextContent("/decisions/lab/s1");
   });
 
   it("duplicates a scenario from the menu of its row, with the name of a copy", async () => {
