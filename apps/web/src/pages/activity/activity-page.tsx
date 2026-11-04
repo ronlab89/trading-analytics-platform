@@ -133,7 +133,7 @@ export function ActivityPage() {
           />
         </section>
       ) : (
-        <section className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-5">
+        <section className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-3 tablet:p-6">
           <div className="flex items-center justify-between gap-4">
             <div className="relative w-70 max-w-full max-tablet:w-full">
               <Search

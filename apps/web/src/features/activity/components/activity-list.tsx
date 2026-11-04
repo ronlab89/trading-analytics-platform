@@ -33,11 +33,11 @@ function ActivityRow({ event, action }: ActivityRowProps) {
       <span
         aria-hidden="true"
         className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-md",
+          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
           SEVERITY_TONE[event.severity],
         )}
       >
-        <Icon className="size-4" />
+        <Icon className="size-3.5" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="text-sm leading-5 font-medium text-(--color-text-default)">
@@ -76,7 +76,7 @@ export function ActivityList({ days, renderAction }: ActivityListProps) {
 
         return (
           <section aria-labelledby={headingId} key={group.day}>
-            <div className="flex items-baseline justify-between gap-3 border-b border-(--color-border-default) pb-2">
+            <div className="flex items-baseline gap-2 border-b border-(--color-border-default) pb-2">
               <h2 className="text-sm font-semibold text-(--color-text-default)" id={headingId}>
                 {title}
               </h2>

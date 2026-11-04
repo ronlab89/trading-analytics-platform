@@ -2060,3 +2060,89 @@ test("the avatar opens the read-only profile, which leads to settings", async ({
     await expect(page).toHaveURL(/\/settings$/);
   }
 });
+
+/** The activity reads the transactions page by page until the total; this one has exactly five. */
+async function mockActivityTransactions(page: Page) {
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/transactions?*", (route) =>
+    route.fulfill({
+      ...json(null),
+      body: JSON.stringify({
+        data: ["t1", "t2", "t3", "t4", "t5"].map((id, index) =>
+          transaction(id, `a${String(index + 1)}`),
+        ),
+        meta: { page: 1, pageSize: 100, total: 5, totalPages: 1 },
+      }),
+    }),
+  );
+}
+
+test("the activity lays out its search, filters, list and pages inside the main area on every width", async ({
+  page,
+}) => {
+  test.slow();
+  await mockActivityTransactions(page);
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/activity");
+
+    await expect(page.getByText("8 events · last 30 days")).toBeVisible();
+    await expect(page.getByText("Risk threshold exceeded")).toBeVisible();
+    const search = page.getByRole("searchbox", { name: "Search the activity" });
+    const filters = page.getByRole("button", { name: "Filters" });
+    await expect(search).toBeVisible();
+    await expect(filters).toBeVisible();
+    await expect(page.getByText("Showing 1–8 of 8")).toBeVisible();
+
+    const main = await boxOf(page.locator("main"));
+    for (const box of [await boxOf(search), await boxOf(filters)]) {
+      expect(box.x).toBeGreaterThanOrEqual(main.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width + 1);
+    }
+    // The search and the filters button share a row on every width, as the Figma draws them.
+    const searchBox = await boxOf(search);
+    const filtersBox = await boxOf(filters);
+    expect(
+      Math.abs(searchBox.y + searchBox.height / 2 - (filtersBox.y + filtersBox.height / 2)),
+    ).toBeLessThan(8);
+
+    const size = await pageSize(page);
+    expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
+  }
+});
+
+test("the activity filters open inside the screen and narrow the list by source", async ({
+  page,
+}) => {
+  test.slow();
+  await mockActivityTransactions(page);
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/activity");
+    await expect(page.getByText("Risk threshold exceeded")).toBeVisible();
+
+    await page.getByRole("button", { name: "Filters" }).click();
+    const panel = page.getByRole("dialog", { name: "Filters" });
+    await expect(panel).toBeVisible();
+    // The sheet slides in from the bottom, so wait until it has settled before measuring it.
+    await expect
+      .poll(async () => {
+        const box = await boxOf(panel);
+        return (
+          box.x >= 0 && box.y >= 0 && box.x + box.width <= width + 1 && box.y + box.height <= 801
+        );
+      })
+      .toBe(true);
+
+    await panel.getByRole("checkbox", { name: "Transaction" }).click();
+    await panel.getByRole("button", { name: "Apply filters" }).click();
+
+    await expect(
+      page.getByRole("list", { name: "Active filters" }).getByText("Source: Transaction"),
+    ).toBeVisible();
+    await expect(page.getByText("Risk threshold exceeded")).toHaveCount(0);
+    await expect(page.getByText("Showing 1–5 of 5")).toBeVisible();
+
+    const size = await pageSize(page);
+    expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
+  }
+});
