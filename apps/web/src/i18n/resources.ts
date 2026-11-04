@@ -70,6 +70,13 @@ const en = {
     settings: "Settings",
     profile: "Profile",
   },
+  activity: {
+    day: { today: "Today", yesterday: "Yesterday" },
+    eventsCount_one: "{{count}} event",
+    eventsCount_other: "{{count}} events",
+    severity: { INFO: "Info", SUCCESS: "Success", WARNING: "Warning", ERROR: "Error" },
+    source: { TRANSACTION: "Transaction", ALERT: "Alert" },
+  },
   settings: {
     subtitle: "Manage your account and your preferences.",
     nav: { label: "Settings sections" },
@@ -1194,6 +1201,13 @@ const es: Messages<typeof en> = {
     activity: "Actividad",
     settings: "Configuración",
     profile: "Perfil",
+  },
+  activity: {
+    day: { today: "Hoy", yesterday: "Ayer" },
+    eventsCount_one: "{{count}} evento",
+    eventsCount_other: "{{count}} eventos",
+    severity: { INFO: "Info", SUCCESS: "Éxito", WARNING: "Advertencia", ERROR: "Error" },
+    source: { TRANSACTION: "Transacción", ALERT: "Alerta" },
   },
   settings: {
     subtitle: "Administra tu cuenta y tus preferencias.",
