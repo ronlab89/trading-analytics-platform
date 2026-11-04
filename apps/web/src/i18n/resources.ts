@@ -80,6 +80,25 @@ const en = {
       title: { BUY: "Bought {{symbol}}", SELL: "Sold {{symbol}}" },
       message: "{{quantity}} at {{price}} · {{status}}",
     },
+    summary_one: "{{count}} event · last {{days}} days",
+    summary_other: "{{count}} events · last {{days}} days",
+    search: "Search the activity",
+    loading: "Loading the activity",
+    viewTransaction: "View transaction",
+    empty: {
+      title: "No activity yet",
+      description: "Your alerts and the transactions of the last 30 days will show up here.",
+    },
+    noResults: {
+      title: "No results",
+      description: 'No activity matches "{{query}}".',
+      clear: "Clear the search",
+    },
+    failed: {
+      title: "Couldn't load the activity",
+      description: "Check your connection and try again. Your data has not been changed.",
+      retry: "Retry",
+    },
   },
   settings: {
     subtitle: "Manage your account and your preferences.",
@@ -1215,6 +1234,25 @@ const es: Messages<typeof en> = {
     transaction: {
       title: { BUY: "Compra de {{symbol}}", SELL: "Venta de {{symbol}}" },
       message: "{{quantity}} a {{price}} · {{status}}",
+    },
+    summary_one: "{{count}} evento · últimos {{days}} días",
+    summary_other: "{{count}} eventos · últimos {{days}} días",
+    search: "Buscar en la actividad",
+    loading: "Cargando la actividad",
+    viewTransaction: "Ver transacción",
+    empty: {
+      title: "Todavía no hay actividad",
+      description: "Acá vas a ver tus alertas y las transacciones de los últimos 30 días.",
+    },
+    noResults: {
+      title: "Sin resultados",
+      description: 'Ninguna actividad coincide con "{{query}}".',
+      clear: "Limpiar la búsqueda",
+    },
+    failed: {
+      title: "No se pudo cargar la actividad",
+      description: "Revisá tu conexión e intentá de nuevo. Tus datos no se modificaron.",
+      retry: "Reintentar",
     },
   },
   settings: {
