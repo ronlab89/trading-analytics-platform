@@ -16,7 +16,6 @@ import { useScenarioComparison } from "@/features/scenarios/hooks/use-scenario-c
 import { useScenarioMainChanges } from "@/features/scenarios/hooks/use-scenario-main-changes";
 import { compareScenariosPath, parseComparedIds } from "@/features/scenarios/lib/compare-path";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
-import { useIsMobile } from "@/hooks/use-media-query";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 
 /**
@@ -76,7 +75,6 @@ interface ComparingProps {
 
 function Comparing({ portfolioId, portfolioName, scenarioIds }: ComparingProps) {
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [picking, setPicking] = useState(false);
   const comparison = useScenarioComparison(portfolioId, scenarioIds);
@@ -88,13 +86,7 @@ function Comparing({ portfolioId, portfolioName, scenarioIds }: ComparingProps) 
 
   return (
     <div className="flex flex-col gap-4 desktop:gap-6">
-      <h1
-        className={
-          isMobile ? "text-2xl leading-8 font-semibold text-(--color-text-default)" : "sr-only"
-        }
-      >
-        {t("scenarios.compare.title")}
-      </h1>
+      <h1 className="sr-only">{t("scenarios.compare.title")}</h1>
       <div className="flex flex-col gap-3 desktop:flex-row desktop:items-center desktop:justify-between">
         <BackToScenarios />
         <Button

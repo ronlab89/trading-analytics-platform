@@ -1783,3 +1783,160 @@ test("New scenario creates a draft and opens it in the editor on every width", a
     expect(created).toEqual([{ name: "New scenario" }]);
   }
 });
+
+/** What the comparison of s1 and s2 answers; the request is a POST, the rest of the Lab is GET. */
+async function mockComparison(page: Page, requests: unknown[] = []) {
+  const usd = (amount: string) => ({ amount, currency: "USD" });
+  const metrics = (total: string, percent: number) => ({
+    totalValue: usd(total),
+    investedValue: usd("100000.00"),
+    unrealizedPnL: usd("25430.00"),
+    unrealizedPnLPercent: percent,
+  });
+  const asset = (assetId: string, symbol: string, weight: number, shift: number) => ({
+    assetId,
+    symbol,
+    name: symbol,
+    value: usd("1000.00"),
+    valueDifference: usd("0.00"),
+    allocationPercent: weight,
+    allocationShift: shift,
+  });
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios/compare", (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const body = route.request().postDataJSON() as { scenarioIds: string[] };
+    requests.push(body);
+    return route.fulfill(
+      json({
+        baseline: {
+          metrics: metrics("125430.00", 25.4),
+          assets: [
+            {
+              assetId: "a1",
+              symbol: "AAPL",
+              name: "Apple",
+              value: usd("1.00"),
+              allocationPercent: 34,
+            },
+            {
+              assetId: "a2",
+              symbol: "MSFT",
+              name: "Microsoft",
+              value: usd("1.00"),
+              allocationPercent: 22,
+            },
+          ],
+        },
+        scenarios: [
+          {
+            scenarioId: "s1",
+            name: "Apple falls",
+            status: "SAVED",
+            metrics: metrics("121416.00", 21.4),
+            difference: {
+              totalValue: usd("-4014.00"),
+              totalValuePercent: -3.2,
+              unrealizedPnL: usd("-4014.00"),
+            },
+            assets: [asset("a1", "AAPL", 31.8, -2.2), asset("a2", "MSFT", 22.9, 0.9)],
+            unmatchedAssetIds: [],
+          },
+          {
+            scenarioId: "s2",
+            name: "Microsoft rallies",
+            status: "SAVED",
+            metrics: metrics("127186.00", 27.2),
+            difference: {
+              totalValue: usd("1756.00"),
+              totalValuePercent: 1.4,
+              unrealizedPnL: usd("1756.00"),
+            },
+            assets: [asset("a1", "AAPL", 33.5, -0.5), asset("a2", "MSFT", 23.1, 1.1)],
+            unmatchedAssetIds: [],
+          },
+        ].sort(
+          (a, b) => body.scenarioIds.indexOf(a.scenarioId) - body.scenarioIds.indexOf(b.scenarioId),
+        ),
+      }),
+    );
+  });
+}
+
+test("the scenario comparison lays out its cards and table inside the main area on every width", async ({
+  page,
+}) => {
+  test.slow();
+  await mockComparison(page);
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions/lab/compare?ids=s1,s2");
+
+    const base = page.getByRole("region", { name: "Base" });
+    const apple = page.getByRole("region", { name: "Apple falls" });
+    const microsoft = page.getByRole("region", { name: "Microsoft rallies" });
+    const differences = page.getByRole("region", { name: "Differences" });
+    await expect(apple.getByText("$121,416.00")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to scenarios" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Change scenarios" })).toBeEnabled();
+
+    const main = await boxOf(page.locator("main"));
+    const boxes = [
+      await boxOf(base),
+      await boxOf(apple),
+      await boxOf(microsoft),
+      await boxOf(differences),
+    ];
+    for (const box of boxes) {
+      expect(box.x).toBeGreaterThanOrEqual(main.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width + 1);
+    }
+
+    const [baseBox, appleBox, microsoftBox, differencesBox] = boxes;
+    if (width >= 1280) {
+      // Three cards on one row, then the table under them.
+      expect(Math.abs((appleBox?.y ?? 0) - (baseBox?.y ?? 0))).toBeLessThan(4);
+      expect(Math.abs((microsoftBox?.y ?? 0) - (baseBox?.y ?? 0))).toBeLessThan(4);
+    } else {
+      // One under the other.
+      expect(appleBox?.y ?? 0).toBeGreaterThanOrEqual((baseBox?.y ?? 0) + (baseBox?.height ?? 0));
+    }
+    expect(differencesBox?.y ?? 0).toBeGreaterThanOrEqual(
+      (microsoftBox?.y ?? 0) + (microsoftBox?.height ?? 0),
+    );
+
+    const size = await pageSize(page);
+    expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
+  }
+});
+
+test("the Scenario Lab compares the scenarios picked and the comparison changes them", async ({
+  page,
+}) => {
+  test.slow();
+  const requests: unknown[] = [];
+  await mockComparison(page, requests);
+  for (const width of [390, 768, 1280]) {
+    requests.length = 0;
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions?tab=lab");
+    await waitForScenarios(page, width);
+
+    await page.getByRole("button", { name: "Compare", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Compare scenarios" });
+    await dialog.getByRole("checkbox", { name: "Microsoft rallies" }).click();
+    await dialog.getByRole("checkbox", { name: "Apple falls" }).click();
+    const box = await boxOf(dialog);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
+    await dialog.getByRole("button", { name: "Compare", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/decisions\/lab\/compare\?ids=s2%2Cs1$/);
+    await expect(page.getByRole("region", { name: "Microsoft rallies" })).toContainText(
+      "Scenario A",
+    );
+    expect(requests).toEqual([{ scenarioIds: ["s2", "s1"] }]);
+
+    await page.getByRole("link", { name: "Back to scenarios" }).click();
+    await expect(page).toHaveURL(/\/decisions\?tab=lab$/);
+  }
+});
