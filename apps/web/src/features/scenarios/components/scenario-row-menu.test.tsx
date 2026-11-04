@@ -18,7 +18,7 @@ const scenario: ScenarioRow = {
 };
 
 function renderMenu() {
-  const actions = { onDuplicate: vi.fn(), onDelete: vi.fn() };
+  const actions = { onOpen: vi.fn(), onDuplicate: vi.fn(), onDelete: vi.fn() };
   const view = render(<ScenarioRowMenu actions={actions} scenario={scenario} />);
   return { actions, view };
 }
@@ -34,19 +34,21 @@ describe("ScenarioRowMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("lists duplicate and delete, and nothing that has nowhere to go yet", async () => {
+  it("lists open, duplicate and delete", async () => {
     renderMenu();
 
     await openMenu();
 
     const menu = within(screen.getByRole("menu"));
     expect(menu.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Open",
       "Duplicate",
       "Delete",
     ]);
   });
 
   it.each([
+    ["Open", "onOpen"],
     ["Duplicate", "onDuplicate"],
     ["Delete", "onDelete"],
   ] as const)("calls %s with the scenario and closes the menu", async (label, handler) => {

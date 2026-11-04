@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { rejectionReason } from "@/api/rejection-reason";
 import type { ScenarioRow, ScenarioRowActions } from "../types";
@@ -13,12 +14,16 @@ import { useDuplicateScenario } from "./use-duplicate-scenario";
  */
 export function useScenarioActions(portfolioId: string) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const duplicate = useDuplicateScenario(portfolioId);
   const [deleting, setDeleting] = useState<ScenarioRow | null>(null);
   const { mutate: duplicateScenario } = duplicate;
 
   const actions = useMemo<ScenarioRowActions>(
     () => ({
+      onOpen: (scenario) => {
+        void navigate(`/decisions/lab/${scenario.id}`);
+      },
       onDuplicate: (scenario) => {
         duplicateScenario(
           {
@@ -41,7 +46,7 @@ export function useScenarioActions(portfolioId: string) {
       },
       onDelete: setDeleting,
     }),
-    [duplicateScenario, t],
+    [duplicateScenario, navigate, t],
   );
 
   return {

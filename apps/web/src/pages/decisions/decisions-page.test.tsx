@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
@@ -109,12 +109,18 @@ function clientWith(answers: Answers = {}) {
   return { client: { call } as TradingClient, call };
 }
 
+/** Shows where the router is, so a test can tell that a click went to another page. */
+function Where() {
+  return <output data-testid="path">{useLocation().pathname}</output>;
+}
+
 function renderPage(client: TradingClient, address = "/decisions") {
   const Wrapper = tradingClientWrapper(client);
   return render(
     <Wrapper>
       <MemoryRouter initialEntries={[address]}>
         <DecisionsPage />
+        <Where />
       </MemoryRouter>
     </Wrapper>,
   );
@@ -264,6 +270,19 @@ describe("DecisionsPage, the Scenario Lab", () => {
     );
 
     expect(await screen.findByText("Could not load the scenarios")).toBeVisible();
+  });
+
+  it("opens the editor of a scenario from the menu of its row", async () => {
+    const user = userEvent.setup();
+    const { client } = clientWith({
+      listScenarios: () => Promise.resolve({ data: [scenario("s1", "Apple falls")] }),
+    });
+    renderPage(client, "/decisions?tab=lab");
+
+    await user.click(await screen.findByRole("button", { name: "Actions for “Apple falls”" }));
+    await user.click(screen.getByRole("menuitem", { name: "Open" }));
+
+    expect(screen.getByTestId("path")).toHaveTextContent("/decisions/lab/s1");
   });
 
   it("duplicates a scenario from the menu of its row, with the name of a copy", async () => {

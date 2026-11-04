@@ -618,7 +618,12 @@ const en = {
       description: "There was a problem reaching the server. Try again in a moment.",
       retry: "Try again",
     },
-    rowMenu: { label: "Actions for “{{name}}”", duplicate: "Duplicate", delete: "Delete" },
+    rowMenu: {
+      label: "Actions for “{{name}}”",
+      open: "Open",
+      duplicate: "Duplicate",
+      delete: "Delete",
+    },
     duplicate: {
       copyName: "{{name}} (copy)",
       done: { title: "Scenario duplicated", description: "“{{name}}” was created." },
@@ -1647,7 +1652,12 @@ const es: Messages<typeof en> = {
       description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
       retry: "Reintentar",
     },
-    rowMenu: { label: "Acciones de «{{name}}»", duplicate: "Duplicar", delete: "Eliminar" },
+    rowMenu: {
+      label: "Acciones de «{{name}}»",
+      open: "Abrir",
+      duplicate: "Duplicar",
+      delete: "Eliminar",
+    },
     duplicate: {
       copyName: "{{name}} (copia)",
       done: { title: "Escenario duplicado", description: "Se creó «{{name}}»." },

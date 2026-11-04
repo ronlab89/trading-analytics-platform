@@ -38,6 +38,7 @@ export interface ScenarioRow {
 
 /** What the menu of a row can do to a scenario. They must be stable, or the columns rebuild. */
 export interface ScenarioRowActions {
+  onOpen: (scenario: ScenarioRow) => void;
   onDuplicate: (scenario: ScenarioRow) => void;
   onDelete: (scenario: ScenarioRow) => void;
 }
