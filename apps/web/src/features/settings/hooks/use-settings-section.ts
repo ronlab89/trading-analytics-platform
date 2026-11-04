@@ -9,12 +9,14 @@ const SECTION_PARAM = "section";
 
 /**
  * The section of Settings in view. It is in the address (`?section=preferences`), so a link opens
- * it and Back leaves it; anything that is not a section is Profile.
+ * it and Back leaves it; anything that is not an available section is Profile.
  */
-export function useSettingsSection(): [SettingsSection, (section: SettingsSection) => void] {
+export function useSettingsSection(
+  available: readonly SettingsSection[],
+): [SettingsSection, (section: SettingsSection) => void] {
   const [params, setParams] = useSearchParams();
   const value = params.get(SECTION_PARAM);
-  const section = isSettingsSection(value) ? value : DEFAULT_SETTINGS_SECTION;
+  const section = isSettingsSection(value, available) ? value : DEFAULT_SETTINGS_SECTION;
 
   const select = (next: SettingsSection) => {
     setParams(next === DEFAULT_SETTINGS_SECTION ? {} : { [SECTION_PARAM]: next }, {

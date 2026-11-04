@@ -1,11 +1,21 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
 import { useSessionStore } from "@/stores/session-store";
 import { SettingsPage } from "./settings-page";
+
+const build = vi.hoisted<{ mode: "real" | "demo" }>(() => ({ mode: "real" }));
+
+vi.mock("@/config/env", () => ({
+  env: {
+    get VITE_APP_MODE() {
+      return build.mode;
+    },
+  },
+}));
 
 const originalMatchMedia = Reflect.get(window, "matchMedia");
 
@@ -34,6 +44,7 @@ function renderPage(address = "/settings") {
 }
 
 beforeEach(() => {
+  build.mode = "real";
   useSessionStore.setState(useSessionStore.getInitialState());
   useSessionStore.getState().signIn({
     user: { id: "u1", email: "jane@example.com", displayName: "Jane Doe", role: "TRADER" },
@@ -52,20 +63,28 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
     expect(screen.getByText("Manage your account and your preferences.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Jane Doe" })).toBeInTheDocument();
-    expect(screen.getByText("jane@example.com")).toBeInTheDocument();
   });
 
-  it("lists the three sections in a menu, with Profile as the current one", () => {
+  it("lists Profile and Preferences in a menu, with Profile as the current one", () => {
     renderPage();
 
     const menu = within(screen.getByRole("navigation", { name: "Settings sections" }));
     expect(menu.getAllByRole("button").map((button) => button.textContent)).toEqual([
       "Profile",
       "Preferences",
-      "Demo mode",
     ]);
     expect(menu.getByRole("button", { name: "Profile" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("region", { name: "Profile" })).toBeInTheDocument();
+  });
+
+  it("shows the name, the email and the role of the account, to read and not to edit", () => {
+    renderPage();
+
+    const profile = within(screen.getByRole("region", { name: "Profile" }));
+    expect(profile.getByText("Jane Doe")).toBeInTheDocument();
+    expect(profile.getByText("jane@example.com")).toBeInTheDocument();
+    expect(profile.getByText("Trader")).toBeInTheDocument();
+    expect(profile.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(profile.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("shows one section at a time and keeps the choice in the address", async () => {
@@ -78,14 +97,37 @@ describe("SettingsPage", () => {
     expect(screen.queryByRole("region", { name: "Profile" })).not.toBeInTheDocument();
   });
 
-  it("opens the section the address names", () => {
-    renderPage("/settings?section=demo");
-    expect(screen.getByRole("region", { name: "Demo mode" })).toBeInTheDocument();
-  });
-
   it("falls back to Profile for a section that does not exist", () => {
     renderPage("/settings?section=billing");
     expect(screen.getByRole("region", { name: "Profile" })).toBeInTheDocument();
+  });
+
+  it("has no Demo mode in a real build, not even when the address asks for it", () => {
+    renderPage("/settings?section=demo");
+
+    expect(screen.queryByRole("button", { name: "Demo mode" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Demo account")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Profile" })).toBeInTheDocument();
+  });
+
+  describe("in the demo build", () => {
+    beforeEach(() => {
+      build.mode = "demo";
+    });
+
+    it("says it is a demo account next to the name, and has the Demo mode section", async () => {
+      renderPage();
+
+      expect(screen.getByText("Demo account")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Demo mode" }));
+
+      const demo = within(screen.getByRole("region", { name: "Demo mode" }));
+      expect(demo.getByText("Fictional data")).toBeInTheDocument();
+      expect(
+        demo.getByText("You are using demo data, with no connection to a real server."),
+      ).toBeInTheDocument();
+      expect(demo.queryByRole("button")).not.toBeInTheDocument();
+    });
   });
 
   it("turns the menu into tabs on the tablet and the phone", async () => {
@@ -99,10 +141,10 @@ describe("SettingsPage", () => {
       "true",
     );
 
-    await userEvent.click(within(tabs).getByRole("tab", { name: "Demo mode" }));
+    await userEvent.click(within(tabs).getByRole("tab", { name: "Preferences" }));
 
-    expect(screen.getByTestId("search")).toHaveTextContent("?section=demo");
-    expect(screen.getByRole("region", { name: "Demo mode" })).toBeInTheDocument();
+    expect(screen.getByTestId("search")).toHaveTextContent("?section=preferences");
+    expect(screen.getByRole("region", { name: "Preferences" })).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {

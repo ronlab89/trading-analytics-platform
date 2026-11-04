@@ -73,9 +73,23 @@ const en = {
     subtitle: "Manage your account and your preferences.",
     nav: { label: "Settings sections" },
     sections: {
-      profile: { title: "Profile" },
-      preferences: { title: "Preferences" },
-      demo: { title: "Demo mode" },
+      profile: {
+        title: "Profile",
+        description: "Your name and email as they appear in the account.",
+      },
+      preferences: { title: "Preferences", description: "How the app looks and behaves for you." },
+      demo: { title: "Demo mode", description: "The state of your test account." },
+    },
+    profile: {
+      name: "Full name",
+      email: "Email",
+      role: "Role",
+      roles: { VIEWER: "Viewer", TRADER: "Trader", ADMIN: "Admin" },
+    },
+    demo: {
+      badge: "Demo account",
+      title: "Fictional data",
+      description: "You are using demo data, with no connection to a real server.",
     },
   },
   dataTable: {
@@ -1144,9 +1158,26 @@ const es: Messages<typeof en> = {
     subtitle: "Administra tu cuenta y tus preferencias.",
     nav: { label: "Secciones de configuración" },
     sections: {
-      profile: { title: "Perfil" },
-      preferences: { title: "Preferencias" },
-      demo: { title: "Modo demo" },
+      profile: {
+        title: "Perfil",
+        description: "Tu nombre y correo como se muestran en la cuenta.",
+      },
+      preferences: {
+        title: "Preferencias",
+        description: "Cómo se ve y se comporta la app para ti.",
+      },
+      demo: { title: "Modo demo", description: "Estado de tu cuenta de prueba." },
+    },
+    profile: {
+      name: "Nombre completo",
+      email: "Correo electrónico",
+      role: "Rol",
+      roles: { VIEWER: "Lector", TRADER: "Trader", ADMIN: "Administrador" },
+    },
+    demo: {
+      badge: "Cuenta demo",
+      title: "Datos ficticios",
+      description: "Usas datos de demostración, sin conexión a un servidor real.",
     },
   },
   dataTable: {

@@ -2,11 +2,12 @@ import { FlaskConical, SlidersHorizontal, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { SETTINGS_SECTIONS, type SettingsSection } from "../lib/settings-sections";
+import type { SettingsSection } from "../lib/settings-sections";
 
 const ICONS = { profile: User, preferences: SlidersHorizontal, demo: FlaskConical } as const;
 
 interface SettingsNavProps {
+  sections: readonly SettingsSection[];
   section: SettingsSection;
   onSelect: (section: SettingsSection) => void;
   /** Tablet and phone: the sections are tabs, because 240 px of menu do not fit a narrow screen. */
@@ -17,7 +18,7 @@ interface SettingsNavProps {
  * How the sections of Settings are chosen, as the Figma draws them: a menu on the side of the
  * desktop, where the current item is dark like a current tab, and tabs on top of the narrow screens.
  */
-export function SettingsNav({ section, onSelect, tabs }: SettingsNavProps) {
+export function SettingsNav({ sections, section, onSelect, tabs }: SettingsNavProps) {
   const { t } = useTranslation();
   const label = t("settings.nav.label");
 
@@ -25,13 +26,13 @@ export function SettingsNav({ section, onSelect, tabs }: SettingsNavProps) {
     return (
       <Tabs
         onValueChange={(value) => {
-          const next = SETTINGS_SECTIONS.find((candidate) => candidate === value);
+          const next = sections.find((candidate) => candidate === value);
           if (next !== undefined) onSelect(next);
         }}
         value={section}
       >
         <TabsList aria-label={label} className="w-full">
-          {SETTINGS_SECTIONS.map((entry) => (
+          {sections.map((entry) => (
             <TabsTrigger className="flex-1" key={entry} value={entry}>
               {t(`settings.sections.${entry}.title`)}
             </TabsTrigger>
@@ -43,7 +44,7 @@ export function SettingsNav({ section, onSelect, tabs }: SettingsNavProps) {
 
   return (
     <nav aria-label={label} className="flex flex-col gap-1">
-      {SETTINGS_SECTIONS.map((entry) => {
+      {sections.map((entry) => {
         const Icon = ICONS[entry];
         const current = entry === section;
         return (
