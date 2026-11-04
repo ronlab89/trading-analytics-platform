@@ -2,6 +2,7 @@ import { Outlet, useMatch } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { userInitials } from "@/features/auth/lib/user-initials";
+import { useSavedLanguage } from "@/features/settings/hooks/use-saved-language";
 import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useCurrentUser } from "@/hooks/use-session";
@@ -18,6 +19,7 @@ import { TopBar } from "./top-bar";
  * connection (FE3) provides the real ones.
  */
 export function AppShell() {
+  useSavedLanguage();
   const portfolio = useActivePortfolio();
   const portfolioOptions = portfolio.portfolios.map(({ id, name, baseCurrency }) => ({
     id,

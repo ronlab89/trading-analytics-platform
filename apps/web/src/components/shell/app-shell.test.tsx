@@ -151,10 +151,14 @@ describe("AppShell", () => {
   });
 
   it("lets the user retry when the portfolios fail to load", async () => {
-    const call = vi
-      .fn<TradingClient["call"]>()
-      .mockRejectedValueOnce(new ApiError("NETWORK_ERROR", "down"))
-      .mockResolvedValue({ data: [portfolio("p1", "Crecimiento")] });
+    let listed = 0;
+    const call = vi.fn<TradingClient["call"]>((operation) => {
+      if (operation.operationId === "getPreferences") return Promise.resolve({ data: null });
+      listed += 1;
+      return listed === 1
+        ? Promise.reject(new ApiError("NETWORK_ERROR", "down"))
+        : Promise.resolve({ data: [portfolio("p1", "Crecimiento")] });
+    });
     renderShell(fakeSessionService(), { call });
 
     await userEvent.click(
