@@ -53,12 +53,12 @@ export function ComparisonCard({ column, portfolioName }: ComparisonCardProps) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <h3
+          <h2
             className="truncate text-base leading-6 font-medium text-(--color-text-default)"
             id={titleId}
           >
             {column.name ?? t("scenarios.compare.base")}
-          </h3>
+          </h2>
           <p className="text-xs text-(--color-text-secondary)">{subtitle}</p>
         </div>
         <Badge style={badge.style} tone={badge.tone}>

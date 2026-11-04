@@ -640,6 +640,7 @@ const en = {
       figure: "Figure",
       weightOf: "Weight of {{asset}}",
       unknownAsset: "an unknown asset",
+      change: "Change scenarios",
       comparing: "Comparing the scenarios",
       unmatchedTitle: "Some changes were left out",
       unmatched: "“{{name}}” has changes on assets the portfolio does not hold; they are left out.",
@@ -1714,6 +1715,7 @@ const es: Messages<typeof en> = {
       figure: "Cifra",
       weightOf: "Peso de {{asset}}",
       unknownAsset: "un activo desconocido",
+      change: "Cambiar escenarios",
       comparing: "Comparando los escenarios",
       unmatchedTitle: "Se dejaron fuera algunos cambios",
       unmatched:
