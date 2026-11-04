@@ -12,25 +12,33 @@ export function toScenarioRow(
   calculation: ScenarioCalculationResponse | undefined,
   calculationFailed = false,
 ): ScenarioRow {
-  const main = mainChangeOf(scenario.changes);
+  const mainChange = scenarioMainChange(scenario, assets);
 
   return {
     id: scenario.id,
     name: scenario.name,
     status: scenario.status,
     updatedAt: scenario.updatedAt,
-    mainChange:
-      main === null
-        ? null
-        : {
-            assetId: main.assetId,
-            symbol: assets.get(main.assetId)?.symbol ?? null,
-            percentChange: main.percentChange,
-          },
-    otherChanges: main === null ? 0 : scenario.changes.length - 1,
+    mainChange,
+    otherChanges: mainChange === null ? 0 : scenario.changes.length - 1,
     figures: calculation === undefined ? null : figuresOf(calculation),
     figuresState: calculation !== undefined ? "ready" : calculationFailed ? "failed" : "loading",
   };
+}
+
+/** The change of the scenario that moves a price the most, with the symbol when it is known. */
+export function scenarioMainChange(
+  scenario: Pick<ScenarioResponse, "changes">,
+  assets: ReadonlyMap<string, { symbol: string }>,
+): ScenarioMainChange | null {
+  const main = mainChangeOf(scenario.changes);
+  return main === null
+    ? null
+    : {
+        assetId: main.assetId,
+        symbol: assets.get(main.assetId)?.symbol ?? null,
+        percentChange: main.percentChange,
+      };
 }
 
 function mainChangeOf(

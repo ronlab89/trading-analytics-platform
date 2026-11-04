@@ -279,6 +279,21 @@ describe("DecisionsPage, the Scenario Lab", () => {
     expect(await screen.findByText("Could not load the scenarios")).toBeVisible();
   });
 
+  it("offers Compare on the Lab tab only, and it opens the picker", async () => {
+    const user = userEvent.setup();
+    renderPage(
+      clientWith({
+        listScenarios: () => Promise.resolve({ data: [scenario("s1", "Apple falls")] }),
+      }).client,
+    );
+
+    expect(screen.queryByRole("button", { name: "Compare" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("tab", { name: "Scenario Lab" }));
+    await user.click(await screen.findByRole("button", { name: "Compare" }));
+
+    expect(await screen.findByRole("dialog", { name: "Compare scenarios" })).toBeVisible();
+  });
+
   it("creates a draft with a New scenario button on the Lab tab only, and opens it", async () => {
     const user = userEvent.setup();
     const { client, call } = clientWith({

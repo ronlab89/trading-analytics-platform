@@ -6,6 +6,7 @@ import { AnalyticsPage } from "@/pages/analytics/analytics-page";
 import { DashboardPage } from "@/pages/dashboard/dashboard-page";
 import { DecisionDetailPage } from "@/pages/decisions/decision-detail-page";
 import { DecisionsPage } from "@/pages/decisions/decisions-page";
+import { ScenarioComparePage } from "@/pages/decisions/scenario-compare-page";
 import { ScenarioEditorPage } from "@/pages/decisions/scenario-editor-page";
 import { MarketsPage } from "@/pages/markets/markets-page";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
           { path: "/markets", element: <MarketsPage /> },
           { path: "/decisions", element: <DecisionsPage /> },
           { path: "/decisions/:decisionId", element: <DecisionDetailPage /> },
+          { path: "/decisions/lab/compare", element: <ScenarioComparePage /> },
           { path: "/decisions/lab/:scenarioId", element: <ScenarioEditorPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],

@@ -142,6 +142,15 @@ describe("ScenarioEditorPage", () => {
     });
   });
 
+  it("has a Compare button in the header that opens the picker", async () => {
+    renderPage(clientWith().client);
+    await loaded();
+
+    await userEvent.click(screen.getByRole("button", { name: "Compare" }));
+
+    expect(await screen.findByRole("dialog", { name: "Compare scenarios" })).toBeVisible();
+  });
+
   it("draws the way back to the scenarios, the variables and the impact", async () => {
     renderPage(clientWith().client);
     await loaded();

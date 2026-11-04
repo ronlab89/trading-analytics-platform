@@ -65,6 +65,7 @@ export function ScenarioEditor({ portfolioId, scenarioId }: ScenarioEditorProps)
         onSave={() => {
           setSaving(true);
         }}
+        portfolioId={portfolioId}
       />
       <div className="grid items-start gap-4 desktop:grid-cols-[minmax(0,408fr)_minmax(0,912fr)] desktop:gap-6">
         <ScenarioVariablesPanel

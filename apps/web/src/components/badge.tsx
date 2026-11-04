@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 const badge = cva("inline-flex items-center gap-1 rounded-md text-xs font-semibold", {
   variants: {
     style: { subtle: "", solid: "" },
-    tone: { neutral: "", success: "", warning: "", error: "" },
+    tone: { neutral: "", success: "", warning: "", error: "", info: "" },
     size: { sm: "px-2 py-0.5", md: "px-2 py-1" },
   },
   compoundVariants: [
@@ -57,13 +57,25 @@ const badge = cva("inline-flex items-center gap-1 rounded-md text-xs font-semibo
       className:
         "bg-(--color-badge-error-solid-background) text-(--color-badge-error-solid-foreground)",
     },
+    {
+      style: "subtle",
+      tone: "info",
+      className:
+        "bg-(--color-badge-info-subtle-background) text-(--color-badge-info-subtle-foreground)",
+    },
+    {
+      style: "solid",
+      tone: "info",
+      className:
+        "bg-(--color-badge-info-solid-background) text-(--color-badge-info-solid-foreground)",
+    },
   ],
   defaultVariants: { style: "subtle", tone: "neutral", size: "sm" },
 });
 
 type BadgeProps = VariantProps<typeof badge> & { className?: string; children: ReactNode };
 
-/** The Figma "Badge": neutral, success, warning and error tones; the others (gain, loss, info) arrive with the screens that use them. */
+/** The Figma "Badge": neutral, success, warning, error and info tones; the others (gain, loss) arrive with the screens that use them. */
 export function Badge({ style, tone, size, className, children }: BadgeProps) {
   return <span className={cn(badge({ style, tone, size }), className)}>{children}</span>;
 }
