@@ -12,6 +12,7 @@ import { MarketsPage } from "@/pages/markets/markets-page";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import { PortfolioDetailPage } from "@/pages/portfolios/portfolio-detail-page";
 import { PortfoliosPage } from "@/pages/portfolios/portfolios-page";
+import { SettingsPage } from "@/pages/settings/settings-page";
 import { TransactionsPage } from "@/pages/transactions/transactions-page";
 
 /**
@@ -36,6 +37,7 @@ export const routes: RouteObject[] = [
           { path: "/decisions/:decisionId", element: <DecisionDetailPage /> },
           { path: "/decisions/lab/compare", element: <ScenarioComparePage /> },
           { path: "/decisions/lab/:scenarioId", element: <ScenarioEditorPage /> },
+          { path: "/settings", element: <SettingsPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },

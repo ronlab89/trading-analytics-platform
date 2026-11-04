@@ -69,6 +69,15 @@ const en = {
     activity: "Activity",
     settings: "Settings",
   },
+  settings: {
+    subtitle: "Manage your account and your preferences.",
+    nav: { label: "Settings sections" },
+    sections: {
+      profile: { title: "Profile" },
+      preferences: { title: "Preferences" },
+      demo: { title: "Demo mode" },
+    },
+  },
   dataTable: {
     pagination: "Pagination",
     showing: "Showing {{from}}–{{to}} of {{total}}",
@@ -1130,6 +1139,15 @@ const es: Messages<typeof en> = {
     decisions: "Centro de decisiones",
     activity: "Actividad",
     settings: "Configuración",
+  },
+  settings: {
+    subtitle: "Administra tu cuenta y tus preferencias.",
+    nav: { label: "Secciones de configuración" },
+    sections: {
+      profile: { title: "Perfil" },
+      preferences: { title: "Preferencias" },
+      demo: { title: "Modo demo" },
+    },
   },
   dataTable: {
     pagination: "Paginación",
