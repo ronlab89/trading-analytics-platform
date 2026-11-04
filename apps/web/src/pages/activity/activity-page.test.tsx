@@ -104,7 +104,7 @@ describe("ActivityPage", () => {
     expect(screen.getByText("No results")).toBeInTheDocument();
     expect(screen.getByText('No activity matches "zzz".')).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Clear the search" }));
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(screen.getByText(/Risk threshold exceeded/)).toBeInTheDocument();
   });
 
@@ -190,6 +190,72 @@ describe("ActivityPage", () => {
 
     const detail = await screen.findByRole("dialog");
     expect(within(detail).getByText("Transaction details")).toBeInTheDocument();
+  });
+
+  it("narrows by severity from the filters panel, shows a chip, and removes it", async () => {
+    const user = userEvent.setup();
+    renderPage({
+      ...healthy,
+      listNotifications: () =>
+        Promise.resolve({
+          data: [
+            { ...notification("n1", "Risk threshold exceeded", 30), severity: "WARNING" },
+            { ...notification("n2", "Sync failed", 60), severity: "ERROR" },
+          ],
+        }),
+    });
+    await screen.findByText(/Sync failed/);
+
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Error" }));
+    await user.click(screen.getByRole("button", { name: "Apply filters" }));
+
+    expect(screen.getByText(/Sync failed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Risk threshold exceeded/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters · 1" })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Active filters" })).getByText("Severity: Error"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove filter Severity: Error" }));
+    expect(screen.getByText(/Risk threshold exceeded/)).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Active filters" })).not.toBeInTheDocument();
+  });
+
+  it("narrows by source and clears everything from the chips row", async () => {
+    const user = userEvent.setup();
+    renderPage(healthy);
+    await screen.findByText(/Bought AAPL/);
+
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Transaction" }));
+    await user.click(screen.getByRole("button", { name: "Apply filters" }));
+
+    expect(screen.getByText(/Bought AAPL/)).toBeInTheDocument();
+    expect(screen.queryByText(/Risk threshold exceeded/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(screen.getByText(/Risk threshold exceeded/)).toBeInTheDocument();
+  });
+
+  it("says no activity matches the filters, and clears them from there", async () => {
+    const user = userEvent.setup();
+    renderPage({
+      ...healthy,
+      listTransactions: () =>
+        Promise.resolve({ data: [], meta: { page: 1, pageSize: 100, total: 0 } }),
+    });
+    await screen.findByText(/Risk threshold exceeded/);
+
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Transaction" }));
+    await user.click(screen.getByRole("button", { name: "Apply filters" }));
+
+    expect(
+      screen.getByText("No activity matches these filters. Review them or clear them."),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByText(/Risk threshold exceeded/)).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {

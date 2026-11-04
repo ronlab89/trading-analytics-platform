@@ -5,16 +5,22 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ActivityFilterChips } from "@/features/activity/components/activity-filter-chips";
+import { ActivityFiltersButton } from "@/features/activity/components/activity-filters-button";
 import { ActivityList } from "@/features/activity/components/activity-list";
 import { ACTIVITY_DAYS } from "@/features/activity/hooks/use-recent-transactions";
 import { useActivityEvents } from "@/features/activity/hooks/use-activity-events";
 import {
   filterEvents,
   groupByDay,
-  NO_ACTIVITY_FILTERS,
   paginateEvents,
   type ActivityEvent,
 } from "@/features/activity/lib/activity-events";
+import {
+  NO_PANEL_FILTERS,
+  toActivityFilters,
+  type ActivityPanelFilters,
+} from "@/features/activity/lib/activity-panel-filters";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { TransactionDetailPanel } from "@/features/transactions/components/transaction-detail-panel";
 import { TransactionsPagination } from "@/features/transactions/components/transactions-pagination";
@@ -34,18 +40,29 @@ export function ActivityPage() {
   const isMobile = useIsMobile();
   const { events, transactionRows, isError, retry } = useActivityEvents();
   const [search, setSearch] = useState("");
+  const [panel, setPanel] = useState(NO_PANEL_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   // The transaction whose detail is open; the hook already holds everything the panel shows.
   const [viewing, setViewing] = useState<TransactionRow | null>(null);
 
-  const filters = { ...NO_ACTIVITY_FILTERS, search };
-  const filtered = events ? filterEvents(events, filters) : [];
+  const filtered = events ? filterEvents(events, toActivityFilters(panel, search)) : [];
   const current = paginateEvents(filtered, page, pageSize);
 
   const changeSearch = (value: string) => {
     setSearch(value);
     setPage(1);
+  };
+
+  // Other filters are another list, so it starts on its first page.
+  const changePanel = (next: ActivityPanelFilters) => {
+    setPanel(next);
+    setPage(1);
+  };
+
+  const clearAll = () => {
+    setSearch("");
+    changePanel(NO_PANEL_FILTERS);
   };
 
   const changePageSize = (size: number) => {
@@ -117,36 +134,38 @@ export function ActivityPage() {
         </section>
       ) : (
         <section className="flex flex-col gap-4 rounded-xl bg-(--color-surface-card) p-5">
-          <div className="relative w-70 max-w-full max-tablet:w-full">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--color-text-secondary)"
-            />
-            <Input
-              aria-label={t("activity.search")}
-              className="pl-9"
-              onChange={(event) => {
-                changeSearch(event.target.value);
-              }}
-              placeholder={t("activity.search")}
-              type="search"
-              value={search}
-            />
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative w-70 max-w-full max-tablet:w-full">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--color-text-secondary)"
+              />
+              <Input
+                aria-label={t("activity.search")}
+                className="pl-9"
+                onChange={(event) => {
+                  changeSearch(event.target.value);
+                }}
+                placeholder={t("activity.search")}
+                type="search"
+                value={search}
+              />
+            </div>
+            <ActivityFiltersButton onApply={changePanel} value={panel} />
           </div>
+          <ActivityFilterChips onChange={changePanel} value={panel} />
           {current.total === 0 ? (
             <PortfoliosEmptyState
               action={
-                <Button
-                  onClick={() => {
-                    changeSearch("");
-                  }}
-                  size="sm"
-                  variant="outline"
-                >
+                <Button onClick={clearAll} size="sm" variant="outline">
                   {t("activity.noResults.clear")}
                 </Button>
               }
-              description={t("activity.noResults.description", { query: search.trim() })}
+              description={
+                search.trim() === ""
+                  ? t("activity.noResults.descriptionFilters")
+                  : t("activity.noResults.description", { query: search.trim() })
+              }
               title={t("activity.noResults.title")}
             />
           ) : (
