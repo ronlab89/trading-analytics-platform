@@ -598,6 +598,7 @@ const en = {
       withScenario: "With scenario",
       edited: "Edited",
       impact: "Impact",
+      actions: "Actions",
     },
     variable: {
       price: "{{symbol}} price",
@@ -616,6 +617,28 @@ const en = {
       title: "Could not load the scenarios",
       description: "There was a problem reaching the server. Try again in a moment.",
       retry: "Try again",
+    },
+    rowMenu: { label: "Actions for “{{name}}”", duplicate: "Duplicate", delete: "Delete" },
+    duplicate: {
+      copyName: "{{name}} (copy)",
+      done: { title: "Scenario duplicated", description: "“{{name}}” was created." },
+      failed: {
+        title: "Could not duplicate the scenario",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
+    },
+    delete: {
+      title: "Delete scenario",
+      description:
+        "“{{name}}” will be deleted. Your real portfolio is not changed. This cannot be undone.",
+      cancel: "Cancel",
+      confirm: "Delete scenario",
+      deleting: "Deleting…",
+      done: { title: "Scenario deleted", description: "“{{name}}” was deleted." },
+      failed: {
+        title: "Could not delete the scenario",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
     },
     noResults: {
       title: "No results",
@@ -1553,6 +1576,7 @@ const es: Messages<typeof en> = {
       withScenario: "Con escenario",
       edited: "Editado",
       impact: "Impacto",
+      actions: "Acciones",
     },
     variable: {
       price: "Precio de {{symbol}}",
@@ -1571,6 +1595,28 @@ const es: Messages<typeof en> = {
       title: "No se pudieron cargar los escenarios",
       description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
       retry: "Reintentar",
+    },
+    rowMenu: { label: "Acciones de «{{name}}»", duplicate: "Duplicar", delete: "Eliminar" },
+    duplicate: {
+      copyName: "{{name}} (copia)",
+      done: { title: "Escenario duplicado", description: "Se creó «{{name}}»." },
+      failed: {
+        title: "No se pudo duplicar el escenario",
+        description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      },
+    },
+    delete: {
+      title: "Eliminar escenario",
+      description:
+        "Se eliminará «{{name}}». Tu portafolio real no se modifica. Esta acción no se puede deshacer.",
+      cancel: "Cancelar",
+      confirm: "Eliminar escenario",
+      deleting: "Eliminando…",
+      done: { title: "Escenario eliminado", description: "Se eliminó «{{name}}»." },
+      failed: {
+        title: "No se pudo eliminar el escenario",
+        description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      },
     },
     noResults: {
       title: "Sin resultados",

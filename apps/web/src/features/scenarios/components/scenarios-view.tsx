@@ -5,7 +5,7 @@ import { useDataTable } from "@/components/data-table/use-data-table";
 import { Button } from "@/components/ui/button";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { useScenarioColumns } from "../hooks/use-scenario-columns";
-import type { ScenarioRow } from "../types";
+import type { ScenarioRow, ScenarioRowActions } from "../types";
 import { ScenarioCardList } from "./scenario-card-list";
 
 function scenarioId(row: ScenarioRow) {
@@ -21,13 +21,16 @@ function scenarioId(row: ScenarioRow) {
 export function ScenariosView({
   rows,
   mobile = false,
+  actions,
 }: {
   rows: readonly ScenarioRow[];
   mobile?: boolean;
+  /** What the menu of a row can do. A phone has no menu: its rows are cards. */
+  actions?: ScenarioRowActions | undefined;
 }) {
   const { t } = useTranslation();
   const table = useDataTable({
-    columns: useScenarioColumns(),
+    columns: useScenarioColumns(mobile ? undefined : actions),
     data: rows,
     getRowId: scenarioId,
     sortable: true,

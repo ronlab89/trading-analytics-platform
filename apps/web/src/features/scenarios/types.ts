@@ -35,3 +35,9 @@ export interface ScenarioRow {
   /** Whether the figures are in, still on their way, or could not be calculated. */
   figuresState: "ready" | "loading" | "failed";
 }
+
+/** What the menu of a row can do to a scenario. They must be stable, or the columns rebuild. */
+export interface ScenarioRowActions {
+  onDuplicate: (scenario: ScenarioRow) => void;
+  onDelete: (scenario: ScenarioRow) => void;
+}

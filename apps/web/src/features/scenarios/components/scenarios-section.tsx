@@ -5,7 +5,7 @@ import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolio
 import { WatchlistCardsSkeleton } from "@/features/watchlist/components/watchlist-cards-skeleton";
 import { WatchlistTableSkeleton } from "@/features/watchlist/components/watchlist-table-skeleton";
 import { useIsMobile } from "@/hooks/use-media-query";
-import type { ScenarioRow } from "../types";
+import type { ScenarioRow, ScenarioRowActions } from "../types";
 import { ScenariosView } from "./scenarios-view";
 
 interface ScenariosSectionProps {
@@ -15,6 +15,8 @@ interface ScenariosSectionProps {
   onRetry: () => void;
   /** The empty state offers the first scenario when there is somewhere to create it. */
   onNew?: (() => void) | undefined;
+  /** What the menu of a row can do; without it the rows have no menu. */
+  actions?: ScenarioRowActions | undefined;
 }
 
 /**
@@ -22,7 +24,13 @@ interface ScenariosSectionProps {
  * is an alert with a retry, as on the other views. On the tablet and the desktop everything sits in
  * one card; on a phone the search is outside the card and the card is the list.
  */
-export function ScenariosSection({ rows, isError, onRetry, onNew }: ScenariosSectionProps) {
+export function ScenariosSection({
+  rows,
+  isError,
+  onRetry,
+  onNew,
+  actions,
+}: ScenariosSectionProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -74,7 +82,7 @@ export function ScenariosSection({ rows, isError, onRetry, onNew }: ScenariosSec
       ) : rows.length === 0 ? (
         empty
       ) : (
-        <ScenariosView rows={rows} />
+        <ScenariosView actions={actions} rows={rows} />
       )}
     </section>
   );

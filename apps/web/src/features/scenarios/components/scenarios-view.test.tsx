@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import type { ScenarioRow } from "../types";
 import { ScenariosView } from "./scenarios-view";
@@ -134,5 +134,22 @@ describe("ScenariosView", () => {
     expect(apple).toHaveTextContent("$121,416.00");
     expect(apple).toHaveTextContent("-3.20%");
     expect(within(list).getAllByText("Calculating").length).toBeGreaterThan(0);
+  });
+
+  it("has a menu in each row when it is given something to do", () => {
+    render(<ScenariosView actions={{ onDuplicate: vi.fn(), onDelete: vi.fn() }} rows={rows} />);
+
+    expect(screen.getAllByRole("button", { name: /^Actions for/ })).toHaveLength(3);
+    expect(screen.getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
+  });
+
+  it("has no menu without actions, nor on a phone", () => {
+    const { rerender } = render(<ScenariosView rows={rows} />);
+    expect(screen.queryByRole("button", { name: /^Actions for/ })).not.toBeInTheDocument();
+
+    rerender(
+      <ScenariosView actions={{ onDuplicate: vi.fn(), onDelete: vi.fn() }} mobile rows={rows} />,
+    );
+    expect(screen.queryByRole("button", { name: /^Actions for/ })).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -89,6 +89,14 @@ function clientWith(answers: Answers = {}) {
           return answers.listDecisions?.() ?? Promise.resolve({ data: decisions });
         case "listScenarios":
           return answers.listScenarios?.() ?? Promise.resolve({ data: [] });
+        case "getScenario":
+          return Promise.resolve({ data: scenario("s1", "Apple falls") });
+        case "createScenario":
+          return Promise.resolve({ data: scenario("s9", "Apple falls (copy)", "DRAFT") });
+        case "updateScenario":
+          return Promise.resolve({ data: scenario("s9", "Apple falls (copy)") });
+        case "deleteScenario":
+          return Promise.resolve(undefined);
         case "calculateScenario":
           return Promise.resolve({ data: calculation });
         case "getAsset":
@@ -256,6 +264,54 @@ describe("DecisionsPage, the Scenario Lab", () => {
     );
 
     expect(await screen.findByText("Could not load the scenarios")).toBeVisible();
+  });
+
+  it("duplicates a scenario from the menu of its row, with the name of a copy", async () => {
+    const user = userEvent.setup();
+    const { client, call } = clientWith({
+      listScenarios: () => Promise.resolve({ data: [scenario("s1", "Apple falls")] }),
+    });
+    renderPage(client, "/decisions?tab=lab");
+
+    await user.click(await screen.findByRole("button", { name: "Actions for “Apple falls”" }));
+    await user.click(screen.getByRole("menuitem", { name: "Duplicate" }));
+
+    await waitFor(() => {
+      expect(call.mock.calls.some(([op]) => op.operationId === "updateScenario")).toBe(true);
+    });
+    const created = call.mock.calls.find(([op]) => op.operationId === "createScenario");
+    expect(created?.[1]).toEqual({
+      params: { portfolioId: "p1" },
+      body: {
+        name: "Apple falls (copy)",
+        changes: [{ assetId: "a1", percentChange: -10 }],
+      },
+    });
+  });
+
+  it("deletes a scenario only after the confirmation", async () => {
+    const user = userEvent.setup();
+    const { client, call } = clientWith({
+      listScenarios: () => Promise.resolve({ data: [scenario("s1", "Apple falls")] }),
+    });
+    renderPage(client, "/decisions?tab=lab");
+    const deleteCalls = () => call.mock.calls.filter(([op]) => op.operationId === "deleteScenario");
+
+    await user.click(await screen.findByRole("button", { name: "Actions for “Apple falls”" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+
+    expect(await screen.findByRole("dialog", { name: "Delete scenario" })).toBeVisible();
+    expect(deleteCalls()).toHaveLength(0);
+
+    await user.click(screen.getByRole("button", { name: "Delete scenario" }));
+
+    await waitFor(() => {
+      expect(deleteCalls()).toHaveLength(1);
+    });
+    expect(deleteCalls()[0]?.[1]).toEqual({ params: { portfolioId: "p1", scenarioId: "s1" } });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 
   it("goes back to the replay with its tab", async () => {

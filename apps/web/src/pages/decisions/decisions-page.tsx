@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DecisionsSection } from "@/features/decisions/components/decisions-section";
 import { useDecisionRows } from "@/features/decisions/hooks/use-decision-rows";
+import { DeleteScenarioDialog } from "@/features/scenarios/components/delete-scenario-dialog";
 import { ScenariosSection } from "@/features/scenarios/components/scenarios-section";
 import { ScenariosSummary } from "@/features/scenarios/components/scenarios-summary";
+import { useScenarioActions } from "@/features/scenarios/hooks/use-scenario-actions";
 import { useScenarioRows } from "@/features/scenarios/hooks/use-scenario-rows";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
@@ -68,6 +70,7 @@ function Decisions({ portfolioId, portfolioName }: { portfolioId: string; portfo
   const announceRecorded = useAnnounceRecorded();
   const decisions = useDecisionRows(portfolioId);
   const scenarios = useScenarioRows(portfolioId);
+  const scenarioActions = useScenarioActions(portfolioId);
   const open = decisions.rows?.filter((row) => row.status === "OPEN").length ?? 0;
 
   const tabs = (
@@ -124,6 +127,7 @@ function Decisions({ portfolioId, portfolioName }: { portfolioId: string; portfo
         </TabsContent>
         <TabsContent className="flex flex-col gap-4" value="lab">
           <ScenariosSection
+            actions={scenarioActions.actions}
             isError={scenarios.isError}
             onRetry={() => {
               void scenarios.refetch();
@@ -132,6 +136,14 @@ function Decisions({ portfolioId, portfolioName }: { portfolioId: string; portfo
           />
         </TabsContent>
       </Tabs>
+      <DeleteScenarioDialog
+        onOpenChange={(next) => {
+          if (!next) scenarioActions.cancelDelete();
+        }}
+        open={scenarioActions.deleting !== null}
+        portfolioId={portfolioId}
+        scenario={scenarioActions.deleting}
+      />
       <NewTransactionPanel
         onOpenChange={setPanelOpen}
         onRecorded={announceRecorded}

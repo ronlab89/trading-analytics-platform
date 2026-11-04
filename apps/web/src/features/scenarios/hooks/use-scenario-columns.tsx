@@ -10,7 +10,8 @@ import {
   ScenarioValue,
   ScenarioVariableChip,
 } from "../components/scenario-parts";
-import type { ScenarioRow } from "../types";
+import { ScenarioRowMenu } from "../components/scenario-row-menu";
+import type { ScenarioRow, ScenarioRowActions } from "../types";
 
 const column = createColumnHelper<DataTableFeatures, ScenarioRow>();
 
@@ -27,6 +28,12 @@ function headerOf(key: ColumnKey) {
   };
 }
 
+/** The Figma header of the menu column is blank; screen readers still get a name for it. */
+const ActionsHeader = function ActionsHeader() {
+  const { t } = useTranslation();
+  return <span className="sr-only">{t("scenarios.columns.actions")}</span>;
+};
+
 function EditedCell({ updatedAt }: { updatedAt: string }) {
   const { i18n } = useTranslation();
   return <span>{formatMomentDay(updatedAt, i18n.language)}</span>;
@@ -39,10 +46,11 @@ const withScenarioOf = (row: ScenarioRow) =>
 /**
  * The columns of the scenarios table, as the Figma draws them. The list is loaded whole, so the
  * columns sort in the client. The search reads the name column, which holds the name of the
- * scenario and the symbol of its main variable. Nothing depends on the data, so the columns are
- * built once, which the table needs to stay stable.
+ * scenario and the symbol of its main variable. The menu column is only there when the view has
+ * something to do with a scenario. The columns depend on nothing but the actions, so they are built
+ * once, which the table needs to stay stable.
  */
-export function useScenarioColumns() {
+export function useScenarioColumns(actions?: ScenarioRowActions) {
   return useMemo(
     () =>
       column.columns([
@@ -95,7 +103,17 @@ export function useScenarioColumns() {
           sortUndefined: "last",
           cell: ({ row }) => <ScenarioImpact row={row.original} />,
         }),
+        ...(actions === undefined
+          ? []
+          : [
+              column.display({
+                id: "actions",
+                header: ActionsHeader,
+                meta: { align: "end" },
+                cell: ({ row }) => <ScenarioRowMenu actions={actions} scenario={row.original} />,
+              }),
+            ]),
       ]),
-    [],
+    [actions],
   );
 }
