@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { resources } from "@/i18n/resources";
-import { activeDestinationPath, DESTINATIONS, SETTINGS_DESTINATION } from "./destinations";
+import {
+  activeDestinationPath,
+  DESTINATIONS,
+  PROFILE_PATH,
+  SETTINGS_DESTINATION,
+} from "./destinations";
 
 const all = [...DESTINATIONS, SETTINGS_DESTINATION];
 
@@ -34,6 +39,11 @@ describe("activeDestinationPath", () => {
     ["/settings", "/settings"],
   ])("marks the view that owns %s", (pathname, expected) => {
     expect(activeDestinationPath(pathname)).toBe(expected);
+  });
+
+  it("marks nothing on the profile, which is not one of the views", () => {
+    expect(PROFILE_PATH).toBe("/profile");
+    expect(activeDestinationPath(PROFILE_PATH)).toBe("");
   });
 
   it.each(["/does-not-exist", "/portfolios-old"])("leaves Home marked on %s", (pathname) => {

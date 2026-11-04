@@ -68,6 +68,69 @@ const en = {
     decisions: "Decision Center",
     activity: "Activity",
     settings: "Settings",
+    profile: "Profile",
+  },
+  settings: {
+    subtitle: "Manage your account and your preferences.",
+    nav: { label: "Settings sections" },
+    sections: {
+      profile: {
+        title: "Profile",
+        description: "Your name and email as they appear in the account.",
+      },
+      preferences: { title: "Preferences", description: "How the app looks and behaves for you." },
+      demo: { title: "Demo mode", description: "The state of your test account." },
+    },
+    profile: {
+      name: "Full name",
+      email: "Email",
+      role: "Role",
+      roles: { VIEWER: "Viewer", TRADER: "Trader", ADMIN: "Admin" },
+    },
+    preferences: {
+      language: {
+        label: "Language",
+        description: "The language of the whole app.",
+        options: { en: "English", es: "Español" },
+      },
+      defaultPortfolio: {
+        label: "Default portfolio",
+        description: "The portfolio that opens when you sign in.",
+        none: "No default portfolio",
+      },
+      reducedMotion: {
+        label: "Reduce motion",
+        description: "Turns off the animations of the charts.",
+      },
+      discard: "Discard",
+      save: "Save changes",
+      retry: "Try again",
+      saved: "Preferences saved",
+      saveFailed: {
+        title: "We couldn't save your changes",
+        description: "Check your connection and try again.",
+      },
+      loading: "Loading your preferences",
+      loadFailed: {
+        title: "Could not load your preferences",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
+    },
+    profileView: {
+      description: "A summary of your account. To change your preferences, go to Settings.",
+      goToSettings: "Go to Settings",
+    },
+    leave: {
+      title: "Leave without saving?",
+      description: "You have unsaved changes in your preferences. If you leave, they will be lost.",
+      keepEditing: "Keep editing",
+      confirm: "Leave without saving",
+    },
+    demo: {
+      badge: "Demo account",
+      title: "Fictional data",
+      description: "You are using demo data, with no connection to a real server.",
+    },
   },
   dataTable: {
     pagination: "Pagination",
@@ -1130,6 +1193,72 @@ const es: Messages<typeof en> = {
     decisions: "Centro de decisiones",
     activity: "Actividad",
     settings: "Configuración",
+    profile: "Perfil",
+  },
+  settings: {
+    subtitle: "Administra tu cuenta y tus preferencias.",
+    nav: { label: "Secciones de configuración" },
+    sections: {
+      profile: {
+        title: "Perfil",
+        description: "Tu nombre y correo como se muestran en la cuenta.",
+      },
+      preferences: {
+        title: "Preferencias",
+        description: "Cómo se ve y se comporta la app para ti.",
+      },
+      demo: { title: "Modo demo", description: "Estado de tu cuenta de prueba." },
+    },
+    profile: {
+      name: "Nombre completo",
+      email: "Correo electrónico",
+      role: "Rol",
+      roles: { VIEWER: "Lector", TRADER: "Trader", ADMIN: "Administrador" },
+    },
+    preferences: {
+      language: {
+        label: "Idioma",
+        description: "El idioma de toda la app.",
+        options: { en: "English", es: "Español" },
+      },
+      defaultPortfolio: {
+        label: "Portafolio por defecto",
+        description: "El portafolio que se abre al iniciar sesión.",
+        none: "Sin portafolio por defecto",
+      },
+      reducedMotion: {
+        label: "Reducir el movimiento",
+        description: "Desactiva las animaciones de los gráficos.",
+      },
+      discard: "Descartar",
+      save: "Guardar cambios",
+      retry: "Reintentar",
+      saved: "Preferencias guardadas",
+      saveFailed: {
+        title: "No pudimos guardar los cambios",
+        description: "Revisa tu conexión e inténtalo de nuevo.",
+      },
+      loading: "Cargando tus preferencias",
+      loadFailed: {
+        title: "No se pudieron cargar tus preferencias",
+        description: "Hubo un problema al conectar con el servidor. Inténtalo en un momento.",
+      },
+    },
+    profileView: {
+      description: "Resumen de tu cuenta. Para cambiar tus preferencias, ve a Configuración.",
+      goToSettings: "Ir a Configuración",
+    },
+    leave: {
+      title: "¿Salir sin guardar?",
+      description: "Tienes cambios sin guardar en tus preferencias. Si sales, se perderán.",
+      keepEditing: "Seguir editando",
+      confirm: "Salir sin guardar",
+    },
+    demo: {
+      badge: "Cuenta demo",
+      title: "Datos ficticios",
+      description: "Usas datos de demostración, sin conexión a un servidor real.",
+    },
   },
   dataTable: {
     pagination: "Paginación",

@@ -1,12 +1,15 @@
-import { Outlet, useMatch } from "react-router";
+import { Outlet, useMatch, useNavigate } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { userInitials } from "@/features/auth/lib/user-initials";
+import { useSavedMotion } from "@/features/settings/hooks/use-saved-motion";
+import { useSavedLanguage } from "@/features/settings/hooks/use-saved-language";
 import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useCurrentUser } from "@/hooks/use-session";
 import { portfolioInitials } from "@/lib/portfolio-initials";
 import { ActivityBar } from "./activity-bar";
+import { PROFILE_PATH } from "./destinations";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { StatusBar } from "./status-bar";
 import { TopBar } from "./top-bar";
@@ -18,6 +21,8 @@ import { TopBar } from "./top-bar";
  * connection (FE3) provides the real ones.
  */
 export function AppShell() {
+  useSavedLanguage();
+  useSavedMotion();
   const portfolio = useActivePortfolio();
   const portfolioOptions = portfolio.portfolios.map(({ id, name, baseCurrency }) => ({
     id,
@@ -29,6 +34,10 @@ export function AppShell() {
   const userName = useCurrentUser()?.displayName ?? "";
   const initials = userInitials(userName);
   const signOut = useSignOut();
+  const navigate = useNavigate();
+  const viewProfile = () => {
+    void navigate(PROFILE_PATH);
+  };
   // The detail page reads the same query, so the name in the breadcrumb costs no extra request.
   const detailId = useMatch("/portfolios/:portfolioId")?.params.portfolioId;
   const detailName = usePortfolio(detailId).data?.name;
@@ -40,7 +49,7 @@ export function AppShell() {
           userInitials={initials}
           userName={userName}
           onSignOut={signOut}
-          onViewProfile={() => undefined}
+          onViewProfile={viewProfile}
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col tablet:gap-2">
           <TopBar
@@ -51,7 +60,7 @@ export function AppShell() {
             onSendTestNotification={() => undefined}
             onSignOut={signOut}
             onSimulateConnectionIssue={() => undefined}
-            onViewProfile={() => undefined}
+            onViewProfile={viewProfile}
             pageTitle={detailName}
             portfolios={portfolioOptions}
             portfoliosFailed={portfolio.isError}

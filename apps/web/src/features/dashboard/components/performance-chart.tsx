@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatDayMonth } from "@/lib/format-date";
 import { formatAxisMoney, formatMoney, formatSignedPercent } from "@/lib/format-number";
 import { summarizeSeries, type ValueSeries } from "../lib/performance-chart-data";
@@ -28,7 +28,7 @@ const MIN_CHART_HEIGHT = 256;
  */
 export function PerformanceChart({ series }: PerformanceChartProps) {
   const { t, i18n } = useTranslation();
-  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const reduceMotion = useReducedMotion();
   const { currency, points } = series;
   const summary = summarizeSeries(points);
   const money = (value: number) => formatMoney({ amount: value.toFixed(2), currency });

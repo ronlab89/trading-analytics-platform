@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatDayMonth } from "@/lib/format-date";
 import { formatPercent } from "@/lib/format-number";
 import { drawdownTicks } from "../lib/drawdown-axis";
@@ -32,7 +32,7 @@ const axisPercent = (value: number) => `${String(Math.round(value))}%`;
  */
 export function DrawdownChart({ points }: DrawdownChartProps) {
   const { t, i18n } = useTranslation();
-  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const reduceMotion = useReducedMotion();
   const ticks = drawdownTicks(points);
   const { deepest, end } = summarizeDrawdown(points);
   const first = points[0];

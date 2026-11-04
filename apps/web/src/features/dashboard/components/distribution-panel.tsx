@@ -2,7 +2,7 @@ import type { AllocationResponse, MoneyDto } from "@trading/contracts";
 import { useTranslation } from "react-i18next";
 import { PolarAngleAxis, RadialBar, RadialBarChart, ResponsiveContainer } from "recharts";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatMoney } from "@/lib/format-number";
 import { toAllocationSlices } from "../lib/allocation-slices";
 
@@ -37,7 +37,7 @@ function colorOf(index: number): string {
  */
 export function DistributionPanel({ allocation, investedValue }: DistributionPanelProps) {
   const { t } = useTranslation();
-  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const reduceMotion = useReducedMotion();
   const slices = toAllocationSlices(
     allocation.groups,
     MAX_RINGS,

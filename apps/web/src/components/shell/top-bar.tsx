@@ -4,7 +4,12 @@ import { useLocation } from "react-router";
 import { Logo } from "@/components/logo";
 import { Breadcrumb, BreadcrumbItem } from "@/components/breadcrumb";
 import { DemoMenu } from "./demo-menu";
-import { activeDestinationPath, DESTINATIONS, SETTINGS_DESTINATION } from "./destinations";
+import {
+  activeDestinationPath,
+  DESTINATIONS,
+  PROFILE_PATH,
+  SETTINGS_DESTINATION,
+} from "./destinations";
 import { NotificationButton, type Unread } from "./notification-button";
 import { PortfolioSelector, type PortfolioOption } from "./portfolio-selector";
 import { UserMenu } from "./user-menu";
@@ -73,7 +78,7 @@ export function TopBar({
           <ChevronRight aria-hidden="true" className="size-3.5 text-muted-foreground" />
           <Breadcrumb label={t("shell.breadcrumb")}>
             <BreadcrumbItem to={pageTitle && current ? current.path : undefined}>
-              {current ? t(current.labelKey) : null}
+              {current ? t(current.labelKey) : pathname === PROFILE_PATH ? t("nav.profile") : null}
             </BreadcrumbItem>
             {pageTitle ? (
               <>

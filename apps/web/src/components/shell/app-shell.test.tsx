@@ -55,6 +55,7 @@ function renderShell(
         children: [
           { path: "/", element: <h1>Content</h1> },
           { path: "/portfolios/:portfolioId", element: <h1>Detail</h1> },
+          { path: "/profile", element: <h1>The profile</h1> },
         ],
       },
     ],
@@ -151,10 +152,14 @@ describe("AppShell", () => {
   });
 
   it("lets the user retry when the portfolios fail to load", async () => {
-    const call = vi
-      .fn<TradingClient["call"]>()
-      .mockRejectedValueOnce(new ApiError("NETWORK_ERROR", "down"))
-      .mockResolvedValue({ data: [portfolio("p1", "Crecimiento")] });
+    let listed = 0;
+    const call = vi.fn<TradingClient["call"]>((operation) => {
+      if (operation.operationId === "getPreferences") return Promise.resolve({ data: null });
+      listed += 1;
+      return listed === 1
+        ? Promise.reject(new ApiError("NETWORK_ERROR", "down"))
+        : Promise.resolve({ data: [portfolio("p1", "Crecimiento")] });
+    });
     renderShell(fakeSessionService(), { call });
 
     await userEvent.click(
@@ -164,6 +169,16 @@ describe("AppShell", () => {
     expect(await screen.findByRole("button", { name: "Select portfolio" })).toHaveTextContent(
       "Crecimiento",
     );
+  });
+
+  it("opens the profile from the user menu", async () => {
+    signInAsAna();
+    renderShell();
+
+    await openUserMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "View profile" }));
+
+    expect(await screen.findByRole("heading", { name: "The profile" })).toBeInTheDocument();
   });
 
   it("signs out through the session service from the user menu", async () => {

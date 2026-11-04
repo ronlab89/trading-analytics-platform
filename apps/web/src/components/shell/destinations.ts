@@ -38,6 +38,9 @@ export const SETTINGS_DESTINATION: Destination = {
 const byPath = (paths: readonly string[]): readonly Destination[] =>
   [...DESTINATIONS, SETTINGS_DESTINATION].filter(({ path }) => paths.includes(path));
 
+/** The profile is opened from the avatar, so it is no view of the bars and none of them marks it. */
+export const PROFILE_PATH = "/profile";
+
 /** The four views that get their own tab in the mobile bottom bar. */
 export const TAB_DESTINATIONS = byPath(["/", "/portfolios", "/transactions", "/markets"]);
 
@@ -49,6 +52,8 @@ export const MORE_DESTINATIONS = byPath(["/analytics", "/decisions", "/activity"
  * path (the not-found page) leaves Home marked, as the Figma global states do.
  */
 export function activeDestinationPath(pathname: string): string {
+  if (pathname === PROFILE_PATH) return "";
+
   const match = [...DESTINATIONS, SETTINGS_DESTINATION].find(
     ({ path }) => path !== "/" && (pathname === path || pathname.startsWith(`${path}/`)),
   );

@@ -64,6 +64,14 @@ describe("TopBar", () => {
     expect(within(breadcrumb).getByText("Portfolios")).not.toHaveAttribute("aria-current");
   });
 
+  it("names the profile in the breadcrumb, which is not a view of the activity bar", () => {
+    renderTopBar({}, "/profile");
+
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(breadcrumb).getByText("Profile")).toHaveAttribute("aria-current", "page");
+    expect(within(breadcrumb).queryByText("Home")).not.toBeInTheDocument();
+  });
+
   it("keeps Home in the breadcrumb on an unknown path", () => {
     renderTopBar({}, "/nowhere");
 
