@@ -776,7 +776,7 @@ test("the search narrows the decisions by title, symbol or asset name", async ({
   await expect(page.getByRole("row", { name: /Cut the loss/ })).toBeVisible();
 });
 
-test("the decision detail lays out its indicators, thesis and events inside the main area on every width", async ({
+test("the decision detail lays out its indicators, panels and events inside the main area on every width", async ({
   page,
 }) => {
   for (const width of [390, 768, 1280]) {
@@ -793,20 +793,25 @@ test("the decision detail lays out its indicators, thesis and events inside the 
     const events = await boxOf(page.getByRole("region", { name: "Position evolution" }));
     const price = await boxOf(page.getByRole("region", { name: "A1 price" }));
     await page.getByRole("img", { name: "A1 price" }).locator("svg").first().waitFor();
-    for (const box of [...boxes, thesis, events, price]) {
+    await page.getByRole("table").waitFor();
+    const expected = await boxOf(page.getByRole("region", { name: "Expected vs actual" }));
+    for (const box of [...boxes, thesis, events, price, expected]) {
       expect(box.x).toBeGreaterThanOrEqual(main.x);
       expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
     }
 
     const [entry, target] = boxes;
     if (width >= 1280) {
-      // Four indicators on one row, the price beside the events, the thesis under them.
+      // Four indicators on one row, the price beside the events, the thesis beside the comparison.
       expect(Math.abs((entry?.y ?? 0) - (target?.y ?? 99))).toBeLessThan(2);
       expect(Math.abs((boxes[3]?.y ?? 99) - (entry?.y ?? 0))).toBeLessThan(2);
       expect(events.x).toBeGreaterThanOrEqual(price.x + price.width);
       expect(Math.abs(events.y - price.y)).toBeLessThan(2);
+      expect(expected.x).toBeGreaterThanOrEqual(thesis.x + thesis.width);
+      expect(Math.abs(expected.y - thesis.y)).toBeLessThan(2);
     } else {
-      // Two by two, then one under the other: the price, the events, the thesis.
+      // Two by two, then one under the other: the price, the events, the thesis, the comparison.
+      expect(expected.y).toBeGreaterThanOrEqual(thesis.y + thesis.height);
       expect(Math.abs((boxes[2]?.y ?? 0) - (entry?.y ?? 99))).toBeGreaterThan(20);
       expect(events.y).toBeGreaterThanOrEqual(price.y + price.height);
     }
@@ -1422,4 +1427,47 @@ test("picking another period asks for it and keeps the chart", async ({ page }) 
   await request;
 
   await expect(performancePanel(page).locator(".recharts-surface")).toBeVisible();
+});
+
+test("the comparison follows the replay on every width", async ({ page }) => {
+  test.slow();
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions/d1");
+    const panel = page.getByRole("region", { name: "Expected vs actual" });
+    await panel.getByRole("table").waitFor();
+
+    const row = (name: string) => panel.getByRole("row", { name: new RegExp(`^${name}`) });
+    await expect(panel.getByText("Up to Aug 28")).toBeVisible();
+    await expect(row("Direction")).toContainText("Rising");
+    await expect(row("Target")).toContainText("$173.50 · 40%");
+    await expect(row("Risk")).toContainText("Max. drop -1.42%");
+    await expect(row("Result")).toContainText("+17.00%");
+    await expect(row("Result")).toContainText("+6.83%");
+
+    await page.getByRole("button", { name: "Previous event" }).click();
+    await expect(panel.getByText("Up to Aug 14")).toBeVisible();
+    await expect(row("Direction")).toContainText("Unchanged");
+    await expect(row("Risk")).toContainText("No drop");
+
+    await page.getByRole("button", { name: "Previous event" }).click();
+    await expect(panel.getByText("Up to Aug 12")).toBeVisible();
+    await expect(row("Direction")).toContainText("—");
+    await expect(row("Result")).toContainText("+17.00%");
+  }
+});
+
+test("a decision of the list opens its detail, from the table and from the card", async ({
+  page,
+}) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions");
+    await waitForDecisions(page, width);
+
+    await page.getByRole("link", { name: /Buy the dip/ }).click();
+
+    await expect(page).toHaveURL(/\/decisions\/d1$/);
+    await expect(page.getByRole("link", { name: "Back to decisions" })).toBeVisible();
+  }
 });
