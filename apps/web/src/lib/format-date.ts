@@ -44,6 +44,15 @@ export function formatDateTime(iso: string, language: string, timeZone?: string)
   return `${day.format(moment)} · ${time.format(moment)}`;
 }
 
+/** The time of day in 24 hours, without seconds (`14:29`), for a row that already sits under its day. */
+export function formatClockTime(iso: string, language: string, timeZone?: string): string {
+  return cached(timeFormats, localeOf(language), timeZone, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}
+
 const fullDayFormats = new Map<string, Intl.DateTimeFormat>();
 
 /**

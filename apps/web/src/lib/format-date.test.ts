@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCalendarDay,
+  formatClockTime,
   formatCalendarRange,
   formatDayMonth,
   formatDateTime,
@@ -23,6 +24,13 @@ describe("formatLongDate", () => {
     expect(formatLongDate("2026-10-07T02:00:00.000Z", "es", "America/Bogota")).toBe(
       "Martes, 6 de octubre",
     );
+  });
+});
+
+describe("formatClockTime", () => {
+  it("writes the 24-hour time without seconds, as the activity rows do", () => {
+    expect(formatClockTime("2026-10-06T14:32:07.000Z", "es", "UTC")).toBe("14:32");
+    expect(formatClockTime("2026-10-06T00:05:00.000Z", "en", "UTC")).toBe("00:05");
   });
 });
 

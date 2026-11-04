@@ -169,7 +169,7 @@ interface DateRangeFieldProps {
 }
 
 /** The "Fecha" box: it says the range in force and opens the calendar next to it. */
-function DateRangeField({
+export function DateRangeField({
   value,
   onChange,
   placeholder,
