@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { useScenarioEditor } from "../hooks/use-scenario-editor";
 import { DeleteScenarioDialog } from "./delete-scenario-dialog";
 import { BackToScenarios, SCENARIOS_PATH, ScenarioEditorHeader } from "./scenario-editor-header";
@@ -24,6 +25,7 @@ interface ScenarioEditorProps {
 export function ScenarioEditor({ portfolioId, scenarioId }: ScenarioEditorProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const editor = useScenarioEditor(portfolioId, scenarioId);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -49,10 +51,13 @@ export function ScenarioEditor({ portfolioId, scenarioId }: ScenarioEditorProps)
   const { scenario } = editor;
   if (editor.isPending || scenario === undefined) return <ScenarioEditorSkeleton />;
 
+  const canReset = editor.variables.some(({ percent }) => percent !== 0);
+
   return (
     <>
       <ScenarioEditorHeader
-        canReset={editor.variables.some(({ percent }) => percent !== 0)}
+        canReset={canReset}
+        compact={isMobile}
         onDelete={() => {
           setDeleting(true);
         }}
@@ -63,7 +68,9 @@ export function ScenarioEditor({ portfolioId, scenarioId }: ScenarioEditorProps)
       />
       <div className="grid items-start gap-4 desktop:grid-cols-[minmax(0,408fr)_minmax(0,912fr)] desktop:gap-6">
         <ScenarioVariablesPanel
+          canReset={canReset}
           onChange={editor.setPercent}
+          onReset={isMobile ? editor.reset : undefined}
           unsaved={scenario.status === "DRAFT"}
           variables={editor.variables}
         />

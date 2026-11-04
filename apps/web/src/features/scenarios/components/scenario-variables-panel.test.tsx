@@ -119,6 +119,19 @@ describe("ScenarioVariablesPanel", () => {
     expect(screen.queryByRole("slider")).not.toBeInTheDocument();
   });
 
+  it("has no reset of its own unless it is given one, and then it takes everything back", async () => {
+    const { view } = renderPanel();
+    expect(screen.queryByRole("button", { name: "Reset" })).not.toBeInTheDocument();
+
+    const onReset = vi.fn();
+    view.rerender(
+      <ScenarioVariablesPanel onChange={vi.fn()} onReset={onReset} unsaved variables={variables} />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Reset" }));
+
+    expect(onReset).toHaveBeenCalledOnce();
+  });
+
   it("has no accessibility violations", async () => {
     const { view } = renderPanel();
 

@@ -1,5 +1,7 @@
+import { RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/badge";
+import { Button } from "@/components/ui/button";
 import { AnalyticsPanel } from "@/features/analytics/components/analytics-panel";
 import type { ScenarioVariable } from "../lib/scenario-variables";
 import { ScenarioVariableControl } from "./scenario-variable-control";
@@ -9,6 +11,13 @@ interface ScenarioVariablesPanelProps {
   onChange: (assetId: string, percent: number) => void;
   /** The scenario is still a draft: the Figma says so with an orange "Sin guardar". */
   unsaved: boolean;
+  /**
+   * Takes every price back to Base. Only given where the screen has no reset in its header: on a
+   * phone the Figma puts it at the foot of the controls.
+   */
+  onReset?: (() => void) | undefined;
+  /** Whether there is anything to take back; the footer reset is disabled otherwise. */
+  canReset?: boolean | undefined;
 }
 
 /**
@@ -19,6 +28,8 @@ export function ScenarioVariablesPanel({
   variables,
   onChange,
   unsaved,
+  onReset,
+  canReset = true,
 }: ScenarioVariablesPanelProps) {
   const { t } = useTranslation();
 
@@ -44,6 +55,12 @@ export function ScenarioVariablesPanel({
             />
           ))}
         </div>
+      )}
+      {onReset === undefined ? null : (
+        <Button className="self-start" disabled={!canReset} onClick={onReset} variant="ghost">
+          <RotateCcw aria-hidden="true" />
+          {t("scenarios.editor.reset")}
+        </Button>
       )}
     </AnalyticsPanel>
   );

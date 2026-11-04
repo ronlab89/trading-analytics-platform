@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
@@ -103,11 +103,32 @@ function renderPage(client: TradingClient) {
   );
 }
 
-const loaded = () => screen.findByRole("heading", { level: 1, name: "Apple falls" });
+/**
+ * The editor is ready once the page has its name and the variables are drawn. It asks for the
+ * scenario, then the positions, then their assets, so a loaded machine needs more than the default
+ * second.
+ */
+const loaded = async () => {
+  const heading = await screen.findByRole(
+    "heading",
+    { level: 1, name: "Apple falls" },
+    { timeout: 4000 },
+  );
+  await screen.findByRole("region", { name: "Variables" }, { timeout: 4000 });
+  return heading;
+};
 
 beforeEach(() => {
   useActivePortfolioStore.setState({ selectedId: undefined });
   useSessionStore.getState().signOut();
+});
+
+// `vi.unstubAllGlobals` would also take away the stubs of the test setup (the slider needs one), so
+// the one stub this file makes is put back by hand.
+const originalMatchMedia: unknown = Reflect.get(window, "matchMedia");
+
+afterEach(() => {
+  Reflect.set(window, "matchMedia", originalMatchMedia);
 });
 
 describe("ScenarioEditorPage", () => {
@@ -164,6 +185,28 @@ describe("ScenarioEditorPage", () => {
     expect(calls("updateScenario")[0]?.[1]?.body).toEqual({ changes: [] });
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Reset" })).toBeDisabled();
+    });
+  });
+
+  it("on a phone, keeps the reset under the variables and shortens the save button, as the Figma does", async () => {
+    window.matchMedia = ((query: string) => ({
+      media: query,
+      matches: true,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    const { client, calls } = clientWith();
+    renderPage(client);
+    await loaded();
+
+    const variables = within(await screen.findByRole("region", { name: "Variables" }));
+    expect(screen.getAllByRole("button", { name: "Reset" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save scenario" })).not.toBeInTheDocument();
+
+    await userEvent.click(variables.getByRole("button", { name: "Reset" }));
+    await waitFor(() => {
+      expect(calls("updateScenario")[0]?.[1]?.body).toEqual({ changes: [] });
     });
   });
 

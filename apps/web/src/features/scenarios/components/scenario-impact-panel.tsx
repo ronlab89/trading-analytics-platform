@@ -25,10 +25,12 @@ interface ComparisonProps {
   base: string;
   scenario: string;
   delta: number | null;
+  /** The delta is a difference between two percentages, so it is written in points. */
+  points?: boolean;
 }
 
 /** One figure of the Figma "Comparison": the base, an arrow, the value with the scenario and the change. */
-function Comparison({ label, base, scenario, delta }: ComparisonProps) {
+function Comparison({ label, base, scenario, delta, points = false }: ComparisonProps) {
   return (
     <div aria-label={label} className="flex min-w-0 flex-1 flex-col gap-1" role="group">
       <span className="text-xs text-(--color-text-secondary)">{label}</span>
@@ -38,7 +40,7 @@ function Comparison({ label, base, scenario, delta }: ComparisonProps) {
         <span className="text-lg leading-7 font-semibold text-(--color-text-default)">
           {scenario}
         </span>
-        <PriceChangeBadge percent={delta} />
+        <PriceChangeBadge percent={delta} points={points} />
       </span>
     </div>
   );
@@ -108,6 +110,7 @@ export function ScenarioImpactPanel({
               calculation.result.unrealizedPnLPercent - calculation.baseline.unrealizedPnLPercent
             }
             label={t("scenarios.editor.impact.return")}
+            points
             scenario={formatSignedPercent(calculation.result.unrealizedPnLPercent)}
           />
         </div>

@@ -1,4 +1,4 @@
-import { ArrowLeft, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowLeft, Ellipsis, RotateCcw, Save, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,11 @@ interface ScenarioEditorHeaderProps {
   onReset: () => void;
   onSave: () => void;
   onDelete: () => void;
+  /**
+   * On a phone the Figma has the reset at the foot of the variables and a shorter save button, so
+   * the header has only what is left.
+   */
+  compact?: boolean;
 }
 
 /**
@@ -44,18 +49,24 @@ export function ScenarioEditorHeader({
   onReset,
   onSave,
   onDelete,
+  compact = false,
 }: ScenarioEditorHeaderProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-col gap-3 desktop:flex-row desktop:items-center desktop:justify-between">
       <BackToScenarios />
-      <div className="flex items-center gap-2">
-        <Button disabled={!canReset} onClick={onReset} variant="outline">
-          <RotateCcw aria-hidden="true" />
-          {t("scenarios.editor.reset")}
+      <div className="flex flex-wrap items-center gap-2">
+        {compact ? null : (
+          <Button disabled={!canReset} onClick={onReset} variant="outline">
+            <RotateCcw aria-hidden="true" />
+            {t("scenarios.editor.reset")}
+          </Button>
+        )}
+        <Button onClick={onSave}>
+          <Save aria-hidden="true" />
+          {t(compact ? "scenarios.editor.saveShort" : "scenarios.editor.save")}
         </Button>
-        <Button onClick={onSave}>{t("scenarios.editor.save")}</Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button aria-label={t("scenarios.editor.more")} size="icon-md" variant="outline">

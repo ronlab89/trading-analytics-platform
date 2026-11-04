@@ -61,13 +61,13 @@ describe("ScenarioImpactPanel", () => {
     expect(value.getByText("-3.20%")).toBeInTheDocument();
   });
 
-  it("does the same for the return: the base, the scenario and the points between them", () => {
+  it("does the same for the return: the base, the scenario and the percentage points between them", () => {
     renderPanel();
 
     const result = within(figure("Return"));
     expect(result.getByText("+6.12%")).toBeInTheDocument();
     expect(result.getByText("+2.72%")).toBeInTheDocument();
-    expect(result.getByText("-3.40%")).toBeInTheDocument();
+    expect(result.getByText("-3.40 pp")).toBeInTheDocument();
   });
 
   it("always says that the scenario does not touch the real portfolio", () => {
