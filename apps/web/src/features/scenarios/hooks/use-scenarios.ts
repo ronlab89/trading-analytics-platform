@@ -13,6 +13,10 @@ export const scenarioKeys = {
     [...scenarioKeys.all, portfolioId, "detail", scenarioId] as const,
   impact: (portfolioId: string, scenarioId: string) =>
     [...scenarioKeys.all, portfolioId, "impact", scenarioId] as const,
+  /** Every comparison of the portfolio, whatever scenarios it holds. */
+  comparisons: (portfolioId: string) => [...scenarioKeys.all, portfolioId, "compare"] as const,
+  compare: (portfolioId: string, scenarioIds: readonly string[]) =>
+    [...scenarioKeys.comparisons(portfolioId), ...scenarioIds] as const,
 };
 
 /**

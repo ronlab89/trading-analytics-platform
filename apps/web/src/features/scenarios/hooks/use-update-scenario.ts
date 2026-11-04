@@ -14,7 +14,7 @@ const updateScenarioOperation = findOperation(scenarioOperations, "updateScenari
  * Changes a scenario: its name, its description, its status (draft or saved) or its changes, which
  * replace the whole list. The scenario in the cache becomes what the API answered, and the list is
  * refreshed on its own. A calculation is derived from the stored changes, so only when the changes
- * are sent is it asked for again; a refusal changes nothing in the cache.
+ * are sent are the calculation and the comparisons of the portfolio asked for again; a refusal changes nothing in the cache.
  */
 export function useUpdateScenario(portfolioId: string, scenarioId: string) {
   const client = useTradingClient();
@@ -39,6 +39,7 @@ export function useUpdateScenario(portfolioId: string, scenarioId: string) {
         void queryClient.invalidateQueries({
           queryKey: scenarioKeys.impact(portfolioId, scenarioId),
         });
+        void queryClient.invalidateQueries({ queryKey: scenarioKeys.comparisons(portfolioId) });
       }
     },
   });
