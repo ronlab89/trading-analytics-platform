@@ -1,5 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 import "@/i18n";
 import type { DecisionRow } from "../types";
@@ -44,6 +46,17 @@ const waitAndSee = row({
 });
 const rows = [buyTheDip, cutTheLoss, waitAndSee];
 
+/** The view inside a router, with a stand-in for the page a decision opens. */
+const renderView = (ui: ReactElement) =>
+  render(
+    <MemoryRouter>
+      <Routes>
+        <Route element={ui} path="/" />
+        <Route element={<p>Detail of the decision</p>} path="/decisions/:decisionId" />
+      </Routes>
+    </MemoryRouter>,
+  );
+
 const titles = () =>
   screen
     .getAllByRole("row")
@@ -52,7 +65,7 @@ const titles = () =>
 
 describe("DecisionsView", () => {
   it("draws each decision with its direction, prices, status and outcome", () => {
-    render(<DecisionsView rows={rows} />);
+    renderView(<DecisionsView rows={rows} />);
 
     const closed = screen.getByRole("row", { name: /Cut the loss/ });
     expect(within(closed).getByText("Short")).toBeVisible();
@@ -65,7 +78,7 @@ describe("DecisionsView", () => {
   });
 
   it("shows a dash for a price or an outcome the decision does not have", () => {
-    render(<DecisionsView rows={[waitAndSee]} />);
+    renderView(<DecisionsView rows={[waitAndSee]} />);
 
     const decision = screen.getByRole("row", { name: /Wait and see/ });
     expect(within(decision).getAllByText("—")).toHaveLength(2);
@@ -73,7 +86,7 @@ describe("DecisionsView", () => {
 
   it("finds a decision by its title, its symbol or the name of its asset", async () => {
     const user = userEvent.setup();
-    render(<DecisionsView rows={rows} />);
+    renderView(<DecisionsView rows={rows} />);
     const search = screen.getByRole("searchbox", { name: "Search decisions" });
 
     await user.type(search, "dip");
@@ -90,7 +103,7 @@ describe("DecisionsView", () => {
 
   it("says nothing matches and clears the search from there", async () => {
     const user = userEvent.setup();
-    render(<DecisionsView rows={rows} />);
+    renderView(<DecisionsView rows={rows} />);
 
     await user.type(screen.getByRole("searchbox", { name: "Search decisions" }), "tesla");
 
@@ -102,7 +115,7 @@ describe("DecisionsView", () => {
 
   it("sorts by entry price and leaves the decisions without one last", async () => {
     const user = userEvent.setup();
-    render(<DecisionsView rows={rows} />);
+    renderView(<DecisionsView rows={rows} />);
 
     await user.click(screen.getByRole("button", { name: /Entry/ }));
     expect(titles()).toEqual([
@@ -120,7 +133,7 @@ describe("DecisionsView", () => {
   });
 
   it("is a card list on a phone, with no prices", () => {
-    render(<DecisionsView mobile rows={rows} />);
+    renderView(<DecisionsView mobile rows={rows} />);
 
     const cards = within(screen.getByRole("list", { name: "Decisions" })).getAllByRole("listitem");
     expect(cards).toHaveLength(3);
@@ -135,12 +148,47 @@ describe("DecisionsView", () => {
 
   it("filters the phone cards with the same search", async () => {
     const user = userEvent.setup();
-    render(<DecisionsView mobile rows={rows} />);
+    renderView(<DecisionsView mobile rows={rows} />);
 
     await user.type(screen.getByRole("searchbox", { name: "Search decisions" }), "dip");
 
     expect(
       within(screen.getByRole("list", { name: "Decisions" })).getAllByRole("listitem"),
     ).toHaveLength(1);
+  });
+
+  it("opens a decision from the title in its row, which is a link", async () => {
+    const user = userEvent.setup();
+    renderView(<DecisionsView rows={rows} />);
+
+    const link = within(screen.getByRole("row", { name: /Cut the loss/ })).getByRole("link", {
+      name: "Cut the loss",
+    });
+    expect(link).toHaveAttribute("href", "/decisions/d2");
+
+    await user.click(link);
+    expect(screen.getByText("Detail of the decision")).toBeVisible();
+  });
+
+  it("opens a decision from its whole card on a phone", async () => {
+    const user = userEvent.setup();
+    renderView(<DecisionsView mobile rows={rows} />);
+
+    const link = screen.getByRole("link", { name: /Buy the dip/ });
+    expect(link).toHaveAttribute("href", "/decisions/d1");
+    expect(within(link).getByText("Open")).toBeVisible();
+
+    await user.click(link);
+    expect(screen.getByText("Detail of the decision")).toBeVisible();
+  });
+
+  it("reaches the links with the keyboard", async () => {
+    const user = userEvent.setup();
+    renderView(<DecisionsView mobile rows={rows} />);
+
+    await user.click(screen.getByRole("searchbox", { name: "Search decisions" }));
+    await user.tab();
+
+    expect(screen.getByRole("link", { name: /Buy the dip/ })).toHaveFocus();
   });
 });
