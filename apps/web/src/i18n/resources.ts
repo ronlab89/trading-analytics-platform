@@ -86,6 +86,35 @@ const en = {
       role: "Role",
       roles: { VIEWER: "Viewer", TRADER: "Trader", ADMIN: "Admin" },
     },
+    preferences: {
+      language: {
+        label: "Language",
+        description: "The language of the whole app.",
+        options: { en: "English", es: "Español" },
+      },
+      defaultPortfolio: {
+        label: "Default portfolio",
+        description: "The portfolio that opens when you sign in.",
+        none: "No default portfolio",
+      },
+      reducedMotion: {
+        label: "Reduce motion",
+        description: "Turns off the animations of the charts.",
+      },
+      discard: "Discard",
+      save: "Save changes",
+      retry: "Try again",
+      saved: "Preferences saved",
+      saveFailed: {
+        title: "We couldn't save your changes",
+        description: "Check your connection and try again.",
+      },
+      loading: "Loading your preferences",
+      loadFailed: {
+        title: "Could not load your preferences",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
+    },
     demo: {
       badge: "Demo account",
       title: "Fictional data",
@@ -1173,6 +1202,35 @@ const es: Messages<typeof en> = {
       email: "Correo electrónico",
       role: "Rol",
       roles: { VIEWER: "Lector", TRADER: "Trader", ADMIN: "Administrador" },
+    },
+    preferences: {
+      language: {
+        label: "Idioma",
+        description: "El idioma de toda la app.",
+        options: { en: "English", es: "Español" },
+      },
+      defaultPortfolio: {
+        label: "Portafolio por defecto",
+        description: "El portafolio que se abre al iniciar sesión.",
+        none: "Sin portafolio por defecto",
+      },
+      reducedMotion: {
+        label: "Reducir el movimiento",
+        description: "Desactiva las animaciones de los gráficos.",
+      },
+      discard: "Descartar",
+      save: "Guardar cambios",
+      retry: "Reintentar",
+      saved: "Preferencias guardadas",
+      saveFailed: {
+        title: "No pudimos guardar los cambios",
+        description: "Revisa tu conexión e inténtalo de nuevo.",
+      },
+      loading: "Cargando tus preferencias",
+      loadFailed: {
+        title: "No se pudieron cargar tus preferencias",
+        description: "Hubo un problema al conectar con el servidor. Inténtalo en un momento.",
+      },
     },
     demo: {
       badge: "Cuenta demo",

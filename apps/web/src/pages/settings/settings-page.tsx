@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { env } from "@/config/env";
 import { DemoSection } from "@/features/settings/components/demo-section";
+import { PreferencesSection } from "@/features/settings/components/preferences-section";
 import { ProfileSection } from "@/features/settings/components/profile-section";
-import { SettingsCard } from "@/features/settings/components/settings-card";
 import { SettingsIdentity } from "@/features/settings/components/settings-identity";
 import { SettingsNav } from "@/features/settings/components/settings-nav";
 import { useSettingsSection } from "@/features/settings/hooks/use-settings-section";
@@ -43,10 +43,7 @@ export function SettingsPage() {
           ) : section === "demo" ? (
             <DemoSection />
           ) : (
-            <SettingsCard
-              description={t("settings.sections.preferences.description")}
-              title={t("settings.sections.preferences.title")}
-            />
+            <PreferencesSection />
           )}
         </div>
       </div>

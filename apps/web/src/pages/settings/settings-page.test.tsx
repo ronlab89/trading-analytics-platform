@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
 import { useSessionStore } from "@/stores/session-store";
+import { tradingClientWrapper } from "@/test/trading-client-wrapper";
+import type { TradingClient } from "@/api/trading-client";
 import { SettingsPage } from "./settings-page";
 
 const build = vi.hoisted<{ mode: "real" | "demo" }>(() => ({ mode: "real" }));
@@ -34,12 +36,22 @@ function Where() {
   return <output data-testid="search">{search}</output>;
 }
 
+/** The Preferences card asks for the preferences and the portfolios; the rest needs no API. */
+const client = {
+  call: vi.fn((operation: { operationId: string }) =>
+    Promise.resolve({ data: operation.operationId === "listPortfolios" ? [] : null }),
+  ),
+} as unknown as TradingClient;
+
 function renderPage(address = "/settings") {
+  const Wrapper = tradingClientWrapper(client);
   return render(
-    <MemoryRouter initialEntries={[address]}>
-      <SettingsPage />
-      <Where />
-    </MemoryRouter>,
+    <Wrapper>
+      <MemoryRouter initialEntries={[address]}>
+        <SettingsPage />
+        <Where />
+      </MemoryRouter>
+    </Wrapper>,
   );
 }
 
