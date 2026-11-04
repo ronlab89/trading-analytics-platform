@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DecisionsSection } from "@/features/decisions/components/decisions-section";
 import { useDecisionRows } from "@/features/decisions/hooks/use-decision-rows";
+import { CompareScenariosButton } from "@/features/scenarios/components/compare-scenarios-button";
 import { DeleteScenarioDialog } from "@/features/scenarios/components/delete-scenario-dialog";
 import { ScenariosSection } from "@/features/scenarios/components/scenarios-section";
 import { ScenariosSummary } from "@/features/scenarios/components/scenarios-summary";
@@ -85,14 +86,20 @@ function Decisions({ portfolioId, portfolioName }: { portfolioId: string; portfo
     </TabsList>
   );
   const newScenario = (
-    <Button
-      className={isMobile ? "w-full" : undefined}
-      loading={scenarioActions.creating}
-      onClick={scenarioActions.create}
-    >
-      <Plus aria-hidden="true" />
-      {t("scenarios.empty.action")}
-    </Button>
+    <>
+      <CompareScenariosButton
+        className={isMobile ? "w-full" : undefined}
+        portfolioId={portfolioId}
+      />
+      <Button
+        className={isMobile ? "w-full" : undefined}
+        loading={scenarioActions.creating}
+        onClick={scenarioActions.create}
+      >
+        <Plus aria-hidden="true" />
+        {t("scenarios.empty.action")}
+      </Button>
+    </>
   );
   const summary =
     tab === "lab" ? (

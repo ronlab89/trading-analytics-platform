@@ -2,6 +2,7 @@ import { ArrowLeft, Ellipsis, RotateCcw, Save, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { CompareScenariosButton } from "./compare-scenarios-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ export function BackToScenarios() {
 }
 
 interface ScenarioEditorHeaderProps {
+  portfolioId: string;
   /** The scenario has changes to take back. */
   canReset: boolean;
   onReset: () => void;
@@ -41,10 +43,10 @@ interface ScenarioEditorHeaderProps {
 
 /**
  * The top of the editor as the Figma draws it: the way back at the start, and at the end the reset,
- * "Guardar escenario" and the menu of more actions. Comparing is not here until there is a
- * comparison to go to.
+ * "Guardar escenario" and the menu of more actions.
  */
 export function ScenarioEditorHeader({
+  portfolioId,
   canReset,
   onReset,
   onSave,
@@ -57,6 +59,7 @@ export function ScenarioEditorHeader({
     <div className="flex flex-col gap-3 desktop:flex-row desktop:items-center desktop:justify-between">
       <BackToScenarios />
       <div className="flex flex-wrap items-center gap-2">
+        <CompareScenariosButton portfolioId={portfolioId} />
         {compact ? null : (
           <Button disabled={!canReset} onClick={onReset} variant="outline">
             <RotateCcw aria-hidden="true" />
