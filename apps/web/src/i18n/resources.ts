@@ -76,6 +76,10 @@ const en = {
     eventsCount_other: "{{count}} events",
     severity: { INFO: "Info", SUCCESS: "Success", WARNING: "Warning", ERROR: "Error" },
     source: { TRANSACTION: "Transaction", ALERT: "Alert" },
+    transaction: {
+      title: { BUY: "Bought {{symbol}}", SELL: "Sold {{symbol}}" },
+      message: "{{quantity}} at {{price}} · {{status}}",
+    },
   },
   settings: {
     subtitle: "Manage your account and your preferences.",
@@ -1208,6 +1212,10 @@ const es: Messages<typeof en> = {
     eventsCount_other: "{{count}} eventos",
     severity: { INFO: "Info", SUCCESS: "Éxito", WARNING: "Advertencia", ERROR: "Error" },
     source: { TRANSACTION: "Transacción", ALERT: "Alerta" },
+    transaction: {
+      title: { BUY: "Compra de {{symbol}}", SELL: "Venta de {{symbol}}" },
+      message: "{{quantity}} a {{price}} · {{status}}",
+    },
   },
   settings: {
     subtitle: "Administra tu cuenta y tus preferencias.",
