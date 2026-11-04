@@ -2,6 +2,7 @@ import { Outlet, useMatch } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { userInitials } from "@/features/auth/lib/user-initials";
+import { useSavedMotion } from "@/features/settings/hooks/use-saved-motion";
 import { useSavedLanguage } from "@/features/settings/hooks/use-saved-language";
 import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
@@ -20,6 +21,7 @@ import { TopBar } from "./top-bar";
  */
 export function AppShell() {
   useSavedLanguage();
+  useSavedMotion();
   const portfolio = useActivePortfolio();
   const portfolioOptions = portfolio.portfolios.map(({ id, name, baseCurrency }) => ({
     id,
