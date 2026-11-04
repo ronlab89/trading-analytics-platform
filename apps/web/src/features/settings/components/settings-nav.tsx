@@ -31,12 +31,16 @@ export function SettingsNav({ sections, section, onSelect, tabs }: SettingsNavPr
         }}
         value={section}
       >
-        <TabsList aria-label={label} className="w-full">
-          {sections.map((entry) => (
-            <TabsTrigger className="flex-1" key={entry} value={entry}>
-              {t(`settings.sections.${entry}.title`)}
-            </TabsTrigger>
-          ))}
+        <TabsList aria-label={label} className="w-full tablet:w-fit">
+          {sections.map((entry) => {
+            const Icon = ICONS[entry];
+            return (
+              <TabsTrigger className="gap-2" key={entry} value={entry}>
+                <Icon aria-hidden="true" className="size-4 max-tablet:hidden" />
+                {t(`settings.sections.${entry}.title`)}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
       </Tabs>
     );

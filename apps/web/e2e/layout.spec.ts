@@ -1940,3 +1940,123 @@ test("the Scenario Lab compares the scenarios picked and the comparison changes 
     await expect(page).toHaveURL(/\/decisions\?tab=lab$/);
   }
 });
+
+/** The saved preferences of the user, in English so the screens keep their copy; PATCH bodies are recorded. */
+async function mockPreferences(page: Page, patches: unknown[] = []) {
+  let saved = {
+    userId: "u-1",
+    theme: "light",
+    language: "en",
+    defaultPortfolioId: "p1",
+    reducedMotion: false,
+    notificationPreferences: {},
+    updatedAt: "2026-11-01T10:00:00.000Z",
+  };
+  await page.route("http://localhost:7001/api/v1/preferences", (route) => {
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON() as object;
+      patches.push(body);
+      saved = { ...saved, ...body, updatedAt: "2026-11-04T10:00:00.000Z" };
+    }
+    return route.fulfill(json(saved));
+  });
+}
+
+test("settings lays out its menu or tabs and its card inside the main area on every width", async ({
+  page,
+}) => {
+  test.slow();
+  await mockPreferences(page);
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/settings");
+
+    await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+    const card = page.getByRole("region", { name: "Profile" });
+    await expect(card).toBeVisible();
+
+    const main = await boxOf(page.locator("main"));
+    const cardBox = await boxOf(card);
+    expect(cardBox.x).toBeGreaterThanOrEqual(main.x);
+    expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(main.x + main.width + 1);
+
+    if (width >= 1280) {
+      // The menu on the side, the card to its right on the same row.
+      const menu = await boxOf(page.getByRole("navigation", { name: "Settings sections" }));
+      expect(cardBox.x).toBeGreaterThanOrEqual(menu.x + menu.width);
+      await expect(page.getByRole("tablist", { name: "Settings sections" })).toHaveCount(0);
+    } else {
+      // Tabs on top, the card under them.
+      const tabs = await boxOf(page.getByRole("tablist", { name: "Settings sections" }));
+      expect(cardBox.y).toBeGreaterThanOrEqual(tabs.y + tabs.height);
+      await expect(page.getByRole("navigation", { name: "Settings sections" })).toHaveCount(0);
+    }
+
+    const size = await pageSize(page);
+    expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
+  }
+});
+
+test("settings saves only what changed and asks before leaving with changes", async ({ page }) => {
+  test.slow();
+  const patches: unknown[] = [];
+  await mockPreferences(page, patches);
+  for (const width of [390, 768, 1280]) {
+    patches.length = 0;
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/settings?section=preferences");
+
+    const reduce = page.getByRole("checkbox", { name: /Reduce motion/ });
+    await expect(reduce).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+
+    // Leaving with a change asks first, in a dialog that fits the screen.
+    await reduce.click();
+    await page
+      .getByRole("button", { name: "Profile", exact: true })
+      .or(page.getByRole("tab", { name: "Profile" }))
+      .click();
+    const dialog = page.getByRole("dialog", { name: "Leave without saving?" });
+    await expect(dialog).toBeVisible();
+    const box = await boxOf(dialog);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
+    await dialog.getByRole("button", { name: "Keep editing" }).click();
+    await expect(reduce).toBeChecked();
+
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByText("Preferences saved")).toBeVisible();
+    expect(patches).toEqual([{ reducedMotion: true }]);
+    await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+
+    // Back to the saved state for the next width.
+    await reduce.click();
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  }
+});
+
+test("the avatar opens the read-only profile, which leads to settings", async ({ page }) => {
+  test.slow();
+  await mockPreferences(page);
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "User menu" }).filter({ visible: true }).click();
+    await page.getByRole("menuitem", { name: "View profile" }).click();
+
+    await expect(page).toHaveURL(/\/profile$/);
+    const card = page.getByRole("region", { name: "Profile" });
+    await expect(card).toBeVisible();
+    const main = await boxOf(page.locator("main"));
+    const cardBox = await boxOf(card);
+    expect(cardBox.x).toBeGreaterThanOrEqual(main.x);
+    expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(main.x + main.width + 1);
+    const size = await pageSize(page);
+    expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
+
+    await page.getByRole("link", { name: "Go to Settings" }).click();
+    await expect(page).toHaveURL(/\/settings$/);
+  }
+});
