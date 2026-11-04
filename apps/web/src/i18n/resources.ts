@@ -618,6 +618,18 @@ const en = {
       description: "There was a problem reaching the server. Try again in a moment.",
       retry: "Try again",
     },
+    compare: {
+      title: "Compare scenarios",
+      description: "Pick 2 to 5 scenarios. They get the letters A, B… in the order you pick them.",
+      count: "{{count}} of {{max}} selected",
+      atLeast: "Pick at least 2 scenarios.",
+      atMost: "You can compare up to 5 scenarios.",
+      notEnough: "You need at least 2 scenarios to compare. Create another one first.",
+      loading: "Loading the scenarios",
+      cancel: "Cancel",
+      confirm: "Compare",
+      status: { DRAFT: "Draft", SAVED: "Saved" },
+    },
     new: {
       name: "New scenario",
       failed: {
@@ -1659,6 +1671,19 @@ const es: Messages<typeof en> = {
       title: "No se pudieron cargar los escenarios",
       description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
       retry: "Reintentar",
+    },
+    compare: {
+      title: "Comparar escenarios",
+      description:
+        "Elige de 2 a 5 escenarios. Reciben las letras A, B… en el orden en que los elijas.",
+      count: "{{count}} de {{max}} elegidos",
+      atLeast: "Elige al menos 2 escenarios.",
+      atMost: "Puedes comparar hasta 5 escenarios.",
+      notEnough: "Necesitas al menos 2 escenarios para comparar. Crea otro primero.",
+      loading: "Cargando los escenarios",
+      cancel: "Cancelar",
+      confirm: "Comparar",
+      status: { DRAFT: "Borrador", SAVED: "Guardado" },
     },
     new: {
       name: "Nuevo escenario",

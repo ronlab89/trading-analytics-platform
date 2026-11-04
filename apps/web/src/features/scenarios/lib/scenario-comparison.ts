@@ -1,6 +1,9 @@
 import type { MoneyDto, ScenarioComparisonResponse, ScenarioResponse } from "@trading/contracts";
 import type { ScenarioMainChange } from "../types";
 
+/** A comparison needs at least two scenarios to be one; the API allows up to `MAX_COMPARED_SCENARIOS`. */
+export const MIN_COMPARED_SCENARIOS = 2;
+
 /** One column of the comparison: the portfolio as it is, or one scenario applied to it. */
 export interface ComparisonColumn {
   /** `"base"` for the portfolio as it is, the scenario id otherwise. */
