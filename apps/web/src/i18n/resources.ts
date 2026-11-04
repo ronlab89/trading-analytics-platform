@@ -68,6 +68,7 @@ const en = {
     decisions: "Decision Center",
     activity: "Activity",
     settings: "Settings",
+    profile: "Profile",
   },
   settings: {
     subtitle: "Manage your account and your preferences.",
@@ -114,6 +115,10 @@ const en = {
         title: "Could not load your preferences",
         description: "There was a problem reaching the server. Try again in a moment.",
       },
+    },
+    profileView: {
+      description: "A summary of your account. To change your preferences, go to Settings.",
+      goToSettings: "Go to Settings",
     },
     leave: {
       title: "Leave without saving?",
@@ -1188,6 +1193,7 @@ const es: Messages<typeof en> = {
     decisions: "Centro de decisiones",
     activity: "Actividad",
     settings: "Configuración",
+    profile: "Perfil",
   },
   settings: {
     subtitle: "Administra tu cuenta y tus preferencias.",
@@ -1237,6 +1243,10 @@ const es: Messages<typeof en> = {
         title: "No se pudieron cargar tus preferencias",
         description: "Hubo un problema al conectar con el servidor. Inténtalo en un momento.",
       },
+    },
+    profileView: {
+      description: "Resumen de tu cuenta. Para cambiar tus preferencias, ve a Configuración.",
+      goToSettings: "Ir a Configuración",
     },
     leave: {
       title: "¿Salir sin guardar?",

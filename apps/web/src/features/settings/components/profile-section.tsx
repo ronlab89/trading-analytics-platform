@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { ProfileFields } from "./profile-fields";
 import { SettingsCard } from "./settings-card";
 
 interface ProfileSectionProps {
@@ -24,14 +25,7 @@ export function ProfileSection({ name, email, role }: ProfileSectionProps) {
       description={t("settings.sections.profile.description")}
       title={t("settings.sections.profile.title")}
     >
-      <dl className="flex flex-col gap-4">
-        {fields.map(({ label, value }) => (
-          <div className="flex flex-col gap-1" key={label}>
-            <dt className="text-sm font-medium text-(--color-text-default)">{label}</dt>
-            <dd className="text-base text-(--color-text-default)">{value}</dd>
-          </div>
-        ))}
-      </dl>
+      <ProfileFields fields={fields} />
     </SettingsCard>
   );
 }

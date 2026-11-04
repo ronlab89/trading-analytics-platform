@@ -55,6 +55,7 @@ function renderShell(
         children: [
           { path: "/", element: <h1>Content</h1> },
           { path: "/portfolios/:portfolioId", element: <h1>Detail</h1> },
+          { path: "/profile", element: <h1>The profile</h1> },
         ],
       },
     ],
@@ -168,6 +169,16 @@ describe("AppShell", () => {
     expect(await screen.findByRole("button", { name: "Select portfolio" })).toHaveTextContent(
       "Crecimiento",
     );
+  });
+
+  it("opens the profile from the user menu", async () => {
+    signInAsAna();
+    renderShell();
+
+    await openUserMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "View profile" }));
+
+    expect(await screen.findByRole("heading", { name: "The profile" })).toBeInTheDocument();
   });
 
   it("signs out through the session service from the user menu", async () => {
