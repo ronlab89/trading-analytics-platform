@@ -640,6 +640,23 @@ const en = {
         description: "There was a problem reaching the server. Try again in a moment.",
       },
     },
+    save: {
+      title: "Save scenario",
+      description: "Give it a name to find it later in your list of scenarios.",
+      name: { label: "Name", required: "Give the scenario a name." },
+      descriptionField: {
+        label: "Description",
+        placeholder: "E.g. Stress test of the tech holdings",
+      },
+      cancel: "Cancel",
+      submit: "Save scenario",
+      saving: "Saving…",
+      done: { title: "Scenario saved", description: "“{{name}}” is in your list of scenarios." },
+      failed: {
+        title: "Could not save the scenario",
+        description: "There was a problem reaching the server. Your changes are kept. Try again.",
+      },
+    },
     editor: {
       variables: {
         title: "Variables",
@@ -1639,6 +1656,27 @@ const es: Messages<typeof en> = {
       failed: {
         title: "No se pudo eliminar el escenario",
         description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      },
+    },
+    save: {
+      title: "Guardar escenario",
+      description: "Dale un nombre para encontrarlo después en tu lista de escenarios.",
+      name: { label: "Nombre", required: "Dale un nombre al escenario." },
+      descriptionField: {
+        label: "Descripción",
+        placeholder: "Ej. Prueba de estrés de la tecnología",
+      },
+      cancel: "Cancelar",
+      submit: "Guardar escenario",
+      saving: "Guardando…",
+      done: {
+        title: "Escenario guardado",
+        description: "«{{name}}» está en tu lista de escenarios.",
+      },
+      failed: {
+        title: "No se pudo guardar el escenario",
+        description:
+          "Hubo un problema al conectar con el servidor. Tus cambios se conservan. Inténtalo de nuevo.",
       },
     },
     editor: {
