@@ -640,6 +640,16 @@ const en = {
         description: "There was a problem reaching the server. Try again in a moment.",
       },
     },
+    editor: {
+      variables: {
+        title: "Variables",
+        description: "Move each control to change the scenario",
+        unsaved: "Unsaved",
+        empty: "No assets to change",
+        base: "Base",
+        reset: "Reset {{name}}",
+      },
+    },
     noResults: {
       title: "No results",
       description: 'No scenario matches "{{query}}".',
@@ -1616,6 +1626,16 @@ const es: Messages<typeof en> = {
       failed: {
         title: "No se pudo eliminar el escenario",
         description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      },
+    },
+    editor: {
+      variables: {
+        title: "Variables",
+        description: "Mueve cada control para cambiar el escenario",
+        unsaved: "Sin guardar",
+        empty: "No hay activos para cambiar",
+        base: "Base",
+        reset: "Restablecer {{name}}",
       },
     },
     noResults: {
