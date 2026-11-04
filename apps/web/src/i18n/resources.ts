@@ -618,6 +618,13 @@ const en = {
       description: "There was a problem reaching the server. Try again in a moment.",
       retry: "Try again",
     },
+    new: {
+      name: "New scenario",
+      failed: {
+        title: "Could not create the scenario",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
+    },
     rowMenu: {
       label: "Actions for “{{name}}”",
       open: "Open",
@@ -1651,6 +1658,13 @@ const es: Messages<typeof en> = {
       title: "No se pudieron cargar los escenarios",
       description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
       retry: "Reintentar",
+    },
+    new: {
+      name: "Nuevo escenario",
+      failed: {
+        title: "No se pudo crear el escenario",
+        description: "Hubo un problema al conectar con el servidor. Inténtalo en un momento.",
+      },
     },
     rowMenu: {
       label: "Acciones de «{{name}}»",
