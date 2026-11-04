@@ -484,6 +484,19 @@ const en = {
         progress: "Replay progress",
         speed: "Replay speed",
       },
+      price: {
+        title: "{{symbol}} price",
+        titleNoAsset: "Price",
+        subtitle: "{{from}} – {{to}} · {{currency}} · what has not happened yet is dimmed",
+        legend: "Price",
+        caption: "On {{date}} the price was {{price}}.",
+        loading: "Loading the price history",
+        empty: "No price history for this period.",
+        failed: {
+          title: "Could not load the price history",
+          description: "There was a problem reaching the server. The rest of the page still works.",
+        },
+      },
       timeline: {
         title: "Position evolution",
         subtitle_one: "{{count}} event · the current one is highlighted",
@@ -1365,6 +1378,20 @@ const es: Messages<typeof en> = {
         restart: "Reproducir desde el inicio",
         progress: "Progreso de la reproducción",
         speed: "Velocidad de reproducción",
+      },
+      price: {
+        title: "Precio de {{symbol}}",
+        titleNoAsset: "Precio",
+        subtitle: "{{from}} – {{to}} · {{currency}} · lo que aún no ocurrió se ve atenuado",
+        legend: "Precio",
+        caption: "El {{date}} el precio era {{price}}.",
+        loading: "Cargando el historial de precios",
+        empty: "No hay historial de precios para este periodo.",
+        failed: {
+          title: "No se pudo cargar el historial de precios",
+          description:
+            "Hubo un problema al contactar el servidor. El resto de la página sigue funcionando.",
+        },
       },
       timeline: {
         title: "Evolución de la posición",
