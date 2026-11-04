@@ -658,6 +658,17 @@ const en = {
       },
     },
     editor: {
+      back: "Back to scenarios",
+      reset: "Reset",
+      save: "Save scenario",
+      more: "More actions",
+      delete: "Delete",
+      loading: "Loading the scenario",
+      failed: {
+        title: "Could not open the scenario",
+        description: "There was a problem reaching the server. Try again in a moment.",
+        retry: "Try again",
+      },
       variables: {
         title: "Variables",
         description: "Move each control to change the scenario",
@@ -1680,6 +1691,17 @@ const es: Messages<typeof en> = {
       },
     },
     editor: {
+      back: "Volver a escenarios",
+      reset: "Restablecer",
+      save: "Guardar escenario",
+      more: "Más acciones",
+      delete: "Eliminar",
+      loading: "Cargando el escenario",
+      failed: {
+        title: "No se pudo abrir el escenario",
+        description: "Hubo un problema al conectar con el servidor. Inténtalo en un momento.",
+        retry: "Reintentar",
+      },
       variables: {
         title: "Variables",
         description: "Mueve cada control para cambiar el escenario",

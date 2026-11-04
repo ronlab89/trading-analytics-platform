@@ -122,6 +122,11 @@ export function useScenarioEditor(
     if (impact.isError) void impact.refetch();
   };
 
+  const reload = () => {
+    if (scenario.isError) void scenario.refetch();
+    if (positions.isError) void positions.refetch();
+  };
+
   const saving = pending !== null && !saveFailed;
 
   return {
@@ -129,9 +134,12 @@ export function useScenarioEditor(
     variables,
     isPending: scenario.isPending || positions.isPending || assetsPending,
     isError: scenario.isError || positions.isError,
+    /** What made the scenario fail to load, so a page can tell "not found" from "unreachable". */
+    error: scenario.error ?? positions.error,
     setPercent,
     reset,
     retry,
+    reload,
     saving,
     saveFailed,
     recalculating: saving || impact.isFetching,
