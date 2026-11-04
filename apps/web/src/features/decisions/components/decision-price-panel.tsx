@@ -10,8 +10,8 @@ import { useIsMobile } from "@/hooks/use-media-query";
 import { formatDayMonth } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-number";
 import { cn } from "@/lib/utils";
-import { useAssetHistory } from "../hooks/use-asset-history";
-import { historyRangeOf, priceLevelsOf, toPriceSeries } from "../lib/price-series";
+import { useDecisionHistory } from "../hooks/use-decision-history";
+import { priceLevelsOf, toPriceSeries } from "../lib/price-series";
 import { PriceReplayChart } from "./price-replay-chart";
 
 interface DecisionPricePanelProps {
@@ -38,8 +38,7 @@ export function DecisionPricePanel({
 }: DecisionPricePanelProps) {
   const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
-  const range = historyRangeOf(decision, new Date());
-  const history = useAssetHistory(decision.assetId, range);
+  const { range, history } = useDecisionHistory(decision);
   const levels = useMemo(() => priceLevelsOf(decision), [decision]);
   const { points, cursor } = useMemo(
     () => toPriceSeries(history.data ?? [], currentTimestamp),

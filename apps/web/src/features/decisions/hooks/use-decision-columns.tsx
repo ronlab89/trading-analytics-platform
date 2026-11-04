@@ -1,6 +1,7 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { Avatar } from "@/components/avatar";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
 import { formatMoney } from "@/lib/format-number";
@@ -22,11 +23,17 @@ function headerOf(key: ColumnKey) {
   };
 }
 
-function NameCell({ title, symbol }: Pick<DecisionRow, "title" | "symbol">) {
+/** The title is the link that opens the decision, the way the portfolios open theirs. */
+function NameCell({ id, title, symbol }: Pick<DecisionRow, "id" | "title" | "symbol">) {
   return (
     <span className="flex items-center gap-3">
       <Avatar initials={symbol ?? "—"} shape="square" size="lg" />
-      <span className="font-medium text-(--color-text-default)">{title}</span>
+      <Link
+        className="rounded-sm font-medium text-(--color-text-default) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        to={`/decisions/${id}`}
+      >
+        {title}
+      </Link>
     </span>
   );
 }
@@ -54,7 +61,13 @@ export function useDecisionColumns() {
           id: "name",
           header: headerOf("name"),
           meta: { rowHeader: true },
-          cell: ({ row }) => <NameCell symbol={row.original.symbol} title={row.original.title} />,
+          cell: ({ row }) => (
+            <NameCell
+              id={row.original.id}
+              symbol={row.original.symbol}
+              title={row.original.title}
+            />
+          ),
         }),
         column.accessor("direction", {
           header: headerOf("direction"),
