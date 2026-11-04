@@ -10,6 +10,7 @@ export function toScenarioRow(
   scenario: ScenarioResponse,
   assets: ReadonlyMap<string, { symbol: string }>,
   calculation: ScenarioCalculationResponse | undefined,
+  calculationFailed = false,
 ): ScenarioRow {
   const main = mainChangeOf(scenario.changes);
 
@@ -28,6 +29,7 @@ export function toScenarioRow(
           },
     otherChanges: main === null ? 0 : scenario.changes.length - 1,
     figures: calculation === undefined ? null : figuresOf(calculation),
+    figuresState: calculation !== undefined ? "ready" : calculationFailed ? "failed" : "loading",
   };
 }
 

@@ -59,6 +59,7 @@ describe("toScenarioRow", () => {
         withScenario: usd("121416.00"),
         impactPercent: expect.closeTo(-3.2, 1) as number,
       },
+      figuresState: "ready",
     });
   });
 
@@ -70,6 +71,14 @@ describe("toScenarioRow", () => {
     );
 
     expect(row.figures).toBeNull();
+    expect(row.figuresState).toBe("loading");
+  });
+
+  it("says so when the calculation failed, and still has no figures", () => {
+    const row = toScenarioRow(scenarioWith([]), assets, undefined, true);
+
+    expect(row.figures).toBeNull();
+    expect(row.figuresState).toBe("failed");
   });
 
   it("names as main variable the change that moves most, and counts the rest", () => {

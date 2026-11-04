@@ -30,6 +30,8 @@ export interface ScenarioRow {
   mainChange: ScenarioMainChange | null;
   /** How many changes the scenario holds besides the main one. */
   otherChanges: number;
-  /** Null while the calculation has not come back. */
+  /** Null until the calculation has come back, and for good if it failed. */
   figures: ScenarioFigures | null;
+  /** Whether the figures are in, still on their way, or could not be calculated. */
+  figuresState: "ready" | "loading" | "failed";
 }

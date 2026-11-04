@@ -580,6 +580,42 @@ const en = {
       clear: "Clear the search",
     },
   },
+  scenarios: {
+    table: "Scenarios",
+    search: "Search scenario",
+    loading: "Loading the scenarios",
+    columns: {
+      name: "Scenario",
+      variable: "Main variable",
+      base: "Base",
+      withScenario: "With scenario",
+      edited: "Edited",
+      impact: "Impact",
+    },
+    variable: {
+      price: "{{symbol}} price",
+      priceUnknown: "Asset price",
+      more: "+{{count}}",
+      none: "No changes",
+    },
+    figures: { loading: "Calculating", failed: "Could not be calculated" },
+    empty: {
+      title: "No scenarios yet",
+      description:
+        "Create a scenario to test what would happen to your portfolio if prices change.",
+      action: "New scenario",
+    },
+    failed: {
+      title: "Could not load the scenarios",
+      description: "There was a problem reaching the server. Try again in a moment.",
+      retry: "Try again",
+    },
+    noResults: {
+      title: "No results",
+      description: 'No scenario matches "{{query}}".',
+      clear: "Clear the search",
+    },
+  },
   markets: {
     watchlistSummary_one: "{{count}} asset on your watchlist · simulated prices",
     watchlistSummary_other: "{{count}} assets on your watchlist · simulated prices",
@@ -1489,6 +1525,42 @@ const es: Messages<typeof en> = {
     noResults: {
       title: "Sin resultados",
       description: 'Ninguna decisión coincide con "{{query}}".',
+      clear: "Borrar la búsqueda",
+    },
+  },
+  scenarios: {
+    table: "Escenarios",
+    search: "Buscar escenario",
+    loading: "Cargando los escenarios",
+    columns: {
+      name: "Escenario",
+      variable: "Variable principal",
+      base: "Base",
+      withScenario: "Con escenario",
+      edited: "Editado",
+      impact: "Impacto",
+    },
+    variable: {
+      price: "Precio de {{symbol}}",
+      priceUnknown: "Precio del activo",
+      more: "+{{count}}",
+      none: "Sin cambios",
+    },
+    figures: { loading: "Calculando", failed: "No se pudo calcular" },
+    empty: {
+      title: "Aún no hay escenarios",
+      description:
+        "Creá un escenario para probar qué pasaría con tu portafolio si cambian los precios.",
+      action: "Nuevo escenario",
+    },
+    failed: {
+      title: "No se pudieron cargar los escenarios",
+      description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      retry: "Reintentar",
+    },
+    noResults: {
+      title: "Sin resultados",
+      description: 'Ningún escenario coincide con "{{query}}".',
       clear: "Borrar la búsqueda",
     },
   },

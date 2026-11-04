@@ -1,10 +1,31 @@
 import { useQuery } from "@tanstack/react-query";
 import { scenarioOperations, type ScenarioCalculationResponse } from "@trading/contracts";
 import { findOperation } from "@/api/find-operation";
+import type { TradingClient } from "@/api/trading-client";
 import { useTradingClient } from "@/api/trading-client-provider";
 import { scenarioKeys } from "./use-scenarios";
 
 const calculateScenarioOperation = findOperation(scenarioOperations, "calculateScenario");
+
+/**
+ * The query of one calculation, defined once so a single scenario and the whole list share the
+ * same cache entry and the same request.
+ */
+export function scenarioImpactQuery(
+  client: TradingClient,
+  portfolioId: string,
+  scenarioId: string,
+) {
+  return {
+    queryKey: scenarioKeys.impact(portfolioId, scenarioId),
+    queryFn: async () => {
+      const { data } = (await client.call(calculateScenarioOperation, {
+        params: { portfolioId, scenarioId },
+      })) as { data: ScenarioCalculationResponse };
+      return data;
+    },
+  };
+}
 
 /**
  * The portfolio with one scenario applied, against the portfolio as it is. The calculation is a
@@ -14,13 +35,5 @@ const calculateScenarioOperation = findOperation(scenarioOperations, "calculateS
 export function useScenarioImpact(portfolioId: string, scenarioId: string) {
   const client = useTradingClient();
 
-  return useQuery({
-    queryKey: scenarioKeys.impact(portfolioId, scenarioId),
-    queryFn: async () => {
-      const { data } = (await client.call(calculateScenarioOperation, {
-        params: { portfolioId, scenarioId },
-      })) as { data: ScenarioCalculationResponse };
-      return data;
-    },
-  });
+  return useQuery(scenarioImpactQuery(client, portfolioId, scenarioId));
 }
