@@ -453,13 +453,20 @@ const en = {
         title: "Could not load the decision",
         description: "There was a problem reaching the server. Try again in a moment.",
       },
-      indicators: { entry: "Entry", target: "Target", stop: "Stop", risk: "Risk" },
+      indicators: {
+        entry: "Entry",
+        target: "Target",
+        stop: "Stop",
+        currentReturn: "Current return",
+      },
       notes: {
         entryOpened: "{{date}} · {{quantity}} units",
         entryNone: "No position opened yet",
         fromEntry: "{{percent}} from the entry",
         notSet: "Not set",
-        recorded: "Recorded {{date}}",
+        price: "Price {{price}}",
+        closedAt: "Closed at {{price}}",
+        risk: "{{level}} risk",
       },
       risk: { LOW: "Low", MODERATE: "Medium", HIGH: "High" },
       replay: {
@@ -479,8 +486,8 @@ const en = {
       },
       timeline: {
         title: "Position evolution",
-        subtitle_one: "{{count}} event · the latest is highlighted",
-        subtitle_other: "{{count}} events · the latest is highlighted",
+        subtitle_one: "{{count}} event · the current one is highlighted",
+        subtitle_other: "{{count}} events · the current one is highlighted",
         empty: "No events recorded yet.",
         events: {
           DECISION_CREATED: "Decision recorded",
@@ -1328,13 +1335,20 @@ const es: Messages<typeof en> = {
         title: "No se pudo cargar la decisión",
         description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
       },
-      indicators: { entry: "Entrada", target: "Objetivo", stop: "Stop", risk: "Riesgo" },
+      indicators: {
+        entry: "Entrada",
+        target: "Objetivo",
+        stop: "Stop",
+        currentReturn: "Rendimiento actual",
+      },
       notes: {
         entryOpened: "{{date}} · {{quantity}} uds",
         entryNone: "Aún sin posición abierta",
         fromEntry: "{{percent}} desde la entrada",
         notSet: "Sin definir",
-        recorded: "Registrada el {{date}}",
+        price: "Precio {{price}}",
+        closedAt: "Cerrada a {{price}}",
+        risk: "riesgo {{level}}",
       },
       risk: { LOW: "Bajo", MODERATE: "Medio", HIGH: "Alto" },
       replay: {
@@ -1354,8 +1368,8 @@ const es: Messages<typeof en> = {
       },
       timeline: {
         title: "Evolución de la posición",
-        subtitle_one: "{{count}} evento · el último está resaltado",
-        subtitle_other: "{{count}} eventos · el último está resaltado",
+        subtitle_one: "{{count}} evento · el actual está resaltado",
+        subtitle_other: "{{count}} eventos · el actual está resaltado",
         empty: "Aún no hay eventos registrados.",
         events: {
           DECISION_CREATED: "Decisión registrada",

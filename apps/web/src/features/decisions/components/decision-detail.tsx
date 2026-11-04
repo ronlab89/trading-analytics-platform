@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useReplayPlayer } from "../hooks/use-replay-player";
 import { toTimelineItems } from "../lib/event-timeline";
 import { toDecisionRow } from "../lib/decision-row";
+import { replayStateAt } from "../lib/replay-state";
 import { DecisionDetailHeader } from "./decision-detail-header";
 import { DecisionIndicators } from "./decision-indicators";
 import { DecisionReplayPanel } from "./decision-replay-panel";
@@ -24,15 +25,16 @@ export function DecisionDetail({ replay, asset }: DecisionDetailProps) {
   const items = useMemo(() => toTimelineItems(events, currency), [events, currency]);
   const row = toDecisionRow(decision, asset ?? undefined);
   const player = useReplayPlayer(items.length);
+  const today = useMemo(() => replayStateAt(replay, events.length - 1), [replay, events.length]);
 
   return (
     <>
       <DecisionDetailHeader direction={row.direction} status={row.status} />
-      <DecisionIndicators decision={decision} items={items} />
+      <DecisionIndicators decision={decision} items={items} state={today} />
       <DecisionReplayPanel items={items} player={player} />
       <div className="grid gap-4 desktop:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] desktop:gap-6">
         <DecisionThesisPanel decision={decision} />
-        <DecisionTimelinePanel items={items} />
+        <DecisionTimelinePanel currentIndex={player.index} items={items} />
       </div>
     </>
   );

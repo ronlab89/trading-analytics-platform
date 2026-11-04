@@ -762,7 +762,7 @@ test("the decision detail lays out its indicators, thesis and events inside the 
 
     const main = await boxOf(page.locator("main"));
     const boxes = [];
-    for (const name of ["Entry", "Target", "Stop", "Risk"]) {
+    for (const name of ["Entry", "Target", "Stop", "Current return"]) {
       boxes.push(await boxOf(page.getByRole("region", { name, exact: true })));
     }
     const thesis = await boxOf(page.getByRole("region", { name: "Thesis and context" }));

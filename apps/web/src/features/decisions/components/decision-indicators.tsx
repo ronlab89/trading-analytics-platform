@@ -1,23 +1,52 @@
-import type { DecisionResponse } from "@trading/contracts";
+import type { DecisionReplayStateResponse, DecisionResponse } from "@trading/contracts";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { AnalyticsKpiCard } from "@/features/analytics/components/analytics-kpi-card";
+import { AnalyticsKpiCard, type KpiTone } from "@/features/analytics/components/analytics-kpi-card";
 import { formatDateTime } from "@/lib/format-date";
-import { formatMoney, formatSignedPercent } from "@/lib/format-number";
+import { formatMoney, formatSignedMoney, formatSignedPercent } from "@/lib/format-number";
+import { currentReturnOf, type CurrentReturn } from "../lib/current-return";
 import { percentFromEntry } from "../lib/price-offset";
 import type { TimelineItem } from "../lib/event-timeline";
 
 interface DecisionIndicatorsProps {
   decision: DecisionResponse;
   items: readonly TimelineItem[];
+  /** The decision as it stands today, after all its events. */
+  state: DecisionReplayStateResponse;
+}
+
+function toneOf(result: CurrentReturn): KpiTone {
+  if (result.kind === "none") return "neutral";
+  const figure = result.kind === "open" ? result.percent : Number(result.profit.amount);
+  if (figure === 0) return "neutral";
+  return figure > 0 ? "gain" : "loss";
+}
+
+function valueOfReturn(result: CurrentReturn): string {
+  if (result.kind === "none") return "—";
+  return result.kind === "open"
+    ? formatSignedPercent(result.percent)
+    : formatSignedMoney(result.profit);
+}
+
+function noteOfReturn(result: CurrentReturn, t: TFunction): string | null {
+  if (result.kind === "none") return t("decisions.detail.notes.entryNone");
+  if (result.price === null) return null;
+  return t(
+    result.kind === "open" ? "decisions.detail.notes.price" : "decisions.detail.notes.closedAt",
+    {
+      price: formatMoney(result.price),
+    },
+  );
 }
 
 /**
  * The four indicators under the title of a decision, as the Figma draws them: the entry, the target,
- * the stop and the risk. The entry says when the position was opened and how many units; the target
- * and the stop say how far they are from the entry. A price the decision does not set is a dash.
- * The "current return" of the Figma needs the price of today and waits for the player.
+ * the stop and the current return. The entry says when the position was opened and how many units;
+ * the target and the stop say how far they are from the entry. A price the decision does not set is
+ * a dash. These figures are today's, as the Figma keeps them while the replay moves.
  */
-export function DecisionIndicators({ decision, items }: DecisionIndicatorsProps) {
+export function DecisionIndicators({ decision, items, state }: DecisionIndicatorsProps) {
   const { t, i18n } = useTranslation();
   const opened = items.find((item) => item.type === "POSITION_OPENED");
   const units = opened?.quantity ?? null;
@@ -29,6 +58,17 @@ export function DecisionIndicators({ decision, items }: DecisionIndicatorsProps)
   };
   const price = (value: DecisionResponse["entryPrice"]) =>
     value === null ? "—" : formatMoney(value);
+
+  const result = currentReturnOf(state, decision.direction);
+  const returnNote = noteOfReturn(result, t);
+  const riskNote =
+    state.riskLevel === null
+      ? null
+      : t("decisions.detail.notes.risk", {
+          level: t(`decisions.detail.risk.${state.riskLevel}`, {
+            defaultValue: state.riskLevel,
+          }).toLowerCase(),
+        });
 
   return (
     <div className="grid grid-cols-2 gap-4 desktop:grid-cols-4 desktop:gap-6">
@@ -55,15 +95,10 @@ export function DecisionIndicators({ decision, items }: DecisionIndicatorsProps)
         value={price(decision.stopPrice)}
       />
       <AnalyticsKpiCard
-        label={t("decisions.detail.indicators.risk")}
-        note={t("decisions.detail.notes.recorded", {
-          date: formatDateTime(decision.createdAt, i18n.language),
-        })}
-        value={
-          decision.riskLevel === null
-            ? "—"
-            : t(`decisions.detail.risk.${decision.riskLevel}`, { defaultValue: decision.riskLevel })
-        }
+        label={t("decisions.detail.indicators.currentReturn")}
+        note={[returnNote, riskNote].filter((part) => part !== null).join(" · ")}
+        tone={toneOf(result)}
+        value={valueOfReturn(result)}
       />
     </div>
   );
