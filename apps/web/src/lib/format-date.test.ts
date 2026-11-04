@@ -6,6 +6,8 @@ import {
   formatDateTime,
   formatFullDateTime,
   formatLongDate,
+  formatMomentDay,
+  formatMomentFullDay,
   formatRelativeTime,
   formatShortMonth,
   formatTimeOfDay,
@@ -46,6 +48,30 @@ describe("formatFullDateTime", () => {
   it("writes the moment in the given time zone", () => {
     expect(formatFullDateTime("2026-10-06T14:29:00.000Z", "es", "America/Bogota")).toBe(
       "6 oct 2026, 09:29",
+    );
+  });
+});
+
+describe("formatMomentDay", () => {
+  it("writes the day and the short month, with no time", () => {
+    expect(formatMomentDay("2026-10-06T14:29:00.000Z", "es", "UTC")).toBe("6 oct");
+    expect(formatMomentDay("2026-10-06T14:29:00.000Z", "en", "UTC")).toBe("Oct 6");
+  });
+
+  it("writes the day in the given time zone", () => {
+    expect(formatMomentDay("2026-10-07T02:00:00.000Z", "es", "America/Bogota")).toBe("6 oct");
+  });
+});
+
+describe("formatMomentFullDay", () => {
+  it("adds the year to the day", () => {
+    expect(formatMomentFullDay("2026-10-06T14:29:00.000Z", "es", "UTC")).toBe("6 oct 2026");
+    expect(formatMomentFullDay("2026-10-06T14:29:00.000Z", "en", "UTC")).toBe("Oct 6, 2026");
+  });
+
+  it("writes the day in the given time zone", () => {
+    expect(formatMomentFullDay("2026-10-07T02:00:00.000Z", "es", "America/Bogota")).toBe(
+      "6 oct 2026",
     );
   });
 });

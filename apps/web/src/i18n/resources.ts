@@ -462,6 +462,21 @@ const en = {
         recorded: "Recorded {{date}}",
       },
       risk: { LOW: "Low", MODERATE: "Medium", HIGH: "High" },
+      replay: {
+        title: "Replay",
+        status: {
+          paused: "Event {{current}} of {{total}} · {{date}} · the history is not changed",
+          playing: "Playing · event {{current}} of {{total}} · {{date}}",
+          finished: "End of the replay · event {{current}} of {{total}} · {{date}}",
+        },
+        previous: "Previous event",
+        next: "Next event",
+        play: "Play",
+        pause: "Pause",
+        restart: "Replay from the start",
+        progress: "Replay progress",
+        speed: "Replay speed",
+      },
       timeline: {
         title: "Position evolution",
         subtitle_one: "{{count}} event · the latest is highlighted",
@@ -1322,6 +1337,21 @@ const es: Messages<typeof en> = {
         recorded: "Registrada el {{date}}",
       },
       risk: { LOW: "Bajo", MODERATE: "Medio", HIGH: "Alto" },
+      replay: {
+        title: "Reproducción",
+        status: {
+          paused: "Evento {{current}} de {{total}} · {{date}} · el histórico no se modifica",
+          playing: "Reproduciendo · evento {{current}} de {{total}} · {{date}}",
+          finished: "Fin de la reproducción · evento {{current}} de {{total}} · {{date}}",
+        },
+        previous: "Evento anterior",
+        next: "Evento siguiente",
+        play: "Reproducir",
+        pause: "Pausar",
+        restart: "Reproducir desde el inicio",
+        progress: "Progreso de la reproducción",
+        speed: "Velocidad de reproducción",
+      },
       timeline: {
         title: "Evolución de la posición",
         subtitle_one: "{{count}} evento · el último está resaltado",
