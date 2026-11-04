@@ -17,7 +17,10 @@ const column = createColumnHelper<DataTableFeatures, ScenarioRow>();
 
 type ColumnKey = "name" | "variable" | "base" | "withScenario" | "edited" | "impact";
 
-/** The tablet drops the two values, which are the most detail; the mobile cards show the rest. */
+/**
+ * The tablet keeps the name, the base value and the impact, as the Figma draws it; the main
+ * variable, the value with the scenario and the day edited are the desktop's detail.
+ */
 const DESKTOP_ONLY = "max-desktop:hidden";
 
 /** A header is a component, not a string, so it follows the language without rebuilding the columns. */
@@ -64,6 +67,7 @@ export function useScenarioColumns(actions?: ScenarioRowActions) {
           id: "variable",
           header: headerOf("variable"),
           enableGlobalFilter: false,
+          meta: { className: DESKTOP_ONLY },
           cell: ({ row }) => <ScenarioVariableChip row={row.original} />,
         }),
         column.accessor(
@@ -73,7 +77,7 @@ export function useScenarioColumns(actions?: ScenarioRowActions) {
             header: headerOf("base"),
             enableGlobalFilter: false,
             sortUndefined: "last",
-            meta: { align: "end", className: DESKTOP_ONLY },
+            meta: { align: "end" },
             cell: ({ row }) => (
               <ScenarioFigure row={row.original}>
                 {(figures) => <span>{formatMoney(figures.base)}</span>}
@@ -93,7 +97,7 @@ export function useScenarioColumns(actions?: ScenarioRowActions) {
           id: "edited",
           header: headerOf("edited"),
           enableGlobalFilter: false,
-          meta: { align: "end" },
+          meta: { align: "end", className: DESKTOP_ONLY },
           cell: ({ getValue }) => <EditedCell updatedAt={getValue()} />,
         }),
         column.accessor((row) => row.figures?.impactPercent ?? undefined, {

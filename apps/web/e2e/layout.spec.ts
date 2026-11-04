@@ -333,6 +333,44 @@ test.beforeEach(async ({ page }) => {
       ),
     ),
   );
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios*", (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    return route.fulfill(
+      json(
+        [
+          { id: "s1", name: "Apple falls", assetId: "a1", percentChange: -10, status: "SAVED" },
+          { id: "s2", name: "Microsoft rallies", assetId: "a2", percentChange: 5, status: "SAVED" },
+        ].map(({ assetId, percentChange, ...scenario }) => ({
+          portfolioId: "p1",
+          description: null,
+          baseSnapshotId: null,
+          changes: [{ assetId, percentChange }],
+          createdAt: "2026-10-10T10:00:00.000Z",
+          updatedAt: "2026-10-12T10:00:00.000Z",
+          ...scenario,
+        })),
+      ),
+    );
+  });
+  await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios/*/calculate", (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const scenarioId = route.request().url().split("/").slice(-2)[0] ?? "s1";
+    const metrics = (total: string) => ({
+      totalValue: usd(total),
+      investedValue: usd("100000.00"),
+      unrealizedPnL: usd("25430.00"),
+      unrealizedPnLPercent: 25.4,
+    });
+    return route.fulfill(
+      json({
+        scenarioId,
+        baseline: metrics("125430.00"),
+        result: metrics(scenarioId === "s1" ? "121416.00" : "127186.00"),
+        difference: { totalValue: usd("0.00"), unrealizedPnL: usd("0.00") },
+        unmatchedAssetIds: [],
+      }),
+    );
+  });
   await page.route("http://localhost:7001/api/v1/decisions/d1/replay", (route) =>
     route.fulfill(
       json({
@@ -1469,5 +1507,107 @@ test("a decision of the list opens its detail, from the table and from the card"
 
     await expect(page).toHaveURL(/\/decisions\/d1$/);
     await expect(page.getByRole("link", { name: "Back to decisions" })).toBeVisible();
+  }
+});
+
+async function waitForScenarios(page: Page, width: number) {
+  const role = width <= MOBILE_MAX ? "list" : "table";
+  await page.getByRole(role, { name: "Scenarios" }).waitFor();
+}
+
+test("the Scenario Lab is a table from the tablet and cards on mobile, with the Figma columns", async ({
+  page,
+}) => {
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions?tab=lab");
+    await waitForScenarios(page, width);
+
+    const main = await boxOf(page.locator("main"));
+    if (width <= 560) {
+      await expect(page.getByRole("table")).toHaveCount(0);
+      const list = page.getByRole("list", { name: "Scenarios" });
+      await expect(list.getByRole("listitem")).toHaveCount(2);
+      await expect(list).toContainText("$121,416.00");
+      await expect(page.getByRole("button", { name: /^Actions for/ })).toHaveCount(0);
+      const box = await boxOf(list);
+      expect(box.x).toBeGreaterThanOrEqual(main.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+      continue;
+    }
+
+    const table = page.getByRole("table", { name: "Scenarios" });
+    await expect(table.getByRole("row")).toHaveCount(3);
+    await expect(table.getByText("-3.20%")).toBeVisible();
+    const desktop = width >= 1280;
+    await expect(table.getByRole("columnheader", { name: "Base" })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "Main variable" })).toBeVisible({
+      visible: desktop,
+    });
+    await expect(table.getByRole("columnheader", { name: "With scenario" })).toBeVisible({
+      visible: desktop,
+    });
+    await expect(table.getByRole("columnheader", { name: "Edited" })).toBeVisible({
+      visible: desktop,
+    });
+    const box = await boxOf(table);
+    expect(box.x).toBeGreaterThanOrEqual(main.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
+  }
+});
+
+test("the Scenario Lab opens from the Decision Center tab and Replay brings the decisions back", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/decisions");
+  await waitForDecisions(page, 1280);
+
+  await page.getByRole("tab", { name: "Scenario Lab" }).click();
+
+  await expect(page).toHaveURL(/\/decisions\?tab=lab$/);
+  await waitForScenarios(page, 1280);
+  await expect(page.getByText("2 scenarios saved · base: Conservador, $125,430.00")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Replay" }).click();
+
+  await waitForDecisions(page, 1280);
+  await expect(page).toHaveURL(/\/decisions$/);
+});
+
+test("a scenario is deleted from its row menu after the confirmation, which fits the screen", async ({
+  page,
+}) => {
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    let deleted = "";
+    await page.route("http://localhost:7001/api/v1/portfolios/p1/scenarios/s1", (route) => {
+      if (route.request().method() !== "DELETE") return route.fallback();
+      deleted = route.request().url();
+      return route.fulfill({
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "http://localhost:4173",
+          "Access-Control-Allow-Credentials": "true",
+        },
+      });
+    });
+    await page.goto("/decisions?tab=lab");
+    await waitForScenarios(page, width);
+
+    await page.getByRole("button", { name: "Actions for “Apple falls”" }).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Delete scenario" });
+    await expect(dialog).toBeVisible();
+    expect(deleted).toBe("");
+    const box = await boxOf(dialog);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+
+    await dialog.getByRole("button", { name: "Delete scenario" }).click();
+
+    await expect(dialog).toBeHidden();
+    expect(deleted).toMatch(/\/scenarios\/s1$/);
   }
 });
