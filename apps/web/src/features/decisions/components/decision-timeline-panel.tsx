@@ -47,10 +47,17 @@ function useDetailOf() {
 
 /**
  * The Figma "Evolución de la posición": every event of the decision in order, each with its name,
- * the sentence that says what it did and when. The latest one is highlighted with the orange dot.
+ * the sentence that says what it did and when. It follows the replay: the current event has the
+ * orange dot, the earlier ones a dark dot and the ones still to come a hollow dot and a dimmed name.
  * The events come from the history, so nothing here changes them.
  */
-export function DecisionTimelinePanel({ items }: { items: readonly TimelineItem[] }) {
+export function DecisionTimelinePanel({
+  items,
+  currentIndex,
+}: {
+  items: readonly TimelineItem[];
+  currentIndex: number;
+}) {
   const { t, i18n } = useTranslation();
   const detailOf = useDetailOf();
 
@@ -66,22 +73,39 @@ export function DecisionTimelinePanel({ items }: { items: readonly TimelineItem[
       ) : (
         <ol className="m-0 flex list-none flex-col gap-5 p-0">
           {items.map((item, index) => {
-            const latest = index === items.length - 1;
+            const current = index === currentIndex;
+            const upcoming = index > currentIndex;
             const detail = detailOf(item);
             return (
-              <li className="flex gap-3" key={item.id}>
+              <li
+                aria-current={current ? "step" : undefined}
+                className="relative flex gap-3"
+                key={item.id}
+              >
+                {index === items.length - 1 ? null : (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-3 -bottom-5 left-[5px] w-0.5 bg-(--color-border-default)"
+                  />
+                )}
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "mt-1.5 size-3 shrink-0 rounded-full",
-                    latest
-                      ? "bg-(--color-chart-series-4) ring-4 ring-(--color-chart-halo)"
-                      : "bg-(--color-chart-series-1)",
+                    "relative mt-1.5 size-3 shrink-0 rounded-full",
+                    current && "bg-(--color-chart-series-4) ring-4 ring-(--color-chart-halo)",
+                    upcoming &&
+                      "border-2 border-(--color-text-secondary) bg-(--color-surface-card)",
+                    !current && !upcoming && "bg-(--color-chart-series-1)",
                   )}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-sm font-medium text-(--color-text-default)">
+                    <p
+                      className={cn(
+                        "text-sm font-medium",
+                        upcoming ? "text-(--color-text-secondary)" : "text-(--color-text-default)",
+                      )}
+                    >
                       {t(`decisions.detail.timeline.events.${item.type}`)}
                     </p>
                     <time

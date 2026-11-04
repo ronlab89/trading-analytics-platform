@@ -67,6 +67,23 @@ export function formatFullDateTime(iso: string, language: string, timeZone?: str
   return `${day.format(moment)}, ${time.format(moment)}`;
 }
 
+/** The day of a moment, with no time and in the person's own time zone (`6 oct`, `Oct 6`). */
+export function formatMomentDay(iso: string, language: string, timeZone?: string): string {
+  return cached(dayFormats, localeOf(language), timeZone, {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(iso));
+}
+
+/** The same day with its year (`6 oct 2026`, `Oct 6, 2026`). */
+export function formatMomentFullDay(iso: string, language: string, timeZone?: string): string {
+  return cached(fullDayFormats, localeOf(language), timeZone, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
 const calendarDayFormats = new Map<string, Intl.DateTimeFormat>();
 const dayMonthFormats = new Map<string, Intl.DateTimeFormat>();
 

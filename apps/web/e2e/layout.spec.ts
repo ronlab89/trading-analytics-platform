@@ -404,6 +404,30 @@ test.beforeEach(async ({ page }) => {
       }),
     }),
   );
+  await page.route("http://localhost:7001/api/v1/assets/a1/history?*", (route) =>
+    route.fulfill(
+      json(
+        [
+          ["2026-08-12", "158.20"],
+          ["2026-08-14", "162.40"],
+          ["2026-08-19", "160.10"],
+          ["2026-08-24", "166.30"],
+          ["2026-08-28", "173.50"],
+          ["2026-09-09", "171.00"],
+          ["2026-09-22", "178.40"],
+          ["2026-10-06", "180.70"],
+        ].map(([day, close]) => ({
+          assetId: "a1",
+          timestamp: `${String(day)}T00:00:00.000Z`,
+          open: usd(String(close)),
+          high: usd(String(close)),
+          low: usd(String(close)),
+          close: usd(String(close)),
+          volume: 1000,
+        })),
+      ),
+    ),
+  );
   await page.route("http://localhost:7001/api/v1/assets/*", (route) => {
     const id = route.request().url().split("/").pop() ?? "a1";
     return route.fulfill(json(asset(id, id.toUpperCase(), `Asset ${id.toUpperCase()}`)));
@@ -762,29 +786,77 @@ test("the decision detail lays out its indicators, thesis and events inside the 
 
     const main = await boxOf(page.locator("main"));
     const boxes = [];
-    for (const name of ["Entry", "Target", "Stop", "Risk"]) {
+    for (const name of ["Entry", "Target", "Stop", "Current return"]) {
       boxes.push(await boxOf(page.getByRole("region", { name, exact: true })));
     }
     const thesis = await boxOf(page.getByRole("region", { name: "Thesis and context" }));
     const events = await boxOf(page.getByRole("region", { name: "Position evolution" }));
-    for (const box of [...boxes, thesis, events]) {
+    const price = await boxOf(page.getByRole("region", { name: "A1 price" }));
+    await page.getByRole("img", { name: "A1 price" }).locator("svg").first().waitFor();
+    for (const box of [...boxes, thesis, events, price]) {
       expect(box.x).toBeGreaterThanOrEqual(main.x);
       expect(box.x + box.width).toBeLessThanOrEqual(main.x + main.width);
     }
 
     const [entry, target] = boxes;
     if (width >= 1280) {
-      // Four indicators on one row, the thesis beside the events.
+      // Four indicators on one row, the price beside the events, the thesis under them.
       expect(Math.abs((entry?.y ?? 0) - (target?.y ?? 99))).toBeLessThan(2);
       expect(Math.abs((boxes[3]?.y ?? 99) - (entry?.y ?? 0))).toBeLessThan(2);
-      expect(events.x).toBeGreaterThanOrEqual(thesis.x + thesis.width);
-      expect(Math.abs(events.y - thesis.y)).toBeLessThan(2);
+      expect(events.x).toBeGreaterThanOrEqual(price.x + price.width);
+      expect(Math.abs(events.y - price.y)).toBeLessThan(2);
     } else {
-      // Two by two, the events under the thesis.
+      // Two by two, then one under the other: the price, the events, the thesis.
       expect(Math.abs((boxes[2]?.y ?? 0) - (entry?.y ?? 99))).toBeGreaterThan(20);
-      expect(events.y).toBeGreaterThanOrEqual(thesis.y + thesis.height);
+      expect(events.y).toBeGreaterThanOrEqual(price.y + price.height);
     }
+    expect(thesis.y).toBeGreaterThanOrEqual(events.y + events.height);
     await expect(page.getByText("236 units at $162.40")).toBeVisible();
+  }
+});
+
+test("the decision replay fits on every width and moves the events with its controls", async ({
+  page,
+}) => {
+  test.slow();
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions/d1");
+    const bar = page.getByRole("progressbar", { name: "Replay progress" });
+    await bar.waitFor();
+
+    const main = await boxOf(page.locator("main"));
+    const panel = await boxOf(page.getByRole("region", { name: "Replay", exact: true }));
+    expect(panel.x).toBeGreaterThanOrEqual(main.x);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(main.x + main.width);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+
+    const barBox = await boxOf(bar);
+    const restart = await boxOf(page.getByRole("button", { name: "Replay from the start" }));
+    if (width <= MOBILE_MAX) {
+      // The line on its own row, the larger buttons under it.
+      expect(restart.y).toBeGreaterThanOrEqual(barBox.y + barBox.height);
+      expect(restart.width).toBe(40);
+    } else {
+      // One row: the buttons, then the line.
+      expect(barBox.x).toBeGreaterThanOrEqual(restart.x + restart.width);
+      expect(restart.width).toBe(32);
+    }
+
+    const current = page.locator('li[aria-current="step"]');
+    await expect(current).toContainText("Risk changed");
+    await page.getByRole("button", { name: "Previous event" }).click();
+    await expect(current).toContainText("Position opened");
+    await expect(bar).toHaveAttribute("aria-valuenow", "2");
+
+    await page.getByRole("button", { name: "2×" }).click();
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await expect(current).toContainText("Risk changed");
+    await expect(page.getByRole("button", { name: "Replay from the start" })).toBeVisible();
   }
 });
 
