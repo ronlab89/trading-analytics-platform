@@ -43,9 +43,40 @@ const decisions = [
   decision("d3", "Wait and see"),
 ];
 
+const scenario = (id: string, name: string, status = "SAVED") => ({
+  id,
+  portfolioId: "p1",
+  name,
+  description: null,
+  baseSnapshotId: null,
+  status,
+  changes: [{ assetId: "a1", percentChange: -10 }],
+  createdAt: "2026-10-10T10:00:00.000Z",
+  updatedAt: "2026-10-12T10:00:00.000Z",
+});
+
+const metrics = (total: string) => ({
+  totalValue: { amount: total, currency: "USD" },
+  investedValue: { amount: "900.00", currency: "USD" },
+  unrealizedPnL: { amount: "0.00", currency: "USD" },
+  unrealizedPnLPercent: 0,
+});
+
+const calculation = {
+  scenarioId: "s1",
+  baseline: metrics("1000.00"),
+  result: metrics("900.00"),
+  difference: {
+    totalValue: { amount: "-100.00", currency: "USD" },
+    unrealizedPnL: { amount: "-100.00", currency: "USD" },
+  },
+  unmatchedAssetIds: [],
+};
+
 interface Answers {
   listPortfolios?: () => Promise<unknown>;
   listDecisions?: () => Promise<unknown>;
+  listScenarios?: () => Promise<unknown>;
 }
 
 function clientWith(answers: Answers = {}) {
@@ -56,6 +87,10 @@ function clientWith(answers: Answers = {}) {
           return answers.listPortfolios?.() ?? Promise.resolve({ data: [growth] });
         case "listDecisions":
           return answers.listDecisions?.() ?? Promise.resolve({ data: decisions });
+        case "listScenarios":
+          return answers.listScenarios?.() ?? Promise.resolve({ data: [] });
+        case "calculateScenario":
+          return Promise.resolve({ data: calculation });
         case "getAsset":
           return Promise.resolve({ data: { id: "a1", symbol: "AAPL", name: "Apple Inc." } });
         default:
@@ -66,11 +101,11 @@ function clientWith(answers: Answers = {}) {
   return { client: { call } as TradingClient, call };
 }
 
-function renderPage(client: TradingClient) {
+function renderPage(client: TradingClient, address = "/decisions") {
   const Wrapper = tradingClientWrapper(client);
   return render(
     <Wrapper>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[address]}>
         <DecisionsPage />
       </MemoryRouter>
     </Wrapper>,
@@ -153,6 +188,83 @@ describe("DecisionsPage", () => {
 
     expect(await screen.findByText("Could not load the decisions")).toBeVisible();
     expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
+  });
+});
+
+describe("DecisionsPage, the Scenario Lab", () => {
+  const scenarios = [
+    scenario("s1", "Apple falls"),
+    scenario("s2", "Archived idea", "ARCHIVED"),
+    scenario("s3", "Draft idea", "DRAFT"),
+  ];
+
+  it("opens on the replay, with its tab selected", async () => {
+    renderPage(clientWith().client);
+
+    expect(await screen.findByText("3 decisions recorded · 2 open")).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Replay" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Scenario Lab" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("switches to the scenarios of the portfolio and counts the saved ones with the base", async () => {
+    const user = userEvent.setup();
+    const { client, call } = clientWith({
+      listScenarios: () => Promise.resolve({ data: scenarios }),
+    });
+    renderPage(client);
+
+    await user.click(await screen.findByRole("tab", { name: "Scenario Lab" }));
+
+    expect(await screen.findByRole("row", { name: /Apple falls/ })).toBeVisible();
+    expect(screen.getByRole("row", { name: /Draft idea/ })).toBeVisible();
+    expect(screen.queryByRole("row", { name: /Archived idea/ })).not.toBeInTheDocument();
+    expect(await screen.findByText("1 scenario saved · base: Growth, $1,000.00")).toBeVisible();
+    const listed = call.mock.calls.find(([operation]) => operation.operationId === "listScenarios");
+    expect(listed?.[1]).toEqual({ params: { portfolioId: "p1" } });
+  });
+
+  it("opens straight on the lab when the address says so", async () => {
+    renderPage(
+      clientWith({ listScenarios: () => Promise.resolve({ data: scenarios }) }).client,
+      "/decisions?tab=lab",
+    );
+
+    expect(await screen.findByRole("row", { name: /Apple falls/ })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Scenario Lab" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByText(/decisions recorded/)).not.toBeInTheDocument();
+  });
+
+  it("says that there are no scenarios yet, with no summary line", async () => {
+    renderPage(clientWith().client, "/decisions?tab=lab");
+
+    expect(await screen.findByText("No scenarios yet")).toBeVisible();
+    expect(screen.queryByText(/scenarios? saved/)).not.toBeInTheDocument();
+  });
+
+  it("offers a retry when the scenarios cannot load", async () => {
+    renderPage(
+      clientWith({
+        listScenarios: () => Promise.reject(new ApiError("INTERNAL_ERROR", "Server error")),
+      }).client,
+      "/decisions?tab=lab",
+    );
+
+    expect(await screen.findByText("Could not load the scenarios")).toBeVisible();
+  });
+
+  it("goes back to the replay with its tab", async () => {
+    const user = userEvent.setup();
+    renderPage(clientWith().client, "/decisions?tab=lab");
+
+    await user.click(await screen.findByRole("tab", { name: "Replay" }));
+
+    expect(await screen.findByText("3 decisions recorded · 2 open")).toBeVisible();
   });
 });
 

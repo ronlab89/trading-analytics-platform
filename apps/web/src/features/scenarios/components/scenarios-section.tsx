@@ -13,8 +13,8 @@ interface ScenariosSectionProps {
   rows: readonly ScenarioRow[] | undefined;
   isError: boolean;
   onRetry: () => void;
-  /** The empty state offers the first scenario. */
-  onNew: () => void;
+  /** The empty state offers the first scenario when there is somewhere to create it. */
+  onNew?: (() => void) | undefined;
 }
 
 /**
@@ -44,9 +44,11 @@ export function ScenariosSection({ rows, isError, onRetry, onNew }: ScenariosSec
   const empty = (
     <PortfoliosEmptyState
       action={
-        <Button onClick={onNew} size="sm" variant="outline">
-          {t("scenarios.empty.action")}
-        </Button>
+        onNew === undefined ? undefined : (
+          <Button onClick={onNew} size="sm" variant="outline">
+            {t("scenarios.empty.action")}
+          </Button>
+        )
       }
       description={t("scenarios.empty.description")}
       title={t("scenarios.empty.title")}

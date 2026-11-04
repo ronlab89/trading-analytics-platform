@@ -29,24 +29,27 @@ function indexCalculations(results: UseQueryResult<ScenarioCalculationResponse>[
  * calculation comes back, its figures. The rows wait for the scenarios and the assets, so no symbol
  * flashes, but not for the calculations: there is one per scenario, so a row shows before its
  * figures, and one that fails says so in its own row (`figuresState`) without hiding the others.
- * Only a failed list of scenarios is an error.
+ * Only a failed list of scenarios is an error. An archived scenario is read-only and cannot come
+ * back, so the list leaves it out and does not calculate it.
  */
 export function useScenarioRows(portfolioId: string | undefined) {
   const client = useTradingClient();
   const scenarios = useScenarios(portfolioId);
+  const listed = useMemo(
+    () => scenarios.data?.filter((scenario) => scenario.status !== "ARCHIVED"),
+    [scenarios.data],
+  );
   const { assets, isPending: assetsPending } = useAssets(
-    scenarios.data?.flatMap(({ changes }) => changes.map(({ assetId }) => assetId)) ?? NO_ASSET_IDS,
+    listed?.flatMap(({ changes }) => changes.map(({ assetId }) => assetId)) ?? NO_ASSET_IDS,
   );
   const { calculations, failedPositions } = useQueries({
-    queries: (scenarios.data ?? []).map(({ id }) =>
-      scenarioImpactQuery(client, portfolioId ?? "", id),
-    ),
+    queries: (listed ?? []).map(({ id }) => scenarioImpactQuery(client, portfolioId ?? "", id)),
     combine: indexCalculations,
   });
 
   const rows = useMemo(
     () =>
-      scenarios.data?.map((scenario, position) =>
+      listed?.map((scenario, position) =>
         toScenarioRow(
           scenario,
           assets,
@@ -54,7 +57,7 @@ export function useScenarioRows(portfolioId: string | undefined) {
           failedPositions.includes(position),
         ),
       ),
-    [scenarios.data, assets, calculations, failedPositions],
+    [listed, assets, calculations, failedPositions],
   );
 
   const isError = scenarios.isError;

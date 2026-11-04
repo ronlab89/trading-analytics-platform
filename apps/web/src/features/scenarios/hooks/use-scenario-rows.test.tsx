@@ -6,14 +6,14 @@ import { useScenarioRows } from "./use-scenario-rows";
 
 const usd = (amount: string) => ({ amount, currency: "USD" });
 
-function scenario(id: string, assetId: string, percentChange: number) {
+function scenario(id: string, assetId: string, percentChange: number, status = "SAVED") {
   return {
     id,
     portfolioId: "p1",
     name: `Scenario ${id}`,
     description: null,
     baseSnapshotId: null,
-    status: "SAVED",
+    status,
     changes: [{ assetId, percentChange }],
     createdAt: "2026-10-10T10:00:00.000Z",
     updatedAt: "2026-10-12T10:00:00.000Z",
@@ -139,6 +139,30 @@ describe("useScenarioRows", () => {
     });
     expect(result.current.rows?.find((row) => row.id === "s1")?.figures).toBeNull();
     expect(result.current.isError).toBe(false);
+  });
+
+  it("leaves out the archived scenarios and does not calculate them", async () => {
+    const { client, call } = clientAnswering({
+      listScenarios: () =>
+        Promise.resolve({
+          data: [scenario("s1", "a1", -10), scenario("s2", "a1", 5, "ARCHIVED")],
+        }),
+      getAsset,
+      calculateScenario: (input) =>
+        Promise.resolve({ data: calculation(String(input?.params?.scenarioId), "1000.00") }),
+    });
+    const { result } = renderHook(() => useScenarioRows("p1"), {
+      wrapper: tradingClientWrapper(client),
+    });
+
+    await waitFor(() => {
+      expect(result.current.rows?.[0]?.figures).toBeTruthy();
+    });
+    expect(result.current.rows?.map((row) => row.id)).toEqual(["s1"]);
+    const calculated = call.mock.calls.filter(
+      ([operation]) => operation.operationId === "calculateScenario",
+    );
+    expect(calculated).toHaveLength(1);
   });
 
   it("is an error when the scenarios cannot be listed", async () => {

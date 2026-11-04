@@ -446,6 +446,7 @@ const en = {
   },
   decisions: {
     table: "Decisions",
+    tabs: { label: "Decision Center views", replay: "Replay", lab: "Scenario Lab" },
     detail: {
       back: "Back to decisions",
       loading: "Loading the decision",
@@ -582,6 +583,12 @@ const en = {
   },
   scenarios: {
     table: "Scenarios",
+    summary: {
+      saved_one: "{{count}} scenario saved",
+      saved_other: "{{count}} scenarios saved",
+      base: "base: {{portfolio}}",
+      baseValue: "base: {{portfolio}}, {{value}}",
+    },
     search: "Search scenario",
     loading: "Loading the scenarios",
     columns: {
@@ -1393,6 +1400,7 @@ const es: Messages<typeof en> = {
   },
   decisions: {
     table: "Decisiones",
+    tabs: { label: "Vistas del Centro de decisiones", replay: "Replay", lab: "Scenario Lab" },
     detail: {
       back: "Volver a decisiones",
       loading: "Cargando la decisión",
@@ -1530,6 +1538,12 @@ const es: Messages<typeof en> = {
   },
   scenarios: {
     table: "Escenarios",
+    summary: {
+      saved_one: "{{count}} escenario guardado",
+      saved_other: "{{count}} escenarios guardados",
+      base: "base: {{portfolio}}",
+      baseValue: "base: {{portfolio}}, {{value}}",
+    },
     search: "Buscar escenario",
     loading: "Cargando los escenarios",
     columns: {

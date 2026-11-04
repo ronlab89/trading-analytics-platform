@@ -68,6 +68,14 @@ describe("ScenariosSection", () => {
     expect(onNew).toHaveBeenCalledOnce();
   });
 
+  it("has no button to create a scenario while there is nowhere to create it", () => {
+    phone(false);
+    render(<ScenariosSection isError={false} onRetry={noop} rows={[]} />);
+
+    expect(screen.getByText("No scenarios yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New scenario" })).not.toBeInTheDocument();
+  });
+
   it("says that the scenarios could not be loaded and offers to try again", async () => {
     phone(false);
     const onRetry = vi.fn();
