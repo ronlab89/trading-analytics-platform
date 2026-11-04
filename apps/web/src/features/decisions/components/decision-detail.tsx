@@ -5,6 +5,7 @@ import { toTimelineItems } from "../lib/event-timeline";
 import { toDecisionRow } from "../lib/decision-row";
 import { replayStateAt } from "../lib/replay-state";
 import { DecisionDetailHeader } from "./decision-detail-header";
+import { DecisionExpectedPanel } from "./decision-expected-panel";
 import { DecisionIndicators } from "./decision-indicators";
 import { DecisionPricePanel } from "./decision-price-panel";
 import { DecisionReplayPanel } from "./decision-replay-panel";
@@ -19,14 +20,16 @@ interface DecisionDetailProps {
 
 /**
  * One decision as the Figma "Detalle" draws it: the way back with the direction and status, the
- * four indicators, the replay controls, the price beside the events of the position, and the
- * thesis under them. The price and the events follow the same replay.
+ * four indicators, the replay controls, the price beside the events of the position, and the thesis
+ * beside what was expected against what happened. The price, the events and the comparison follow
+ * the same replay.
  */
 export function DecisionDetail({ replay, asset }: DecisionDetailProps) {
   const { decision, events, currency } = replay;
   const items = useMemo(() => toTimelineItems(events, currency), [events, currency]);
   const row = toDecisionRow(decision, asset ?? undefined);
   const player = useReplayPlayer(items.length);
+  const currentTimestamp = items[player.index]?.timestamp ?? null;
   const today = useMemo(() => replayStateAt(replay, events.length - 1), [replay, events.length]);
 
   return (
@@ -37,14 +40,18 @@ export function DecisionDetail({ replay, asset }: DecisionDetailProps) {
       <div className="grid gap-4 desktop:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] desktop:gap-6">
         <DecisionPricePanel
           currency={currency}
-          currentTimestamp={items[player.index]?.timestamp ?? null}
+          currentTimestamp={currentTimestamp}
           decision={decision}
           symbol={asset?.symbol ?? null}
         />
         <DecisionTimelinePanel currentIndex={player.index} items={items} />
-        <div className="desktop:col-span-2">
-          <DecisionThesisPanel decision={decision} />
-        </div>
+        <DecisionThesisPanel decision={decision} />
+        <DecisionExpectedPanel
+          currency={currency}
+          currentTimestamp={currentTimestamp}
+          decision={decision}
+          openedAt={items.find((item) => item.type === "POSITION_OPENED")?.timestamp ?? null}
+        />
       </div>
     </>
   );
