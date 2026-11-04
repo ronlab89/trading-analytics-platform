@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router";
+import { createMemoryRouter, Link, RouterProvider, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import "@/i18n";
@@ -45,12 +45,25 @@ const client = {
 
 function renderPage(address = "/settings") {
   const Wrapper = tradingClientWrapper(client);
+  const router = createMemoryRouter(
+    [
+      {
+        path: "/settings",
+        element: (
+          <>
+            <SettingsPage />
+            <Link to="/portfolios">Go to portfolios</Link>
+            <Where />
+          </>
+        ),
+      },
+      { path: "/portfolios", element: <p>The portfolios</p> },
+    ],
+    { initialEntries: [address] },
+  );
   return render(
     <Wrapper>
-      <MemoryRouter initialEntries={[address]}>
-        <SettingsPage />
-        <Where />
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </Wrapper>,
   );
 }
@@ -157,6 +170,93 @@ describe("SettingsPage", () => {
 
     expect(screen.getByTestId("search")).toHaveTextContent("?section=preferences");
     expect(screen.getByRole("region", { name: "Preferences" })).toBeInTheDocument();
+  });
+
+  describe("leaving with changes that are not saved", () => {
+    async function editPreferences() {
+      await userEvent.click(screen.getByRole("button", { name: "Preferences" }));
+      await userEvent.click(await screen.findByRole("checkbox", { name: /Reduce motion/ }));
+    }
+    const dialog = () => screen.findByRole("dialog", { name: "Leave without saving?" });
+
+    it("asks before changing section, and keeps the change when the user keeps editing", async () => {
+      renderPage();
+      await editPreferences();
+
+      await userEvent.click(screen.getByRole("button", { name: "Profile" }));
+      const asking = within(await dialog());
+      expect(asking.getByText(/unsaved changes in your preferences/)).toBeInTheDocument();
+      await userEvent.click(asking.getByRole("button", { name: "Keep editing" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: /Reduce motion/ })).toBeChecked();
+    });
+
+    it("changes section and loses the change when the user leaves", async () => {
+      renderPage();
+      await editPreferences();
+
+      await userEvent.click(screen.getByRole("button", { name: "Profile" }));
+      await userEvent.click(
+        within(await dialog()).getByRole("button", { name: "Leave without saving" }),
+      );
+
+      expect(await screen.findByRole("region", { name: "Profile" })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Preferences" }));
+      expect(await screen.findByRole("checkbox", { name: /Reduce motion/ })).not.toBeChecked();
+    });
+
+    it("does not ask when there is nothing to lose", async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole("button", { name: "Preferences" }));
+      await screen.findByRole("checkbox", { name: /Reduce motion/ });
+
+      await userEvent.click(screen.getByRole("button", { name: "Profile" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Profile" })).toBeInTheDocument();
+    });
+
+    it("asks before leaving Settings too, and goes on when the user leaves", async () => {
+      renderPage();
+      await editPreferences();
+
+      await userEvent.click(screen.getByRole("link", { name: "Go to portfolios" }));
+      expect(screen.queryByText("The portfolios")).not.toBeInTheDocument();
+      await userEvent.click(
+        within(await dialog()).getByRole("button", { name: "Leave without saving" }),
+      );
+
+      expect(await screen.findByText("The portfolios")).toBeInTheDocument();
+    });
+
+    it("stays in Settings when the user keeps editing after trying to leave it", async () => {
+      renderPage();
+      await editPreferences();
+
+      await userEvent.click(screen.getByRole("link", { name: "Go to portfolios" }));
+      await userEvent.click(within(await dialog()).getByRole("button", { name: "Keep editing" }));
+
+      expect(screen.queryByText("The portfolios")).not.toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: /Reduce motion/ })).toBeChecked();
+    });
+
+    it("lets the browser warn on reload or close only while there are changes", async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole("button", { name: "Preferences" }));
+      await screen.findByRole("checkbox", { name: /Reduce motion/ });
+
+      const clean = new Event("beforeunload", { cancelable: true });
+      fireEvent(window, clean);
+      expect(clean.defaultPrevented).toBe(false);
+
+      await userEvent.click(screen.getByRole("checkbox", { name: /Reduce motion/ }));
+      await waitFor(() => {
+        const dirty = new Event("beforeunload", { cancelable: true });
+        fireEvent(window, dirty);
+        expect(dirty.defaultPrevented).toBe(true);
+      });
+    });
   });
 
   it("has no accessibility violations", async () => {

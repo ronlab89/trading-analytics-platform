@@ -115,6 +115,12 @@ const en = {
         description: "There was a problem reaching the server. Try again in a moment.",
       },
     },
+    leave: {
+      title: "Leave without saving?",
+      description: "You have unsaved changes in your preferences. If you leave, they will be lost.",
+      keepEditing: "Keep editing",
+      confirm: "Leave without saving",
+    },
     demo: {
       badge: "Demo account",
       title: "Fictional data",
@@ -1231,6 +1237,12 @@ const es: Messages<typeof en> = {
         title: "No se pudieron cargar tus preferencias",
         description: "Hubo un problema al conectar con el servidor. Inténtalo en un momento.",
       },
+    },
+    leave: {
+      title: "¿Salir sin guardar?",
+      description: "Tienes cambios sin guardar en tus preferencias. Si sales, se perderán.",
+      keepEditing: "Seguir editando",
+      confirm: "Salir sin guardar",
     },
     demo: {
       badge: "Cuenta demo",

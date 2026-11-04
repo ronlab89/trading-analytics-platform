@@ -33,6 +33,8 @@ const saved = {
   updatedAt: "2026-11-01T10:00:00.000Z",
 };
 
+const noop = () => undefined;
+
 type Answers = Partial<Record<string, (input?: CallInput) => Promise<unknown>>>;
 
 function clientWith(answers: Answers = {}) {
@@ -69,7 +71,7 @@ function renderSection(client: TradingClient) {
   const Wrapper = tradingClientWrapper(client);
   return render(
     <Wrapper>
-      <PreferencesSection />
+      <PreferencesSection onDirtyChange={noop} />
     </Wrapper>,
   );
 }

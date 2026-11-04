@@ -1,5 +1,5 @@
 import { LANGUAGES } from "@trading/contracts";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Alert } from "@/components/ui/alert";
@@ -28,7 +28,7 @@ const NO_PORTFOLIO = "none";
  * per card (Figma): the buttons wait for a change, "Descartar" takes everything back, and a failed
  * save keeps the change and turns "Guardar cambios" into "Reintentar".
  */
-export function PreferencesSection() {
+export function PreferencesSection({ onDirtyChange }: { onDirtyChange: (dirty: boolean) => void }) {
   const { t } = useTranslation();
   const preferences = usePreferences();
   const portfolios = usePortfolios();
@@ -84,6 +84,7 @@ export function PreferencesSection() {
       <PreferencesForm
         initial={initialDraft(preferences.data, languageInUse)}
         key={preferences.data?.updatedAt ?? "unsaved"}
+        onDirtyChange={onDirtyChange}
         portfolios={portfolios.data ?? []}
       />
     </SettingsCard>
@@ -92,16 +93,28 @@ export function PreferencesSection() {
 
 interface PreferencesFormProps {
   initial: PreferencesDraft;
+  /** Tells the page whether there is something to lose, so it can ask before leaving. */
+  onDirtyChange: (dirty: boolean) => void;
   portfolios: readonly { id: string; name: string; status: string }[];
 }
 
-function PreferencesForm({ initial, portfolios }: PreferencesFormProps) {
+function PreferencesForm({ initial, portfolios, onDirtyChange }: PreferencesFormProps) {
   const { t } = useTranslation();
   const update = useUpdatePreferences();
   const [draft, setDraft] = useState(initial);
 
   const changes = changesOf(initial, draft);
   const dirty = Object.keys(changes).length > 0;
+  useEffect(() => {
+    onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(
+    () => () => {
+      onDirtyChange(false);
+    },
+    [onDirtyChange],
+  );
+
   const active = portfolios.filter((portfolio) => portfolio.status === "ACTIVE");
 
   const change = (next: Partial<PreferencesDraft>) => {
