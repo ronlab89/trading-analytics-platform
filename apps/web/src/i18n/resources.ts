@@ -446,6 +446,7 @@ const en = {
   },
   decisions: {
     table: "Decisions",
+    tabs: { label: "Decision Center views", replay: "Replay", lab: "Scenario Lab" },
     detail: {
       back: "Back to decisions",
       loading: "Loading the decision",
@@ -577,6 +578,71 @@ const en = {
     noResults: {
       title: "No results",
       description: 'No decision matches "{{query}}".',
+      clear: "Clear the search",
+    },
+  },
+  scenarios: {
+    table: "Scenarios",
+    summary: {
+      saved_one: "{{count}} scenario saved",
+      saved_other: "{{count}} scenarios saved",
+      base: "base: {{portfolio}}",
+      baseValue: "base: {{portfolio}}, {{value}}",
+    },
+    search: "Search scenario",
+    loading: "Loading the scenarios",
+    columns: {
+      name: "Scenario",
+      variable: "Main variable",
+      base: "Base",
+      withScenario: "With scenario",
+      edited: "Edited",
+      impact: "Impact",
+      actions: "Actions",
+    },
+    variable: {
+      price: "{{symbol}} price",
+      priceUnknown: "Asset price",
+      more: "+{{count}}",
+      none: "No changes",
+    },
+    figures: { loading: "Calculating", failed: "Could not be calculated" },
+    empty: {
+      title: "No scenarios yet",
+      description:
+        "Create a scenario to test what would happen to your portfolio if prices change.",
+      action: "New scenario",
+    },
+    failed: {
+      title: "Could not load the scenarios",
+      description: "There was a problem reaching the server. Try again in a moment.",
+      retry: "Try again",
+    },
+    rowMenu: { label: "Actions for “{{name}}”", duplicate: "Duplicate", delete: "Delete" },
+    duplicate: {
+      copyName: "{{name}} (copy)",
+      done: { title: "Scenario duplicated", description: "“{{name}}” was created." },
+      failed: {
+        title: "Could not duplicate the scenario",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
+    },
+    delete: {
+      title: "Delete scenario",
+      description:
+        "“{{name}}” will be deleted. Your real portfolio is not changed. This cannot be undone.",
+      cancel: "Cancel",
+      confirm: "Delete scenario",
+      deleting: "Deleting…",
+      done: { title: "Scenario deleted", description: "“{{name}}” was deleted." },
+      failed: {
+        title: "Could not delete the scenario",
+        description: "There was a problem reaching the server. Try again in a moment.",
+      },
+    },
+    noResults: {
+      title: "No results",
+      description: 'No scenario matches "{{query}}".',
       clear: "Clear the search",
     },
   },
@@ -1357,6 +1423,7 @@ const es: Messages<typeof en> = {
   },
   decisions: {
     table: "Decisiones",
+    tabs: { label: "Vistas del Centro de decisiones", replay: "Replay", lab: "Scenario Lab" },
     detail: {
       back: "Volver a decisiones",
       loading: "Cargando la decisión",
@@ -1489,6 +1556,71 @@ const es: Messages<typeof en> = {
     noResults: {
       title: "Sin resultados",
       description: 'Ninguna decisión coincide con "{{query}}".',
+      clear: "Borrar la búsqueda",
+    },
+  },
+  scenarios: {
+    table: "Escenarios",
+    summary: {
+      saved_one: "{{count}} escenario guardado",
+      saved_other: "{{count}} escenarios guardados",
+      base: "base: {{portfolio}}",
+      baseValue: "base: {{portfolio}}, {{value}}",
+    },
+    search: "Buscar escenario",
+    loading: "Cargando los escenarios",
+    columns: {
+      name: "Escenario",
+      variable: "Variable principal",
+      base: "Base",
+      withScenario: "Con escenario",
+      edited: "Editado",
+      impact: "Impacto",
+      actions: "Acciones",
+    },
+    variable: {
+      price: "Precio de {{symbol}}",
+      priceUnknown: "Precio del activo",
+      more: "+{{count}}",
+      none: "Sin cambios",
+    },
+    figures: { loading: "Calculando", failed: "No se pudo calcular" },
+    empty: {
+      title: "Aún no hay escenarios",
+      description:
+        "Creá un escenario para probar qué pasaría con tu portafolio si cambian los precios.",
+      action: "Nuevo escenario",
+    },
+    failed: {
+      title: "No se pudieron cargar los escenarios",
+      description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      retry: "Reintentar",
+    },
+    rowMenu: { label: "Acciones de «{{name}}»", duplicate: "Duplicar", delete: "Eliminar" },
+    duplicate: {
+      copyName: "{{name}} (copia)",
+      done: { title: "Escenario duplicado", description: "Se creó «{{name}}»." },
+      failed: {
+        title: "No se pudo duplicar el escenario",
+        description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      },
+    },
+    delete: {
+      title: "Eliminar escenario",
+      description:
+        "Se eliminará «{{name}}». Tu portafolio real no se modifica. Esta acción no se puede deshacer.",
+      cancel: "Cancelar",
+      confirm: "Eliminar escenario",
+      deleting: "Eliminando…",
+      done: { title: "Escenario eliminado", description: "Se eliminó «{{name}}»." },
+      failed: {
+        title: "No se pudo eliminar el escenario",
+        description: "Hubo un problema al conectar con el servidor. Probá de nuevo en un momento.",
+      },
+    },
+    noResults: {
+      title: "Sin resultados",
+      description: 'Ningún escenario coincide con "{{query}}".',
       clear: "Borrar la búsqueda",
     },
   },
