@@ -91,6 +91,22 @@ describe("DecisionPricePanel", () => {
     });
   });
 
+  it("on a phone says only the period and the currency", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query.includes("max-width"),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    renderPanel(() => new Promise(() => undefined));
+
+    expect(screen.getByText("Aug 12 – Aug 14 · USD")).toBeVisible();
+    vi.unstubAllGlobals();
+  });
+
   it("says loading while the candles are on their way", () => {
     renderPanel(() => new Promise(() => undefined));
 

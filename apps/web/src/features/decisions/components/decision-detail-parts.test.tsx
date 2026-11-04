@@ -1,7 +1,7 @@
 import type { DecisionReplayStateResponse, DecisionResponse } from "@trading/contracts";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import type { TimelineItem } from "../lib/event-timeline";
 import { DecisionDetailHeader } from "./decision-detail-header";
@@ -97,6 +97,38 @@ describe("DecisionIndicators", () => {
     expect(region("Stop").getByText("-2.71% from the entry")).toBeVisible();
     expect(region("Current return").getByText("+11.27%")).toBeVisible();
     expect(region("Current return").getByText("Price $180.70 · medium risk")).toBeVisible();
+  });
+
+  it("on a phone leaves the risk out of the note, as there is less room", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query.includes("max-width"),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    render(<DecisionIndicators decision={decision} items={items} state={openState} />);
+
+    expect(region("Current return").getByText("Price $180.70")).toBeVisible();
+    vi.unstubAllGlobals();
+  });
+
+  it("says a gain or a loss with an arrow too, not with the color alone", () => {
+    const { container, rerender } = render(
+      <DecisionIndicators decision={decision} items={items} state={openState} />,
+    );
+    expect(container.querySelector(".lucide-arrow-up")).toBeInTheDocument();
+
+    rerender(
+      <DecisionIndicators
+        decision={decision}
+        items={items}
+        state={{ ...openState, lastPrice: usd("150.00") }}
+      />,
+    );
+    expect(container.querySelector(".lucide-arrow-down")).toBeInTheDocument();
   });
 
   it("paints a loss as a loss", () => {

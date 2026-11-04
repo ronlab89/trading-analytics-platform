@@ -20,9 +20,10 @@ export function DecisionDetailSkeleton() {
           <Skeleton className="h-28 w-full" key={index} />
         ))}
       </div>
+      <Skeleton className="h-32 w-full" />
       <div className="grid gap-4 desktop:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] desktop:gap-6">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-96 w-full" />
+        <Skeleton className="h-96 w-full" />
       </div>
     </div>
   );

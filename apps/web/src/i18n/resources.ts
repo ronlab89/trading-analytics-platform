@@ -471,6 +471,7 @@ const en = {
       risk: { LOW: "Low", MODERATE: "Medium", HIGH: "High" },
       replay: {
         title: "Replay",
+        pausedShort: "Event {{current}} of {{total}} · {{date}}",
         status: {
           paused: "Event {{current}} of {{total}} · {{date}} · the history is not changed",
           playing: "Playing · event {{current}} of {{total}} · {{date}}",
@@ -488,6 +489,7 @@ const en = {
         title: "{{symbol}} price",
         titleNoAsset: "Price",
         subtitle: "{{from}} – {{to}} · {{currency}} · what has not happened yet is dimmed",
+        subtitleShort: "{{from}} – {{to}} · {{currency}}",
         legend: "Price",
         caption: "On {{date}} the price was {{price}}.",
         loading: "Loading the price history",
@@ -1366,6 +1368,7 @@ const es: Messages<typeof en> = {
       risk: { LOW: "Bajo", MODERATE: "Medio", HIGH: "Alto" },
       replay: {
         title: "Reproducción",
+        pausedShort: "Evento {{current}} de {{total}} · {{date}}",
         status: {
           paused: "Evento {{current}} de {{total}} · {{date}} · el histórico no se modifica",
           playing: "Reproduciendo · evento {{current}} de {{total}} · {{date}}",
@@ -1383,6 +1386,7 @@ const es: Messages<typeof en> = {
         title: "Precio de {{symbol}}",
         titleNoAsset: "Precio",
         subtitle: "{{from}} – {{to}} · {{currency}} · lo que aún no ocurrió se ve atenuado",
+        subtitleShort: "{{from}} – {{to}} · {{currency}}",
         legend: "Precio",
         caption: "El {{date}} el precio era {{price}}.",
         loading: "Cargando el historial de precios",

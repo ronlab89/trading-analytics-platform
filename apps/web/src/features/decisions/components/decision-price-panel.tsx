@@ -6,6 +6,7 @@ import {
   AnalyticsPanelError,
   AnalyticsPanelLoading,
 } from "@/features/analytics/components/analytics-panel";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { formatDayMonth } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-number";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ export function DecisionPricePanel({
   currentTimestamp,
 }: DecisionPricePanelProps) {
   const { t, i18n } = useTranslation();
+  const isMobile = useIsMobile();
   const range = historyRangeOf(decision, new Date());
   const history = useAssetHistory(decision.assetId, range);
   const levels = useMemo(() => priceLevelsOf(decision), [decision]);
@@ -121,11 +123,14 @@ export function DecisionPricePanel({
 
   return (
     <AnalyticsPanel
-      subtitle={t("decisions.detail.price.subtitle", {
-        from: formatDayMonth(range.from, i18n.language),
-        to: formatDayMonth(range.to, i18n.language),
-        currency,
-      })}
+      subtitle={t(
+        isMobile ? "decisions.detail.price.subtitleShort" : "decisions.detail.price.subtitle",
+        {
+          from: formatDayMonth(range.from, i18n.language),
+          to: formatDayMonth(range.to, i18n.language),
+          currency,
+        },
+      )}
       title={title}
     >
       {body()}

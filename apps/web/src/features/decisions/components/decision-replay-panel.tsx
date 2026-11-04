@@ -2,6 +2,7 @@ import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AnalyticsPanel } from "@/features/analytics/components/analytics-panel";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { formatMomentDay, formatMomentFullDay } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { REPLAY_SPEEDS, type ReplayPlayer } from "../hooks/use-replay-player";
@@ -63,87 +64,121 @@ interface DecisionReplayPanelProps {
  * The Figma "Reproducción": the buttons that move through the events of a decision, the line that
  * shows how far it has gone, the day of the current event and the speed. A decision without events
  * has nothing to replay, so the panel is not drawn. The state lives in the player, because the rest
- * of the page follows the same event.
+ * of the page follows the same event. On a phone the pieces stack: the line, then the day with the
+ * speed, then larger buttons in the center.
  */
 export function DecisionReplayPanel({ player, items }: DecisionReplayPanelProps) {
   const { t, i18n } = useTranslation();
+  const isMobile = useIsMobile();
   const current = items[player.index];
   if (current === undefined) return null;
 
   const { labelKey, Icon } = PLAY_BUTTON[player.status];
+  const buttonSize = isMobile ? "icon-lg" : "icon-sm";
+
+  const buttons = (
+    <>
+      <Button
+        aria-label={t("decisions.detail.replay.previous")}
+        disabled={!player.canGoPrevious}
+        onClick={player.previous}
+        size={buttonSize}
+        variant="outline"
+      >
+        <SkipBack aria-hidden="true" />
+      </Button>
+      <Button
+        aria-label={t(`decisions.detail.replay.${labelKey}`)}
+        disabled={player.status === "finished" && items.length <= 1}
+        onClick={player.toggle}
+        size={buttonSize}
+      >
+        <Icon aria-hidden="true" />
+      </Button>
+      <Button
+        aria-label={t("decisions.detail.replay.next")}
+        disabled={!player.canGoNext}
+        onClick={player.next}
+        size={buttonSize}
+        variant="outline"
+      >
+        <SkipForward aria-hidden="true" />
+      </Button>
+    </>
+  );
+  const progress = (
+    <ReplayProgress
+      index={player.index}
+      label={t("decisions.detail.replay.progress")}
+      total={items.length}
+    />
+  );
+  const day = (
+    <time
+      className="shrink-0 text-sm font-medium text-(--color-text-default)"
+      dateTime={current.timestamp}
+    >
+      {formatMomentDay(current.timestamp, i18n.language)}
+    </time>
+  );
+  const speeds = (
+    <div
+      aria-label={t("decisions.detail.replay.speed")}
+      className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-(--color-surface-secondary) p-1"
+      role="group"
+    >
+      {REPLAY_SPEEDS.map((speed) => (
+        <button
+          aria-pressed={player.speed === speed}
+          className={cn(
+            "h-5 rounded-md px-2 text-xs font-medium whitespace-nowrap transition-colors select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-button-focus-ring)",
+            player.speed === speed
+              ? "bg-(--color-button-primary-background) text-(--color-button-primary-foreground)"
+              : "text-(--color-text-secondary) hover:text-(--color-text-default)",
+          )}
+          key={speed}
+          onClick={() => {
+            player.setSpeed(speed);
+          }}
+          type="button"
+        >
+          {`${String(speed)}×`}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <AnalyticsPanel
-      subtitle={t(`decisions.detail.replay.status.${player.status}`, {
-        current: player.index + 1,
-        total: items.length,
-        date: formatMomentFullDay(current.timestamp, i18n.language),
-      })}
+      subtitle={t(
+        isMobile && player.status === "paused"
+          ? "decisions.detail.replay.pausedShort"
+          : `decisions.detail.replay.status.${player.status}`,
+        {
+          current: player.index + 1,
+          total: items.length,
+          date: formatMomentFullDay(current.timestamp, i18n.language),
+        },
+      )}
       title={t("decisions.detail.replay.title")}
     >
-      <div className="flex items-center gap-2">
-        <Button
-          aria-label={t("decisions.detail.replay.previous")}
-          disabled={!player.canGoPrevious}
-          onClick={player.previous}
-          size="icon-sm"
-          variant="outline"
-        >
-          <SkipBack aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label={t(`decisions.detail.replay.${labelKey}`)}
-          disabled={player.status === "finished" && items.length <= 1}
-          onClick={player.toggle}
-          size="icon-sm"
-        >
-          <Icon aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label={t("decisions.detail.replay.next")}
-          disabled={!player.canGoNext}
-          onClick={player.next}
-          size="icon-sm"
-          variant="outline"
-        >
-          <SkipForward aria-hidden="true" />
-        </Button>
-        <ReplayProgress
-          index={player.index}
-          label={t("decisions.detail.replay.progress")}
-          total={items.length}
-        />
-        <time
-          className="shrink-0 text-sm font-medium text-(--color-text-default)"
-          dateTime={current.timestamp}
-        >
-          {formatMomentDay(current.timestamp, i18n.language)}
-        </time>
-        <div
-          aria-label={t("decisions.detail.replay.speed")}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-(--color-surface-secondary) p-1"
-          role="group"
-        >
-          {REPLAY_SPEEDS.map((speed) => (
-            <button
-              aria-pressed={player.speed === speed}
-              className={cn(
-                "h-5 rounded-md px-2 text-xs font-medium whitespace-nowrap transition-colors select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-button-focus-ring)",
-                player.speed === speed
-                  ? "bg-(--color-button-primary-background) text-(--color-button-primary-foreground)"
-                  : "text-(--color-text-secondary) hover:text-(--color-text-default)",
-              )}
-              key={speed}
-              onClick={() => {
-                player.setSpeed(speed);
-              }}
-              type="button"
-            >
-              {`${String(speed)}×`}
-            </button>
-          ))}
+      {isMobile ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex">{progress}</div>
+          <div className="flex items-center justify-between gap-2">
+            {day}
+            {speeds}
+          </div>
+          <div className="flex justify-center gap-4">{buttons}</div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          {buttons}
+          {progress}
+          {day}
+          {speeds}
+        </div>
+      )}
     </AnalyticsPanel>
   );
 }

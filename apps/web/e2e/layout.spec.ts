@@ -815,6 +815,51 @@ test("the decision detail lays out its indicators, thesis and events inside the 
   }
 });
 
+test("the decision replay fits on every width and moves the events with its controls", async ({
+  page,
+}) => {
+  test.slow();
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/decisions/d1");
+    const bar = page.getByRole("progressbar", { name: "Replay progress" });
+    await bar.waitFor();
+
+    const main = await boxOf(page.locator("main"));
+    const panel = await boxOf(page.getByRole("region", { name: "Replay", exact: true }));
+    expect(panel.x).toBeGreaterThanOrEqual(main.x);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(main.x + main.width);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+
+    const barBox = await boxOf(bar);
+    const restart = await boxOf(page.getByRole("button", { name: "Replay from the start" }));
+    if (width <= MOBILE_MAX) {
+      // The line on its own row, the larger buttons under it.
+      expect(restart.y).toBeGreaterThanOrEqual(barBox.y + barBox.height);
+      expect(restart.width).toBe(40);
+    } else {
+      // One row: the buttons, then the line.
+      expect(barBox.x).toBeGreaterThanOrEqual(restart.x + restart.width);
+      expect(restart.width).toBe(32);
+    }
+
+    const current = page.locator('li[aria-current="step"]');
+    await expect(current).toContainText("Risk changed");
+    await page.getByRole("button", { name: "Previous event" }).click();
+    await expect(current).toContainText("Position opened");
+    await expect(bar).toHaveAttribute("aria-valuenow", "2");
+
+    await page.getByRole("button", { name: "2×" }).click();
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await expect(current).toContainText("Risk changed");
+    await expect(page.getByRole("button", { name: "Replay from the start" })).toBeVisible();
+  }
+});
+
 test("on mobile the custom period is a bottom sheet with one month", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/analytics");

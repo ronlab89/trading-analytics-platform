@@ -1,7 +1,10 @@
 import type { DecisionReplayStateResponse, DecisionResponse } from "@trading/contracts";
 import type { TFunction } from "i18next";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { AnalyticsKpiCard, type KpiTone } from "@/features/analytics/components/analytics-kpi-card";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { formatDateTime } from "@/lib/format-date";
 import { formatMoney, formatSignedMoney, formatSignedPercent } from "@/lib/format-number";
 import { currentReturnOf, type CurrentReturn } from "../lib/current-return";
@@ -22,11 +25,20 @@ function toneOf(result: CurrentReturn): KpiTone {
   return figure > 0 ? "gain" : "loss";
 }
 
-function valueOfReturn(result: CurrentReturn): string {
+/** The figure with the arrow of the Figma, so a gain or a loss is not told by color alone. */
+function valueOfReturn(result: CurrentReturn): ReactNode {
   if (result.kind === "none") return "—";
-  return result.kind === "open"
-    ? formatSignedPercent(result.percent)
-    : formatSignedMoney(result.profit);
+  const figure =
+    result.kind === "open" ? formatSignedPercent(result.percent) : formatSignedMoney(result.profit);
+  const tone = toneOf(result);
+
+  return (
+    <>
+      {figure}
+      {tone === "gain" ? <ArrowUp aria-hidden="true" className="size-4" /> : null}
+      {tone === "loss" ? <ArrowDown aria-hidden="true" className="size-4" /> : null}
+    </>
+  );
 }
 
 function noteOfReturn(result: CurrentReturn, t: TFunction): string | null {
@@ -48,6 +60,7 @@ function noteOfReturn(result: CurrentReturn, t: TFunction): string | null {
  */
 export function DecisionIndicators({ decision, items, state }: DecisionIndicatorsProps) {
   const { t, i18n } = useTranslation();
+  const isMobile = useIsMobile();
   const opened = items.find((item) => item.type === "POSITION_OPENED");
   const units = opened?.quantity ?? null;
   const fromEntry = (price: DecisionResponse["targetPrice"]) => {
@@ -62,7 +75,7 @@ export function DecisionIndicators({ decision, items, state }: DecisionIndicator
   const result = currentReturnOf(state, decision.direction);
   const returnNote = noteOfReturn(result, t);
   const riskNote =
-    state.riskLevel === null
+    isMobile || state.riskLevel === null
       ? null
       : t("decisions.detail.notes.risk", {
           level: t(`decisions.detail.risk.${state.riskLevel}`, {

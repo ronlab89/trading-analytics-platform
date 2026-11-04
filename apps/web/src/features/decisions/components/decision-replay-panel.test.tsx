@@ -105,6 +105,28 @@ describe("DecisionReplayPanel", () => {
     expect(button("Next event")).toBeDisabled();
   });
 
+  it("on a phone leaves the bar on its own line, with larger buttons and a shorter sentence", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query.includes("max-width"),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    render(<Harness />);
+
+    fireEvent.click(button("Previous event"));
+
+    expect(screen.getByText("Event 2 of 3 · Aug 14, 2026")).toBeVisible();
+    expect(button("Play")).toHaveClass("size-10");
+    expect(button("Next event")).toHaveClass("size-10");
+    const bar = screen.getByRole("progressbar");
+    expect(bar.parentElement).not.toContainElement(button("Play"));
+    vi.unstubAllGlobals();
+  });
+
   it("is not drawn when there are no events", () => {
     render(<Harness events={[]} />);
 
