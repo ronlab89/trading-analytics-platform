@@ -865,6 +865,8 @@ const en = {
     table: "Alerts",
     loading: "Loading your alerts",
     create: "Create alert",
+    bell: "Create an alert for {{asset}}",
+    assetFailed: "Could not open the alert form",
     columns: {
       asset: "Asset",
       condition: "Condition",
@@ -2180,6 +2182,8 @@ const es: Messages<typeof en> = {
     table: "Alertas",
     loading: "Cargando tus alertas",
     create: "Crear alerta",
+    bell: "Crear una alerta para {{asset}}",
+    assetFailed: "No se pudo abrir el formulario de la alerta",
     columns: {
       asset: "Activo",
       condition: "Condición",

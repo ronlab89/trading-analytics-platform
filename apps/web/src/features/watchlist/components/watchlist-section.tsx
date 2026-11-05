@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useAlertDialogForAsset } from "@/features/alerts/hooks/use-alert-dialog-for-asset";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { useRemoveWithUndo } from "../hooks/use-remove-with-undo";
@@ -19,6 +20,7 @@ export function WatchlistSection() {
   const isMobile = useIsMobile();
   const { rows, isError, refetch } = useWatchlistRows();
   const removeWithUndo = useRemoveWithUndo();
+  const alertDialog = useAlertDialogForAsset();
 
   if (isError) {
     return (
@@ -55,7 +57,13 @@ export function WatchlistSection() {
       <section className="rounded-xl bg-(--color-surface-card) p-6">{empty}</section>
     ) : (
       <div className="flex flex-col gap-4">
-        <WatchlistView mobile onRemove={removeWithUndo} rows={rows} />
+        <WatchlistView
+          mobile
+          onCreateAlert={alertDialog.openFor}
+          onRemove={removeWithUndo}
+          rows={rows}
+        />
+        {alertDialog.dialog}
       </div>
     );
   }
@@ -67,8 +75,9 @@ export function WatchlistSection() {
       ) : rows.length === 0 ? (
         empty
       ) : (
-        <WatchlistView onRemove={removeWithUndo} rows={rows} />
+        <WatchlistView onCreateAlert={alertDialog.openFor} onRemove={removeWithUndo} rows={rows} />
       )}
+      {alertDialog.dialog}
     </section>
   );
 }
