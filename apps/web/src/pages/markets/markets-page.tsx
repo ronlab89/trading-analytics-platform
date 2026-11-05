@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
+import { ConnectionAlert } from "@/components/connection-alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CatalogSection } from "@/features/catalog/components/catalog-section";
 import { CatalogSummary } from "@/features/catalog/components/catalog-summary";
@@ -27,7 +28,8 @@ function useMarketsTab(): [MarketsTab, (tab: MarketsTab) => void] {
 /**
  * The Markets view (Figma, "Mercados"): the user's watchlist and the catalog of every asset, in two
  * tabs. On the tablet and the desktop a header line (how many assets) sits at the left of the
- * tabs; on a phone the title shows instead, with the tabs under it, as on the other views.
+ * tabs; on a phone the title shows instead, with the tabs under it, as on the other views. Both
+ * tabs show live prices, so one connection alert sits above them when the prices are paused.
  */
 export function MarketsPage() {
   const { t } = useTranslation();
@@ -71,6 +73,7 @@ export function MarketsPage() {
           </div>
         </>
       )}
+      <ConnectionAlert />
       <TabsContent value="watchlist">
         <WatchlistSection />
       </TabsContent>
