@@ -858,6 +858,37 @@ const en = {
       clear: "Clear the search",
     },
   },
+  importCsv: {
+    title: "Import transactions",
+    choose: {
+      intro:
+        "Upload a CSV with one transaction per row. Prices are in the base currency of the portfolio.",
+      columns:
+        "Columns: symbol, type, quantity, price and executedAt, plus fees if you want. Up to 5,000 rows and 1 MB.",
+      dropzone: "Drop a CSV file here, or",
+      browse: "choose a file",
+      change: "Choose another file",
+      template: "Download the template",
+      picked_one: "{{name}} · {{count}} row",
+      picked_other: "{{name}} · {{count}} rows",
+      problem: {
+        tooLarge: "The file is larger than 1 MB.",
+        empty: "The file has no rows to import.",
+        missingColumns: "The header is missing: {{columns}}.",
+        unknownColumns: "The header has unknown columns: {{columns}}.",
+        tooManyRows: "The file has more than 5,000 rows.",
+        unreadable: "The file could not be read.",
+      },
+      cancel: "Cancel",
+      submit: "Import",
+      submitting: "Sending…",
+      failed: {
+        title: "The import was not sent",
+        description: "Check your connection and try again.",
+        retry: "Try again",
+      },
+    },
+  },
   alerts: {
     summary_one: "{{count}} alert · price alerts",
     summary_other: "{{count}} alerts · price alerts",
@@ -2173,6 +2204,37 @@ const es: Messages<typeof en> = {
       title: "Sin resultados",
       description: 'Ningún escenario coincide con "{{query}}".',
       clear: "Borrar la búsqueda",
+    },
+  },
+  importCsv: {
+    title: "Importar transacciones",
+    choose: {
+      intro:
+        "Subí un CSV con una transacción por fila. Los precios van en la moneda base del portafolio.",
+      columns:
+        "Columnas: symbol, type, quantity, price y executedAt, más fees si querés. Hasta 5.000 filas y 1 MB.",
+      dropzone: "Soltá un archivo CSV acá, o",
+      browse: "elegí un archivo",
+      change: "Elegir otro archivo",
+      template: "Descargar la plantilla",
+      picked_one: "{{name}} · {{count}} fila",
+      picked_other: "{{name}} · {{count}} filas",
+      problem: {
+        tooLarge: "El archivo pesa más de 1 MB.",
+        empty: "El archivo no tiene filas para importar.",
+        missingColumns: "Faltan columnas en el encabezado: {{columns}}.",
+        unknownColumns: "El encabezado tiene columnas desconocidas: {{columns}}.",
+        tooManyRows: "El archivo tiene más de 5.000 filas.",
+        unreadable: "No se pudo leer el archivo.",
+      },
+      cancel: "Cancelar",
+      submit: "Importar",
+      submitting: "Enviando…",
+      failed: {
+        title: "No se envió la importación",
+        description: "Revisá tu conexión y probá de nuevo.",
+        retry: "Reintentar",
+      },
     },
   },
   alerts: {
