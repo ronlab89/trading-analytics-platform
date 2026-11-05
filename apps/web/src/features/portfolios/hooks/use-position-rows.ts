@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useAssets } from "@/hooks/use-assets";
 import type { PositionRow } from "../types";
+import { useLivePositionPrices } from "./use-live-position-prices";
 import { usePositions } from "./use-positions";
 
 const NO_ASSET_IDS: readonly string[] = [];
@@ -13,9 +14,9 @@ const NO_ASSET_IDS: readonly string[] = [];
  */
 export function usePositionRows(portfolioId: string | undefined) {
   const positions = usePositions(portfolioId);
-  const { assets, isPending: assetsPending } = useAssets(
-    positions.data?.map(({ assetId }) => assetId) ?? NO_ASSET_IDS,
-  );
+  const assetIds = positions.data?.map(({ assetId }) => assetId) ?? NO_ASSET_IDS;
+  const { assets, isPending: assetsPending } = useAssets(assetIds);
+  useLivePositionPrices(portfolioId, assetIds);
 
   const rows = useMemo(
     () =>
