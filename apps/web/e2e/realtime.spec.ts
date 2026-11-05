@@ -1,7 +1,7 @@
-import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { mockApi, signedInReply } from "./support/mock-api";
+import { mockRealtime, WS_URL } from "./support/mock-realtime";
 
-const WS_URL = "ws://localhost:7001/ws";
 const API = "http://localhost:7001/api/v1";
 
 const viewports = [
@@ -30,32 +30,6 @@ const portfolio = {
   createdAt: "2026-10-01T00:00:00.000Z",
   updatedAt: "2026-10-01T00:00:00.000Z",
 };
-
-interface RealtimeMock {
-  /** Every connection the app opened, oldest first. */
-  sockets: WebSocketRoute[];
-  /** What the app sent over any of them. */
-  received: { type?: string }[];
-}
-
-/**
- * Stands in for the server socket: it accepts the authentication of every connection, as a healthy
- * server does, and keeps the connections so a test can drop one.
- */
-async function mockRealtime(page: Page): Promise<RealtimeMock> {
-  const mock: RealtimeMock = { sockets: [], received: [] };
-  await page.routeWebSocket(WS_URL, (socket) => {
-    mock.sockets.push(socket);
-    socket.onMessage((raw) => {
-      const message = JSON.parse(String(raw)) as { type?: string };
-      mock.received.push(message);
-      if (message.type === "AUTHENTICATE") {
-        socket.send(JSON.stringify({ type: "ACK", request: "AUTHENTICATE" }));
-      }
-    });
-  });
-  return mock;
-}
 
 /** The Markets page with a signed-in user and an empty watchlist: enough to see the connection. */
 async function openMarkets(page: Page) {
