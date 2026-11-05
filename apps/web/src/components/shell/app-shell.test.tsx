@@ -49,6 +49,7 @@ function renderShell(
   service: SessionService = fakeSessionService(),
   client: TradingClient = clientListing([portfolio("p1", "Crecimiento")]),
   path = "/",
+  realtime = createFakeRealtimeClient("connected"),
 ) {
   const router = createMemoryRouter(
     [
@@ -70,7 +71,7 @@ function renderShell(
   return render(
     <SessionWrapper>
       <ClientWrapper>
-        <RealtimeClientProvider client={createFakeRealtimeClient("connected")}>
+        <RealtimeClientProvider client={realtime}>
           <RouterProvider router={router} />
           <Toaster />
         </RealtimeClientProvider>
@@ -105,6 +106,20 @@ describe("AppShell", () => {
     expect(screen.getByRole("main")).toContainElement(
       screen.getByRole("heading", { name: "Content" }),
     );
+  });
+
+  it("listens to the channel of the active portfolio, so its screens read it again when it changes", async () => {
+    const realtime = createFakeRealtimeClient("connected");
+    renderShell(
+      fakeSessionService(),
+      clientListing([portfolio("p1", "Crecimiento")]),
+      "/",
+      realtime,
+    );
+
+    await waitFor(() => {
+      expect(realtime.subscribedChannels()).toContain("portfolio:p1");
+    });
   });
 
   it("has no accessibility violations", async () => {

@@ -6,6 +6,7 @@ import { axe } from "vitest-axe";
 import "@/i18n";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
 import { PortfolioDetailPage } from "@/pages/portfolios/portfolio-detail-page";
+import { createFakeRealtimeClient } from "@/test/fake-realtime-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 
 const growth = {
@@ -74,8 +75,12 @@ function clientWith(answers: Answers) {
   return { client: { call } as TradingClient, call };
 }
 
-function renderPage(client: TradingClient, path = "/portfolios/p1") {
-  const Wrapper = tradingClientWrapper(client);
+function renderPage(
+  client: TradingClient,
+  path = "/portfolios/p1",
+  realtime = createFakeRealtimeClient(),
+) {
+  const Wrapper = tradingClientWrapper(client, undefined, realtime);
   return render(
     <Wrapper>
       <MemoryRouter initialEntries={[path]}>
@@ -102,6 +107,15 @@ describe("PortfolioDetailPage", () => {
       "href",
       "/portfolios",
     );
+  });
+
+  it("listens to the channel of the portfolio on screen, which may not be the active one", async () => {
+    const realtime = createFakeRealtimeClient("connected");
+    renderPage(clientWith(loaded).client, "/portfolios/p1", realtime);
+
+    await screen.findByRole("heading", { level: 1, name: "Growth" });
+
+    expect(realtime.subscribedChannels()).toContain("portfolio:p1");
   });
 
   it("states how many positions the portfolio holds", async () => {

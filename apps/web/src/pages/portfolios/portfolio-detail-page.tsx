@@ -16,6 +16,7 @@ import { PositionCardList } from "@/features/portfolios/components/position-card
 import { PositionsCardsSkeleton } from "@/features/portfolios/components/positions-cards-skeleton";
 import { PositionsTableSkeleton } from "@/features/portfolios/components/positions-table-skeleton";
 import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
+import { usePortfolioUpdates } from "@/features/portfolios/hooks/use-portfolio-updates";
 import { usePositionColumns } from "@/features/portfolios/hooks/use-position-columns";
 import { usePositionRows } from "@/features/portfolios/hooks/use-position-rows";
 import type { PositionRow } from "@/features/portfolios/types";
@@ -36,6 +37,8 @@ export function PortfolioDetailPage() {
   const { portfolioId } = useParams();
   const portfolio = usePortfolio(portfolioId);
   const positions = usePositionRows(portfolioId);
+  // This portfolio may not be the active one, which the shell already follows.
+  usePortfolioUpdates(portfolioId);
   const table = useDataTable({
     columns: usePositionColumns(),
     data: positions.rows ?? NO_POSITIONS,

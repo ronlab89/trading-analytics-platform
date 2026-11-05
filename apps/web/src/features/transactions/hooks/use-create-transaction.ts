@@ -7,11 +7,7 @@ import {
 import { useRef } from "react";
 import { findOperation } from "@/api/find-operation";
 import { useTradingClient } from "@/api/trading-client-provider";
-import { analyticsKeys } from "@/features/analytics/hooks/analytics-keys";
-import { overviewKeys } from "@/features/dashboard/hooks/use-overview";
-import { performanceKeys } from "@/features/dashboard/hooks/use-performance";
-import { portfolioKeys } from "@/hooks/use-portfolios";
-import { transactionKeys } from "./use-transactions";
+import { invalidatePortfolioData } from "@/features/portfolios/lib/invalidate-portfolio-data";
 
 const createTransactionOperation = findOperation(transactionOperations, "createTransaction");
 
@@ -44,11 +40,7 @@ export function useCreateTransaction(portfolioId: string) {
     },
     onSuccess: () => {
       attempt.current = null;
-      void queryClient.invalidateQueries({ queryKey: transactionKeys.portfolio(portfolioId) });
-      void queryClient.invalidateQueries({ queryKey: portfolioKeys.positions(portfolioId) });
-      void queryClient.invalidateQueries({ queryKey: overviewKeys.portfolio(portfolioId) });
-      void queryClient.invalidateQueries({ queryKey: performanceKeys.portfolio(portfolioId) });
-      void queryClient.invalidateQueries({ queryKey: analyticsKeys.portfolio(portfolioId) });
+      invalidatePortfolioData(queryClient, portfolioId);
     },
   });
 }

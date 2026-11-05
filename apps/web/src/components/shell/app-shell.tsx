@@ -5,6 +5,7 @@ import { userInitials } from "@/features/auth/lib/user-initials";
 import { useSavedMotion } from "@/features/settings/hooks/use-saved-motion";
 import { useSavedLanguage } from "@/features/settings/hooks/use-saved-language";
 import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
+import { usePortfolioUpdates } from "@/features/portfolios/hooks/use-portfolio-updates";
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useCurrentUser } from "@/hooks/use-session";
 import { portfolioInitials } from "@/lib/portfolio-initials";
@@ -24,6 +25,8 @@ export function AppShell() {
   useSavedLanguage();
   useSavedMotion();
   const portfolio = useActivePortfolio();
+  // Whatever view works on the active portfolio reads it again when the server says it changed.
+  usePortfolioUpdates(portfolio.active?.id);
   const portfolioOptions = portfolio.portfolios.map(({ id, name, baseCurrency }) => ({
     id,
     name,
