@@ -4,7 +4,7 @@ import { Avatar } from "@/components/avatar";
 import { exchangeLabel } from "@/lib/exchange-label";
 import { formatMoney } from "@/lib/format-number";
 import type { WatchlistRow } from "../types";
-import { PriceChangeBadge } from "./price-change-badge";
+import { LivePriceChange } from "./live-price-change";
 
 interface WatchlistCardListProps<TRow extends WatchlistRow> {
   rows: readonly TRow[];
@@ -56,7 +56,11 @@ export function WatchlistCardList<TRow extends WatchlistRow>({
               <span className="text-sm leading-5 font-medium text-(--color-text-default)">
                 {row.price === null ? "—" : formatMoney(row.price)}
               </span>
-              <PriceChangeBadge percent={row.changePercent} />
+              <LivePriceChange
+                assetId={row.assetId}
+                percent={row.changePercent}
+                price={row.price}
+              />
             </span>
             {renderAction(row)}
           </li>

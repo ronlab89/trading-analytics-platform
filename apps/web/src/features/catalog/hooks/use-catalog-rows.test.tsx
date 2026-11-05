@@ -1,6 +1,8 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { marketChannelName, type RealtimeEvent } from "@trading/contracts";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type CallInput } from "@/api/trading-client";
+import { createFakeRealtimeClient } from "@/test/fake-realtime-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { useCatalogRows } from "./use-catalog-rows";
 
@@ -40,7 +42,7 @@ interface Answers {
   prices?: (input?: CallInput) => Promise<unknown>;
 }
 
-function render(answers: Answers = {}, page = 1) {
+function render(answers: Answers = {}, page = 1, realtime = createFakeRealtimeClient("connected")) {
   const call = vi.fn<(operation: { operationId: string }, input?: CallInput) => Promise<unknown>>(
     (operation, input) => {
       switch (operation.operationId) {
@@ -67,10 +69,63 @@ function render(answers: Answers = {}, page = 1) {
   );
   const view = renderHook(({ page: current }) => useCatalogRows({ page: current, pageSize: 10 }), {
     initialProps: { page },
-    wrapper: tradingClientWrapper({ call }),
+    wrapper: tradingClientWrapper({ call }, undefined, realtime),
   });
-  return { ...view, call };
+  return { ...view, call, realtime };
 }
+function tick(assetId: string, amount: string, changePercent: number): RealtimeEvent {
+  return {
+    id: "e1",
+    type: "MARKET_PRICE_UPDATED",
+    channel: marketChannelName(assetId),
+    sequence: 1,
+    timestamp: "2026-11-05T14:30:00.000Z",
+    epoch: "epoch-1",
+    payload: {
+      assetId,
+      price: { amount, currency: "USD" },
+      previousPrice: { amount: "170.00", currency: "USD" },
+      change: { amount: "1.00", currency: "USD" },
+      changePercent,
+      tickChange: { amount: "0.10", currency: "USD" },
+    },
+  };
+}
+
+describe("useCatalogRows live prices", () => {
+  it("updates the row of an asset on the page with each tick, and no other row", async () => {
+    const { result, realtime } = render();
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+
+    act(() => {
+      realtime.emit(tick("a1", "181.20", 2.6));
+    });
+
+    // The query cache tells the components on the next tick of the event loop.
+    await waitFor(() => {
+      expect(result.current.rows?.[0]).toMatchObject({
+        assetId: "a1",
+        price: { amount: "181.20", currency: "USD" },
+        changePercent: 2.6,
+      });
+    });
+    expect(result.current.rows?.[1]).toMatchObject({
+      assetId: "a2",
+      price: { amount: "480.15", currency: "USD" },
+    });
+  });
+
+  it("listens to the assets of the page on screen only", async () => {
+    const { result, realtime } = render();
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+
+    expect(realtime.subscribedChannels()).toEqual(["market:a1", "market:a2"]);
+  });
+});
 
 describe("useCatalogRows", () => {
   it("joins each asset with its price and whether the user watches it", async () => {

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useAssets } from "@/hooks/use-assets";
 import { toWatchlistRow } from "../lib/watchlist-row";
+import { useLiveMarketPrices } from "./use-live-market-prices";
 import { useMarketPrices } from "./use-market-prices";
 import { useWatchlist } from "./use-watchlist";
 
@@ -10,7 +11,8 @@ const NO_ASSET_IDS: readonly string[] = [];
  * The rows of the watchlist table: each watched asset with its symbol, name, type, exchange, price
  * and today's change. The rows wait for the assets and the prices so none flashes an unknown name
  * or a missing price; once they settle, an asset or a price that failed to load leaves null fields
- * instead of hiding the row. Only a failed watchlist request is an error.
+ * instead of hiding the row. Only a failed watchlist request is an error. The prices are live: each
+ * tick of a watched asset updates its row.
  */
 export function useWatchlistRows() {
   const watchlist = useWatchlist();
@@ -20,6 +22,7 @@ export function useWatchlistRows() {
   );
   const { assets, isPending: assetsPending } = useAssets(assetIds);
   const prices = useMarketPrices(assetIds);
+  useLiveMarketPrices(assetIds);
 
   const rows = useMemo(
     () =>
