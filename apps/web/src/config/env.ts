@@ -3,6 +3,8 @@ import { z } from "zod";
 const envSchema = z.object({
   VITE_APP_MODE: z.enum(["real", "demo"]).default("real"),
   VITE_API_BASE_URL: z.url().default("http://localhost:7001"),
+  /** The server WebSocket: same port as the API, on the fixed path `/ws` (docs/14 §14, ADR-007). */
+  VITE_WS_URL: z.url({ protocol: /^wss?$/ }).default("ws://localhost:7001/ws"),
 });
 
 export type Env = z.infer<typeof envSchema>;
