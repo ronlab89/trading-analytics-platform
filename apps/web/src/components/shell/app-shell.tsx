@@ -2,6 +2,7 @@ import { Outlet, useMatch, useNavigate } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { userInitials } from "@/features/auth/lib/user-initials";
+import { useNotificationUpdates } from "@/features/notifications/hooks/use-notification-updates";
 import { useUnreadNotifications } from "@/features/notifications/hooks/use-unread-notifications";
 import { useSavedMotion } from "@/features/settings/hooks/use-saved-motion";
 import { useSavedLanguage } from "@/features/settings/hooks/use-saved-language";
@@ -29,6 +30,8 @@ export function AppShell() {
   // Whatever view works on the active portfolio reads it again when the server says it changed.
   usePortfolioUpdates(portfolio.active?.id);
   const notifications = useUnreadNotifications();
+  // A new notification moves the count and, when it warns or fails, tells the user.
+  useNotificationUpdates();
   const portfolioOptions = portfolio.portfolios.map(({ id, name, baseCurrency }) => ({
     id,
     name,
