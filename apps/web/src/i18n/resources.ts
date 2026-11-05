@@ -875,6 +875,30 @@ const en = {
     },
     condition: { ABOVE: "Above", BELOW: "Below" },
     status: { active: "Active", paused: "Paused" },
+    rowMenu: {
+      label: "Actions for {{name}}",
+      edit: "Edit",
+      pause: "Pause",
+      resume: "Resume",
+      delete: "Delete",
+    },
+    toggled: {
+      paused: "Alert paused",
+      resumed: "Alert resumed",
+      failed: "Could not change the alert",
+      failedDescription: "Check your connection and try again.",
+    },
+    delete: {
+      title: "Delete this alert?",
+      description: "It stops notifying you.",
+      confirm: "Delete",
+      deleting: "Deleting…",
+      done: "Alert deleted",
+      failed: {
+        title: "Could not delete the alert",
+        description: "Check your connection and try again.",
+      },
+    },
     form: {
       titleCreate: "Create alert",
       titleEdit: "Edit alert",
@@ -2166,6 +2190,30 @@ const es: Messages<typeof en> = {
     },
     condition: { ABOVE: "Por encima", BELOW: "Por debajo" },
     status: { active: "Activa", paused: "Pausada" },
+    rowMenu: {
+      label: "Acciones de {{name}}",
+      edit: "Editar",
+      pause: "Pausar",
+      resume: "Reanudar",
+      delete: "Eliminar",
+    },
+    toggled: {
+      paused: "Alerta pausada",
+      resumed: "Alerta reanudada",
+      failed: "No se pudo cambiar la alerta",
+      failedDescription: "Revisa tu conexión e inténtalo de nuevo.",
+    },
+    delete: {
+      title: "¿Eliminar esta alerta?",
+      description: "Dejará de avisarte.",
+      confirm: "Eliminar",
+      deleting: "Eliminando…",
+      done: "Alerta eliminada",
+      failed: {
+        title: "No se pudo eliminar la alerta",
+        description: "Revisa tu conexión e inténtalo de nuevo.",
+      },
+    },
     form: {
       titleCreate: "Crear alerta",
       titleEdit: "Editar alerta",
