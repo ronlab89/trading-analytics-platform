@@ -1,12 +1,30 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render as baseRender, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { TICK_FLASH_MS } from "@/hooks/use-tick-flash";
+import { RealtimeClientProvider } from "@/realtime/realtime-client-provider";
 import { useMotionStore } from "@/stores/motion-store";
+import { createFakeRealtimeClient, type FakeRealtimeClient } from "@/test/fake-realtime-client";
 import { LivePriceChange } from "./live-price-change";
 import { PriceChangeBadge } from "./price-change-badge";
 
 const usd = (amount: string) => ({ amount, currency: "USD" });
+
+function render(
+  ui: ReactElement,
+  realtime: FakeRealtimeClient = createFakeRealtimeClient("connected"),
+) {
+  const view = baseRender(<RealtimeClientProvider client={realtime}>{ui}</RealtimeClientProvider>);
+  return {
+    ...view,
+    // A rerender keeps the same provider, as the app does between two ticks.
+    rerender: (next: ReactElement) => {
+      view.rerender(<RealtimeClientProvider client={realtime}>{next}</RealtimeClientProvider>);
+    },
+    realtime,
+  };
+}
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -85,5 +103,48 @@ describe("LivePriceChange", () => {
     render(<LivePriceChange assetId="a1" percent={null} price={null} />);
 
     expect(screen.getByText("—")).toBeInTheDocument();
+  });
+});
+
+describe("LivePriceChange while the connection is lost", () => {
+  it.each(["reconnecting", "failed"] as const)(
+    "says the price is paused, with a clock, while the state is %s",
+    (state) => {
+      render(
+        <LivePriceChange assetId="a1" percent={2.1} price={usd("180.70")} />,
+        createFakeRealtimeClient(state),
+      );
+
+      const badge = screen.getByText("Paused");
+      expect(badge.querySelector("svg")).not.toBeNull();
+      expect(screen.queryByText("+2.10%")).not.toBeInTheDocument();
+    },
+  );
+
+  it.each(["connected", "connecting", "disconnected"] as const)(
+    "keeps the change while the state is %s",
+    (state) => {
+      render(
+        <LivePriceChange assetId="a1" percent={2.1} price={usd("180.70")} />,
+        createFakeRealtimeClient(state),
+      );
+
+      expect(screen.getByText("+2.10%")).toBeInTheDocument();
+      expect(screen.queryByText("Paused")).not.toBeInTheDocument();
+    },
+  );
+
+  it("goes back to the change when the connection returns", () => {
+    const { realtime } = render(
+      <LivePriceChange assetId="a1" percent={2.1} price={usd("180.70")} />,
+      createFakeRealtimeClient("reconnecting"),
+    );
+    expect(screen.getByText("Paused")).toBeInTheDocument();
+
+    act(() => {
+      realtime.setState("connected");
+    });
+
+    expect(screen.getByText("+2.10%")).toBeInTheDocument();
   });
 });

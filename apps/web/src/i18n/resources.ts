@@ -915,6 +915,7 @@ const en = {
     },
     watchlistTable: "Watchlist",
     unknownAsset: "Unknown asset",
+    pricesPaused: "Paused",
     remove: "Remove {{asset}} from the watchlist",
     columns: {
       asset: "Asset",
@@ -2130,6 +2131,7 @@ const es: Messages<typeof en> = {
     },
     watchlistTable: "Watchlist",
     unknownAsset: "Activo desconocido",
+    pricesPaused: "En pausa",
     remove: "Quitar {{asset}} de la watchlist",
     columns: {
       asset: "Activo",

@@ -1,9 +1,20 @@
-import { render, screen, within } from "@testing-library/react";
+import { render as baseRender, screen, within } from "@testing-library/react";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import "@/i18n";
+import { RealtimeClientProvider } from "@/realtime/realtime-client-provider";
+import { createFakeRealtimeClient, type FakeRealtimeClient } from "@/test/fake-realtime-client";
 import type { WatchlistRow } from "../types";
 import { WatchlistView } from "./watchlist-view";
+
+/** The price cells read the connection, so every view renders inside a realtime client. */
+function render(
+  ui: ReactElement,
+  realtime: FakeRealtimeClient = createFakeRealtimeClient("connected"),
+) {
+  return baseRender(<RealtimeClientProvider client={realtime}>{ui}</RealtimeClientProvider>);
+}
 
 function row(
   assetId: string,
@@ -176,5 +187,20 @@ describe("WatchlistView exchange names", () => {
     render(<WatchlistView mobile onRemove={vi.fn()} rows={[voo]} />);
 
     expect(screen.getByText("ETF · NYSE Arca")).toBeVisible();
+  });
+});
+
+describe("WatchlistView while the connection is lost", () => {
+  it.each([
+    ["the table", false],
+    ["the phone cards", true],
+  ])("says the prices are paused instead of the change in %s", (_name, mobile) => {
+    render(
+      <WatchlistView mobile={mobile} onRemove={vi.fn()} rows={rows} />,
+      createFakeRealtimeClient("reconnecting"),
+    );
+
+    expect(screen.getAllByText("Paused")).toHaveLength(rows.length);
+    expect(screen.queryByText(/%$/)).not.toBeInTheDocument();
   });
 });
