@@ -31,7 +31,7 @@ function setup() {
       },
       { wrapper },
     );
-  return { client, fetchData, render };
+  return { client, fetchData, render, queryClient, wrapper };
 }
 
 async function tick(ms: number) {
@@ -146,5 +146,65 @@ describe("useRealtimeFallback", () => {
 
     expect(fetchData).toHaveBeenCalledTimes(1);
     expect(queryClient.getQueryData(["hidden"])).toBe("old");
+  });
+});
+
+describe("useRealtimeFallback resync", () => {
+  it.each([
+    { reason: "gap", channel: "market:a1" },
+    { reason: "epoch", channel: "market:a1" },
+    { reason: "reconnect", channel: null },
+  ] as const)("reads the visible data once on a $reason signal", async (signal) => {
+    const { client, fetchData, render } = setup();
+    render();
+    await tick(0);
+    expect(fetchData).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      client.resync(signal);
+    });
+    await tick(0);
+
+    expect(fetchData).toHaveBeenCalledTimes(2);
+    await tick(POLLING_INTERVAL_MS * 3);
+    expect(fetchData).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not read data that no screen is showing", async () => {
+    const { client, fetchData, queryClient, wrapper } = setup();
+    // The screen that read the data is gone, and only the hook stays mounted.
+    const { unmount } = renderHook(() => useQuery({ queryKey: ["visible"], queryFn: fetchData }), {
+      wrapper,
+    });
+    await tick(0);
+    unmount();
+    renderHook(
+      () => {
+        useRealtimeFallback();
+      },
+      { wrapper },
+    );
+    expect(queryClient.getQueryState(["visible"])).toBeDefined();
+
+    act(() => {
+      client.resync({ reason: "reconnect", channel: null });
+    });
+    await tick(0);
+
+    expect(fetchData).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops listening when the screen unmounts", async () => {
+    const { client, fetchData, render } = setup();
+    const { unmount } = render();
+    await tick(0);
+
+    unmount();
+    act(() => {
+      client.resync({ reason: "reconnect", channel: null });
+    });
+    await tick(0);
+
+    expect(fetchData).toHaveBeenCalledTimes(1);
   });
 });
