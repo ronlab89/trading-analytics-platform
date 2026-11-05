@@ -2,6 +2,7 @@ import { Outlet, useMatch, useNavigate } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { userInitials } from "@/features/auth/lib/user-initials";
+import { useUnreadNotifications } from "@/features/notifications/hooks/use-unread-notifications";
 import { useSavedMotion } from "@/features/settings/hooks/use-saved-motion";
 import { useSavedLanguage } from "@/features/settings/hooks/use-saved-language";
 import { usePortfolio } from "@/features/portfolios/hooks/use-portfolio";
@@ -27,6 +28,7 @@ export function AppShell() {
   const portfolio = useActivePortfolio();
   // Whatever view works on the active portfolio reads it again when the server says it changed.
   usePortfolioUpdates(portfolio.active?.id);
+  const notifications = useUnreadNotifications();
   const portfolioOptions = portfolio.portfolios.map(({ id, name, baseCurrency }) => ({
     id,
     name,
@@ -69,14 +71,14 @@ export function AppShell() {
             portfoliosFailed={portfolio.isError}
             portfoliosLoading={portfolio.isPending}
             selectedPortfolioId={portfolio.active?.id}
-            unread={{ kind: "count", count: 3 }}
+            unread={notifications.unread}
             userInitials={initials}
             userName={userName}
           />
           <main className="relative min-h-0 flex-1 overflow-y-auto p-4 tablet:pt-2 tablet:pr-4 tablet:pb-4 tablet:pl-2">
             <Outlet />
           </main>
-          <ConnectedStatusBar alertCount={1} calculationTime="14:32:07" />
+          <ConnectedStatusBar alertCount={notifications.alerts} calculationTime="14:32:07" />
           <BottomTabBar />
         </div>
       </div>
