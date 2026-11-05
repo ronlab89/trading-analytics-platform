@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCancelJob, canRetryJob, isJobFinished } from "./job-state";
+import { canCancelJob, canRetryJob, isJobFinished, jobPhase } from "./job-state";
 
 describe("isJobFinished", () => {
   it("is false while the job waits or runs", () => {
@@ -55,5 +55,19 @@ describe("canRetryJob", () => {
     expect(canRetryJob({ status: "QUEUED", failureReason: null })).toBe(false);
     expect(canRetryJob({ status: "PROCESSING", failureReason: null })).toBe(false);
     expect(canRetryJob({ status: "COMPLETED", failureReason: null })).toBe(false);
+  });
+});
+
+describe("jobPhase", () => {
+  it("names a running job by its stage", () => {
+    expect(jobPhase({ status: "PROCESSING", stage: "VALIDATING" })).toBe("VALIDATING");
+    expect(jobPhase({ status: "PROCESSING", stage: "APPLYING" })).toBe("APPLYING");
+  });
+
+  it("names any other job by its status", () => {
+    expect(jobPhase({ status: "QUEUED", stage: "QUEUED" })).toBe("QUEUED");
+    for (const status of ["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"] as const) {
+      expect(jobPhase({ status, stage: "APPLYING" })).toBe(status);
+    }
   });
 });

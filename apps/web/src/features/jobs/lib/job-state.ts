@@ -29,3 +29,15 @@ export function canRetryJob(job: Pick<JobState, "status" | "failureReason">): bo
       job.failureReason === "APPLY_REJECTED")
   );
 }
+
+export type JobPhase =
+  "QUEUED" | "VALIDATING" | "APPLYING" | "COMPLETED" | "FAILED" | "CANCELLED" | "TIMED_OUT";
+
+/**
+ * What the user is told the job is doing: a job that is running is named by its stage (validating
+ * the file, applying its rows), any other by its status.
+ */
+export function jobPhase(job: Pick<JobResponse, "status" | "stage">): JobPhase {
+  if (job.status === "PROCESSING") return job.stage === "APPLYING" ? "APPLYING" : "VALIDATING";
+  return job.status;
+}

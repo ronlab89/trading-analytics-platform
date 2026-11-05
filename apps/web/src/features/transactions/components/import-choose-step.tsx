@@ -1,7 +1,7 @@
 import type { JobResponse } from "@trading/contracts";
 import type { TFunction } from "i18next";
 import { FileText } from "lucide-react";
-import { useId, useState, type DragEvent } from "react";
+import { useEffect, useEffectEvent, useId, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { rejectionReason } from "@/api/rejection-reason";
 import { Alert } from "@/components/ui/alert";
@@ -45,6 +45,8 @@ interface ImportChooseStepProps {
   portfolioId: string;
   /** Called with the job the API queued, which is where the import goes on. */
   onQueued: (job: JobResponse) => void;
+  /** Told whenever the file is being sent, so the dialog can refuse to close meanwhile. */
+  onBusyChange?: ((busy: boolean) => void) | undefined;
 }
 
 /**
@@ -53,7 +55,7 @@ interface ImportChooseStepProps {
  * applies, so a wrong file is told before anything travels; the contents of each row are the job's
  * to check. Sending locks the step: neither the file nor "Cancel" can change until the API answers.
  */
-export function ImportChooseStep({ portfolioId, onQueued }: ImportChooseStepProps) {
+export function ImportChooseStep({ portfolioId, onQueued, onBusyChange }: ImportChooseStepProps) {
   const { t } = useTranslation();
   const inputId = useId();
   const importCsv = useImportCsv(portfolioId);
@@ -61,6 +63,10 @@ export function ImportChooseStep({ portfolioId, onQueued }: ImportChooseStepProp
   const [dragging, setDragging] = useState(false);
 
   const pending = importCsv.isPending;
+  const reportBusy = useEffectEvent((busy: boolean) => onBusyChange?.(busy));
+  useEffect(() => {
+    reportBusy(pending);
+  }, [pending]);
   const rejection = rejectionReason(importCsv.error);
   const ready = selection !== null && "check" in selection && selection.check.ok;
 
