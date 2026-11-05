@@ -6,7 +6,7 @@ import { Badge } from "@/components/badge";
 import type { DataTableFeatures } from "@/components/data-table/data-table-features";
 import { exchangeLabel } from "@/lib/exchange-label";
 import { formatMoney } from "@/lib/format-number";
-import { PriceChangeBadge } from "../components/price-change-badge";
+import { LivePriceChange } from "../components/live-price-change";
 import type { WatchlistRow } from "../types";
 
 type ColumnKey = "asset" | "type" | "exchange" | "price" | "change";
@@ -91,7 +91,13 @@ export function useAssetColumns<TRow extends WatchlistRow>(renderAction: (row: T
         enableSorting: false,
         enableGlobalFilter: false,
         meta: { align: "end" },
-        cell: ({ getValue }) => <PriceChangeBadge percent={getValue()} />,
+        cell: ({ row }) => (
+          <LivePriceChange
+            assetId={row.original.assetId}
+            percent={row.original.changePercent}
+            price={row.original.price}
+          />
+        ),
       }),
       column.display({
         id: "actions",
