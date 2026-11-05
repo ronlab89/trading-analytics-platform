@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import "@/i18n";
 import type { TradingClient } from "@/api/trading-client";
 import { createQueryClient } from "@/lib/query-client";
+import { RealtimeClientProvider } from "@/realtime/realtime-client-provider";
 import { useSessionStore } from "@/stores/session-store";
+import { createFakeRealtimeClient } from "@/test/fake-realtime-client";
 import { fakeSessionService, sessionWrapper } from "@/test/session-wrapper";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { routes } from "./router";
@@ -23,7 +25,9 @@ function renderAt(path: string) {
   return render(
     <SessionWrapper>
       <ClientWrapper>
-        <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
+        <RealtimeClientProvider client={createFakeRealtimeClient("connected")}>
+          <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
+        </RealtimeClientProvider>
       </ClientWrapper>
     </SessionWrapper>,
   );

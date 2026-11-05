@@ -32,3 +32,10 @@ export const useSessionStore = create<SessionState>((set) => ({
 export function getAccessToken(): string | undefined {
   return useSessionStore.getState().accessToken;
 }
+
+/** Calls `onChange` each time the access token is renewed or removed; returns the way to stop. */
+export function watchAccessToken(onChange: () => void): () => void {
+  return useSessionStore.subscribe((state, previous) => {
+    if (state.accessToken !== previous.accessToken) onChange();
+  });
+}

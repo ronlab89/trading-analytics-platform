@@ -11,14 +11,14 @@ import { portfolioInitials } from "@/lib/portfolio-initials";
 import { ActivityBar } from "./activity-bar";
 import { PROFILE_PATH } from "./destinations";
 import { BottomTabBar } from "./bottom-tab-bar";
-import { StatusBar } from "./status-bar";
+import { ConnectedStatusBar } from "./connected-status-bar";
 import { TopBar } from "./top-bar";
 
 /**
  * The frame of every view: floating panels (activity bar, status bar) with 8 px around them
  * and between them, and the routed view scrolling in the middle, as in the Figma layout. The user
- * and the portfolios are the real ones; the status values are fixed samples until the real-time
- * connection (FE3) provides the real ones.
+ * and the portfolios are the real ones, and so is the connection in the status bar; the alert count
+ * and the time of the last calculation are fixed samples until their own features provide them.
  */
 export function AppShell() {
   useSavedLanguage();
@@ -73,12 +73,7 @@ export function AppShell() {
           <main className="relative min-h-0 flex-1 overflow-y-auto p-4 tablet:pt-2 tablet:pr-4 tablet:pb-4 tablet:pl-2">
             <Outlet />
           </main>
-          <StatusBar
-            alertCount={1}
-            calculation={{ kind: "upToDate", time: "14:32:07" }}
-            connection="live"
-            lastSync={{ kind: "syncedAgo", seconds: 3 }}
-          />
+          <ConnectedStatusBar alertCount={1} calculationTime="14:32:07" />
           <BottomTabBar />
         </div>
       </div>

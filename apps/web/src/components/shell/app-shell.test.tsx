@@ -7,9 +7,11 @@ import "@/i18n";
 import { ApiError, type TradingClient } from "@/api/trading-client";
 import { Toaster } from "@/components/ui/sonner";
 import { createQueryClient } from "@/lib/query-client";
+import { RealtimeClientProvider } from "@/realtime/realtime-client-provider";
 import type { SessionService } from "@/services/session/session-service";
 import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
 import { useSessionStore } from "@/stores/session-store";
+import { createFakeRealtimeClient } from "@/test/fake-realtime-client";
 import { fakeSessionService, sessionWrapper } from "@/test/session-wrapper";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { AppShell } from "./app-shell";
@@ -68,8 +70,10 @@ function renderShell(
   return render(
     <SessionWrapper>
       <ClientWrapper>
-        <RouterProvider router={router} />
-        <Toaster />
+        <RealtimeClientProvider client={createFakeRealtimeClient("connected")}>
+          <RouterProvider router={router} />
+          <Toaster />
+        </RealtimeClientProvider>
       </ClientWrapper>
     </SessionWrapper>,
   );

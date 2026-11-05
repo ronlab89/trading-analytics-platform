@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import type { CallInput, TradingClient } from "@/api/trading-client";
+import { RealtimeClientProvider } from "@/realtime/realtime-client-provider";
+import { createFakeRealtimeClient, type FakeRealtimeClient } from "@/test/fake-realtime-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { MarketsPage } from "./markets-page";
 
@@ -48,16 +50,19 @@ function clientWith(assetIds: string[], catalogTotal = 24) {
 
 function renderPage(
   assetIds: string[],
-  { catalogTotal, url = "/markets" } = {} as {
+  { catalogTotal, url = "/markets", realtime = createFakeRealtimeClient("connected") } = {} as {
     catalogTotal?: number;
     url?: string;
+    realtime?: FakeRealtimeClient;
   },
 ) {
   const Wrapper = tradingClientWrapper(clientWith(assetIds, catalogTotal));
   return render(
-    <MemoryRouter initialEntries={[url]}>
-      <MarketsPage />
-    </MemoryRouter>,
+    <RealtimeClientProvider client={realtime}>
+      <MemoryRouter initialEntries={[url]}>
+        <MarketsPage />
+      </MemoryRouter>
+    </RealtimeClientProvider>,
     { wrapper: Wrapper },
   );
 }
@@ -76,6 +81,37 @@ function mockViewport(mobile: boolean) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("MarketsPage connection alert", () => {
+  it("says nothing while the connection is up", async () => {
+    mockViewport(false);
+    renderPage(["a1"]);
+
+    expect(await screen.findByText("1 asset on your watchlist · simulated prices")).toBeVisible();
+    expect(screen.queryByText("Offline: prices are paused")).not.toBeInTheDocument();
+  });
+
+  it.each(["", "?tab=all"])("warns that prices are paused on both tabs (%s)", async (query) => {
+    mockViewport(false);
+    renderPage(["a1"], {
+      url: `/markets${query}`,
+      realtime: createFakeRealtimeClient("reconnecting"),
+    });
+
+    expect(await screen.findByText("Offline: prices are paused")).toBeVisible();
+  });
+
+  it("offers a retry when the connection failed, and on a phone too", async () => {
+    const user = userEvent.setup();
+    mockViewport(true);
+    const realtime = createFakeRealtimeClient("failed");
+    renderPage(["a1"], { realtime });
+
+    await user.click(await screen.findByRole("button", { name: "Retry" }));
+
+    expect(realtime.calls.retry).toBe(1);
+  });
 });
 
 describe("MarketsPage", () => {
