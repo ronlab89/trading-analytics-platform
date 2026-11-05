@@ -95,9 +95,15 @@ export function createHttpTradingClient(options: HttpTradingClientOptions): Trad
     operation: ApiOperation,
     input: CallInput,
   ): Promise<RawResponse> {
+    // An operation that declares another media type (a CSV upload) takes its string body as it is.
+    const rawBody =
+      operation.bodyContentType !== undefined && typeof input.body === "string"
+        ? input.body
+        : undefined;
     const headers: Record<string, string> = { Accept: "application/json" };
     if (input.body !== undefined) {
-      headers["Content-Type"] = "application/json";
+      headers["Content-Type"] =
+        rawBody === undefined ? "application/json" : (operation.bodyContentType ?? "");
     }
     const token = operation.authenticated ? options.getAccessToken?.() : undefined;
     if (token !== undefined) {
@@ -119,7 +125,7 @@ export function createHttpTradingClient(options: HttpTradingClientOptions): Trad
       const response = await doFetch(url, {
         method: operation.method.toUpperCase(),
         headers,
-        ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
+        ...(input.body === undefined ? {} : { body: rawBody ?? JSON.stringify(input.body) }),
         signal: controller.signal,
         ...(usesSessionCookie(operation) ? { credentials: "include" as const } : {}),
       });
