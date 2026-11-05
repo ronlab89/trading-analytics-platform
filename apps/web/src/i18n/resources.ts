@@ -858,6 +858,38 @@ const en = {
       clear: "Clear the search",
     },
   },
+  alerts: {
+    summary_one: "{{count}} alert · price alerts",
+    summary_other: "{{count}} alerts · price alerts",
+    search: "Search alerts",
+    table: "Alerts",
+    loading: "Loading your alerts",
+    create: "Create alert",
+    columns: {
+      asset: "Asset",
+      condition: "Condition",
+      threshold: "Threshold",
+      status: "Status",
+      updated: "Updated",
+      actions: "Actions",
+    },
+    condition: { ABOVE: "Above", BELOW: "Below" },
+    status: { active: "Active", paused: "Paused" },
+    empty: {
+      title: "No alerts yet",
+      description: "Create a price alert to be told when an asset crosses a level.",
+    },
+    noResults: {
+      title: "No results",
+      description: 'No alert matches "{{query}}".',
+      clear: "Clear the search",
+    },
+    failed: {
+      title: "Could not load your alerts",
+      description: "There was a problem reaching the server. Try again.",
+      retry: "Try again",
+    },
+  },
   markets: {
     watchlistSummary_one: "{{count}} asset on your watchlist · simulated prices",
     watchlistSummary_other: "{{count}} assets on your watchlist · simulated prices",
@@ -874,7 +906,7 @@ const en = {
     catalogTable: "All assets",
     add: "Add {{asset}} to the watchlist",
     addFailed: "Could not add {{asset}} to your watchlist",
-    tabs: { watchlist: "Watchlist", all: "All assets" },
+    tabs: { watchlist: "Watchlist", all: "All assets", alerts: "Alerts" },
     watchlistSearch: "Search your watchlist",
     loading: "Loading your watchlist",
     noResults: {
@@ -2091,6 +2123,39 @@ const es: Messages<typeof en> = {
       clear: "Borrar la búsqueda",
     },
   },
+  alerts: {
+    summary_one: "{{count}} alerta · alertas de precio",
+    summary_other: "{{count}} alertas · alertas de precio",
+    search: "Buscar alertas",
+    table: "Alertas",
+    loading: "Cargando tus alertas",
+    create: "Crear alerta",
+    columns: {
+      asset: "Activo",
+      condition: "Condición",
+      threshold: "Umbral",
+      status: "Estado",
+      updated: "Actualizada",
+      actions: "Acciones",
+    },
+    condition: { ABOVE: "Por encima", BELOW: "Por debajo" },
+    status: { active: "Activa", paused: "Pausada" },
+    empty: {
+      title: "Aún no tienes alertas",
+      description:
+        "Crea una alerta de precio para que te avisemos cuando un activo cruce un nivel.",
+    },
+    noResults: {
+      title: "Sin resultados",
+      description: "Ninguna alerta coincide con «{{query}}».",
+      clear: "Limpiar la búsqueda",
+    },
+    failed: {
+      title: "No se pudieron cargar tus alertas",
+      description: "Hubo un problema al conectar con el servidor. Inténtalo de nuevo.",
+      retry: "Reintentar",
+    },
+  },
   markets: {
     watchlistSummary_one: "{{count}} activo en tu watchlist · precios simulados",
     watchlistSummary_other: "{{count}} activos en tu watchlist · precios simulados",
@@ -2107,7 +2172,7 @@ const es: Messages<typeof en> = {
     catalogTable: "Todos los activos",
     add: "Añadir {{asset}} a la watchlist",
     addFailed: "No se pudo añadir {{asset}} a tu watchlist",
-    tabs: { watchlist: "Watchlist", all: "Todos los activos" },
+    tabs: { watchlist: "Watchlist", all: "Todos los activos", alerts: "Alertas" },
     watchlistSearch: "Buscar en tu watchlist",
     loading: "Cargando tu watchlist",
     noResults: {

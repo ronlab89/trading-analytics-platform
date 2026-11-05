@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
+import { AlertsSection } from "@/features/alerts/components/alerts-section";
+import { AlertsSummary } from "@/features/alerts/components/alerts-summary";
 import { ConnectionAlert } from "@/components/connection-alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CatalogSection } from "@/features/catalog/components/catalog-section";
@@ -11,15 +13,16 @@ import { NO_CATALOG_FILTERS, type CatalogFilters } from "@/features/catalog/lib/
 import { useIsMobile } from "@/hooks/use-media-query";
 
 const TAB_PARAM = "tab";
-type MarketsTab = "watchlist" | "all";
+type MarketsTab = "watchlist" | "all" | "alerts";
+const TABS: readonly MarketsTab[] = ["watchlist", "all", "alerts"];
 
-/** The tab is in the address (`?tab=all`), so a link can open the catalog and Back leaves it. */
+/** The tab is in the address (`?tab=all`, `?tab=alerts`), so a link can open the catalog and Back leaves it. */
 function useMarketsTab(): [MarketsTab, (tab: MarketsTab) => void] {
   const [params, setParams] = useSearchParams();
-  const tab: MarketsTab = params.get(TAB_PARAM) === "all" ? "all" : "watchlist";
+  const tab: MarketsTab = TABS.find((name) => name === params.get(TAB_PARAM)) ?? "watchlist";
 
   const select = (next: MarketsTab) => {
-    setParams(next === "all" ? { [TAB_PARAM]: "all" } : {}, { replace: true });
+    setParams(next === "watchlist" ? {} : { [TAB_PARAM]: next }, { replace: true });
   };
 
   return [tab, select];
@@ -46,6 +49,9 @@ export function MarketsPage() {
       <TabsTrigger className={isMobile ? "flex-1" : undefined} value="all">
         {t("markets.tabs.all")}
       </TabsTrigger>
+      <TabsTrigger className={isMobile ? "flex-1" : undefined} value="alerts">
+        {t("markets.tabs.alerts")}
+      </TabsTrigger>
     </TabsList>
   );
 
@@ -53,7 +59,7 @@ export function MarketsPage() {
     <Tabs
       className="flex flex-col gap-4 desktop:gap-6"
       onValueChange={(value) => {
-        selectTab(value === "all" ? "all" : "watchlist");
+        selectTab(TABS.find((name) => name === value) ?? "watchlist");
       }}
       value={tab}
     >
@@ -68,7 +74,13 @@ export function MarketsPage() {
         <>
           <h1 className="sr-only">{t("nav.markets")}</h1>
           <div className="flex items-center justify-between gap-4">
-            {tab === "all" ? <CatalogSummary filters={catalogFilters} /> : <WatchlistSummary />}
+            {tab === "all" ? (
+              <CatalogSummary filters={catalogFilters} />
+            ) : tab === "alerts" ? (
+              <AlertsSummary />
+            ) : (
+              <WatchlistSummary />
+            )}
             {tabs}
           </div>
         </>
@@ -79,6 +91,9 @@ export function MarketsPage() {
       </TabsContent>
       <TabsContent value="all">
         <CatalogSection filters={catalogFilters} onFiltersChange={setCatalogFilters} />
+      </TabsContent>
+      <TabsContent value="alerts">
+        <AlertsSection />
       </TabsContent>
     </Tabs>
   );
