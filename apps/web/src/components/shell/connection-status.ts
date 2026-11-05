@@ -27,7 +27,7 @@ const CONNECTION: Record<TransportState, ConnectionState> = {
 const pad = (value: number) => String(value).padStart(2, "0");
 
 /** The local time of day as the status bar writes it, `14:31:55`. */
-function clockTime(epoch: number): string {
+export function clockTime(epoch: number): string {
   const date = new Date(epoch);
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }

@@ -1,19 +1,9 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { connectionToStatus, type ConnectionStatus } from "@/components/shell/connection-status";
 import { useConnectionState } from "@/realtime/realtime-client-provider";
+import { useLastDataAt } from "./use-last-data-at";
 
 const CLOCK_INTERVAL_MS = 1_000;
-
-/** When the data on screen last arrived: the newest answer any query has received, if any. */
-function useLastDataAt(): number | undefined {
-  const cache = useQueryClient().getQueryCache();
-  const newest = useSyncExternalStore(
-    (listener) => cache.subscribe(listener),
-    () => Math.max(0, ...cache.getAll().map((query) => query.state.dataUpdatedAt)),
-  );
-  return newest === 0 ? undefined : newest;
-}
 
 /**
  * What the status bar shows about the connection. The clock runs only while the connection is

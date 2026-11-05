@@ -1158,6 +1158,22 @@ const en = {
     },
     alerts_one: "{{count}} alert",
     alerts_other: "{{count}} alerts",
+    connectionAlert: {
+      retry: "Retry",
+      reconnecting: {
+        title: "Offline: prices are paused",
+        description:
+          "We show the last price received. They will update when the connection returns.",
+        descriptionAt:
+          "We show the last price received ({{time}}). They will update when the connection returns.",
+      },
+      failed: {
+        title: "We could not restore the connection",
+        description: "Prices are paused. Try again to reconnect.",
+        descriptionAt:
+          "Prices are paused at the last price received ({{time}}). Try again to reconnect.",
+      },
+    },
     breadcrumb: "Breadcrumb",
     portfolios: "Portfolios",
     selectPortfolio: "Select portfolio",
@@ -2359,6 +2375,21 @@ const es: Messages<typeof en> = {
     },
     alerts_one: "{{count}} alerta",
     alerts_other: "{{count}} alertas",
+    connectionAlert: {
+      retry: "Reintentar",
+      reconnecting: {
+        title: "Sin conexión: los precios están en pausa",
+        description: "Mostramos el último precio recibido. Se actualizarán al reconectar.",
+        descriptionAt:
+          "Mostramos el último precio recibido ({{time}}). Se actualizarán al reconectar.",
+      },
+      failed: {
+        title: "No pudimos restablecer la conexión",
+        description: "Los precios están en pausa. Inténtalo de nuevo para reconectar.",
+        descriptionAt:
+          "Los precios están en pausa en el último precio recibido ({{time}}). Inténtalo de nuevo para reconectar.",
+      },
+    },
     breadcrumb: "Ruta de navegación",
     portfolios: "Portafolios",
     selectPortfolio: "Seleccionar portafolio",
