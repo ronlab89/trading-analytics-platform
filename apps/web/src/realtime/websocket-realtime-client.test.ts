@@ -669,3 +669,152 @@ describe("token life", () => {
     expect(tokenWatchers.size).toBe(0);
   });
 });
+
+describe("order, gaps and epochs", () => {
+  function connected() {
+    const context = setup();
+    context.client.connect();
+    open(socketAt(context.sockets, 0));
+    const listener = vi.fn<(event: RealtimeEvent) => void>();
+    const onResync = vi.fn();
+    context.client.subscribe({ kind: "market", assetId: "a1" }, listener);
+    context.client.onResync(onResync);
+    return { ...context, listener, onResync, socket: socketAt(context.sockets, 0) };
+  }
+
+  it("applies events in order and discards a duplicate or an older one", () => {
+    const { socket, listener, onResync } = connected();
+
+    receive(socket, priceEvent("a1", 5));
+    receive(socket, priceEvent("a1", 6));
+    receive(socket, priceEvent("a1", 6));
+    receive(socket, priceEvent("a1", 4));
+    receive(socket, priceEvent("a1", 7));
+
+    expect(listener.mock.calls.map(([event]) => event.sequence)).toEqual([5, 6, 7]);
+    expect(onResync).not.toHaveBeenCalled();
+  });
+
+  it("asks to resynchronize that channel on a gap, and keeps applying from there", () => {
+    const { socket, listener, onResync } = connected();
+    receive(socket, priceEvent("a1", 101));
+    receive(socket, priceEvent("a1", 102));
+
+    receive(socket, priceEvent("a1", 105));
+    receive(socket, priceEvent("a1", 106));
+
+    expect(onResync).toHaveBeenCalledTimes(1);
+    expect(onResync).toHaveBeenCalledWith({ reason: "gap", channel: "market:a1" });
+    expect(listener).toHaveBeenCalledTimes(4);
+  });
+
+  it("keeps the order of each channel apart", () => {
+    const { client, socket, onResync } = connected();
+    const other = vi.fn();
+    client.subscribe({ kind: "market", assetId: "a2" }, other);
+
+    receive(socket, priceEvent("a1", 10));
+    receive(socket, priceEvent("a2", 3));
+    receive(socket, priceEvent("a2", 4));
+
+    expect(other).toHaveBeenCalledTimes(2);
+    expect(onResync).not.toHaveBeenCalled();
+  });
+
+  it("asks to resynchronize when the epoch changes, and counts from the new sequence", () => {
+    const { socket, listener, onResync } = connected();
+    receive(socket, priceEvent("a1", 500));
+
+    receive(socket, { ...priceEvent("a1", 1), epoch: "epoch-2" });
+    receive(socket, { ...priceEvent("a1", 2), epoch: "epoch-2" });
+
+    expect(onResync).toHaveBeenCalledTimes(1);
+    expect(onResync).toHaveBeenCalledWith({ reason: "epoch", channel: "market:a1" });
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
+
+  it("starts counting again when the channel is left and joined again", () => {
+    const { client, socket, onResync } = connected();
+    receive(socket, priceEvent("a1", 50));
+    const leave = client.subscribe({ kind: "market", assetId: "a3" }, vi.fn());
+    receive(socket, priceEvent("a3", 9));
+    leave();
+    client.subscribe({ kind: "market", assetId: "a3" }, vi.fn());
+
+    receive(socket, priceEvent("a3", 1));
+
+    expect(onResync).not.toHaveBeenCalled();
+  });
+
+  it("asks to resynchronize everything once the connection comes back, after subscribing again", () => {
+    vi.useFakeTimers();
+    const { sockets, onResync, socket } = connected();
+    receive(socket, priceEvent("a1", 10));
+    socket.handlers.onClose(1006);
+    vi.advanceTimersByTime(1_000);
+    onResync.mockImplementation(() => {
+      expect(socketAt(sockets, 1).sent.at(-1)).toEqual({ type: "SUBSCRIBE", channel: "market:a1" });
+    });
+
+    open(socketAt(sockets, 1));
+
+    expect(onResync).toHaveBeenCalledTimes(1);
+    expect(onResync).toHaveBeenCalledWith({ reason: "reconnect", channel: null });
+    vi.useRealTimers();
+  });
+
+  it("takes the first event after a reconnection as the new starting point, with no gap", () => {
+    vi.useFakeTimers();
+    const { sockets, onResync, socket, listener } = connected();
+    receive(socket, priceEvent("a1", 10));
+    socket.handlers.onClose(1006);
+    vi.advanceTimersByTime(1_000);
+    open(socketAt(sockets, 1));
+    onResync.mockClear();
+
+    receive(socketAt(sockets, 1), priceEvent("a1", 40));
+
+    expect(onResync).not.toHaveBeenCalled();
+    expect(listener).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("does not ask to resynchronize on the first connection, on a renewal or after an intentional close", () => {
+    const { client, sockets, onResync, socket } = connected();
+    receive(socket, { type: "ACK", request: "AUTHENTICATE" });
+    expect(onResync).not.toHaveBeenCalled();
+
+    client.disconnect();
+    client.connect();
+    open(socketAt(sockets, 1));
+
+    expect(onResync).not.toHaveBeenCalled();
+  });
+
+  it("asks to resynchronize after a manual retry that follows failing", () => {
+    const { client, sockets, onResync, socket } = connected();
+    socket.handlers.onClose(4008);
+
+    client.retry();
+    open(socketAt(sockets, 1));
+
+    expect(onResync).toHaveBeenCalledWith({ reason: "reconnect", channel: null });
+  });
+
+  it("stops telling a listener that left, and one that throws does not stop the others", () => {
+    const { client, socket, warn } = connected();
+    const leave = client.onResync(vi.fn());
+    leave();
+    const after = vi.fn();
+    client.onResync(() => {
+      throw new Error("boom");
+    });
+    client.onResync(after);
+
+    receive(socket, priceEvent("a1", 1));
+    receive(socket, priceEvent("a1", 9));
+
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("realtime.resync.listener.failed", expect.anything());
+  });
+});
