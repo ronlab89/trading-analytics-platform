@@ -76,8 +76,9 @@ function mockViewport(mobile: boolean) {
   );
 }
 
+// Not `unstubAllGlobals`: that would also drop the ResizeObserver stub `setup.ts` installs once.
 afterEach(() => {
-  vi.unstubAllGlobals();
+  vi.stubGlobal("matchMedia", undefined);
 });
 
 describe("AlertsSection", () => {

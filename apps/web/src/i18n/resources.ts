@@ -875,6 +875,32 @@ const en = {
     },
     condition: { ABOVE: "Above", BELOW: "Below" },
     status: { active: "Active", paused: "Paused" },
+    form: {
+      titleCreate: "Create alert",
+      titleEdit: "Edit alert",
+      asset: { label: "Asset", required: "Choose the asset to watch." },
+      condition: { label: "Condition" },
+      threshold: { label: "Threshold", invalid: "Enter a price greater than zero." },
+      enabled: { label: "Enabled", help: "A paused alert does not notify you." },
+      hint: {
+        armedABOVE: "Now {{price}}. It fires when the price goes above {{threshold}}.",
+        armedBELOW: "Now {{price}}. It fires when the price goes below {{threshold}}.",
+        alreadyABOVE:
+          "It is already above {{threshold}}, so it will fire the next time the price crosses it again.",
+        alreadyBELOW:
+          "It is already below {{threshold}}, so it will fire the next time the price crosses it again.",
+      },
+      cancel: "Cancel",
+      creating: "Creating…",
+      save: "Save changes",
+      saving: "Saving…",
+      saved: { created: "Alert created", updated: "Alert updated" },
+      failed: {
+        title: "Could not save the alert",
+        description: "Check your connection and try again.",
+        retry: "Try again",
+      },
+    },
     empty: {
       title: "No alerts yet",
       description: "Create a price alert to be told when an asset crosses a level.",
@@ -2140,6 +2166,32 @@ const es: Messages<typeof en> = {
     },
     condition: { ABOVE: "Por encima", BELOW: "Por debajo" },
     status: { active: "Activa", paused: "Pausada" },
+    form: {
+      titleCreate: "Crear alerta",
+      titleEdit: "Editar alerta",
+      asset: { label: "Activo", required: "Elige el activo a vigilar." },
+      condition: { label: "Condición" },
+      threshold: { label: "Umbral", invalid: "Ingresa un precio mayor que cero." },
+      enabled: { label: "Activa", help: "Una alerta en pausa no te avisa." },
+      hint: {
+        armedABOVE: "Ahora {{price}}. Se activa cuando el precio sube por encima de {{threshold}}.",
+        armedBELOW: "Ahora {{price}}. Se activa cuando el precio baja por debajo de {{threshold}}.",
+        alreadyABOVE:
+          "Ya está por encima de {{threshold}}, así que se activará la próxima vez que el precio vuelva a cruzarlo.",
+        alreadyBELOW:
+          "Ya está por debajo de {{threshold}}, así que se activará la próxima vez que el precio vuelva a cruzarlo.",
+      },
+      cancel: "Cancelar",
+      creating: "Creando…",
+      save: "Guardar cambios",
+      saving: "Guardando…",
+      saved: { created: "Alerta creada", updated: "Alerta actualizada" },
+      failed: {
+        title: "No se pudo guardar la alerta",
+        description: "Revisa tu conexión e inténtalo de nuevo.",
+        retry: "Reintentar",
+      },
+    },
     empty: {
       title: "Aún no tienes alertas",
       description:

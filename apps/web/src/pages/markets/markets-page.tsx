@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
+import { AlertFormDialog } from "@/features/alerts/components/alert-form-dialog";
 import { AlertsSection } from "@/features/alerts/components/alerts-section";
 import { AlertsSummary } from "@/features/alerts/components/alerts-summary";
 import { ConnectionAlert } from "@/components/connection-alert";
@@ -39,6 +40,7 @@ export function MarketsPage() {
   const isMobile = useIsMobile();
   const [tab, selectTab] = useMarketsTab();
   // The catalog filters live here, as the header line counts what they leave.
+  const [creatingAlert, setCreatingAlert] = useState(false);
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilters>(NO_CATALOG_FILTERS);
 
   const tabs = (
@@ -93,8 +95,13 @@ export function MarketsPage() {
         <CatalogSection filters={catalogFilters} onFiltersChange={setCatalogFilters} />
       </TabsContent>
       <TabsContent value="alerts">
-        <AlertsSection />
+        <AlertsSection
+          onCreate={() => {
+            setCreatingAlert(true);
+          }}
+        />
       </TabsContent>
+      <AlertFormDialog onOpenChange={setCreatingAlert} open={creatingAlert} />
     </Tabs>
   );
 }

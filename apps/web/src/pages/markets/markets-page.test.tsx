@@ -96,8 +96,9 @@ function mockViewport(mobile: boolean) {
   );
 }
 
+// Not `unstubAllGlobals`: that would also drop the ResizeObserver stub `setup.ts` installs once.
 afterEach(() => {
-  vi.unstubAllGlobals();
+  vi.stubGlobal("matchMedia", undefined);
 });
 
 describe("MarketsPage connection alert", () => {
@@ -190,6 +191,16 @@ describe("MarketsPage", () => {
     expect(await screen.findByText("1 alert · price alerts")).toBeVisible();
     await user.click(screen.getByRole("tab", { name: "Watchlist" }));
     expect(await screen.findByText("1 asset on your watchlist · simulated prices")).toBeVisible();
+  });
+
+  it("opens the create alert dialog from the alerts tab", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    renderPage(["a1"], { url: "/markets?tab=alerts" });
+
+    await user.click(await screen.findByRole("button", { name: "Create alert" }));
+
+    expect(await screen.findByRole("dialog", { name: "Create alert" })).toBeVisible();
   });
 
   it("falls back to the watchlist for an unknown tab in the address", async () => {
