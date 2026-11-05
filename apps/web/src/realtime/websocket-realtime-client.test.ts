@@ -1,5 +1,5 @@
 import { jobsChannelName, marketChannelName, type RealtimeEvent } from "@trading/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createWebSocketRealtimeClient,
   type CreateSocket,
@@ -18,7 +18,8 @@ interface FakeSocket {
   close: (code?: number) => void;
 }
 
-function setup(token: string | null = "access-token") {
+function setup(initialToken: string | null = "access-token") {
+  let token = initialToken;
   const sockets: FakeSocket[] = [];
   const createSocket: CreateSocket = (url, handlers) => {
     const socket: FakeSocket = {
@@ -42,8 +43,12 @@ function setup(token: string | null = "access-token") {
     getAccessToken: () => token ?? undefined,
     createSocket,
     logger: { warn },
+    random: () => 0,
   });
-  return { client, sockets, warn };
+  const endSession = () => {
+    token = null;
+  };
+  return { client, sockets, warn, endSession };
 }
 
 function socketAt(sockets: FakeSocket[], index: number): FakeSocket {
@@ -314,5 +319,105 @@ describe("disconnect", () => {
       { type: "AUTHENTICATE", accessToken: "access-token" },
       { type: "SUBSCRIBE", channel: "notifications" },
     ]);
+  });
+});
+
+describe("reconnection after an unexpected close", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is reconnecting at once and opens a new socket only after the delay", () => {
+    const { client, sockets } = setup();
+    client.connect();
+    open(socketAt(sockets, 0));
+
+    socketAt(sockets, 0).handlers.onClose(1006);
+
+    expect(client.getState()).toBe("reconnecting");
+    vi.advanceTimersByTime(999);
+    expect(sockets).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(sockets).toHaveLength(2);
+    expect(client.getState()).toBe("reconnecting");
+  });
+
+  it("authenticates again and asks once for each channel when the new connection is accepted", () => {
+    const { client, sockets } = setup();
+    client.connect();
+    open(socketAt(sockets, 0));
+    client.subscribe({ kind: "market", assetId: "a1" }, vi.fn());
+    client.subscribe({ kind: "market", assetId: "a1" }, vi.fn());
+    client.subscribe({ kind: "notifications" }, vi.fn());
+    socketAt(sockets, 0).handlers.onClose(1006);
+    vi.advanceTimersByTime(1_000);
+
+    open(socketAt(sockets, 1));
+
+    expect(client.getState()).toBe("connected");
+    expect(sockets[1]?.sent).toEqual([
+      { type: "AUTHENTICATE", accessToken: "access-token" },
+      { type: "SUBSCRIBE", channel: "market:a1" },
+      { type: "SUBSCRIBE", channel: "notifications" },
+    ]);
+  });
+
+  it("waits longer after each failed attempt and starts again from 1 s once it is connected", () => {
+    const { client, sockets } = setup();
+    client.connect();
+    socketAt(sockets, 0).handlers.onClose(1006);
+    vi.advanceTimersByTime(1_000);
+    socketAt(sockets, 1).handlers.onClose(1006);
+    vi.advanceTimersByTime(1_999);
+    expect(sockets).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(sockets).toHaveLength(3);
+
+    open(socketAt(sockets, 2));
+    socketAt(sockets, 2).handlers.onClose(1006);
+    vi.advanceTimersByTime(1_000);
+
+    expect(sockets).toHaveLength(4);
+  });
+
+  it("does not reconnect after a close on purpose, and cancels a reconnection that was waiting", () => {
+    const { client, sockets } = setup();
+    client.connect();
+    open(socketAt(sockets, 0));
+    socketAt(sockets, 0).handlers.onClose(1006);
+
+    client.disconnect();
+    vi.advanceTimersByTime(60_000);
+
+    expect(sockets).toHaveLength(1);
+    expect(client.getState()).toBe("disconnected");
+  });
+
+  it("gives up quietly when the session ended while it waited", () => {
+    const { client, sockets, endSession } = setup();
+    client.connect();
+    open(socketAt(sockets, 0));
+    socketAt(sockets, 0).handlers.onClose(1006);
+
+    endSession();
+    vi.advanceTimersByTime(1_000);
+
+    expect(sockets).toHaveLength(1);
+    expect(client.getState()).toBe("disconnected");
+  });
+
+  it("does not hear a socket it already left", () => {
+    const { client, sockets } = setup();
+    client.connect();
+    socketAt(sockets, 0).handlers.onClose(1006);
+    vi.advanceTimersByTime(1_000);
+
+    socketAt(sockets, 0).handlers.onClose(1006);
+    vi.advanceTimersByTime(60_000);
+
+    expect(sockets).toHaveLength(2);
   });
 });

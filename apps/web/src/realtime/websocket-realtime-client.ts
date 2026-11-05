@@ -11,6 +11,7 @@ import type {
   RealtimeListener,
   ResyncSignal,
 } from "./realtime-client";
+import { nextReconnectDelay } from "./reconnect-backoff";
 
 /** What the adapter needs of a socket, so a test can stand in for the browser one. */
 export interface RealtimeSocket {
@@ -56,6 +57,8 @@ interface WebSocketRealtimeClientOptions {
   getAccessToken: () => string | undefined;
   createSocket?: CreateSocket;
   logger?: Pick<Logger, "warn">;
+  /** Feeds the jitter of the reconnection delay; replaceable in tests. */
+  random?: () => number;
 }
 
 const NORMAL_CLOSURE = 1000;
@@ -63,17 +66,22 @@ const NORMAL_CLOSURE = 1000;
 /**
  * The `RealtimeClient` over the server WebSocket (ADR-007, docs/08). It authenticates in the first
  * message, asks for each channel once however many listeners it has, validates every event against
- * the contract and gives it to the listeners of its channel. Reconnection, token renewal and
- * resynchronization are added on top of this in the next steps.
+ * the contract and gives it to the listeners of its channel. When the connection is lost it opens a
+ * new one after a growing delay. Token renewal and resynchronization are added on top of this in
+ * the next steps.
  */
 export function createWebSocketRealtimeClient({
   url,
   getAccessToken,
   createSocket = createBrowserSocket,
   logger,
+  random,
 }: WebSocketRealtimeClientOptions): RealtimeClient {
   let state: ConnectionState = "disconnected";
   let socket: RealtimeSocket | undefined;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Failed attempts in a row since the last time the connection was authenticated. */
+  let failedAttempts = 0;
   const stateListeners = new Set<() => void>();
   const resyncListeners = new Set<(signal: ResyncSignal) => void>();
   const channelListeners = new Map<string, Set<RealtimeListener>>();
@@ -106,6 +114,7 @@ export function createWebSocketRealtimeClient({
     const reply = serverReplySchema.safeParse(message);
     if (reply.success) {
       if (reply.data.type === "ACK" && reply.data.request === "AUTHENTICATE") {
+        failedAttempts = 0;
         setState("connected");
         for (const name of channelListeners.keys()) send({ type: "SUBSCRIBE", channel: name });
       }
@@ -129,11 +138,27 @@ export function createWebSocketRealtimeClient({
     });
   }
 
+  function scheduleReconnect() {
+    failedAttempts += 1;
+    setState("reconnecting");
+    reconnectTimer = setTimeout(
+      () => {
+        reconnectTimer = undefined;
+        open();
+      },
+      nextReconnectDelay(failedAttempts, random),
+    );
+  }
+
   function open() {
     const token = getAccessToken();
-    if (token === undefined) return;
+    if (token === undefined) {
+      // The session ended while we waited: there is nothing to authenticate with.
+      setState("disconnected");
+      return;
+    }
 
-    setState("connecting");
+    if (state !== "reconnecting") setState("connecting");
     // Each socket gets its own handlers: what a socket we already left says is not listened to.
     const handlers: SocketHandlers = {
       onOpen() {
@@ -147,7 +172,7 @@ export function createWebSocketRealtimeClient({
       onClose() {
         if (socket !== current) return;
         socket = undefined;
-        setState("disconnected");
+        scheduleReconnect();
       },
     };
     const current = createSocket(url, handlers);
@@ -162,6 +187,9 @@ export function createWebSocketRealtimeClient({
     disconnect() {
       const closing = socket;
       socket = undefined;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+      failedAttempts = 0;
       closing?.close(NORMAL_CLOSURE);
       setState("disconnected");
     },
