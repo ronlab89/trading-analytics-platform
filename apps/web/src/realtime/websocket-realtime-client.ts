@@ -209,7 +209,9 @@ export function createWebSocketRealtimeClient({
       setState("disconnected");
     },
     retry() {
-      if (state === "failed") open();
+      if (state !== "failed") return;
+      failedAttempts = 0;
+      open();
     },
     subscribe(channel: RealtimeChannel, listener: RealtimeListener) {
       const name = channelName(channel);

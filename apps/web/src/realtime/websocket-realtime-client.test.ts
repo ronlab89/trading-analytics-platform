@@ -504,3 +504,58 @@ describe("close codes and giving up", () => {
     expect(client.getState()).toBe("reconnecting");
   });
 });
+
+describe("retry", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function failByLimit() {
+    const context = setup();
+    context.client.connect();
+    open(socketAt(context.sockets, 0));
+    socketAt(context.sockets, 0).handlers.onClose(4008);
+    return context;
+  }
+
+  it("opens a new connection from failed, asking again for what is subscribed", () => {
+    const { client, sockets } = failByLimit();
+    client.subscribe({ kind: "notifications" }, vi.fn());
+
+    client.retry();
+    open(socketAt(sockets, 1));
+
+    expect(sockets).toHaveLength(2);
+    expect(client.getState()).toBe("connected");
+    expect(sockets[1]?.sent.at(-1)).toEqual({ type: "SUBSCRIBE", channel: "notifications" });
+  });
+
+  it("starts counting attempts from zero, so one more lost socket does not fail it again", () => {
+    const { client, sockets } = failByLimit();
+    client.retry();
+
+    socketAt(sockets, 1).handlers.onClose(1006);
+
+    expect(client.getState()).toBe("reconnecting");
+  });
+
+  it("does nothing in any state other than failed", () => {
+    const { client, sockets } = setup();
+
+    client.retry();
+    expect(sockets).toHaveLength(0);
+
+    client.connect();
+    client.retry();
+    open(socketAt(sockets, 0));
+    client.retry();
+    expect(sockets).toHaveLength(1);
+
+    socketAt(sockets, 0).handlers.onClose(1006);
+    client.retry();
+    expect(sockets).toHaveLength(1);
+  });
+});
