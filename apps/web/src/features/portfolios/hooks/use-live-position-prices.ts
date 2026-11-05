@@ -1,8 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type { PositionResponse } from "@trading/contracts";
-import { useEffect, useEffectEvent } from "react";
 import { portfolioKeys } from "@/hooks/use-portfolios";
-import { useRealtimeClient } from "@/realtime/realtime-client-provider";
+import { useMarketTicks } from "@/hooks/use-market-ticks";
 import { applyPriceToPositions } from "../lib/apply-price-to-positions";
 
 /**
@@ -15,27 +14,17 @@ export function useLivePositionPrices(
   portfolioId: string | undefined,
   assetIds: readonly string[],
 ): void {
-  const client = useRealtimeClient();
   const queryClient = useQueryClient();
-  const unique = [...new Set(assetIds)];
-  const key = `${portfolioId ?? ""}|${unique.join(",")}`;
-  const subscribeAll = useEffectEvent(() => {
-    if (portfolioId === undefined || portfolioId === "") return undefined;
-    const queryKey = portfolioKeys.positions(portfolioId);
-    const leaves = unique.map((assetId) =>
-      client.subscribe({ kind: "market", assetId }, (event) => {
-        if (event.type !== "MARKET_PRICE_UPDATED") return;
-        queryClient.setQueryData<readonly PositionResponse[]>(queryKey, (positions) =>
-          positions ? applyPriceToPositions(positions, event) : positions,
-        );
-      }),
-    );
-    return () => {
-      leaves.forEach((leave) => {
-        leave();
-      });
-    };
-  });
+  const enabled = portfolioId !== undefined && portfolioId !== "";
 
-  useEffect(() => subscribeAll(), [client, key]);
+  useMarketTicks(
+    assetIds,
+    (event) => {
+      queryClient.setQueryData<readonly PositionResponse[]>(
+        portfolioKeys.positions(portfolioId ?? ""),
+        (positions) => (positions ? applyPriceToPositions(positions, event) : positions),
+      );
+    },
+    enabled,
+  );
 }
