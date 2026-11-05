@@ -1,5 +1,6 @@
 import type { PaginationMeta } from "@trading/contracts";
 import { useMemo, useState } from "react";
+import { useLiveMarketPrices } from "@/features/watchlist/hooks/use-live-market-prices";
 import { useMarketPrices } from "@/features/watchlist/hooks/use-market-prices";
 import { useWatchlist } from "@/features/watchlist/hooks/use-watchlist";
 import { toCatalogRow } from "../lib/catalog-row";
@@ -15,7 +16,8 @@ const NO_ASSET_IDS: readonly string[] = [];
  * row flashes a missing price or the wrong star; while the next page or search loads, the rows
  * already on screen stay. Once settled, a price that failed to load leaves null fields. A failed
  * watchlist leaves the rows without stars (`canToggle` is false) instead of hiding the catalog. Only
- * a failed catalog request is an error; `meta` is the server's count for the paging.
+ * a failed catalog request is an error; `meta` is the server's count for the paging. The prices of
+ * the page on screen are live.
  */
 export function useCatalogRows(paging: CatalogPage, filters?: CatalogFilters, term?: string) {
   const catalog = useCatalogAssets(paging, filters, term);
@@ -25,6 +27,7 @@ export function useCatalogRows(paging: CatalogPage, filters?: CatalogFilters, te
     [catalog.data],
   );
   const prices = useMarketPrices(assetIds);
+  useLiveMarketPrices(assetIds);
 
   const rows = useMemo<readonly CatalogRow[] | undefined>(() => {
     if (catalog.data === undefined) return undefined;

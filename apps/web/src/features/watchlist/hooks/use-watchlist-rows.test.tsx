@@ -1,6 +1,8 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { marketChannelName, type RealtimeEvent } from "@trading/contracts";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
+import { createFakeRealtimeClient } from "@/test/fake-realtime-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { useWatchlistRows } from "./use-watchlist-rows";
 
@@ -64,10 +66,30 @@ function clientWith({ watchlist, asset: assetAnswer, prices }: Answers) {
   return { client: { call } as TradingClient, call };
 }
 
-function render(answers: Answers) {
+function render(answers: Answers, realtime = createFakeRealtimeClient("connected")) {
   const { client, call } = clientWith(answers);
-  const view = renderHook(() => useWatchlistRows(), { wrapper: tradingClientWrapper(client) });
-  return { ...view, call };
+  const view = renderHook(() => useWatchlistRows(), {
+    wrapper: tradingClientWrapper(client, undefined, realtime),
+  });
+  return { ...view, call, realtime };
+}
+function tick(assetId: string, amount: string, changePercent: number): RealtimeEvent {
+  return {
+    id: "e1",
+    type: "MARKET_PRICE_UPDATED",
+    channel: marketChannelName(assetId),
+    sequence: 1,
+    timestamp: "2026-11-05T14:30:00.000Z",
+    epoch: "epoch-1",
+    payload: {
+      assetId,
+      price: { amount, currency: "USD" },
+      previousPrice: { amount: "170.00", currency: "USD" },
+      change: { amount: "1.00", currency: "USD" },
+      changePercent,
+      tickChange: { amount: "0.10", currency: "USD" },
+    },
+  };
 }
 
 describe("useWatchlistRows", () => {
@@ -98,6 +120,42 @@ describe("useWatchlistRows", () => {
         changePercent: 0.5,
       },
     ]);
+  });
+
+  it("updates the row of an asset with each tick, and no other row", async () => {
+    const { result, realtime } = render({});
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+
+    act(() => {
+      realtime.emit(tick("a1", "181.20", 2.6));
+    });
+
+    // The query cache tells the components on the next tick of the event loop.
+    await waitFor(() => {
+      expect(result.current.rows?.[0]).toMatchObject({
+        assetId: "a1",
+        price: { amount: "181.20", currency: "USD" },
+        changePercent: 2.6,
+      });
+    });
+    expect(result.current.rows?.[1]).toMatchObject({
+      assetId: "a2",
+      price: { amount: "560.20", currency: "USD" },
+    });
+  });
+
+  it("listens to the market channel of each watched asset and leaves them on unmount", async () => {
+    const { result, realtime, unmount } = render({});
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+
+    expect(realtime.subscribedChannels()).toEqual(["market:a1", "market:a2"]);
+    unmount();
+
+    expect(realtime.subscribedChannels()).toEqual([]);
   });
 
   it("has no rows while the assets and prices are loading", () => {
