@@ -55,6 +55,11 @@ interface WebSocketRealtimeClientOptions {
   url: string;
   /** The access token of the session, read each time the connection authenticates. */
   getAccessToken: () => string | undefined;
+  /**
+   * Calls `onChange` whenever the session token is renewed or removed, and returns the function that
+   * stops it. The client listens from `connect()` until `disconnect()`.
+   */
+  watchAccessToken?: (onChange: () => void) => () => void;
   createSocket?: CreateSocket;
   logger?: Pick<Logger, "warn">;
   /** Feeds the jitter of the reconnection delay; replaceable in tests. */
@@ -70,12 +75,13 @@ const MAX_FAILED_ATTEMPTS = 10;
  * The `RealtimeClient` over the server WebSocket (ADR-007, docs/08). It authenticates in the first
  * message, asks for each channel once however many listeners it has, validates every event against
  * the contract and gives it to the listeners of its channel. When the connection is lost it opens a
- * new one after a growing delay. Token renewal and resynchronization are added on top of this in
- * the next steps.
+ * new one after a growing delay. A renewed token is sent over the same socket, and a removed one
+ * closes it. Resynchronization is added on top of this in the next step.
  */
 export function createWebSocketRealtimeClient({
   url,
   getAccessToken,
+  watchAccessToken,
   createSocket = createBrowserSocket,
   logger,
   random,
@@ -85,6 +91,9 @@ export function createWebSocketRealtimeClient({
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   /** Failed attempts in a row since the last time the connection was authenticated. */
   let failedAttempts = 0;
+  /** The token the server has last been given, to tell a renewal from a repeated notice. */
+  let sentToken: string | undefined;
+  let stopWatchingToken: (() => void) | undefined;
   const stateListeners = new Set<() => void>();
   const resyncListeners = new Set<(signal: ResyncSignal) => void>();
   const channelListeners = new Map<string, Set<RealtimeListener>>();
@@ -118,8 +127,12 @@ export function createWebSocketRealtimeClient({
     if (reply.success) {
       if (reply.data.type === "ACK" && reply.data.request === "AUTHENTICATE") {
         failedAttempts = 0;
+        // The ACK of a renewal over a connection already open must not ask for the channels again.
+        const isRenewal = state === "connected";
         setState("connected");
-        for (const name of channelListeners.keys()) send({ type: "SUBSCRIBE", channel: name });
+        if (!isRenewal) {
+          for (const name of channelListeners.keys()) send({ type: "SUBSCRIBE", channel: name });
+        }
       }
       return;
     }
@@ -162,12 +175,38 @@ export function createWebSocketRealtimeClient({
     );
   }
 
-  function open() {
+  function handleTokenChange() {
     const token = getAccessToken();
     if (token === undefined) {
-      // The session ended while we waited: there is nothing to authenticate with.
-      setState("disconnected");
+      // Signing out is an intentional close: no reconnection.
+      close();
       return;
+    }
+    // Only an open, authenticated socket is renewed; any other will read the new token when it opens.
+    if (state === "connected" && token !== sentToken) {
+      sentToken = token;
+      send({ type: "AUTHENTICATE", accessToken: token });
+    }
+  }
+
+  function close() {
+    const closing = socket;
+    socket = undefined;
+    clearTimeout(reconnectTimer);
+    reconnectTimer = undefined;
+    failedAttempts = 0;
+    stopWatchingToken?.();
+    stopWatchingToken = undefined;
+    closing?.close(NORMAL_CLOSURE);
+    setState("disconnected");
+  }
+
+  /** Opens a socket and says whether it did: with no session there is nothing to authenticate with. */
+  function open(): boolean {
+    const token = getAccessToken();
+    if (token === undefined) {
+      close();
+      return false;
     }
 
     if (state !== "reconnecting") setState("connecting");
@@ -175,6 +214,7 @@ export function createWebSocketRealtimeClient({
     const handlers: SocketHandlers = {
       onOpen() {
         if (socket !== current) return;
+        sentToken = token;
         send({ type: "AUTHENTICATE", accessToken: token });
       },
       onMessage(data) {
@@ -192,22 +232,15 @@ export function createWebSocketRealtimeClient({
     };
     const current = createSocket(url, handlers);
     socket = current;
+    return true;
   }
 
   return {
     connect() {
       if (state !== "disconnected") return;
-      open();
+      if (open()) stopWatchingToken = watchAccessToken?.(handleTokenChange);
     },
-    disconnect() {
-      const closing = socket;
-      socket = undefined;
-      clearTimeout(reconnectTimer);
-      reconnectTimer = undefined;
-      failedAttempts = 0;
-      closing?.close(NORMAL_CLOSURE);
-      setState("disconnected");
-    },
+    disconnect: close,
     retry() {
       if (state !== "failed") return;
       failedAttempts = 0;

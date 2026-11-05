@@ -38,9 +38,16 @@ function setup(initialToken: string | null = "access-token") {
     return socket;
   };
   const warn = vi.fn();
+  const tokenWatchers = new Set<() => void>();
   const client = createWebSocketRealtimeClient({
     url: URL_OF_THE_SERVER,
     getAccessToken: () => token ?? undefined,
+    watchAccessToken: (onChange) => {
+      tokenWatchers.add(onChange);
+      return () => {
+        tokenWatchers.delete(onChange);
+      };
+    },
     createSocket,
     logger: { warn },
     random: () => 0,
@@ -51,7 +58,14 @@ function setup(initialToken: string | null = "access-token") {
   const renewToken = (next: string) => {
     token = next;
   };
-  return { client, sockets, warn, endSession, renewToken };
+  /** What the session does when the token changes: the new value is there, and the watchers are told. */
+  const changeToken = (next: string | null) => {
+    token = next;
+    tokenWatchers.forEach((onChange) => {
+      onChange();
+    });
+  };
+  return { client, sockets, warn, endSession, renewToken, changeToken, tokenWatchers };
 }
 
 function socketAt(sockets: FakeSocket[], index: number): FakeSocket {
@@ -557,5 +571,101 @@ describe("retry", () => {
     socketAt(sockets, 0).handlers.onClose(1006);
     client.retry();
     expect(sockets).toHaveLength(1);
+  });
+});
+
+describe("token life", () => {
+  it("sends the renewed token over the same socket and does not ask for the channels again", () => {
+    const { client, sockets, changeToken } = setup("old-token");
+    client.connect();
+    open(socketAt(sockets, 0));
+    client.subscribe({ kind: "notifications" }, vi.fn());
+
+    changeToken("new-token");
+    receive(socketAt(sockets, 0), { type: "ACK", request: "AUTHENTICATE" });
+
+    expect(sockets).toHaveLength(1);
+    expect(client.getState()).toBe("connected");
+    expect(sockets[0]?.sent).toEqual([
+      { type: "AUTHENTICATE", accessToken: "old-token" },
+      { type: "SUBSCRIBE", channel: "notifications" },
+      { type: "AUTHENTICATE", accessToken: "new-token" },
+    ]);
+  });
+
+  it("sends nothing when the notice repeats the token the server already has", () => {
+    const { client, sockets, changeToken } = setup("same-token");
+    client.connect();
+    open(socketAt(sockets, 0));
+
+    changeToken("same-token");
+
+    expect(sockets[0]?.sent).toEqual([{ type: "AUTHENTICATE", accessToken: "same-token" }]);
+  });
+
+  it("leaves a socket that is not yet authenticated alone: the next one reads the new token", () => {
+    vi.useFakeTimers();
+    const { client, sockets, changeToken } = setup("old-token");
+    client.connect();
+    open(socketAt(sockets, 0));
+    socketAt(sockets, 0).handlers.onClose(1006);
+
+    changeToken("new-token");
+    expect(sockets).toHaveLength(1);
+    vi.advanceTimersByTime(1_000);
+    socketAt(sockets, 1).handlers.onOpen();
+
+    expect(sockets[1]?.sent).toEqual([{ type: "AUTHENTICATE", accessToken: "new-token" }]);
+    vi.useRealTimers();
+  });
+
+  it("closes the socket on purpose when the token is removed, with no reconnection", () => {
+    vi.useFakeTimers();
+    const { client, sockets, changeToken } = setup();
+    client.connect();
+    open(socketAt(sockets, 0));
+
+    changeToken(null);
+    vi.advanceTimersByTime(60_000);
+
+    expect(sockets[0]?.closedWith).toBe(1000);
+    expect(client.getState()).toBe("disconnected");
+    expect(sockets).toHaveLength(1);
+    vi.useRealTimers();
+  });
+
+  it("closes on purpose when the token is removed while it waits to reconnect", () => {
+    vi.useFakeTimers();
+    const { client, sockets, changeToken } = setup();
+    client.connect();
+    open(socketAt(sockets, 0));
+    socketAt(sockets, 0).handlers.onClose(1006);
+
+    changeToken(null);
+    vi.advanceTimersByTime(60_000);
+
+    expect(client.getState()).toBe("disconnected");
+    expect(sockets).toHaveLength(1);
+    vi.useRealTimers();
+  });
+
+  it("watches the token from connect until disconnect, never twice", () => {
+    const { client, tokenWatchers } = setup();
+    expect(tokenWatchers.size).toBe(0);
+
+    client.connect();
+    client.connect();
+    expect(tokenWatchers.size).toBe(1);
+
+    client.disconnect();
+    expect(tokenWatchers.size).toBe(0);
+  });
+
+  it("does not watch when there is no session to start with", () => {
+    const { client, tokenWatchers } = setup(null);
+
+    client.connect();
+
+    expect(tokenWatchers.size).toBe(0);
   });
 });
