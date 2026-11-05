@@ -10,7 +10,7 @@ interface ConnectionStatusInput {
   calculationTime: string;
 }
 
-interface ConnectionStatus {
+export interface ConnectionStatus {
   connection: ConnectionState;
   lastSync: LastSync;
   calculation: Calculation;
