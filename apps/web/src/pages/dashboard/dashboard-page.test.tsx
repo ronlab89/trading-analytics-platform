@@ -68,6 +68,7 @@ const overviewOf = (positions: number, recent: readonly unknown[] = [recentTrans
     recentTransactions: recent,
     positions: Array.from({ length: positions }, (_, index) => ({
       id: index,
+      position: { assetId: `a${String(index)}` },
       asset: {
         id: `a${String(index)}`,
         symbol: `S${String(index)}`,

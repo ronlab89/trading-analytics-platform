@@ -15,6 +15,7 @@ import { RecentTransactionsPanel } from "@/features/dashboard/components/recent-
 import { RiskPanel } from "@/features/dashboard/components/risk-panel";
 import { TotalReturnPanel } from "@/features/dashboard/components/total-return-panel";
 import { DashboardSkeleton } from "@/features/dashboard/components/dashboard-skeleton";
+import { useLiveOverviewPrices } from "@/features/dashboard/hooks/use-live-overview-prices";
 import { useOverview } from "@/features/dashboard/hooks/use-overview";
 import { topMovers } from "@/features/dashboard/lib/top-movers";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
@@ -73,6 +74,10 @@ function Dashboard({ portfolioId, portfolioName }: DashboardProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const overview = useOverview(portfolioId);
+  useLiveOverviewPrices(
+    portfolioId,
+    overview.data?.positions.map(({ position }) => position.assetId) ?? [],
+  );
   const [panelOpen, setPanelOpen] = useState(false);
   const announceRecorded = useAnnounceRecorded();
   const firstName = useCurrentUser()?.displayName.trim().split(/\s+/)[0] ?? "";
