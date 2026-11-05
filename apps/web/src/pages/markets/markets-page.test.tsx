@@ -35,6 +35,23 @@ function clientWith(assetIds: string[], catalogTotal = 24) {
           return Promise.resolve({ data: assetIds.map(item) });
         case "getAsset":
           return Promise.resolve({ data: asset(String(input?.params?.assetId)) });
+        case "listAlerts":
+          return Promise.resolve({
+            data: [
+              {
+                id: "al1",
+                userId: "u1",
+                assetId: "a1",
+                portfolioId: null,
+                type: "PRICE",
+                condition: "ABOVE",
+                threshold: 200,
+                enabled: true,
+                createdAt: "2026-11-01T10:00:00.000Z",
+                updatedAt: "2026-11-01T10:00:00.000Z",
+              },
+            ],
+          });
         case "listAssets":
           return Promise.resolve({
             data: [asset("a1")],
@@ -79,8 +96,9 @@ function mockViewport(mobile: boolean) {
   );
 }
 
+// Not `unstubAllGlobals`: that would also drop the ResizeObserver stub `setup.ts` installs once.
 afterEach(() => {
-  vi.unstubAllGlobals();
+  vi.stubGlobal("matchMedia", undefined);
 });
 
 describe("MarketsPage connection alert", () => {
@@ -151,6 +169,38 @@ describe("MarketsPage", () => {
     expect(await screen.findByText("24 assets available · simulated prices")).toBeVisible();
     await user.click(screen.getByRole("tab", { name: "Watchlist" }));
     expect(await screen.findByText("1 asset on your watchlist · simulated prices")).toBeVisible();
+  });
+
+  it("opens the alerts from the address and counts the price alerts in the header line", async () => {
+    mockViewport(false);
+    renderPage(["a1"], { url: "/markets?tab=alerts" });
+
+    expect(await screen.findByText("1 alert · price alerts")).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Alerts", selected: true })).toBeVisible();
+    expect(screen.queryByText(/on your watchlist/)).not.toBeInTheDocument();
+  });
+
+  it("changes to the alerts tab and back", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    renderPage(["a1"]);
+    await screen.findByText("1 asset on your watchlist · simulated prices");
+
+    await user.click(screen.getByRole("tab", { name: "Alerts" }));
+
+    expect(await screen.findByText("1 alert · price alerts")).toBeVisible();
+    await user.click(screen.getByRole("tab", { name: "Watchlist" }));
+    expect(await screen.findByText("1 asset on your watchlist · simulated prices")).toBeVisible();
+  });
+
+  it("opens the create alert dialog from the alerts tab", async () => {
+    const user = userEvent.setup();
+    mockViewport(false);
+    renderPage(["a1"], { url: "/markets?tab=alerts" });
+
+    await user.click(await screen.findByRole("button", { name: "Create alert" }));
+
+    expect(await screen.findByRole("dialog", { name: "Create alert" })).toBeVisible();
   });
 
   it("falls back to the watchlist for an unknown tab in the address", async () => {

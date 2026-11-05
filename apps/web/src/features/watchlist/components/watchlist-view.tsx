@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { useDataTable } from "@/components/data-table/use-data-table";
+import { AssetRowActions } from "@/features/alerts/components/asset-row-actions";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { Button } from "@/components/ui/button";
 import { useWatchlistColumns } from "../hooks/use-watchlist-columns";
@@ -17,20 +18,22 @@ function assetId(row: WatchlistRow) {
  * The watchlist with its search: a table on the tablet and the desktop, a card list on a phone. The
  * list is short and loaded whole, so the search and the sort of the columns run in the client, on
  * one table instance the two layouts share. The loading, empty and error states belong to the
- * section. `onRemove` must be stable, or the columns rebuild.
+ * section. `onRemove` and `onCreateAlert` must be stable, or the columns rebuild.
  */
 export function WatchlistView({
   rows,
   onRemove,
+  onCreateAlert,
   mobile = false,
 }: {
   rows: readonly WatchlistRow[];
   onRemove: (row: WatchlistRow) => void;
+  onCreateAlert?: (assetId: string) => void;
   mobile?: boolean;
 }) {
   const { t } = useTranslation();
   const table = useDataTable({
-    columns: useWatchlistColumns(onRemove),
+    columns: useWatchlistColumns(onRemove, onCreateAlert),
     data: rows,
     getRowId: assetId,
     sortable: true,
@@ -67,7 +70,11 @@ export function WatchlistView({
         )
       ) : mobile ? (
         <WatchlistCardList
-          renderAction={(row) => <WatchlistRemoveButton onRemove={onRemove} row={row} />}
+          renderAction={(row) => (
+            <AssetRowActions asset={row} onCreateAlert={onCreateAlert}>
+              <WatchlistRemoveButton onRemove={onRemove} row={row} />
+            </AssetRowActions>
+          )}
           rows={visible}
         />
       ) : (

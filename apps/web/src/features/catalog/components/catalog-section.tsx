@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { AssetRowActions } from "@/features/alerts/components/asset-row-actions";
+import { useAlertDialogForAsset } from "@/features/alerts/hooks/use-alert-dialog-for-asset";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
 import { WatchlistCardList } from "@/features/watchlist/components/watchlist-card-list";
 import { WatchlistCardsSkeleton } from "@/features/watchlist/components/watchlist-cards-skeleton";
@@ -49,6 +51,7 @@ export function CatalogSection({ filters, onFiltersChange }: CatalogSectionProps
     term,
   );
   const toggle = useToggleWatchlist();
+  const alertDialog = useAlertDialogForAsset();
 
   const changeSearch = (value: string) => {
     setSearch(value);
@@ -142,13 +145,16 @@ export function CatalogSection({ filters, onFiltersChange }: CatalogSectionProps
             <WatchlistCardList
               label={t("markets.catalogTable")}
               renderAction={(row) => (
-                <CatalogStarButton disabled={!canToggle} onToggle={toggle} row={row} />
+                <AssetRowActions asset={row} onCreateAlert={alertDialog.openFor}>
+                  <CatalogStarButton disabled={!canToggle} onToggle={toggle} row={row} />
+                </AssetRowActions>
               )}
               rows={rows}
             />
             <div className="rounded-xl bg-(--color-surface-card) p-4">{pagination}</div>
           </>
         )}
+        {alertDialog.dialog}
       </div>
     );
   }
@@ -164,10 +170,16 @@ export function CatalogSection({ filters, onFiltersChange }: CatalogSectionProps
         noResults
       ) : (
         <>
-          <CatalogTable canToggle={canToggle} onToggle={toggle} rows={rows} />
+          <CatalogTable
+            canToggle={canToggle}
+            onCreateAlert={alertDialog.openFor}
+            onToggle={toggle}
+            rows={rows}
+          />
           {pagination}
         </>
       )}
+      {alertDialog.dialog}
     </section>
   );
 }

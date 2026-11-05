@@ -68,6 +68,8 @@ function renderSection(answers: Answers = {}) {
           return answers.add?.() ?? Promise.resolve({ data: watchItem("a1") });
         case "removeFromWatchlist":
           return answers.remove?.() ?? Promise.resolve(undefined);
+        case "getAsset":
+          return Promise.resolve({ data: input?.params?.assetId === "a2" ? voo : apple });
         default:
           return Promise.resolve({ data: [price("a1"), price("a2")] });
       }
@@ -94,6 +96,18 @@ describe("CatalogSection", () => {
     expect(within(row as HTMLElement).getByText("$180.70")).toBeVisible();
     expect(within(row as HTMLElement).getByText("+2.10%")).toBeVisible();
     expect(screen.getByText("Showing 1–2 of 24")).toBeVisible();
+  });
+
+  it("opens the create alert dialog for an asset, with the asset locked", async () => {
+    const user = userEvent.setup();
+    renderSection();
+    await screen.findByText("Apple Inc.");
+
+    await user.click(screen.getByRole("button", { name: "Create an alert for AAPL" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Create alert" });
+    expect(within(dialog).getByRole("textbox", { name: /Asset/ })).toHaveValue("AAPL · Apple Inc.");
+    expect(within(dialog).getByRole("textbox", { name: /Asset/ })).toBeDisabled();
   });
 
   it("does not sort by any column: the API gives the order", async () => {
@@ -330,8 +344,9 @@ function mockPhone() {
 }
 
 describe("CatalogSection on a phone", () => {
+  // Not `unstubAllGlobals`: that would also drop the ResizeObserver stub `setup.ts` installs once.
   afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.stubGlobal("matchMedia", undefined);
   });
 
   it("shows the loading cards, with the search waiting", () => {
@@ -354,6 +369,20 @@ describe("CatalogSection on a phone", () => {
     expect(screen.getByRole("button", { name: "Add AAPL to the watchlist" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Remove VOO from the watchlist" })).toBeEnabled();
     expect(screen.getByRole("button", { name: /Next/ })).toBeVisible();
+  });
+
+  it("opens the create alert dialog from the card of an asset", async () => {
+    mockPhone();
+    const user = userEvent.setup();
+    renderSection();
+    await screen.findByText("Apple Inc.");
+
+    await user.click(screen.getByRole("button", { name: "Create an alert for VOO" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Create alert" });
+    expect(within(dialog).getByRole("textbox", { name: /Asset/ })).toHaveValue(
+      "VOO · Vanguard S&P 500",
+    );
   });
 
   it("adds an asset from its card", async () => {

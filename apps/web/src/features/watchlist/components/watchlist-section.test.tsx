@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -92,6 +92,17 @@ describe("WatchlistSection", () => {
 
     expect(await screen.findByText("Apple Inc.")).toBeVisible();
     expect(screen.getByText("Coca-Cola")).toBeVisible();
+  });
+
+  it("opens the create alert dialog for a watched asset, with the asset locked", async () => {
+    const user = userEvent.setup();
+    renderSection();
+    await screen.findByText("Apple Inc.");
+
+    await user.click(screen.getByRole("button", { name: "Create an alert for KO" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Create alert" });
+    expect(within(dialog).getByRole("textbox", { name: /Asset/ })).toHaveValue("KO · Coca-Cola");
   });
 
   it("explains an empty watchlist", async () => {
