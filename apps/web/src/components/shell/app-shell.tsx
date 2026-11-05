@@ -2,6 +2,7 @@ import { Outlet, useMatch, useNavigate } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { userInitials } from "@/features/auth/lib/user-initials";
+import { NotificationsMenu } from "@/features/notifications/components/notifications-menu";
 import { useNotificationUpdates } from "@/features/notifications/hooks/use-notification-updates";
 import { useUnreadNotifications } from "@/features/notifications/hooks/use-unread-notifications";
 import { useSavedMotion } from "@/features/settings/hooks/use-saved-motion";
@@ -61,7 +62,6 @@ export function AppShell() {
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col tablet:gap-2">
           <TopBar
-            onOpenNotifications={() => undefined}
             onResetDemo={() => undefined}
             onRetryPortfolios={portfolio.retry}
             onSelectPortfolio={portfolio.select}
@@ -74,7 +74,7 @@ export function AppShell() {
             portfoliosFailed={portfolio.isError}
             portfoliosLoading={portfolio.isPending}
             selectedPortfolioId={portfolio.active?.id}
-            unread={notifications.unread}
+            notifications={<NotificationsMenu unread={notifications.unread} />}
             userInitials={initials}
             userName={userName}
           />

@@ -174,6 +174,8 @@ describe("AppShell", () => {
     let listed = 0;
     const call = vi.fn<TradingClient["call"]>((operation) => {
       if (operation.operationId === "getPreferences") return Promise.resolve({ data: null });
+      // Only the first read of the portfolios fails; the notifications ask in their own order.
+      if (operation.operationId !== "listPortfolios") return Promise.resolve({ data: [] });
       listed += 1;
       return listed === 1
         ? Promise.reject(new ApiError("NETWORK_ERROR", "down"))
