@@ -33,6 +33,16 @@ const createThing: ApiOperation = {
   success: { status: 201, description: "Created.", schema: z.object({ data: z.string() }) },
 };
 
+const importThing: ApiOperation = {
+  ...baseOperation,
+  operationId: "importThing",
+  method: "post",
+  path: "/api/v1/things/imports",
+  body: z.string(),
+  bodyContentType: "text/csv",
+  success: { status: 202, description: "Queued.", schema: z.object({ data: z.string() }) },
+};
+
 const ok = (data: string, status = 200) => Response.json({ data }, { status });
 const failure = (status: number, code = "INTERNAL_ERROR") =>
   Response.json({ error: { code, message: "boom", requestId: "req-1" } }, { status });
@@ -88,6 +98,53 @@ describe("HTTP TradingClient: requests", () => {
       "Content-Type": "application/json",
       "Idempotency-Key": "key-1",
     });
+  });
+});
+
+describe("HTTP TradingClient: a body of another media type", () => {
+  const csv = ["symbol,type", "AAPL,BUY", ""].join("\n");
+
+  it("sends a string body as it is, with the media type the operation declares", async () => {
+    const { client, fetchMock } = setup([ok("a", 202)]);
+
+    await client.call(importThing, { body: csv, idempotencyKey: "key-1" });
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe(csv);
+    expect(init?.headers).toMatchObject({
+      "Content-Type": "text/csv",
+      "Idempotency-Key": "key-1",
+      Authorization: "Bearer token-1",
+    });
+  });
+
+  it("retries it with the same body and key, as any creation with an Idempotency-Key", async () => {
+    const { client, fetchMock } = setup([networkError(), ok("a", 202)]);
+
+    await client.call(importThing, { body: csv, idempotencyKey: "key-1" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(csv);
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({ "Idempotency-Key": "key-1" });
+  });
+
+  it("keeps a JSON operation as JSON, even when its body is a string", async () => {
+    const { client, fetchMock } = setup([ok("a", 201)]);
+
+    await client.call({ ...createThing, body: z.string() }, { body: "text" });
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect(init?.body).toBe('"text"');
+    expect(init?.headers).toMatchObject({ "Content-Type": "application/json" });
+  });
+
+  it("sends no media type when there is no body", async () => {
+    const { client, fetchMock } = setup([ok("a")]);
+
+    await client.call(getThing, input);
+
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).not.toHaveProperty("Content-Type");
   });
 });
 
