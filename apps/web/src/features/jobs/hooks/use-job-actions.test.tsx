@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type CallInput } from "@/api/trading-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
@@ -49,7 +49,9 @@ describe("useCancelJob", () => {
     await act(() => result.current.mutateAsync().catch(() => undefined));
 
     expect(queryClient.getQueryData(jobKeys.detail("j1"))).toEqual(before);
-    expect(result.current.error).toBeInstanceOf(ApiError);
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(ApiError);
+    });
   });
 });
 
