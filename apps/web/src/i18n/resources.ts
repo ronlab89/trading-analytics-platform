@@ -1195,6 +1195,23 @@ const en = {
     },
     notificationsUnread_one: "Notifications, {{count}} unread",
     notificationsUnread_other: "Notifications, {{count}} unread",
+    notificationsPanel: {
+      title: "Notifications",
+      loading: "Loading the notifications",
+      unread: "Unread",
+      markAllRead: "Mark all as read",
+      viewAll: "View all activity",
+      markFailed: "Could not mark the notification as read",
+      empty: {
+        title: "You're all caught up",
+        description: "New alerts and events appear here.",
+      },
+      failed: {
+        title: "Couldn't load the notifications",
+        description: "Check your connection and try again.",
+        retry: "Retry",
+      },
+    },
   },
 } as const;
 
@@ -2412,6 +2429,23 @@ const es: Messages<typeof en> = {
     },
     notificationsUnread_one: "Notificaciones, {{count}} sin leer",
     notificationsUnread_other: "Notificaciones, {{count}} sin leer",
+    notificationsPanel: {
+      title: "Notificaciones",
+      loading: "Cargando las notificaciones",
+      unread: "Sin leer",
+      markAllRead: "Marcar todas como leídas",
+      viewAll: "Ver toda la actividad",
+      markFailed: "No se pudo marcar la notificación como leída",
+      empty: {
+        title: "Estás al día",
+        description: "Las nuevas alertas y eventos aparecen acá.",
+      },
+      failed: {
+        title: "No se pudieron cargar las notificaciones",
+        description: "Revisá tu conexión e intentá de nuevo.",
+        retry: "Reintentar",
+      },
+    },
   },
 };
 

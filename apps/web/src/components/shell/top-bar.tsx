@@ -1,4 +1,5 @@
 import { ChevronRight } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router";
 import { Logo } from "@/components/logo";
@@ -10,7 +11,6 @@ import {
   PROFILE_PATH,
   SETTINGS_DESTINATION,
 } from "./destinations";
-import { NotificationButton, type Unread } from "./notification-button";
 import { PortfolioSelector, type PortfolioOption } from "./portfolio-selector";
 import { UserMenu } from "./user-menu";
 
@@ -22,11 +22,11 @@ interface TopBarProps {
   onRetryPortfolios?: () => void;
   /** The page inside the current section, for example a portfolio's name; it ends the breadcrumb. */
   pageTitle?: string | undefined;
-  unread: Unread;
+  /** The bell and the panel it opens; the shell provides them, since they read the notifications. */
+  notifications: ReactNode;
   userName: string;
   userInitials: string;
   onSelectPortfolio: (id: string) => void;
-  onOpenNotifications: () => void;
   onSimulateConnectionIssue: () => void;
   onSendTestNotification: () => void;
   onResetDemo: () => void;
@@ -45,11 +45,10 @@ export function TopBar({
   portfoliosFailed,
   onRetryPortfolios,
   pageTitle,
-  unread,
+  notifications,
   userName,
   userInitials,
   onSelectPortfolio,
-  onOpenNotifications,
   onSimulateConnectionIssue,
   onSendTestNotification,
   onResetDemo,
@@ -95,7 +94,7 @@ export function TopBar({
           onSendTestNotification={onSendTestNotification}
           onSimulateConnectionIssue={onSimulateConnectionIssue}
         />
-        <NotificationButton onClick={onOpenNotifications} unread={unread} />
+        {notifications}
         <div className="tablet:hidden">
           <UserMenu
             initials={userInitials}

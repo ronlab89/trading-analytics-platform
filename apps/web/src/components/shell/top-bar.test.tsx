@@ -16,11 +16,10 @@ function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}, pat
   const props = {
     portfolios,
     selectedPortfolioId: "growth",
-    unread: { kind: "none" },
+    notifications: <button type="button">Bell stub</button>,
     userName: "Jane Doe",
     userInitials: "JD",
     onSelectPortfolio: vi.fn(),
-    onOpenNotifications: vi.fn(),
     onSimulateConnectionIssue: vi.fn(),
     onSendTestNotification: vi.fn(),
     onResetDemo: vi.fn(),
@@ -98,29 +97,10 @@ describe("TopBar", () => {
     expect(props.onResetDemo).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    [{ kind: "none" }, "Notifications"],
-    [{ kind: "dot" }, "Notifications"],
-    [{ kind: "count", count: 3 }, "Notifications, 3 unread"],
-  ] as const)("names the bell for the %o unread state", (unread, name) => {
-    renderTopBar({ unread });
+  it("shows the notifications the shell gives it, beside the demo controls", () => {
+    renderTopBar();
 
-    expect(screen.getByRole("button", { name })).toBeInTheDocument();
-  });
-
-  it("caps the unread count at 9+", () => {
-    renderTopBar({ unread: { kind: "count", count: 12 } });
-
-    expect(screen.getByText("9+")).toBeInTheDocument();
-  });
-
-  it("opens the notifications from the bell", async () => {
-    const user = userEvent.setup();
-    const { props } = renderTopBar();
-
-    await user.click(screen.getByRole("button", { name: "Notifications" }));
-
-    expect(props.onOpenNotifications).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Bell stub" })).toBeInTheDocument();
   });
 
   it("signs out from the user menu", async () => {
@@ -134,7 +114,7 @@ describe("TopBar", () => {
   });
 
   it("has no accessibility violations", async () => {
-    const { container } = renderTopBar({ unread: { kind: "count", count: 3 } });
+    const { container } = renderTopBar();
 
     expect(await axe(container)).toHaveNoViolations();
   });

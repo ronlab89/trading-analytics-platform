@@ -1,19 +1,24 @@
 import { Bell } from "lucide-react";
+import type { ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { StatusDot } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export type Unread = { kind: "none" } | { kind: "dot" } | { kind: "count"; count: number };
 
-interface NotificationButtonProps {
+interface NotificationButtonProps extends Omit<
+  ComponentProps<typeof Button>,
+  "children" | "size" | "variant"
+> {
   unread: Unread;
-  /** True while the notification panel is open. */
-  open?: boolean;
-  onClick: () => void;
 }
 
-/** The bell of the top bar: a ghost icon button with an orange dot or the unread count. */
-export function NotificationButton({ unread, open = false, onClick }: NotificationButtonProps) {
+/**
+ * The bell of the top bar: a ghost icon button with an orange dot or the unread count. It passes
+ * what it is given on to the button, so it can be the trigger of the panel it opens.
+ */
+export function NotificationButton({ unread, className, ...props }: NotificationButtonProps) {
   const { t } = useTranslation();
   const label =
     unread.kind === "count"
@@ -22,12 +27,14 @@ export function NotificationButton({ unread, open = false, onClick }: Notificati
 
   return (
     <Button
-      aria-expanded={open}
       aria-label={label}
-      className="relative aria-expanded:bg-(--color-button-ghost-background-pressed)"
-      onClick={onClick}
+      className={cn(
+        "relative aria-expanded:bg-(--color-button-ghost-background-pressed)",
+        className,
+      )}
       size="icon-sm"
       variant="ghost"
+      {...props}
     >
       <Bell />
       {unread.kind === "dot" ? (
