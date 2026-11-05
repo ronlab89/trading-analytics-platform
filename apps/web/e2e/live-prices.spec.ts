@@ -164,6 +164,8 @@ for (const { name, width, height } of viewports) {
       const realtime = await mockRealtime(page);
       await openWatchlist(page);
       await page.goto("/markets");
+      // A tick that arrives before the first read has no price to change.
+      await expect(page.getByText("$180.70")).toBeVisible();
       await waitForSubscription(realtime, "market:a1");
 
       realtime.sockets[0]?.send(priceTick("a1", "181.20", 2.6));
@@ -204,6 +206,7 @@ test("a tick the server sends after a newer read does not take the price back", 
   const realtime = await mockRealtime(page);
   await openWatchlist(page);
   await page.goto("/markets");
+  await expect(page.getByText("$180.70")).toBeVisible();
   await waitForSubscription(realtime, "market:a1");
   realtime.sockets[0]?.send(priceTick("a1", "181.20", 2.6, 2));
   await expect(page.getByText("$181.20")).toBeVisible();
