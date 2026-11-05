@@ -48,7 +48,10 @@ function setup(initialToken: string | null = "access-token") {
   const endSession = () => {
     token = null;
   };
-  return { client, sockets, warn, endSession };
+  const renewToken = (next: string) => {
+    token = next;
+  };
+  return { client, sockets, warn, endSession, renewToken };
 }
 
 function socketAt(sockets: FakeSocket[], index: number): FakeSocket {
@@ -419,5 +422,85 @@ describe("reconnection after an unexpected close", () => {
     vi.advanceTimersByTime(60_000);
 
     expect(sockets).toHaveLength(2);
+  });
+});
+
+describe("close codes and giving up", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([1001, 4001, 4002, 1006])("tries again after a close with code %i", (code) => {
+    const { client, sockets } = setup();
+    client.connect();
+    open(socketAt(sockets, 0));
+
+    socketAt(sockets, 0).handlers.onClose(code);
+    vi.advanceTimersByTime(1_000);
+
+    expect(client.getState()).toBe("reconnecting");
+    expect(sockets).toHaveLength(2);
+  });
+
+  it("reads the token again on each attempt, so a renewed one is used", () => {
+    const { client, sockets, renewToken } = setup("old-token");
+    client.connect();
+    open(socketAt(sockets, 0));
+    socketAt(sockets, 0).handlers.onClose(4002);
+
+    renewToken("new-token");
+    vi.advanceTimersByTime(1_000);
+    socketAt(sockets, 1).handlers.onOpen();
+
+    expect(sockets[1]?.sent).toEqual([{ type: "AUTHENTICATE", accessToken: "new-token" }]);
+  });
+
+  it("fails at once, without trying again, when the server closes for a limit (4008)", () => {
+    const { client, sockets, warn } = setup();
+    client.connect();
+    open(socketAt(sockets, 0));
+
+    socketAt(sockets, 0).handlers.onClose(4008);
+    vi.advanceTimersByTime(60_000);
+
+    expect(client.getState()).toBe("failed");
+    expect(sockets).toHaveLength(1);
+    expect(warn).toHaveBeenCalledWith("realtime.connection.failed", {
+      reason: "limit-exceeded",
+      code: 4008,
+    });
+  });
+
+  it("fails after 10 closes in a row without an authenticated connection, and stops opening sockets", () => {
+    const { client, sockets } = setup();
+    client.connect();
+
+    for (let index = 0; index < 9; index += 1) {
+      socketAt(sockets, index).handlers.onClose(1006);
+      expect(client.getState()).toBe("reconnecting");
+      vi.advanceTimersByTime(30_000);
+    }
+    socketAt(sockets, 9).handlers.onClose(1006);
+    vi.advanceTimersByTime(60_000);
+
+    expect(client.getState()).toBe("failed");
+    expect(sockets).toHaveLength(10);
+  });
+
+  it("does not count the closes that came before a connection that was authenticated", () => {
+    const { client, sockets } = setup();
+    client.connect();
+    for (let index = 0; index < 8; index += 1) {
+      socketAt(sockets, index).handlers.onClose(1006);
+      vi.advanceTimersByTime(30_000);
+    }
+    open(socketAt(sockets, 8));
+
+    socketAt(sockets, 8).handlers.onClose(1006);
+
+    expect(client.getState()).toBe("reconnecting");
   });
 });

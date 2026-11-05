@@ -62,6 +62,9 @@ interface WebSocketRealtimeClientOptions {
 }
 
 const NORMAL_CLOSURE = 1000;
+const LIMIT_EXCEEDED = 4008;
+/** Closes in a row without an authenticated connection in between after which we stop trying. */
+const MAX_FAILED_ATTEMPTS = 10;
 
 /**
  * The `RealtimeClient` over the server WebSocket (ADR-007, docs/08). It authenticates in the first
@@ -138,8 +141,17 @@ export function createWebSocketRealtimeClient({
     });
   }
 
-  function scheduleReconnect() {
+  function fail(reason: string, code: number) {
+    logger?.warn("realtime.connection.failed", { reason, code });
+    setState("failed");
+  }
+
+  function scheduleReconnect(code: number) {
     failedAttempts += 1;
+    if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
+      fail("attempts-exhausted", code);
+      return;
+    }
     setState("reconnecting");
     reconnectTimer = setTimeout(
       () => {
@@ -169,10 +181,13 @@ export function createWebSocketRealtimeClient({
         if (socket !== current) return;
         handleMessage(data);
       },
-      onClose() {
+      onClose(code) {
         if (socket !== current) return;
         socket = undefined;
-        scheduleReconnect();
+        // 4008: the server refused us for exceeding a limit, and asking again would only repeat it.
+        // Any other close (4001, 4002, 1001, a lost socket) is worth another try with a fresh token.
+        if (code === LIMIT_EXCEEDED) fail("limit-exceeded", code);
+        else scheduleReconnect(code);
       },
     };
     const current = createSocket(url, handlers);
