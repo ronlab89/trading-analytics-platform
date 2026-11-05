@@ -6,6 +6,7 @@ import { TradingClientProvider } from "@/api/trading-client-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/config/env";
 import { useRealtimeConnection } from "@/hooks/use-realtime-connection";
+import { useRealtimeFallback } from "@/hooks/use-realtime-fallback";
 import { useRestoreSession } from "@/hooks/use-restore-session";
 import { logger } from "@/lib/logging/logger";
 import { createQueryClient } from "@/lib/query-client";
@@ -20,6 +21,7 @@ import { getAccessToken, watchAccessToken } from "@/stores/session-store";
 function AppRouter() {
   useRestoreSession();
   useRealtimeConnection();
+  useRealtimeFallback();
   return <RouterProvider router={router} />;
 }
 
