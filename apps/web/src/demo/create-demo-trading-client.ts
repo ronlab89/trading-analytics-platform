@@ -1,75 +1,98 @@
-import { presentLogin, presentPortfolio } from "@trading/contracts";
+import type { Clock } from "@trading/application";
 import type { ApiOperation } from "@trading/contracts";
 import { ApiError } from "@/api/trading-client";
 import type { CallInput, TradingClient } from "@/api/trading-client";
 import { logger } from "@/lib/logging/logger";
 import type { DemoComposition } from "./demo-composition";
+import { createAuthHandlers } from "./handlers/auth-handlers";
+import type { DemoSession, HandlerContext } from "./handlers/handler";
+import { createMarketHandlers } from "./handlers/market-handlers";
+import { createPortfolioHandlers } from "./handlers/portfolio-handlers";
+import { createWatchlistHandlers } from "./handlers/watchlist-handlers";
+import { NO_LATENCY } from "./latency";
+import type { Latency } from "./latency";
 import { toApiError } from "./to-api-error";
 
-/** Marker the bundle check looks for: the demo bundle must have it, the real one must not. */
+/** Marker the bundle check looks for: the demo bundle has it, the real one must not. */
 export const DEMO_ADAPTER_MARKER = "adapter:demo";
-
-const ACCESS_TOKEN = "demo-access-token";
-const SESSION_MINUTES = 15;
-
-type Handler = (input: CallInput) => Promise<unknown>;
 
 export interface DemoTradingClientOptions {
   readonly composition: DemoComposition;
-  readonly now?: () => Date;
+  readonly clock?: Clock;
+  /** Simulated wait per call; none by default, so tests and the smoke run fast. */
+  readonly latency?: Latency;
+}
+
+type RequestPart = "params" | "query" | "body";
+
+const INVALID_MESSAGES: Record<RequestPart, string> = {
+  params: "The request contains invalid route parameters.",
+  query: "The request contains invalid query parameters.",
+  body: "The request contains invalid fields.",
+};
+
+/** Query values reach the API as text, so the schemas of the contract coerce them. */
+function queryAsText(query: CallInput["query"]): Record<string, string> {
+  const entries = Object.entries(query ?? {}).filter(
+    (entry): entry is [string, string | number | boolean] => entry[1] !== undefined,
+  );
+  return Object.fromEntries(entries.map(([key, value]) => [key, String(value)]));
+}
+
+/** Parses one part of the request like the API validation middleware, with the same error. */
+function check(operation: ApiOperation, part: RequestPart, value: unknown): unknown {
+  const schema = operation[part];
+  if (!schema) return value;
+  const parsed = schema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  throw new ApiError(
+    "VALIDATION_ERROR",
+    INVALID_MESSAGES[part],
+    400,
+    undefined,
+    parsed.error.issues.map((issue) => ({
+      field: issue.path.join("."),
+      code: issue.code,
+      message: issue.message,
+    })),
+  );
 }
 
 /**
  * The in-process `TradingClient` of the demo: it runs each operation on the application services and
  * answers what the API would, error codes and response shape included (ADR-002 point 5, ADR-012).
- * Every answer is checked against the contract of its operation, so a handler that drifts from the
- * API fails here instead of on a screen.
+ * The request and the answer are checked against the contract of the operation, so a handler that
+ * drifts from the API fails here instead of on a screen.
  */
 export function createDemoTradingClient(options: DemoTradingClientOptions): TradingClient {
-  const { composition, now = () => new Date() } = options;
-  let signedIn = false;
+  const { composition, clock = { now: () => new Date() }, latency = NO_LATENCY } = options;
+  const session: DemoSession = { signedIn: false };
+  const context: HandlerContext = { composition, session, clock, actor: composition.actor };
+  const handlers = {
+    ...createAuthHandlers(context),
+    ...createPortfolioHandlers(context),
+    ...createMarketHandlers(context),
+    ...createWatchlistHandlers(context),
+  };
 
   logger.info(DEMO_ADAPTER_MARKER);
-
-  function session() {
-    return {
-      user: composition.user,
-      accessToken: ACCESS_TOKEN,
-      expiresAt: new Date(now().getTime() + SESSION_MINUTES * 60_000),
-    };
-  }
-
-  const handlers: Readonly<Record<string, Handler>> = {
-    login: () => {
-      signedIn = true;
-      return Promise.resolve({ data: presentLogin(session()) });
-    },
-    refreshSession: () => {
-      if (!signedIn) throw new ApiError("UNAUTHORIZED", "There is no session.", 401);
-      return Promise.resolve({ data: presentLogin(session()) });
-    },
-    logout: () => {
-      signedIn = false;
-      return Promise.resolve(undefined);
-    },
-    getCurrentUser: () => Promise.resolve({ data: { user: composition.user } }),
-    listPortfolios: async () => {
-      const portfolios = await composition.portfolioService.listPortfolios(composition.actor);
-      return { data: portfolios.map(presentPortfolio) };
-    },
-  };
 
   return {
     async call(operation: ApiOperation, input: CallInput = {}) {
       try {
+        await latency.wait(operation.method);
         const handler = handlers[operation.operationId];
         if (!handler) {
           throw new ApiError("NOT_FOUND", "The requested resource could not be found.", 404);
         }
-        if (operation.authenticated && !signedIn) {
+        if (operation.authenticated && !session.signedIn) {
           throw new ApiError("UNAUTHORIZED", "Authentication is required.", 401);
         }
-        const result = await handler(input);
+        const result = await handler({
+          params: check(operation, "params", input.params ?? {}),
+          query: check(operation, "query", queryAsText(input.query)),
+          body: check(operation, "body", input.body),
+        });
         const schema = operation.success.schema;
         if (!schema) return undefined;
         const parsed = schema.safeParse(result);
