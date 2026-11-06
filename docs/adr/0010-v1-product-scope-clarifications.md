@@ -121,6 +121,18 @@ requirements that no ADR or spec defines precisely enough to build or test:
     (`01-product-spec.md` §5 and §11). They return only if a functional
     requirement defines them.
 
+11. **Jobs and alerts in the client** (added 2026-11-07, FE3, decisions
+    approved by the user on 2026-11-04).
+    - The API has no endpoint that lists jobs, so the Activity screen shows
+      only the imports that this browser started. They are kept in
+      `sessionStorage` under a key per user, at most 20, newest first. An
+      import started on another device or in another tab session is not
+      listed, and closing the tab forgets them. A job the API no longer
+      knows (404) is dropped from the list.
+    - The alert form offers price alerts only (`ABOVE` or `BELOW`), because
+      the alert evaluator ignores any other type. The Alerts tab lists only
+      the price alerts that have an asset.
+
 ## Consequences
 
 - `02-functional-requirements.md`: FR-006, FR-011, FR-015, FR-052 and FR-055
