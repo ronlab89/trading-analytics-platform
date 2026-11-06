@@ -1,4 +1,5 @@
 import {
+  createAlertService,
   createAnalyticsService,
   createAssetService,
   createCsvImportHandler,
@@ -7,12 +8,14 @@ import {
   createJobRunner,
   createJobService,
   createMarketService,
+  createNotificationService,
   createOverviewService,
   createPerformanceService,
   createPortfolioService,
   createPositionService,
   createRangeAttributionService,
   createRiskService,
+  createSimulationService,
   createTransactionService,
   createUserPreferenceService,
   createWatchlistService,
@@ -36,6 +39,8 @@ import {
 } from "@trading/persistence-memory";
 import { tokenizeCsv } from "./csv-tokenizer";
 import { seedMarket } from "./market-seed";
+import { createDemoSimulationControl } from "./simulation-control";
+import type { DemoSimulationControl } from "./simulation-control";
 import { seedTransactions } from "./transaction-seed";
 
 export interface DemoUser {
@@ -61,6 +66,10 @@ export interface DemoComposition {
   readonly riskService: ReturnType<typeof createRiskService>;
   readonly performanceService: ReturnType<typeof createPerformanceService>;
   readonly rangeAttributionService: ReturnType<typeof createRangeAttributionService>;
+  readonly alertService: ReturnType<typeof createAlertService>;
+  readonly notificationService: ReturnType<typeof createNotificationService>;
+  readonly simulationService: ReturnType<typeof createSimulationService>;
+  readonly simulationControl: DemoSimulationControl;
   readonly jobService: ReturnType<typeof createJobService>;
   /** Created stopped; the runtime starts it, and tests start it when they need a job to run. */
   readonly jobRunner: ReturnType<typeof createJobRunner>;
@@ -98,12 +107,13 @@ export async function createDemoComposition(
   const idempotencyKeyRepository = new InMemoryIdempotencyKeyRepository(repositoryOptions);
   const jobRepository = new InMemoryJobRepository(repositoryOptions);
   const notificationRepository = new InMemoryNotificationRepository(repositoryOptions);
+  const alertRepository = new InMemoryAlertRepository(repositoryOptions);
   const unitOfWork = new InMemoryUnitOfWork({
     transactions: transactionRepository,
     positions: positionRepository,
     jobs: jobRepository,
     idempotencyKeys: idempotencyKeyRepository,
-    alerts: new InMemoryAlertRepository(repositoryOptions),
+    alerts: alertRepository,
     notifications: notificationRepository,
   });
 
@@ -135,6 +145,7 @@ export async function createDemoComposition(
     clock,
   };
 
+  const simulationControl = createDemoSimulationControl();
   const jobService = createJobService({ jobRepository, portfolioService, unitOfWork, clock });
   const jobRunner = createJobRunner({
     jobRepository,
@@ -193,6 +204,15 @@ export async function createDemoComposition(
       ...seriesDependencies,
       assetService,
     }),
+    alertService: createAlertService({
+      alertRepository,
+      marketPriceRepository,
+      assetService,
+      portfolioService,
+    }),
+    notificationService: createNotificationService({ notificationRepository, clock }),
+    simulationService: createSimulationService({ control: simulationControl }),
+    simulationControl,
     jobService,
     jobRunner,
   };

@@ -9,7 +9,7 @@ const login = findOperation(API_OPERATIONS, "login");
 const logout = findOperation(API_OPERATIONS, "logout");
 const getCurrentUser = findOperation(API_OPERATIONS, "getCurrentUser");
 const listPortfolios = findOperation(API_OPERATIONS, "listPortfolios");
-const listAlerts = findOperation(API_OPERATIONS, "listAlerts");
+const getLiveness = findOperation(API_OPERATIONS, "getLiveness");
 
 async function setup() {
   const composition = await createDemoComposition();
@@ -67,10 +67,10 @@ describe("createDemoTradingClient", () => {
     await expect(client.call(getCurrentUser)).rejects.toMatchObject({ status: 401 });
   });
 
-  it("answers an operation it does not implement yet as 404 NOT_FOUND", async () => {
+  it("answers an operation the demo never serves (a server health check) as 404 NOT_FOUND", async () => {
     const client = await signedInClient();
 
-    const failure = await client.call(listAlerts).catch((error: unknown) => error);
+    const failure = await client.call(getLiveness).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(ApiError);
     expect(failure).toMatchObject({ code: "NOT_FOUND", status: 404 });
