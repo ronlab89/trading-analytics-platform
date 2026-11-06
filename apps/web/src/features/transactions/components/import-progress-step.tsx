@@ -124,6 +124,33 @@ export function ImportProgressStep({ jobId }: ImportProgressStepProps) {
                 {t("importCsv.progress.background")}
               </p>
             )}
+            {job.status === "COMPLETED" ? (
+              <p className="text-sm leading-5 text-(--color-text-secondary)">
+                {t("importCsv.progress.imported", { count: total })}
+              </p>
+            ) : null}
+            {job.report !== null && job.report.length > 0 ? (
+              <section
+                aria-labelledby="import-report-title"
+                className="flex min-h-0 flex-col gap-2"
+              >
+                <h3 className="text-sm font-semibold" id="import-report-title">
+                  {t("importCsv.progress.report.title")}
+                </h3>
+                <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto text-sm">
+                  {job.report.map(({ row, message }, index) => (
+                    <li className="flex gap-3" key={`${String(row)}-${String(index)}`}>
+                      <span className="w-16 shrink-0 font-medium">
+                        {row === 0
+                          ? t("importCsv.progress.report.file")
+                          : t("importCsv.progress.report.row", { row })}
+                      </span>
+                      <span className="text-(--color-text-secondary)">{message}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </>
         )}
         {actionError ? (

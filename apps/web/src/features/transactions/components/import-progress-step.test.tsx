@@ -13,6 +13,7 @@ const job = (patch: Record<string, unknown> = {}) => ({
   status: "PROCESSING",
   stage: "VALIDATING",
   failureReason: null,
+  report: null,
   progress: { processed: 40, total: 100 },
   ...patch,
 });
@@ -123,6 +124,42 @@ describe("ImportProgressStep", () => {
       await screen.findByText("The file has rows that cannot be imported."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
+
+  it("counts the transactions a completed import added", async () => {
+    setup(job({ status: "COMPLETED", stage: "APPLYING", progress: { processed: 12, total: 12 } }));
+
+    expect(
+      await screen.findByText("12 transactions were added to the portfolio."),
+    ).toBeInTheDocument();
+  });
+
+  it("lists the rows of the report of a file that failed validation", async () => {
+    setup(
+      job({
+        status: "FAILED",
+        failureReason: "VALIDATION_FAILED",
+        report: [
+          { row: 0, message: "The header is wrong." },
+          { row: 3, message: "Unknown symbol." },
+        ],
+      }),
+    );
+
+    expect(await screen.findByText("Rows to fix")).toBeInTheDocument();
+    expect(screen.getByText("File")).toBeInTheDocument();
+    expect(screen.getByText("The header is wrong.")).toBeInTheDocument();
+    expect(screen.getByText("Row 3")).toBeInTheDocument();
+    expect(screen.getByText("Unknown symbol.")).toBeInTheDocument();
+  });
+
+  it("shows no report for a job that failed without one", async () => {
+    setup(job({ status: "FAILED", failureReason: "INTERRUPTED", report: null }));
+
+    expect(
+      await screen.findByText("The import was interrupted. You can try it again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Rows to fix")).not.toBeInTheDocument();
   });
 
   it("says when the import took too long", async () => {

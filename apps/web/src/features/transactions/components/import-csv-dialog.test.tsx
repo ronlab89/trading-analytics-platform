@@ -13,6 +13,7 @@ const queued = {
   status: "QUEUED",
   stage: "QUEUED",
   failureReason: null,
+  report: null,
   progress: { processed: 0, total: 0 },
 };
 
