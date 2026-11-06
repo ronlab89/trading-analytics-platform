@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput } from "@/api/trading-client";
@@ -102,6 +103,51 @@ describe("ImportChooseStep", () => {
     expect(call.mock.calls[0]?.[0].operationId).toBe("importTransactions");
     expect(call.mock.calls[0]?.[1]?.params).toEqual({ portfolioId: "p1" });
     expect(call.mock.calls[0]?.[1]?.body).toBe(GOOD);
+  });
+
+  it("tells the dialog it stopped sending when it leaves as soon as the job is queued", async () => {
+    const onBusyChange = vi.fn<(busy: boolean) => void>();
+    let answer: (reply: unknown) => void = () => undefined;
+    const reply = new Promise((resolve) => {
+      answer = resolve;
+    });
+    const Wrapper = tradingClientWrapper({ call: () => reply });
+    function Host() {
+      const [queued, setQueued] = useState(false);
+      return queued ? null : (
+        <ImportChooseStep
+          onBusyChange={onBusyChange}
+          onQueued={() => {
+            setQueued(true);
+          }}
+          portfolioId="p1"
+        />
+      );
+    }
+    render(
+      <Wrapper>
+        <Dialog open>
+          <DialogContent aria-describedby={undefined}>
+            <Host />
+          </DialogContent>
+        </Dialog>
+      </Wrapper>,
+    );
+    const user = userEvent.setup();
+    await user.upload(screen.getByLabelText("choose a file"), csv(GOOD));
+    await screen.findByText("trades.csv · 2 rows");
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() => {
+      expect(onBusyChange).toHaveBeenLastCalledWith(true);
+    });
+
+    answer({ data: job });
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText("choose a file")).not.toBeInTheDocument();
+    });
+    expect(onBusyChange).toHaveBeenLastCalledWith(false);
   });
 
   it("locks Cancel and the file while the API has not answered", async () => {
