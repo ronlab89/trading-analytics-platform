@@ -914,6 +914,13 @@ const en = {
         APPLY_REJECTED: "The portfolio rejected the transactions. You can try again.",
         PORTFOLIO_ARCHIVED: "The portfolio is archived, so nothing can be imported.",
       },
+      imported_one: "{{count}} transaction was added to the portfolio.",
+      imported_other: "{{count}} transactions were added to the portfolio.",
+      report: {
+        title: "Rows to fix",
+        file: "File",
+        row: "Row {{row}}",
+      },
       cancel: "Cancel import",
       cancelling: "Cancelling…",
       retry: "Try again",
@@ -1088,6 +1095,7 @@ const en = {
     },
     new: "New transaction",
     newShort: "New",
+    import: "Import CSV",
     empty: {
       action: "New transaction",
       title: "No transactions yet",
@@ -2295,6 +2303,13 @@ const es: Messages<typeof en> = {
         APPLY_REJECTED: "El portafolio rechazó las transacciones. Podés intentarlo de nuevo.",
         PORTFOLIO_ARCHIVED: "El portafolio está archivado, así que no se puede importar nada.",
       },
+      imported_one: "Se agregó {{count}} transacción al portafolio.",
+      imported_other: "Se agregaron {{count}} transacciones al portafolio.",
+      report: {
+        title: "Filas para corregir",
+        file: "Archivo",
+        row: "Fila {{row}}",
+      },
       cancel: "Cancelar importación",
       cancelling: "Cancelando…",
       retry: "Reintentar",
@@ -2470,6 +2485,7 @@ const es: Messages<typeof en> = {
     },
     new: "Nueva transacción",
     newShort: "Nueva",
+    import: "Importar CSV",
     empty: {
       action: "Nueva transacción",
       title: "Aún no hay transacciones",

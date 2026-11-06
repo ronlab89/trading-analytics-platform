@@ -299,6 +299,25 @@ describe("TransactionsPage", () => {
     expect(await screen.findByRole("dialog", { name: "New transaction" })).toBeInTheDocument();
   });
 
+  it("opens the CSV import dialog from the header button", async () => {
+    renderPage(clientWith().client);
+    await screen.findByRole("table", { name: "Transactions" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Import CSV" }));
+
+    expect(await screen.findByRole("dialog", { name: "Import transactions" })).toBeInTheDocument();
+  });
+
+  it("opens the CSV import dialog from the icon button on a phone", async () => {
+    stubMobile(true);
+    renderPage(clientWith().client);
+    await screen.findByRole("list", { name: "Transactions" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Import CSV" }));
+
+    expect(await screen.findByRole("dialog", { name: "Import transactions" })).toBeInTheDocument();
+  });
+
   it("opens it from the empty state", async () => {
     renderPage(
       clientWith({

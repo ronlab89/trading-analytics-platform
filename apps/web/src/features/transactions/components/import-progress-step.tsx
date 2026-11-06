@@ -1,4 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type { JobResponse } from "@trading/contracts";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { rejectionReason } from "@/api/rejection-reason";
 import { Alert } from "@/components/ui/alert";
@@ -12,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { invalidatePortfolioData } from "@/features/portfolios/lib/invalidate-portfolio-data";
 import { useJob } from "@/features/jobs/hooks/use-job";
 import { useCancelJob, useRetryJob } from "@/features/jobs/hooks/use-job-actions";
 import { canCancelJob, canRetryJob, jobPhase, type JobPhase } from "@/features/jobs/lib/job-state";
@@ -72,6 +75,14 @@ export function ImportProgressStep({ jobId }: ImportProgressStepProps) {
   const { data: job, isError } = useJob(jobId);
   const cancel = useCancelJob(jobId);
   const retry = useRetryJob(jobId);
+  const queryClient = useQueryClient();
+
+  // The transactions exist only once the job completed, so that is when what the portfolio shows is
+  // read again. It runs once per completion, whether the end came from the socket or from polling.
+  const completedPortfolioId = job?.status === "COMPLETED" ? job.portfolioId : null;
+  useEffect(() => {
+    if (completedPortfolioId !== null) invalidatePortfolioData(queryClient, completedPortfolioId);
+  }, [queryClient, completedPortfolioId]);
 
   const phase = job ? jobPhase(job) : null;
   const acting = cancel.isPending || retry.isPending;
@@ -124,6 +135,33 @@ export function ImportProgressStep({ jobId }: ImportProgressStepProps) {
                 {t("importCsv.progress.background")}
               </p>
             )}
+            {job.status === "COMPLETED" ? (
+              <p className="text-sm leading-5 text-(--color-text-secondary)">
+                {t("importCsv.progress.imported", { count: total })}
+              </p>
+            ) : null}
+            {job.report !== null && job.report.length > 0 ? (
+              <section
+                aria-labelledby="import-report-title"
+                className="flex min-h-0 flex-col gap-2"
+              >
+                <h3 className="text-sm font-semibold" id="import-report-title">
+                  {t("importCsv.progress.report.title")}
+                </h3>
+                <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto text-sm">
+                  {job.report.map(({ row, message }, index) => (
+                    <li className="flex gap-3" key={`${String(row)}-${String(index)}`}>
+                      <span className="w-16 shrink-0 font-medium">
+                        {row === 0
+                          ? t("importCsv.progress.report.file")
+                          : t("importCsv.progress.report.row", { row })}
+                      </span>
+                      <span className="text-(--color-text-secondary)">{message}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </>
         )}
         {actionError ? (
