@@ -6,7 +6,9 @@ import { logger } from "@/lib/logging/logger";
 import type { DemoComposition } from "./demo-composition";
 import { createAuthHandlers } from "./handlers/auth-handlers";
 import type { DemoSession, HandlerContext } from "./handlers/handler";
+import { createMarketHandlers } from "./handlers/market-handlers";
 import { createPortfolioHandlers } from "./handlers/portfolio-handlers";
+import { createWatchlistHandlers } from "./handlers/watchlist-handlers";
 import { NO_LATENCY } from "./latency";
 import type { Latency } from "./latency";
 import { toApiError } from "./to-api-error";
@@ -66,7 +68,12 @@ export function createDemoTradingClient(options: DemoTradingClientOptions): Trad
   const { composition, clock = { now: () => new Date() }, latency = NO_LATENCY } = options;
   const session: DemoSession = { signedIn: false };
   const context: HandlerContext = { composition, session, clock, actor: composition.actor };
-  const handlers = { ...createAuthHandlers(context), ...createPortfolioHandlers(context) };
+  const handlers = {
+    ...createAuthHandlers(context),
+    ...createPortfolioHandlers(context),
+    ...createMarketHandlers(context),
+    ...createWatchlistHandlers(context),
+  };
 
   logger.info(DEMO_ADAPTER_MARKER);
 
