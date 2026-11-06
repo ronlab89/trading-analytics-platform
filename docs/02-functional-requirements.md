@@ -1327,7 +1327,7 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-067 — Mock Persistence
 
 **Priority:** P0  
-**Status:** in-memory persistence within a session `Planned (FE)` (repositories `Planned (B0)`); persistence across reloads `Deferred` (demo data layers, `05-data-model.md` §34)  
+**Status:** in-memory persistence within a session `Planned (FE)` (repositories `Planned (B0)`); persistence across reloads `Deferred` (demo data layers, `05-data-model.md` §34; proposed in ADR-012)  
 **Decisions:** ADR-001 point 4 and Deferred detail
 
 ### Acceptance criteria
@@ -1388,7 +1388,7 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-071 — Demo Error Scenarios
 
 **Priority:** P1  
-**Status:** CSV import failure injection `Planned (FE)` (ADR-008 point 13); other scripted failures (request failure, timeout, connection loss) `Deferred` until the frontend-stage demo ADR (ADR-010 point 6)  
+**Status:** CSV import failure injection `Planned (FE)` (ADR-008 point 13); other scripted failures (request failure, timeout, connection loss) `Deferred` until the frontend-stage demo ADR (ADR-010 point 6; proposed in ADR-012)  
 **Decisions:** ADR-008 point 13
 
 ### Acceptance criteria
@@ -1403,7 +1403,7 @@ dataset, and demo sessions should be resettable (FR-072).
 ## FR-072 — Demo Reset
 
 **Priority:** P1  
-**Status:** `Deferred` — demo data layers and reset are decided in the frontend-stage demo ADR (ADR-010 point 6; `05-data-model.md` §35).  
+**Status:** `Deferred` — demo data layers and reset are decided in the frontend-stage demo ADR (ADR-010 point 6; `05-data-model.md` §35; proposed in ADR-012).  
 **Decisions:** —
 
 The demo provides a reliable way to restore its initial seeded state

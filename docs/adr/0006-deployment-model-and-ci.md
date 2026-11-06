@@ -84,7 +84,7 @@ Other facts:
    the build. (Amended 2026-10-07: demo hosting, the base path value, the
    SPA fallback mechanism and the numeric bound of the demo simulation are
    decided in the frontend-stage ADR, ADR-010 point 6; the requirements
-   above stay.)
+   above stay. Proposed 2026-11-06 in ADR-012.)
 8. **Environments and variables.** `development`, `test` and local
    `production`. Canonical names: `PORT` (default `7001`),
    `JWT_EXPIRES_IN_SECONDS`, and `APP_MODE` with values `real` or `demo`

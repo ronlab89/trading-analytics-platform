@@ -27,7 +27,8 @@ blocks B0-B7 are closed, and the frontend phase has no decided stack:
 
 This ADR decides the stack and the test tooling. It does not decide the demo
 specifics of ADR-010 point 6 (data layers, reset, simulated latency, scripted
-failures, hosting, base path, SPA fallback), which need the new wireframe.
+failures, hosting, base path, SPA fallback), which need the new wireframe
+(proposed later in ADR-012).
 
 ## Decision
 

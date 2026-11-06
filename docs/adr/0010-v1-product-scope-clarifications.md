@@ -68,7 +68,8 @@ requirements that no ADR or spec defines precisely enough to build or test:
    by the user from the `14-deployment-spec.md` reconciliation, §22, §24,
    §28:) Demo hosting, the base path, the SPA fallback and the numeric bound
    for the demo simulation are also decided in that frontend-stage ADR and
-   stay `Deferred` until then (ADR-006 point 7).
+   stay `Deferred` until then (ADR-006 point 7). (Proposed 2026-11-06: ADR-012
+   is that frontend-stage ADR.)
 7. **Benchmark comparison** (added 2026-10-05). Comparing portfolio
    performance with a market index or benchmark is `Deferred`. The system
    has no benchmark data, and no FR asks for it.
@@ -121,7 +122,7 @@ requirements that no ADR or spec defines precisely enough to build or test:
     (`01-product-spec.md` §5 and §11). They return only if a functional
     requirement defines them.
 
-11. **Jobs and alerts in the client** (added 2026-11-07, FE3, decisions
+11. **Jobs and alerts in the client** (added 2026-11-06, FE3, decisions
     approved by the user on 2026-11-04).
     - The API has no endpoint that lists jobs, so the Activity screen shows
       only the imports that this browser started. They are kept in
