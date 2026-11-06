@@ -22,6 +22,7 @@ import {
   type ActivityPanelFilters,
 } from "@/features/activity/lib/activity-panel-filters";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
+import { ImportCsvDialog } from "@/features/transactions/components/import-csv-dialog";
 import { TransactionDetailPanel } from "@/features/transactions/components/transaction-detail-panel";
 import { TransactionsPagination } from "@/features/transactions/components/transactions-pagination";
 import type { TransactionRow } from "@/features/transactions/types";
@@ -45,6 +46,9 @@ export function ActivityPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   // The transaction whose detail is open; the hook already holds everything the panel shows.
   const [viewing, setViewing] = useState<TransactionRow | null>(null);
+  // The import whose progress is open. It keeps the last one after closing, so the window can fade.
+  const [process, setProcess] = useState<{ jobId: string; portfolioId: string } | null>(null);
+  const [processOpen, setProcessOpen] = useState(false);
 
   const filtered = events ? filterEvents(events, toActivityFilters(panel, search)) : [];
   const current = paginateEvents(filtered, page, pageSize);
@@ -71,6 +75,21 @@ export function ActivityPage() {
   };
 
   const renderAction = (event: ActivityEvent) => {
+    if (event.jobId !== undefined) {
+      const { jobId, portfolioId } = event;
+      return (
+        <Button
+          onClick={() => {
+            setProcess({ jobId, portfolioId: portfolioId ?? "" });
+            setProcessOpen(true);
+          }}
+          size="sm"
+          variant="ghost"
+        >
+          {t("activity.viewProcess")}
+        </Button>
+      );
+    }
     const row =
       event.transactionId === undefined ? undefined : transactionRows.get(event.transactionId);
     if (row === undefined) return null;
@@ -195,6 +214,15 @@ export function ActivityPage() {
         }}
         transaction={viewing}
       />
+      {process === null ? null : (
+        <ImportCsvDialog
+          jobId={process.jobId}
+          key={process.jobId}
+          onOpenChange={setProcessOpen}
+          open={processOpen}
+          portfolioId={process.portfolioId}
+        />
+      )}
     </div>
   );
 }

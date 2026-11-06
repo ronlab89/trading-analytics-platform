@@ -96,6 +96,7 @@ describe("toActivityEvents processes", () => {
       message: "40 of 100",
       occurredAt: "2026-11-07T10:00:00.000Z",
       jobId: "j1",
+      portfolioId: "p1",
       progress: { processed: 40, total: 100 },
     });
   });

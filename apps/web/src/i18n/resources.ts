@@ -96,6 +96,7 @@ const en = {
     search: "Search the activity",
     loading: "Loading the activity",
     viewTransaction: "View transaction",
+    viewProcess: "View process",
     empty: {
       title: "No activity yet",
       description: "Your alerts and the transactions of the last 30 days will show up here.",
@@ -1474,6 +1475,7 @@ const es: Messages<typeof en> = {
     search: "Buscar en la actividad",
     loading: "Cargando la actividad",
     viewTransaction: "Ver transacción",
+    viewProcess: "Ver proceso",
     empty: {
       title: "Todavía no hay actividad",
       description: "Acá vas a ver tus alertas y las transacciones de los últimos 30 días.",

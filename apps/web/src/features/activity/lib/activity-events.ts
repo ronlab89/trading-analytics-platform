@@ -23,6 +23,8 @@ export interface ActivityEvent {
   transactionId?: string;
   /** Set for a process event, so the row can open it. */
   jobId?: string;
+  /** The portfolio a process event imports into. */
+  portfolioId?: string;
   /** Set for a process that is still running, so the row can draw its bar. */
   progress?: { processed: number; total: number };
 }
@@ -110,6 +112,7 @@ export function toActivityEvents({
         message,
         occurredAt: tracked.startedAt,
         jobId: job.id,
+        portfolioId: job.portfolioId,
         ...(isJobFinished(job) ? {} : { progress: job.progress }),
       },
     ];

@@ -1,9 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { ApiError, type CallInput } from "@/api/trading-client";
 import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
+import { useSessionStore } from "@/stores/session-store";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import "@/i18n";
 import { ActivityPage } from "./activity-page";
@@ -71,6 +72,78 @@ function renderPage(answers: Answers) {
 
 beforeEach(() => {
   useActivePortfolioStore.setState({ selectedId: undefined });
+});
+
+afterEach(() => {
+  useSessionStore.getState().signOut();
+  sessionStorage.clear();
+});
+
+const runningJob = {
+  id: "j1",
+  portfolioId: "p1",
+  status: "PROCESSING",
+  stage: "VALIDATING",
+  failureReason: null,
+  report: null,
+  progress: { processed: 40, total: 100 },
+};
+
+/** Signs in as a user whose device started one import, and answers the job as running. */
+function withARunningImport(userId: string): Answers {
+  sessionStorage.setItem(
+    `trading:jobs:${userId}`,
+    JSON.stringify([
+      {
+        id: "j1",
+        portfolioId: "p1",
+        fileName: "orders.csv",
+        startedAt: new Date().toISOString(),
+      },
+    ]),
+  );
+  useSessionStore.getState().signIn({
+    user: { id: userId, email: `${userId}@example.com`, displayName: userId, role: "TRADER" },
+    session: { accessToken: "token", expiresAt: "2099-01-01T00:00:00.000Z" },
+  });
+  return { ...healthy, getJob: () => Promise.resolve({ data: runningJob }) };
+}
+
+describe("ActivityPage processes", () => {
+  it("lists an import that is running with its bar", async () => {
+    renderPage(withARunningImport("page-bar"));
+
+    expect(await screen.findByText("Importing orders.csv")).toBeInTheDocument();
+    expect(screen.getByText("Validating · 40 of 100")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Import progress" })).toHaveAttribute(
+      "aria-valuenow",
+      "40",
+    );
+  });
+
+  it("opens the import on its progress from View process", async () => {
+    const user = userEvent.setup();
+    renderPage(withARunningImport("page-open"));
+
+    await user.click(await screen.findByRole("button", { name: "View process" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Import transactions" });
+    expect(within(dialog).getByText("Validating")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("choose a file")).not.toBeInTheDocument();
+  });
+
+  it("narrows the list to the processes with the Process source", async () => {
+    const user = userEvent.setup();
+    renderPage(withARunningImport("page-filter"));
+    await screen.findByText("Importing orders.csv");
+
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Process" }));
+    await user.click(screen.getByRole("button", { name: "Apply filters" }));
+
+    expect(screen.getByText("Importing orders.csv")).toBeInTheDocument();
+    expect(screen.queryByText(/Risk threshold exceeded/)).not.toBeInTheDocument();
+  });
 });
 
 describe("ActivityPage", () => {

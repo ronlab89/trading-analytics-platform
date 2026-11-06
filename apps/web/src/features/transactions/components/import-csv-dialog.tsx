@@ -8,6 +8,8 @@ interface ImportCsvDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   portfolioId: string;
+  /** Opens on the progress of this job instead of the step to choose a file. */
+  jobId?: string;
 }
 
 /**
@@ -16,8 +18,14 @@ interface ImportCsvDialogProps {
  * the job would be lost; once queued it can, and the job goes on without the window. Closing it
  * starts the next opening from the first step.
  */
-export function ImportCsvDialog({ open, onOpenChange, portfolioId }: ImportCsvDialogProps) {
-  const [jobId, setJobId] = useState<string | null>(null);
+export function ImportCsvDialog({
+  open,
+  onOpenChange,
+  portfolioId,
+  jobId: initialJobId,
+}: ImportCsvDialogProps) {
+  const [startedJobId, setJobId] = useState<string | null>(null);
+  const jobId = startedJobId ?? initialJobId ?? null;
   const [sending, setSending] = useState(false);
   const { track } = useTrackedJobs();
 

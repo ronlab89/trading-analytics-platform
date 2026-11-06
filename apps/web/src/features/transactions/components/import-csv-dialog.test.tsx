@@ -19,7 +19,10 @@ const queued = {
   progress: { processed: 0, total: 0 },
 };
 
-function setup(importAnswer: () => Promise<unknown> = () => Promise.resolve({ data: queued })) {
+function setup(
+  importAnswer: () => Promise<unknown> = () => Promise.resolve({ data: queued }),
+  jobId?: string,
+) {
   const call = vi.fn<(operation: { operationId: string }, input?: CallInput) => Promise<unknown>>(
     (operation) =>
       operation.operationId === "importTransactions"
@@ -30,7 +33,12 @@ function setup(importAnswer: () => Promise<unknown> = () => Promise.resolve({ da
   const Wrapper = tradingClientWrapper({ call });
   const view = (open: boolean) => (
     <Wrapper>
-      <ImportCsvDialog onOpenChange={onOpenChange} open={open} portfolioId="p1" />
+      <ImportCsvDialog
+        {...(jobId === undefined ? {} : { jobId })}
+        onOpenChange={onOpenChange}
+        open={open}
+        portfolioId="p1"
+      />
     </Wrapper>
   );
   const { rerender } = render(view(true));
@@ -59,6 +67,29 @@ afterEach(() => {
 });
 
 describe("ImportCsvDialog", () => {
+  it("opens on the progress of a job it is given, with no file to choose", async () => {
+    setup(undefined, "j1");
+
+    expect(await screen.findByRole("progressbar", { name: "Import progress" })).toBeInTheDocument();
+    expect(await screen.findByText("Queued")).toBeInTheDocument();
+    expect(screen.queryByLabelText("choose a file")).not.toBeInTheDocument();
+  });
+
+  it("opens on the progress of that job again after it was closed", async () => {
+    const { user, onOpenChange, reopen } = setup(undefined, "j1");
+    await screen.findByText("Queued");
+
+    // The window has two ways to close: the corner one and the footer one.
+    const [closeButton] = screen.getAllByRole("button", { name: "Close" });
+    if (!closeButton) throw new Error("The dialog has no close button");
+    await user.click(closeButton);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    reopen();
+
+    expect(await screen.findByText("Queued")).toBeInTheDocument();
+    expect(screen.queryByLabelText("choose a file")).not.toBeInTheDocument();
+  });
+
   it("registers the job it queued, with the name of the file, for the signed-in user", async () => {
     useSessionStore.getState().signIn({
       user: { id: "u-dialog", email: "a@example.com", displayName: "Ana", role: "TRADER" },
