@@ -20,6 +20,7 @@
     "@trading/application": "workspace:*",
     "@trading/contracts": "workspace:*",
     "@trading/domain": "workspace:*",
+    "@trading/persistence-memory": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
     "i18next": "^26.5.11",

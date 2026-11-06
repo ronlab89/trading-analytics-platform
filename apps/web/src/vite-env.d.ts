@@ -7,3 +7,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** True only in the demo build; replaced by a literal at build time (see vite.config.ts). */
+declare const __DEMO_BUILD__: boolean;

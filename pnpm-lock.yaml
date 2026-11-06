@@ -257,6 +257,9 @@ importers:
       '@trading/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@trading/persistence-memory':
+        specifier: workspace:*
+        version: link:../../packages/persistence-memory
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
