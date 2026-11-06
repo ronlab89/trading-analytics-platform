@@ -1,4 +1,5 @@
 import {
+  createAnalyticsService,
   createAssetService,
   createCsvImportHandler,
   createIdempotencyService,
@@ -6,8 +7,12 @@ import {
   createJobRunner,
   createJobService,
   createMarketService,
+  createOverviewService,
+  createPerformanceService,
   createPortfolioService,
   createPositionService,
+  createRangeAttributionService,
+  createRiskService,
   createTransactionService,
   createUserPreferenceService,
   createWatchlistService,
@@ -51,6 +56,11 @@ export interface DemoComposition {
   readonly transactionService: ReturnType<typeof createTransactionService>;
   readonly positionService: ReturnType<typeof createPositionService>;
   readonly idempotencyService: ReturnType<typeof createIdempotencyService>;
+  readonly analyticsService: ReturnType<typeof createAnalyticsService>;
+  readonly overviewService: ReturnType<typeof createOverviewService>;
+  readonly riskService: ReturnType<typeof createRiskService>;
+  readonly performanceService: ReturnType<typeof createPerformanceService>;
+  readonly rangeAttributionService: ReturnType<typeof createRangeAttributionService>;
   readonly jobService: ReturnType<typeof createJobService>;
   /** Created stopped; the runtime starts it, and tests start it when they need a job to run. */
   readonly jobRunner: ReturnType<typeof createJobRunner>;
@@ -118,6 +128,13 @@ export async function createDemoComposition(
   });
   await seedTransactions({ transactionService, assetRepository, actor, portfolio, clock });
 
+  const seriesDependencies = {
+    portfolioService,
+    transactionRepository,
+    historicalPriceRepository,
+    clock,
+  };
+
   const jobService = createJobService({ jobRepository, portfolioService, unitOfWork, clock });
   const jobRunner = createJobRunner({
     jobRepository,
@@ -156,6 +173,26 @@ export async function createDemoComposition(
     transactionService,
     positionService: createPositionService({ positionRepository, portfolioService }),
     idempotencyService: createIdempotencyService({ idempotencyKeyRepository, clock }),
+    analyticsService: createAnalyticsService({
+      positionRepository,
+      portfolioService,
+      assetService,
+    }),
+    overviewService: createOverviewService({
+      positionRepository,
+      transactionRepository,
+      marketPriceRepository,
+      historicalPriceRepository,
+      portfolioService,
+      assetService,
+      clock,
+    }),
+    riskService: createRiskService(seriesDependencies),
+    performanceService: createPerformanceService(seriesDependencies),
+    rangeAttributionService: createRangeAttributionService({
+      ...seriesDependencies,
+      assetService,
+    }),
     jobService,
     jobRunner,
   };

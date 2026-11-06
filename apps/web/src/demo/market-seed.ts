@@ -75,7 +75,8 @@ const SEED_ASSETS: readonly SeedAsset[] = [
   },
 ];
 
-const HISTORY_DAYS = 30;
+/** A year of daily candles, so every period of the analytics screens has data. */
+const HISTORY_DAYS = 365;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface MarketSeedRepositories {
