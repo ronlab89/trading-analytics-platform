@@ -9,6 +9,7 @@ const latencyOff = import.meta.env.VITE_DEMO_LATENCY === "off";
 
 export async function createDemoRuntime(): Promise<AppRuntime> {
   const composition = await createDemoComposition();
+  composition.jobRunner.start();
   return {
     tradingClient: createDemoTradingClient({
       composition,

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createDemoComposition } from "../demo-composition";
 import { createAuthHandlers } from "./auth-handlers";
 import type { HandlerContext, HandlerRegistry } from "./handler";
+import { createJobHandlers } from "./job-handlers";
 import { createMarketHandlers } from "./market-handlers";
 import { createPortfolioHandlers } from "./portfolio-handlers";
 import { createTransactionHandlers } from "./transaction-handlers";
@@ -14,6 +15,7 @@ const factories: Record<string, (context: HandlerContext) => HandlerRegistry> = 
   market: createMarketHandlers,
   watchlist: createWatchlistHandlers,
   transactions: createTransactionHandlers,
+  jobs: createJobHandlers,
 };
 
 describe("demo handler registry", () => {

@@ -6,6 +6,7 @@ import { logger } from "@/lib/logging/logger";
 import type { DemoComposition } from "./demo-composition";
 import { createAuthHandlers } from "./handlers/auth-handlers";
 import type { DemoSession, HandlerContext } from "./handlers/handler";
+import { createJobHandlers } from "./handlers/job-handlers";
 import { createMarketHandlers } from "./handlers/market-handlers";
 import { createPortfolioHandlers } from "./handlers/portfolio-handlers";
 import { createTransactionHandlers } from "./handlers/transaction-handlers";
@@ -76,6 +77,7 @@ export function createDemoTradingClient(options: DemoTradingClientOptions): Trad
     ...createMarketHandlers(context),
     ...createWatchlistHandlers(context),
     ...createTransactionHandlers(context),
+    ...createJobHandlers(context),
   };
 
   logger.info(DEMO_ADAPTER_MARKER);
