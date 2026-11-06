@@ -1095,6 +1095,7 @@ const en = {
     },
     new: "New transaction",
     newShort: "New",
+    import: "Import CSV",
     empty: {
       action: "New transaction",
       title: "No transactions yet",
@@ -2484,6 +2485,7 @@ const es: Messages<typeof en> = {
     },
     new: "Nueva transacción",
     newShort: "Nueva",
+    import: "Importar CSV",
     empty: {
       action: "Nueva transacción",
       title: "Aún no hay transacciones",

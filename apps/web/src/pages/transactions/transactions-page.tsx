@@ -1,9 +1,10 @@
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
+import { ImportCsvDialog } from "@/features/transactions/components/import-csv-dialog";
 import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
 import { TransactionFilterChips } from "@/features/transactions/components/transaction-filter-chips";
 import { TransactionDetailPanel } from "@/features/transactions/components/transaction-detail-panel";
@@ -36,9 +37,13 @@ export function TransactionsPage() {
   const { active, isPending, isError, retry } = useActivePortfolio();
   const isMobile = useIsMobile();
   const [panelOpen, setPanelOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const announceRecorded = useAnnounceRecorded();
   const openPanel = () => {
     setPanelOpen(true);
+  };
+  const openImport = () => {
+    setImportOpen(true);
   };
 
   return (
@@ -49,9 +54,19 @@ export function TransactionsPage() {
             {t("nav.transactions")}
           </h1>
           {active !== undefined ? (
-            <Button onClick={openPanel} size="sm">
-              {t("transactions.newShort")}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                aria-label={t("transactions.import")}
+                onClick={openImport}
+                size="icon-sm"
+                variant="outline"
+              >
+                <Upload aria-hidden="true" />
+              </Button>
+              <Button onClick={openPanel} size="sm">
+                {t("transactions.newShort")}
+              </Button>
+            </div>
           ) : null}
         </div>
       ) : (
@@ -62,6 +77,7 @@ export function TransactionsPage() {
           <TransactionsList
             key={active.id}
             isMobile={isMobile}
+            onImport={openImport}
             onNew={openPanel}
             portfolioId={active.id}
             portfolioName={active.name}
@@ -72,6 +88,7 @@ export function TransactionsPage() {
             open={panelOpen}
             portfolioId={active.id}
           />
+          <ImportCsvDialog onOpenChange={setImportOpen} open={importOpen} portfolioId={active.id} />
         </>
       ) : isError ? (
         <Alert
@@ -108,9 +125,17 @@ interface TransactionsListProps {
   isMobile: boolean;
   /** Opens the "Nueva transacción" panel, which the page owns. */
   onNew: () => void;
+  /** Opens the CSV import dialog, which the page owns. */
+  onImport: () => void;
 }
 
-function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: TransactionsListProps) {
+function TransactionsList({
+  portfolioId,
+  portfolioName,
+  isMobile,
+  onNew,
+  onImport,
+}: TransactionsListProps) {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -181,10 +206,16 @@ function TransactionsList({ portfolioId, portfolioName, isMobile, onNew }: Trans
                 : t("transactions.summary", { count: meta.total, portfolio: portfolioName })}
             </p>
           )}
-          <Button className="ml-auto" onClick={onNew}>
-            <Plus aria-hidden="true" />
-            {t("transactions.new")}
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button onClick={onImport} variant="outline">
+              <Upload aria-hidden="true" />
+              {t("transactions.import")}
+            </Button>
+            <Button onClick={onNew}>
+              <Plus aria-hidden="true" />
+              {t("transactions.new")}
+            </Button>
+          </div>
         </div>
       )}
       {transactions.isError ? (
