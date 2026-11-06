@@ -6,6 +6,7 @@ import "./i18n";
 import "./index.css";
 import { trackInputModality } from "./lib/input-modality";
 import { logger } from "./lib/logging/logger";
+import { createRuntime } from "./runtime/create-runtime";
 
 logger.info("app.started", { mode: env.VITE_APP_MODE });
 trackInputModality();
@@ -15,8 +16,10 @@ if (!container) {
   throw new Error("Root element #root not found");
 }
 
+const runtime = await createRuntime();
+
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <App runtime={runtime} />
   </StrictMode>,
 );
