@@ -1,21 +1,32 @@
 import {
   createAssetService,
+  createIdempotencyService,
   createMarketService,
   createPortfolioService,
+  createPositionService,
+  createTransactionService,
   createUserPreferenceService,
   createWatchlistService,
 } from "@trading/application";
 import type { Actor, Clock } from "@trading/application";
 import { UserRole } from "@trading/domain";
 import {
+  InMemoryAlertRepository,
   InMemoryAssetRepository,
   InMemoryHistoricalPriceRepository,
+  InMemoryIdempotencyKeyRepository,
+  InMemoryJobRepository,
   InMemoryMarketPriceRepository,
+  InMemoryNotificationRepository,
   InMemoryPortfolioRepository,
+  InMemoryPositionRepository,
+  InMemoryTransactionRepository,
+  InMemoryUnitOfWork,
   InMemoryUserPreferenceRepository,
   InMemoryWatchlistItemRepository,
 } from "@trading/persistence-memory";
 import { seedMarket } from "./market-seed";
+import { seedTransactions } from "./transaction-seed";
 
 export interface DemoUser {
   readonly id: string;
@@ -32,6 +43,9 @@ export interface DemoComposition {
   readonly marketService: ReturnType<typeof createMarketService>;
   readonly watchlistService: ReturnType<typeof createWatchlistService>;
   readonly userPreferenceService: ReturnType<typeof createUserPreferenceService>;
+  readonly transactionService: ReturnType<typeof createTransactionService>;
+  readonly positionService: ReturnType<typeof createPositionService>;
+  readonly idempotencyService: ReturnType<typeof createIdempotencyService>;
 }
 
 export interface DemoCompositionOptions {
@@ -55,13 +69,25 @@ export async function createDemoComposition(
 ): Promise<DemoComposition> {
   const clock = options.clock ?? { now: () => new Date() };
   const repositoryOptions = { now: () => clock.now() };
+  const actor: Actor = { userId: DEMO_USER.id, role: DEMO_USER.role };
 
   const portfolioRepository = new InMemoryPortfolioRepository(repositoryOptions);
   const assetRepository = new InMemoryAssetRepository();
   const marketPriceRepository = new InMemoryMarketPriceRepository();
   const historicalPriceRepository = new InMemoryHistoricalPriceRepository(repositoryOptions);
+  const transactionRepository = new InMemoryTransactionRepository(repositoryOptions);
+  const positionRepository = new InMemoryPositionRepository(repositoryOptions);
+  const idempotencyKeyRepository = new InMemoryIdempotencyKeyRepository(repositoryOptions);
+  const unitOfWork = new InMemoryUnitOfWork({
+    transactions: transactionRepository,
+    positions: positionRepository,
+    jobs: new InMemoryJobRepository(repositoryOptions),
+    idempotencyKeys: idempotencyKeyRepository,
+    alerts: new InMemoryAlertRepository(repositoryOptions),
+    notifications: new InMemoryNotificationRepository(repositoryOptions),
+  });
 
-  await portfolioRepository.create({
+  const portfolio = await portfolioRepository.create({
     userId: DEMO_USER.id,
     name: "Long-term growth",
     baseCurrency: "USD",
@@ -73,10 +99,18 @@ export async function createDemoComposition(
 
   const portfolioService = createPortfolioService({ portfolioRepository });
   const assetService = createAssetService({ assetRepository });
+  const transactionService = createTransactionService({
+    transactionRepository,
+    assetRepository,
+    unitOfWork,
+    portfolioService,
+    clock,
+  });
+  await seedTransactions({ transactionService, assetRepository, actor, portfolio, clock });
 
   return {
     user: DEMO_USER,
-    actor: { userId: DEMO_USER.id, role: DEMO_USER.role },
+    actor,
     portfolioService,
     assetService,
     marketService: createMarketService({
@@ -92,5 +126,8 @@ export async function createDemoComposition(
       userPreferenceRepository: new InMemoryUserPreferenceRepository(repositoryOptions),
       portfolioService,
     }),
+    transactionService,
+    positionService: createPositionService({ positionRepository, portfolioService }),
+    idempotencyService: createIdempotencyService({ idempotencyKeyRepository, clock }),
   };
 }

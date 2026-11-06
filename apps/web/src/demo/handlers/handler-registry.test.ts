@@ -5,6 +5,7 @@ import { createAuthHandlers } from "./auth-handlers";
 import type { HandlerContext, HandlerRegistry } from "./handler";
 import { createMarketHandlers } from "./market-handlers";
 import { createPortfolioHandlers } from "./portfolio-handlers";
+import { createTransactionHandlers } from "./transaction-handlers";
 import { createWatchlistHandlers } from "./watchlist-handlers";
 
 const factories: Record<string, (context: HandlerContext) => HandlerRegistry> = {
@@ -12,6 +13,7 @@ const factories: Record<string, (context: HandlerContext) => HandlerRegistry> = 
   portfolios: createPortfolioHandlers,
   market: createMarketHandlers,
   watchlist: createWatchlistHandlers,
+  transactions: createTransactionHandlers,
 };
 
 describe("demo handler registry", () => {
