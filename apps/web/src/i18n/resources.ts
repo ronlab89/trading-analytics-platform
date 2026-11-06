@@ -75,7 +75,18 @@ const en = {
     eventsCount_one: "{{count}} event",
     eventsCount_other: "{{count}} events",
     severity: { INFO: "Info", SUCCESS: "Success", WARNING: "Warning", ERROR: "Error" },
-    source: { TRANSACTION: "Transaction", ALERT: "Alert" },
+    source: { TRANSACTION: "Transaction", ALERT: "Alert", PROCESS: "Process" },
+    process: {
+      title: {
+        running: "Importing {{file}}",
+        COMPLETED: "Import completed",
+        FAILED: "Import failed",
+        CANCELLED: "Import cancelled",
+        TIMED_OUT: "Import timed out",
+      },
+      running: "{{phase}} · {{processed}} of {{total}}",
+      finished: "{{file}} · {{detail}}",
+    },
     transaction: {
       title: { BUY: "Bought {{symbol}}", SELL: "Sold {{symbol}}" },
       message: "{{quantity}} at {{price}} · {{status}}",
@@ -85,6 +96,7 @@ const en = {
     search: "Search the activity",
     loading: "Loading the activity",
     viewTransaction: "View transaction",
+    viewProcess: "View process",
     empty: {
       title: "No activity yet",
       description: "Your alerts and the transactions of the last 30 days will show up here.",
@@ -1442,7 +1454,18 @@ const es: Messages<typeof en> = {
     eventsCount_one: "{{count}} evento",
     eventsCount_other: "{{count}} eventos",
     severity: { INFO: "Info", SUCCESS: "Éxito", WARNING: "Advertencia", ERROR: "Error" },
-    source: { TRANSACTION: "Transacción", ALERT: "Alerta" },
+    source: { TRANSACTION: "Transacción", ALERT: "Alerta", PROCESS: "Proceso" },
+    process: {
+      title: {
+        running: "Importando {{file}}",
+        COMPLETED: "Importación completada",
+        FAILED: "Importación fallida",
+        CANCELLED: "Importación cancelada",
+        TIMED_OUT: "Importación con tiempo agotado",
+      },
+      running: "{{phase}} · {{processed}} de {{total}}",
+      finished: "{{file}} · {{detail}}",
+    },
     transaction: {
       title: { BUY: "Compra de {{symbol}}", SELL: "Venta de {{symbol}}" },
       message: "{{quantity}} a {{price}} · {{status}}",
@@ -1452,6 +1475,7 @@ const es: Messages<typeof en> = {
     search: "Buscar en la actividad",
     loading: "Cargando la actividad",
     viewTransaction: "Ver transacción",
+    viewProcess: "Ver proceso",
     empty: {
       title: "Todavía no hay actividad",
       description: "Acá vas a ver tus alertas y las transacciones de los últimos 30 días.",

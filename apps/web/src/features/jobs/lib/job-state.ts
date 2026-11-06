@@ -41,3 +41,21 @@ export function jobPhase(job: Pick<JobResponse, "status" | "stage">): JobPhase {
   if (job.status === "PROCESSING") return job.stage === "APPLYING" ? "APPLYING" : "VALIDATING";
   return job.status;
 }
+
+/** What to tell about a job that ended: its failure reason when it has one, else its status. */
+export type JobOutcome =
+  "COMPLETED" | "CANCELLED" | "TIMED_OUT" | "FAILED" | NonNullable<JobResponse["failureReason"]>;
+
+/** How a job ended, or null while it is still queued or running. */
+export function jobOutcome(job: Pick<JobResponse, "status" | "failureReason">): JobOutcome | null {
+  switch (job.status) {
+    case "COMPLETED":
+    case "CANCELLED":
+    case "TIMED_OUT":
+      return job.status;
+    case "FAILED":
+      return job.failureReason ?? "FAILED";
+    default:
+      return null;
+  }
+}

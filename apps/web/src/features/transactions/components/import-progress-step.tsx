@@ -17,7 +17,13 @@ import { Progress } from "@/components/ui/progress";
 import { invalidatePortfolioData } from "@/features/portfolios/lib/invalidate-portfolio-data";
 import { useJob } from "@/features/jobs/hooks/use-job";
 import { useCancelJob, useRetryJob } from "@/features/jobs/hooks/use-job-actions";
-import { canCancelJob, canRetryJob, jobPhase, type JobPhase } from "@/features/jobs/lib/job-state";
+import {
+  canCancelJob,
+  canRetryJob,
+  jobOutcome,
+  jobPhase,
+  type JobPhase,
+} from "@/features/jobs/lib/job-state";
 
 const phaseTone = {
   QUEUED: "neutral",
@@ -37,28 +43,6 @@ const outcomeTone = {
   CANCELLED: "info",
   TIMED_OUT: "warning",
 } as const satisfies Record<JobResponse["status"], string>;
-
-/** What to tell about a job that ended: its failure reason when it has one, else its status. */
-function outcomeKey(
-  job: JobResponse,
-):
-  | "COMPLETED"
-  | "CANCELLED"
-  | "TIMED_OUT"
-  | "FAILED"
-  | NonNullable<JobResponse["failureReason"]>
-  | null {
-  switch (job.status) {
-    case "COMPLETED":
-    case "CANCELLED":
-    case "TIMED_OUT":
-      return job.status;
-    case "FAILED":
-      return job.failureReason ?? "FAILED";
-    default:
-      return null;
-  }
-}
 
 interface ImportProgressStepProps {
   jobId: string;
@@ -89,7 +73,7 @@ export function ImportProgressStep({ jobId }: ImportProgressStepProps) {
   const actionError = cancel.error ?? retry.error;
   const total = job?.progress.total ?? 0;
 
-  const outcome = job ? outcomeKey(job) : null;
+  const outcome = job ? jobOutcome(job) : null;
 
   return (
     <>

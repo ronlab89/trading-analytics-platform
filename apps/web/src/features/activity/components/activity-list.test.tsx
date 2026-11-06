@@ -80,3 +80,42 @@ describe("ActivityList", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+describe("ActivityList processes", () => {
+  const running = (progress: NonNullable<ActivityEvent["progress"]>) =>
+    event("p", {
+      source: "PROCESS",
+      severity: "INFO",
+      title: "Importing orders.csv",
+      message: "Validating · 40 of 100",
+      jobId: "j1",
+      progress,
+    });
+
+  const listOf = (item: ActivityEvent): ActivityDay[] => [
+    { day: "2026-11-04", label: "today", events: [item] },
+  ];
+
+  it("draws the bar of a process that is running, with its progress", () => {
+    render(<ActivityList days={listOf(running({ processed: 40, total: 100 }))} />);
+
+    const bar = screen.getByRole("progressbar", { name: "Import progress" });
+    expect(bar).toHaveAttribute("aria-valuenow", "40");
+    expect(bar).toHaveAttribute("aria-valuemax", "100");
+    expect(screen.getByText(/Process · \d{2}:\d{2}/)).toBeInTheDocument();
+  });
+
+  it("draws the bar with no value while the total is not known yet", () => {
+    render(<ActivityList days={listOf(running({ processed: 0, total: 0 }))} />);
+
+    expect(screen.getByRole("progressbar", { name: "Import progress" })).not.toHaveAttribute(
+      "aria-valuenow",
+    );
+  });
+
+  it("draws no bar for an event without progress", () => {
+    render(<ActivityList days={days} />);
+
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+});

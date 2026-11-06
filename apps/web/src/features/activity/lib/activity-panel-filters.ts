@@ -2,7 +2,7 @@ import type { DateRange } from "@/features/transactions/lib/transaction-filters"
 import type { ActivityFilters, ActivitySeverity, ActivitySource } from "./activity-events";
 
 export const SEVERITIES: readonly ActivitySeverity[] = ["INFO", "SUCCESS", "WARNING", "ERROR"];
-export const SOURCES: readonly ActivitySource[] = ["TRANSACTION", "ALERT"];
+export const SOURCES: readonly ActivitySource[] = ["TRANSACTION", "ALERT", "PROCESS"];
 
 /**
  * What the Figma "Filtros" panel holds: the severities, the sources and the dates. The search is

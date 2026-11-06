@@ -66,6 +66,11 @@ export function ImportChooseStep({ portfolioId, onQueued, onBusyChange }: Import
   const reportBusy = useEffectEvent((busy: boolean) => onBusyChange?.(busy));
   useEffect(() => {
     reportBusy(pending);
+    // The step leaves as soon as the job is queued, possibly before it reports that it stopped
+    // sending; without this the dialog would stay locked for good.
+    return () => {
+      reportBusy(false);
+    };
   }, [pending]);
   const rejection = rejectionReason(importCsv.error);
   const ready = selection !== null && "check" in selection && selection.check.ok;
