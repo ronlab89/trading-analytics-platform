@@ -1,6 +1,8 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Tests run the code of the real build; the demo is checked by its own tests.
+  define: { __DEMO_BUILD__: false },
   resolve: { conditions: ["@trading/source"], tsconfigPaths: true },
   test: {
     watch: false,
