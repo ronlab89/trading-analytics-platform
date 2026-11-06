@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useTrackedJobs } from "@/features/jobs/hooks/use-tracked-jobs";
 import { ImportChooseStep } from "./import-choose-step";
 import { ImportProgressStep } from "./import-progress-step";
 
@@ -18,6 +19,7 @@ interface ImportCsvDialogProps {
 export function ImportCsvDialog({ open, onOpenChange, portfolioId }: ImportCsvDialogProps) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const { track } = useTrackedJobs();
 
   return (
     <Dialog
@@ -32,7 +34,14 @@ export function ImportCsvDialog({ open, onOpenChange, portfolioId }: ImportCsvDi
         {jobId === null ? (
           <ImportChooseStep
             onBusyChange={setSending}
-            onQueued={(job) => {
+            onQueued={(job, fileName) => {
+              // The job goes on without the window, so the registry is how Activity finds it again.
+              track({
+                id: job.id,
+                portfolioId: job.portfolioId,
+                fileName,
+                startedAt: job.createdAt,
+              });
               setJobId(job.id);
             }}
             portfolioId={portfolioId}
