@@ -4,6 +4,7 @@ import { ApiError } from "@/api/trading-client";
 import type { CallInput, TradingClient } from "@/api/trading-client";
 import { logger } from "@/lib/logging/logger";
 import type { DemoComposition } from "./demo-composition";
+import { createAnalyticsHandlers } from "./handlers/analytics-handlers";
 import { createAuthHandlers } from "./handlers/auth-handlers";
 import type { DemoSession, HandlerContext } from "./handlers/handler";
 import { createJobHandlers } from "./handlers/job-handlers";
@@ -78,6 +79,7 @@ export function createDemoTradingClient(options: DemoTradingClientOptions): Trad
     ...createWatchlistHandlers(context),
     ...createTransactionHandlers(context),
     ...createJobHandlers(context),
+    ...createAnalyticsHandlers(context),
   };
 
   logger.info(DEMO_ADAPTER_MARKER);
