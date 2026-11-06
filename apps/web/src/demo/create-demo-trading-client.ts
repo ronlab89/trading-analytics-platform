@@ -6,9 +6,12 @@ import { logger } from "@/lib/logging/logger";
 import type { DemoComposition } from "./demo-composition";
 import { createAuthHandlers } from "./handlers/auth-handlers";
 import type { DemoSession, HandlerContext } from "./handlers/handler";
+import { createJobHandlers } from "./handlers/job-handlers";
 import { createMarketHandlers } from "./handlers/market-handlers";
 import { createPortfolioHandlers } from "./handlers/portfolio-handlers";
+import { createTransactionHandlers } from "./handlers/transaction-handlers";
 import { createWatchlistHandlers } from "./handlers/watchlist-handlers";
+import { runIdempotent } from "./idempotency";
 import { NO_LATENCY } from "./latency";
 import type { Latency } from "./latency";
 import { toApiError } from "./to-api-error";
@@ -73,6 +76,8 @@ export function createDemoTradingClient(options: DemoTradingClientOptions): Trad
     ...createPortfolioHandlers(context),
     ...createMarketHandlers(context),
     ...createWatchlistHandlers(context),
+    ...createTransactionHandlers(context),
+    ...createJobHandlers(context),
   };
 
   logger.info(DEMO_ADAPTER_MARKER);
@@ -88,11 +93,25 @@ export function createDemoTradingClient(options: DemoTradingClientOptions): Trad
         if (operation.authenticated && !session.signedIn) {
           throw new ApiError("UNAUTHORIZED", "Authentication is required.", 401);
         }
-        const result = await handler({
-          params: check(operation, "params", input.params ?? {}),
-          query: check(operation, "query", queryAsText(input.query)),
-          body: check(operation, "body", input.body),
-        });
+        const params = check(operation, "params", input.params ?? {});
+        const body = check(operation, "body", input.body);
+        const run = () =>
+          handler({ params, query: check(operation, "query", queryAsText(input.query)), body });
+        const result =
+          input.idempotencyKey !== undefined && operation.headers
+            ? await runIdempotent(
+                composition.idempotencyService,
+                {
+                  userId: composition.actor.userId,
+                  key: input.idempotencyKey,
+                  operationId: operation.operationId,
+                  successStatus: operation.success.status,
+                  params,
+                  body,
+                },
+                run,
+              )
+            : await run();
         const schema = operation.success.schema;
         if (!schema) return undefined;
         const parsed = schema.safeParse(result);

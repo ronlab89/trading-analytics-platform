@@ -1,21 +1,37 @@
 import {
   createAssetService,
+  createCsvImportHandler,
+  createIdempotencyService,
+  createJobNotifier,
+  createJobRunner,
+  createJobService,
   createMarketService,
   createPortfolioService,
+  createPositionService,
+  createTransactionService,
   createUserPreferenceService,
   createWatchlistService,
 } from "@trading/application";
 import type { Actor, Clock } from "@trading/application";
 import { UserRole } from "@trading/domain";
 import {
+  InMemoryAlertRepository,
   InMemoryAssetRepository,
   InMemoryHistoricalPriceRepository,
+  InMemoryIdempotencyKeyRepository,
+  InMemoryJobRepository,
   InMemoryMarketPriceRepository,
+  InMemoryNotificationRepository,
   InMemoryPortfolioRepository,
+  InMemoryPositionRepository,
+  InMemoryTransactionRepository,
+  InMemoryUnitOfWork,
   InMemoryUserPreferenceRepository,
   InMemoryWatchlistItemRepository,
 } from "@trading/persistence-memory";
+import { tokenizeCsv } from "./csv-tokenizer";
 import { seedMarket } from "./market-seed";
+import { seedTransactions } from "./transaction-seed";
 
 export interface DemoUser {
   readonly id: string;
@@ -32,6 +48,12 @@ export interface DemoComposition {
   readonly marketService: ReturnType<typeof createMarketService>;
   readonly watchlistService: ReturnType<typeof createWatchlistService>;
   readonly userPreferenceService: ReturnType<typeof createUserPreferenceService>;
+  readonly transactionService: ReturnType<typeof createTransactionService>;
+  readonly positionService: ReturnType<typeof createPositionService>;
+  readonly idempotencyService: ReturnType<typeof createIdempotencyService>;
+  readonly jobService: ReturnType<typeof createJobService>;
+  /** Created stopped; the runtime starts it, and tests start it when they need a job to run. */
+  readonly jobRunner: ReturnType<typeof createJobRunner>;
 }
 
 export interface DemoCompositionOptions {
@@ -55,13 +77,27 @@ export async function createDemoComposition(
 ): Promise<DemoComposition> {
   const clock = options.clock ?? { now: () => new Date() };
   const repositoryOptions = { now: () => clock.now() };
+  const actor: Actor = { userId: DEMO_USER.id, role: DEMO_USER.role };
 
   const portfolioRepository = new InMemoryPortfolioRepository(repositoryOptions);
   const assetRepository = new InMemoryAssetRepository();
   const marketPriceRepository = new InMemoryMarketPriceRepository();
   const historicalPriceRepository = new InMemoryHistoricalPriceRepository(repositoryOptions);
+  const transactionRepository = new InMemoryTransactionRepository(repositoryOptions);
+  const positionRepository = new InMemoryPositionRepository(repositoryOptions);
+  const idempotencyKeyRepository = new InMemoryIdempotencyKeyRepository(repositoryOptions);
+  const jobRepository = new InMemoryJobRepository(repositoryOptions);
+  const notificationRepository = new InMemoryNotificationRepository(repositoryOptions);
+  const unitOfWork = new InMemoryUnitOfWork({
+    transactions: transactionRepository,
+    positions: positionRepository,
+    jobs: jobRepository,
+    idempotencyKeys: idempotencyKeyRepository,
+    alerts: new InMemoryAlertRepository(repositoryOptions),
+    notifications: notificationRepository,
+  });
 
-  await portfolioRepository.create({
+  const portfolio = await portfolioRepository.create({
     userId: DEMO_USER.id,
     name: "Long-term growth",
     baseCurrency: "USD",
@@ -73,10 +109,35 @@ export async function createDemoComposition(
 
   const portfolioService = createPortfolioService({ portfolioRepository });
   const assetService = createAssetService({ assetRepository });
+  const transactionService = createTransactionService({
+    transactionRepository,
+    assetRepository,
+    unitOfWork,
+    portfolioService,
+    clock,
+  });
+  await seedTransactions({ transactionService, assetRepository, actor, portfolio, clock });
+
+  const jobService = createJobService({ jobRepository, portfolioService, unitOfWork, clock });
+  const jobRunner = createJobRunner({
+    jobRepository,
+    handlers: {
+      CSV_IMPORT: createCsvImportHandler({
+        tokenize: tokenizeCsv,
+        portfolioRepository,
+        assetRepository,
+        transactionRepository,
+        unitOfWork,
+        clock,
+      }),
+    },
+    clock,
+    notifier: createJobNotifier({ notificationRepository }),
+  });
 
   return {
     user: DEMO_USER,
-    actor: { userId: DEMO_USER.id, role: DEMO_USER.role },
+    actor,
     portfolioService,
     assetService,
     marketService: createMarketService({
@@ -92,5 +153,10 @@ export async function createDemoComposition(
       userPreferenceRepository: new InMemoryUserPreferenceRepository(repositoryOptions),
       portfolioService,
     }),
+    transactionService,
+    positionService: createPositionService({ positionRepository, portfolioService }),
+    idempotencyService: createIdempotencyService({ idempotencyKeyRepository, clock }),
+    jobService,
+    jobRunner,
   };
 }
