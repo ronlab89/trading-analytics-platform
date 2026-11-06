@@ -4,7 +4,11 @@
 import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import process from "node:process";
 import { build } from "vite";
+
+const log = (text) => process.stdout.write(text + "\n");
+const logError = (text) => process.stderr.write(text + "\n");
 
 const DEMO_MARKER = "adapter:demo";
 const HTTP_MARKER = "adapter:http";
@@ -58,15 +62,15 @@ try {
 
   const kb = (files) => Math.round(files.reduce((sum, file) => sum + file.bytes, 0) / 1024);
   const demoChunk = demo.find((file) => file.text.includes(DEMO_MARKER));
-  console.log(`demo bundle: ${kb(demo)} kB in ${demo.length} files`);
-  console.log(`real bundle: ${kb(real)} kB in ${real.length} files`);
-  if (demoChunk) console.log(`demo adapter chunk: ${kb([demoChunk])} kB (${demoChunk.name})`);
+  log(`demo bundle: ${kb(demo)} kB in ${demo.length} files`);
+  log(`real bundle: ${kb(real)} kB in ${real.length} files`);
+  if (demoChunk) log(`demo adapter chunk: ${kb([demoChunk])} kB (${demoChunk.name})`);
 } finally {
   await rm(root, { recursive: true, force: true });
 }
 
 if (failures.length > 0) {
-  for (const failure of failures) console.error(`FAIL: ${failure}`);
+  for (const failure of failures) logError(`FAIL: ${failure}`);
   process.exit(1);
 }
-console.log("Bundle checks passed.");
+log("Bundle checks passed.");
