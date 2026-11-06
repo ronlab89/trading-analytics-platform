@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import { ApiError, type CallInput } from "@/api/trading-client";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { transactionKeys } from "@/features/transactions/hooks/use-transactions";
+import { createQueryClient } from "@/lib/query-client";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { ImportProgressStep } from "./import-progress-step";
 
@@ -24,7 +26,11 @@ interface Answers {
   retry?: () => Promise<unknown>;
 }
 
-function setup(first: Record<string, unknown>, { get, cancel, retry }: Answers = {}) {
+function setup(
+  first: Record<string, unknown>,
+  { get, cancel, retry }: Answers = {},
+  queryClient = createQueryClient(),
+) {
   const call = vi.fn<(operation: { operationId: string }, input?: CallInput) => Promise<unknown>>(
     (operation) => {
       switch (operation.operationId) {
@@ -37,7 +43,7 @@ function setup(first: Record<string, unknown>, { get, cancel, retry }: Answers =
       }
     },
   );
-  const Wrapper = tradingClientWrapper({ call });
+  const Wrapper = tradingClientWrapper({ call }, queryClient);
   render(
     <Wrapper>
       <Dialog open>
@@ -47,7 +53,7 @@ function setup(first: Record<string, unknown>, { get, cancel, retry }: Answers =
       </Dialog>
     </Wrapper>,
   );
-  return { call, user: userEvent.setup() };
+  return { call, queryClient, user: userEvent.setup() };
 }
 
 describe("ImportProgressStep", () => {
@@ -160,6 +166,30 @@ describe("ImportProgressStep", () => {
       await screen.findByText("The import was interrupted. You can try it again."),
     ).toBeInTheDocument();
     expect(screen.queryByText("Rows to fix")).not.toBeInTheDocument();
+  });
+
+  it("refreshes what the portfolio shows once the job completed", async () => {
+    const queryClient = createQueryClient();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    setup(
+      job({ status: "COMPLETED", stage: "APPLYING", progress: { processed: 5, total: 5 } }),
+      {},
+      queryClient,
+    );
+
+    await screen.findByText("The import finished.");
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: transactionKeys.portfolio("p1") });
+  });
+
+  it("leaves the portfolio data alone while the job has not completed", async () => {
+    const queryClient = createQueryClient();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    setup(job(), {}, queryClient);
+
+    await screen.findByText("Validating");
+
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: transactionKeys.portfolio("p1") });
   });
 
   it("says when the import took too long", async () => {
