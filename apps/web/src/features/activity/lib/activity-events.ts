@@ -1,9 +1,13 @@
-import type { NotificationResponse, TransactionResponse } from "@trading/contracts";
+import type { JobResponse, NotificationResponse, TransactionResponse } from "@trading/contracts";
+import { isJobFinished } from "@/features/jobs/lib/job-state";
 
 export type ActivitySeverity = NotificationResponse["severity"];
 
-/** Where an event comes from: the transactions of the portfolio, or the alerts (notifications) of the user. */
-export type ActivitySource = "TRANSACTION" | "ALERT";
+/**
+ * Where an event comes from: the transactions of the portfolio, the alerts (notifications) of the
+ * user, or the imports this device started (processes).
+ */
+export type ActivitySource = "TRANSACTION" | "ALERT" | "PROCESS";
 
 export interface ActivityEvent {
   /** Unique across sources: `notification:<id>` or `transaction:<id>`. */
@@ -16,6 +20,10 @@ export interface ActivityEvent {
   occurredAt: string;
   /** Set for a transaction event, so the row can lead to it. */
   transactionId?: string;
+  /** Set for a process event, so the row can open it. */
+  jobId?: string;
+  /** Set for a process that is still running, so the row can draw its bar. */
+  progress?: { processed: number; total: number };
 }
 
 interface TransactionDescription {
@@ -23,12 +31,30 @@ interface TransactionDescription {
   message: string;
 }
 
+/** A job this device started, with the job as it was last read (none yet if it has not answered). */
+export interface ProcessInput {
+  tracked: { id: string; startedAt: string };
+  job: JobResponse | undefined;
+}
+
 interface ActivityInput {
   notifications: readonly NotificationResponse[];
   transactions: readonly TransactionResponse[];
   /** The words of a transaction: the model has no language, the caller does. */
   describeTransaction: (transaction: TransactionResponse) => TransactionDescription;
+  processes?: readonly ProcessInput[];
+  /** The words of a process, like the transaction ones. */
+  describeProcess?: (job: JobResponse) => TransactionDescription;
 }
+
+const PROCESS_SEVERITY: Record<JobResponse["status"], ActivitySeverity> = {
+  QUEUED: "INFO",
+  PROCESSING: "INFO",
+  COMPLETED: "SUCCESS",
+  FAILED: "ERROR",
+  TIMED_OUT: "WARNING",
+  CANCELLED: "INFO",
+};
 
 const TRANSACTION_SEVERITY: Record<TransactionResponse["status"], ActivitySeverity> = {
   COMPLETED: "SUCCESS",
@@ -39,7 +65,7 @@ const TRANSACTION_SEVERITY: Record<TransactionResponse["status"], ActivitySeveri
 };
 
 /**
- * One list of events out of the notifications and the transactions, newest first. A transaction is
+ * One list of events out of the notifications, the transactions and the processes, newest first. A transaction is
  * dated when it was executed. Events with the same time keep a fixed order (by id), so the list
  * does not shuffle between two reads.
  */
@@ -47,6 +73,8 @@ export function toActivityEvents({
   notifications,
   transactions,
   describeTransaction,
+  processes = [],
+  describeProcess,
 }: ActivityInput): ActivityEvent[] {
   const fromNotifications = notifications.map((notification): ActivityEvent => ({
     id: `notification:${notification.id}`,
@@ -69,7 +97,24 @@ export function toActivityEvents({
     };
   });
 
-  return [...fromNotifications, ...fromTransactions].sort(
+  const fromProcesses = processes.flatMap(({ tracked, job }): ActivityEvent[] => {
+    if (job === undefined || describeProcess === undefined) return [];
+    const { title, message } = describeProcess(job);
+    return [
+      {
+        id: `process:${tracked.id}`,
+        source: "PROCESS",
+        severity: PROCESS_SEVERITY[job.status],
+        title,
+        message,
+        occurredAt: tracked.startedAt,
+        jobId: job.id,
+        ...(isJobFinished(job) ? {} : { progress: job.progress }),
+      },
+    ];
+  });
+
+  return [...fromNotifications, ...fromTransactions, ...fromProcesses].sort(
     (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || a.id.localeCompare(b.id),
   );
 }

@@ -1,4 +1,4 @@
-import type { NotificationResponse, TransactionResponse } from "@trading/contracts";
+import type { JobResponse, NotificationResponse, TransactionResponse } from "@trading/contracts";
 import { describe, expect, it } from "vitest";
 import {
   filterEvents,
@@ -53,6 +53,98 @@ const describeTransaction = (tx: TransactionResponse) => ({
 
 const built = (notifications: NotificationResponse[], transactions: TransactionResponse[] = []) =>
   toActivityEvents({ notifications, transactions, describeTransaction });
+
+const job = (id: string, status: JobResponse["status"], patch: Partial<JobResponse> = {}) =>
+  ({
+    id,
+    portfolioId: "p1",
+    status,
+    stage: "VALIDATING",
+    failureReason: null,
+    progress: { processed: 40, total: 100 },
+    ...patch,
+  }) as JobResponse;
+
+const describeProcess = (read: JobResponse) => ({
+  title: `Import ${read.status}`,
+  message: `${String(read.progress.processed)} of ${String(read.progress.total)}`,
+});
+
+const withProcesses = (processes: { startedAt: string; job: JobResponse | undefined }[]) =>
+  toActivityEvents({
+    notifications: [],
+    transactions: [],
+    describeTransaction,
+    processes: processes.map(({ startedAt, job: read }) => ({
+      tracked: { id: read?.id ?? "unread", startedAt },
+      job: read,
+    })),
+    describeProcess,
+  });
+
+describe("toActivityEvents processes", () => {
+  it("turns a job that is running into a process event with its progress, dated when it started", () => {
+    const [event] = withProcesses([
+      { startedAt: "2026-11-07T10:00:00.000Z", job: job("j1", "PROCESSING") },
+    ]);
+
+    expect(event).toMatchObject({
+      id: "process:j1",
+      source: "PROCESS",
+      severity: "INFO",
+      title: "Import PROCESSING",
+      message: "40 of 100",
+      occurredAt: "2026-11-07T10:00:00.000Z",
+      jobId: "j1",
+      progress: { processed: 40, total: 100 },
+    });
+  });
+
+  it("gives a queued job the same running shape", () => {
+    const [event] = withProcesses([
+      { startedAt: "2026-11-07T10:00:00.000Z", job: job("j1", "QUEUED") },
+    ]);
+
+    expect(event?.severity).toBe("INFO");
+    expect(event?.progress).toBeDefined();
+  });
+
+  it.each([
+    ["COMPLETED", "SUCCESS"],
+    ["FAILED", "ERROR"],
+    ["TIMED_OUT", "WARNING"],
+    ["CANCELLED", "INFO"],
+  ] as const)("shows a %s job as %s with no progress bar", (status, severity) => {
+    const [event] = withProcesses([
+      { startedAt: "2026-11-07T10:00:00.000Z", job: job("j1", status) },
+    ]);
+
+    expect(event?.severity).toBe(severity);
+    expect(event?.progress).toBeUndefined();
+    expect(event?.jobId).toBe("j1");
+  });
+
+  it("leaves out a job that has not been read yet", () => {
+    expect(withProcesses([{ startedAt: "2026-11-07T10:00:00.000Z", job: undefined }])).toEqual([]);
+  });
+
+  it("mixes processes with the other events, newest first", () => {
+    const events = toActivityEvents({
+      notifications: [notification("n1", "INFO", "2026-11-07T09:00:00.000Z")],
+      transactions: [transaction("t1", "COMPLETED", "2026-11-07T11:00:00.000Z")],
+      describeTransaction,
+      processes: [
+        {
+          tracked: { id: "j1", startedAt: "2026-11-07T10:00:00.000Z" },
+          job: job("j1", "COMPLETED"),
+        },
+      ],
+      describeProcess,
+    });
+
+    expect(events.map(({ id }) => id)).toEqual(["transaction:t1", "process:j1", "notification:n1"]);
+  });
+});
 
 describe("toActivityEvents", () => {
   it("turns a notification into an alert event with its own severity, title and message", () => {

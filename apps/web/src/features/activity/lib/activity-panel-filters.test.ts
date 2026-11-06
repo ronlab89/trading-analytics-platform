@@ -23,7 +23,7 @@ describe("activePanelFilterCount", () => {
       activePanelFilterCount({
         ...NO_PANEL_FILTERS,
         severities: ["INFO", "SUCCESS", "WARNING", "ERROR"],
-        sources: ["TRANSACTION", "ALERT"],
+        sources: ["TRANSACTION", "ALERT", "PROCESS"],
       }),
     ).toBe(0);
   });
@@ -40,7 +40,7 @@ describe("samePanelFilters", () => {
     expect(
       samePanelFilters(NO_PANEL_FILTERS, {
         ...NO_PANEL_FILTERS,
-        sources: ["TRANSACTION", "ALERT"],
+        sources: ["TRANSACTION", "ALERT", "PROCESS"],
       }),
     ).toBe(true);
   });
