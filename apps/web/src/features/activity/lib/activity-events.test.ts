@@ -65,7 +65,7 @@ const job = (id: string, status: JobResponse["status"], patch: Partial<JobRespon
     ...patch,
   }) as JobResponse;
 
-const describeProcess = (read: JobResponse) => ({
+const describeProcess = ({ job: read }: { job: JobResponse }) => ({
   title: `Import ${read.status}`,
   message: `${String(read.progress.processed)} of ${String(read.progress.total)}`,
 });
@@ -76,7 +76,7 @@ const withProcesses = (processes: { startedAt: string; job: JobResponse | undefi
     transactions: [],
     describeTransaction,
     processes: processes.map(({ startedAt, job: read }) => ({
-      tracked: { id: read?.id ?? "unread", startedAt },
+      tracked: { id: read?.id ?? "unread", portfolioId: "p1", fileName: "orders.csv", startedAt },
       job: read,
     })),
     describeProcess,
@@ -135,7 +135,12 @@ describe("toActivityEvents processes", () => {
       describeTransaction,
       processes: [
         {
-          tracked: { id: "j1", startedAt: "2026-11-07T10:00:00.000Z" },
+          tracked: {
+            id: "j1",
+            portfolioId: "p1",
+            fileName: "orders.csv",
+            startedAt: "2026-11-07T10:00:00.000Z",
+          },
           job: job("j1", "COMPLETED"),
         },
       ],

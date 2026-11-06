@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCancelJob, canRetryJob, isJobFinished, jobPhase } from "./job-state";
+import { canCancelJob, canRetryJob, isJobFinished, jobOutcome, jobPhase } from "./job-state";
 
 describe("isJobFinished", () => {
   it("is false while the job waits or runs", () => {
@@ -69,5 +69,25 @@ describe("jobPhase", () => {
     for (const status of ["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"] as const) {
       expect(jobPhase({ status, stage: "APPLYING" })).toBe(status);
     }
+  });
+});
+
+describe("jobOutcome", () => {
+  it("is null while the job waits or runs", () => {
+    expect(jobOutcome({ status: "QUEUED", failureReason: null })).toBeNull();
+    expect(jobOutcome({ status: "PROCESSING", failureReason: null })).toBeNull();
+  });
+
+  it("is the status of a job that completed, was cancelled or timed out", () => {
+    expect(jobOutcome({ status: "COMPLETED", failureReason: null })).toBe("COMPLETED");
+    expect(jobOutcome({ status: "CANCELLED", failureReason: null })).toBe("CANCELLED");
+    expect(jobOutcome({ status: "TIMED_OUT", failureReason: null })).toBe("TIMED_OUT");
+  });
+
+  it("is the failure reason of a job that failed, or FAILED when it has none", () => {
+    expect(jobOutcome({ status: "FAILED", failureReason: "VALIDATION_FAILED" })).toBe(
+      "VALIDATION_FAILED",
+    );
+    expect(jobOutcome({ status: "FAILED", failureReason: null })).toBe("FAILED");
   });
 });

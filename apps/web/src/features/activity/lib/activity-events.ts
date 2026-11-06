@@ -1,4 +1,5 @@
 import type { JobResponse, NotificationResponse, TransactionResponse } from "@trading/contracts";
+import type { TrackedJob } from "@/features/jobs/lib/job-registry";
 import { isJobFinished } from "@/features/jobs/lib/job-state";
 
 export type ActivitySeverity = NotificationResponse["severity"];
@@ -33,7 +34,7 @@ interface TransactionDescription {
 
 /** A job this device started, with the job as it was last read (none yet if it has not answered). */
 export interface ProcessInput {
-  tracked: { id: string; startedAt: string };
+  tracked: TrackedJob;
   job: JobResponse | undefined;
 }
 
@@ -44,7 +45,7 @@ interface ActivityInput {
   describeTransaction: (transaction: TransactionResponse) => TransactionDescription;
   processes?: readonly ProcessInput[];
   /** The words of a process, like the transaction ones. */
-  describeProcess?: (job: JobResponse) => TransactionDescription;
+  describeProcess?: (process: { tracked: TrackedJob; job: JobResponse }) => TransactionDescription;
 }
 
 const PROCESS_SEVERITY: Record<JobResponse["status"], ActivitySeverity> = {
@@ -99,7 +100,7 @@ export function toActivityEvents({
 
   const fromProcesses = processes.flatMap(({ tracked, job }): ActivityEvent[] => {
     if (job === undefined || describeProcess === undefined) return [];
-    const { title, message } = describeProcess(job);
+    const { title, message } = describeProcess({ tracked, job });
     return [
       {
         id: `process:${tracked.id}`,

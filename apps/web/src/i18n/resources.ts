@@ -76,6 +76,17 @@ const en = {
     eventsCount_other: "{{count}} events",
     severity: { INFO: "Info", SUCCESS: "Success", WARNING: "Warning", ERROR: "Error" },
     source: { TRANSACTION: "Transaction", ALERT: "Alert", PROCESS: "Process" },
+    process: {
+      title: {
+        running: "Importing {{file}}",
+        COMPLETED: "Import completed",
+        FAILED: "Import failed",
+        CANCELLED: "Import cancelled",
+        TIMED_OUT: "Import timed out",
+      },
+      running: "{{phase}} · {{processed}} of {{total}}",
+      finished: "{{file}} · {{detail}}",
+    },
     transaction: {
       title: { BUY: "Bought {{symbol}}", SELL: "Sold {{symbol}}" },
       message: "{{quantity}} at {{price}} · {{status}}",
@@ -1443,6 +1454,17 @@ const es: Messages<typeof en> = {
     eventsCount_other: "{{count}} eventos",
     severity: { INFO: "Info", SUCCESS: "Éxito", WARNING: "Advertencia", ERROR: "Error" },
     source: { TRANSACTION: "Transacción", ALERT: "Alerta", PROCESS: "Proceso" },
+    process: {
+      title: {
+        running: "Importando {{file}}",
+        COMPLETED: "Importación completada",
+        FAILED: "Importación fallida",
+        CANCELLED: "Importación cancelada",
+        TIMED_OUT: "Importación con tiempo agotado",
+      },
+      running: "{{phase}} · {{processed}} de {{total}}",
+      finished: "{{file}} · {{detail}}",
+    },
     transaction: {
       title: { BUY: "Compra de {{symbol}}", SELL: "Venta de {{symbol}}" },
       message: "{{quantity}} a {{price}} · {{status}}",

@@ -1,7 +1,8 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, type CallInput, type TradingClient } from "@/api/trading-client";
 import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
+import { useSessionStore } from "@/stores/session-store";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import "@/i18n";
 import { useActivityEvents } from "./use-activity-events";
@@ -62,6 +63,117 @@ function render(answers: Answers) {
 
 beforeEach(() => {
   useActivePortfolioStore.setState({ selectedId: undefined });
+});
+
+afterEach(() => {
+  useSessionStore.getState().signOut();
+  sessionStorage.clear();
+});
+
+const trackedJob = (id: string, fileName: string) => ({
+  id,
+  portfolioId: "p1",
+  fileName,
+  startedAt: "2026-11-04T11:00:00.000Z",
+});
+
+const readJob = (patch: Record<string, unknown>) => ({
+  id: "j1",
+  portfolioId: "p1",
+  status: "PROCESSING",
+  stage: "VALIDATING",
+  failureReason: null,
+  progress: { processed: 1200, total: 5000 },
+  ...patch,
+});
+
+/** Signs in as a user whose device started the given jobs. */
+function startedOnThisDevice(userId: string, jobs: ReturnType<typeof trackedJob>[]) {
+  sessionStorage.setItem(`trading:jobs:${userId}`, JSON.stringify(jobs));
+  useSessionStore.getState().signIn({
+    user: { id: userId, email: `${userId}@example.com`, displayName: userId, role: "TRADER" },
+    session: { accessToken: "token", expiresAt: "2099-01-01T00:00:00.000Z" },
+  });
+}
+
+describe("useActivityEvents processes", () => {
+  it("lists an import that is running with its stage and count, between the other events", async () => {
+    startedOnThisDevice("act-running", [trackedJob("j1", "orders.csv")]);
+    const { result } = render({
+      ...healthy,
+      getJob: () => Promise.resolve({ data: readJob({}) }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.events?.map(({ id }) => id)).toEqual([
+        "notification:n1",
+        "process:j1",
+        "transaction:t1",
+      ]);
+    });
+    expect(result.current.events?.[1]).toMatchObject({
+      source: "PROCESS",
+      severity: "INFO",
+      title: "Importing orders.csv",
+      message: "Validating · 1,200 of 5,000",
+      jobId: "j1",
+      progress: { processed: 1200, total: 5000 },
+    });
+  });
+
+  it("says how many transactions a completed import added", async () => {
+    startedOnThisDevice("act-completed", [trackedJob("j1", "orders.csv")]);
+    const { result } = render({
+      ...healthy,
+      getJob: () =>
+        Promise.resolve({
+          data: readJob({
+            status: "COMPLETED",
+            stage: "APPLYING",
+            progress: { processed: 8, total: 8 },
+          }),
+        }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.events?.some(({ id }) => id === "process:j1")).toBe(true);
+    });
+    expect(result.current.events?.find(({ id }) => id === "process:j1")).toMatchObject({
+      severity: "SUCCESS",
+      title: "Import completed",
+      message: "orders.csv · 8 transactions were added to the portfolio.",
+    });
+  });
+
+  it("gives the reason of a failed import", async () => {
+    startedOnThisDevice("act-failed", [trackedJob("j1", "orders.csv")]);
+    const { result } = render({
+      ...healthy,
+      getJob: () =>
+        Promise.resolve({
+          data: readJob({ status: "FAILED", failureReason: "VALIDATION_FAILED" }),
+        }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.events?.some(({ id }) => id === "process:j1")).toBe(true);
+    });
+    expect(result.current.events?.find(({ id }) => id === "process:j1")).toMatchObject({
+      severity: "ERROR",
+      title: "Import failed",
+      message: "orders.csv · The file has rows that cannot be imported.",
+    });
+  });
+
+  it("does not hold the list back while a job has not answered", async () => {
+    startedOnThisDevice("act-slow", [trackedJob("j1", "orders.csv")]);
+    const { result } = render({ ...healthy, getJob: () => new Promise(() => undefined) });
+
+    await waitFor(() => {
+      expect(result.current.events).toHaveLength(2);
+    });
+    expect(result.current.isPending).toBe(false);
+  });
 });
 
 describe("useActivityEvents", () => {

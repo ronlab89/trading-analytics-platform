@@ -2,6 +2,8 @@ import type { TransactionResponse } from "@trading/contracts";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNotifications } from "@/features/dashboard/hooks/use-notifications";
+import { useTrackedJobStates } from "@/features/jobs/hooks/use-tracked-job-states";
+import { jobOutcome, jobPhase } from "@/features/jobs/lib/job-state";
 import { transactionDisplayStatus } from "@/features/transactions/lib/transaction-status";
 import { toTransactionRow } from "@/features/transactions/lib/transaction-row";
 import type { TransactionRow } from "@/features/transactions/types";
@@ -21,11 +23,14 @@ const NO_TRANSACTIONS: readonly TransactionResponse[] = [];
  * symbol. With no portfolio there are no transactions to ask for, and the alerts stand alone.
  */
 export function useActivityEvents() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const portfolios = useActivePortfolio();
   const notifications = useNotifications();
   const portfolioId = portfolios.active?.id;
   const transactions = useRecentTransactions(portfolioId);
+  // The imports this device started. They never hold the list back: a process that has not been
+  // read yet is simply not listed until it is.
+  const processes = useTrackedJobStates();
   const { assets, isPending: assetsPending } = useAssets(
     transactions.data?.map(({ assetId }) => assetId) ?? [],
   );
@@ -46,6 +51,39 @@ export function useActivityEvents() {
     return toActivityEvents({
       notifications: notifications.data ?? [],
       transactions: loaded,
+      processes,
+      describeProcess: ({ tracked, job }) => {
+        const file = tracked.fileName;
+        const outcome = jobOutcome(job);
+        if (outcome === null) {
+          const { processed, total } = job.progress;
+          const phase = t(`importCsv.progress.phase.${jobPhase(job)}`);
+          return {
+            title: t("activity.process.title.running", { file }),
+            message:
+              total > 0
+                ? t("activity.process.running", {
+                    phase,
+                    processed: processed.toLocaleString(i18n.language),
+                    total: total.toLocaleString(i18n.language),
+                  })
+                : phase,
+          };
+        }
+        const detail =
+          outcome === "COMPLETED"
+            ? t("importCsv.progress.imported", { count: job.progress.total })
+            : t(`importCsv.progress.outcome.${outcome}`);
+        // A failure with its own reason (the file, the portfolio, an interruption) is still a failed import.
+        const endedAs =
+          outcome === "COMPLETED" || outcome === "CANCELLED" || outcome === "TIMED_OUT"
+            ? outcome
+            : "FAILED";
+        return {
+          title: t(`activity.process.title.${endedAs}`, { file }),
+          message: t("activity.process.finished", { file, detail }),
+        };
+      },
       describeTransaction: (transaction) => {
         const symbol = assets.get(transaction.assetId)?.symbol ?? t("transactions.unknownAsset");
         return {
@@ -58,7 +96,7 @@ export function useActivityEvents() {
         };
       },
     });
-  }, [ready, notifications.data, loaded, assets, t]);
+  }, [ready, notifications.data, loaded, processes, assets, t, i18n.language]);
 
   const transactionRows = useMemo(
     () =>
