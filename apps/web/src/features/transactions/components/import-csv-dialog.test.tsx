@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import "@/i18n";
 import type { CallInput } from "@/api/trading-client";
+import { useSessionStore } from "@/stores/session-store";
 import { tradingClientWrapper } from "@/test/trading-client-wrapper";
 import { ImportCsvDialog } from "./import-csv-dialog";
 
@@ -14,6 +15,7 @@ const queued = {
   stage: "QUEUED",
   failureReason: null,
   report: null,
+  createdAt: "2026-11-07T10:00:00.000Z",
   progress: { processed: 0, total: 0 },
 };
 
@@ -51,7 +53,33 @@ function setup(importAnswer: () => Promise<unknown> = () => Promise.resolve({ da
   };
 }
 
+afterEach(() => {
+  useSessionStore.getState().signOut();
+  sessionStorage.clear();
+});
+
 describe("ImportCsvDialog", () => {
+  it("registers the job it queued, with the name of the file, for the signed-in user", async () => {
+    useSessionStore.getState().signIn({
+      user: { id: "u-dialog", email: "a@example.com", displayName: "Ana", role: "TRADER" },
+      session: { accessToken: "token", expiresAt: "2099-01-01T00:00:00.000Z" },
+    });
+    const { user, choose } = setup();
+    await choose();
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    await screen.findByText("Queued");
+
+    expect(JSON.parse(sessionStorage.getItem("trading:jobs:u-dialog") ?? "[]")).toEqual([
+      {
+        id: "j1",
+        portfolioId: "p1",
+        fileName: "trades.csv",
+        startedAt: "2026-11-07T10:00:00.000Z",
+      },
+    ]);
+  });
+
   it("starts at the step to choose a file", () => {
     setup();
 

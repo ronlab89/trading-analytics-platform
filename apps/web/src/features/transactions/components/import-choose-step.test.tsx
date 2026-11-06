@@ -97,7 +97,7 @@ describe("ImportChooseStep", () => {
     await user.click(submit());
 
     await waitFor(() => {
-      expect(onQueued).toHaveBeenCalledWith(job);
+      expect(onQueued).toHaveBeenCalledWith(job, "trades.csv");
     });
     expect(call.mock.calls[0]?.[0].operationId).toBe("importTransactions");
     expect(call.mock.calls[0]?.[1]?.params).toEqual({ portfolioId: "p1" });
@@ -143,7 +143,7 @@ describe("ImportChooseStep", () => {
     await user.click(await screen.findByRole("button", { name: "Try again" }));
 
     await waitFor(() => {
-      expect(onQueued).toHaveBeenCalledWith(job);
+      expect(onQueued).toHaveBeenCalledWith(job, "trades.csv");
     });
   });
 

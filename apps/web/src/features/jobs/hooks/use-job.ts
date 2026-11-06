@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { transactionOperations, type JobResponse } from "@trading/contracts";
 import { useEffect, useEffectEvent } from "react";
 import { findOperation } from "@/api/find-operation";
+import type { TradingClient } from "@/api/trading-client";
 import { useTradingClient } from "@/api/trading-client-provider";
 import { useConnectionState, useRealtimeClient } from "@/realtime/realtime-client-provider";
 import { isJobFinished } from "../lib/job-state";
@@ -15,6 +16,14 @@ export const JOB_POLL_MS = 2000;
 export const jobKeys = {
   detail: (jobId: string) => ["jobs", jobId] as const,
 };
+
+/** One read of a job over HTTP, for every query that follows one. */
+export async function readJob(client: TradingClient, jobId: string): Promise<JobResponse> {
+  const { data } = (await client.call(getJobOperation, { params: { jobId } })) as {
+    data: JobResponse;
+  };
+  return data;
+}
 
 /**
  * One job, read over HTTP. The events of its channel carry only the status and the progress, not
@@ -45,12 +54,7 @@ export function useJob(jobId: string | undefined) {
   return useQuery({
     queryKey: jobKeys.detail(jobId ?? ""),
     enabled: jobId !== undefined,
-    queryFn: async () => {
-      const { data } = (await client.call(getJobOperation, {
-        params: { jobId: jobId ?? "" },
-      })) as { data: JobResponse };
-      return data;
-    },
+    queryFn: () => readJob(client, jobId ?? ""),
     refetchInterval: (query) => {
       const job = query.state.data;
       if (connection === "connected" || (job !== undefined && isJobFinished(job))) return false;

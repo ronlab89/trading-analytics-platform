@@ -43,8 +43,8 @@ function problemMessage(problem: ImportFileProblem, t: TFunction): string {
 
 interface ImportChooseStepProps {
   portfolioId: string;
-  /** Called with the job the API queued, which is where the import goes on. */
-  onQueued: (job: JobResponse) => void;
+  /** Called with the job the API queued and the name of the file sent, where the import goes on. */
+  onQueued: (job: JobResponse, fileName: string) => void;
   /** Told whenever the file is being sent, so the dialog can refuse to close meanwhile. */
   onBusyChange?: ((busy: boolean) => void) | undefined;
 }
@@ -83,9 +83,10 @@ export function ImportChooseStep({ portfolioId, onQueued, onBusyChange }: Import
 
   function send() {
     if (selection === null || !("check" in selection) || !selection.check.ok) return;
-    importCsv.mutate(selection.text, {
+    const { name, text } = selection;
+    importCsv.mutate(text, {
       onSuccess: (queued) => {
-        onQueued(queued);
+        onQueued(queued, name);
       },
     });
   }
