@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Progress } from "@/components/ui/progress";
 import { formatCalendarDay, formatClockTime } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import type { ActivityDay, ActivityEvent, ActivitySeverity } from "../lib/activity-events";
@@ -45,6 +46,14 @@ function ActivityRow({ event, action }: ActivityRowProps) {
           {event.title}
         </p>
         <p className="text-sm text-(--color-text-secondary)">{event.message}</p>
+        {event.progress ? (
+          <Progress
+            className="my-1"
+            label={t("importCsv.progress.barLabel")}
+            max={event.progress.total}
+            value={event.progress.total > 0 ? event.progress.processed : null}
+          />
+        ) : null}
         <p className="text-xs text-(--color-text-secondary)">
           {t(`activity.source.${event.source}`)} ·{" "}
           {formatClockTime(event.occurredAt, i18n.language)}
