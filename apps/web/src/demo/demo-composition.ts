@@ -47,7 +47,7 @@ import { seedDecisions } from "./decision-seed";
 import { seedMarket } from "./market-seed";
 import { createDemoSimulationControl } from "./simulation-control";
 import type { DemoSimulationControl } from "./simulation-control";
-import { seedTransactions } from "./transaction-seed";
+import { seedPortfolios } from "./transaction-seed";
 
 export interface DemoUser {
   readonly id: string;
@@ -144,11 +144,6 @@ export async function createDemoComposition(
     notifications: notificationRepository,
   });
 
-  const portfolio = await portfolioRepository.create({
-    userId: DEMO_USER.id,
-    name: "Long-term growth",
-    baseCurrency: "USD",
-  });
   await seedMarket(
     { assetRepository, marketPriceRepository, historicalPriceRepository },
     clock.now(),
@@ -163,7 +158,14 @@ export async function createDemoComposition(
     portfolioService,
     clock,
   });
-  await seedTransactions({ transactionService, assetRepository, actor, portfolio, clock });
+  const [portfolio] = await seedPortfolios({
+    portfolioRepository,
+    transactionService,
+    assetRepository,
+    actor,
+    clock,
+  });
+  if (!portfolio) throw new Error("The demo seed produced no portfolio");
 
   await seedDecisions({
     decisionRepository,
