@@ -21,7 +21,7 @@ an accepted ADR, the SDD document is wrong and is corrected.
 | [009](0009-observability-scope.md) | Observability Scope — Structured, Correlated, Safe Logging | Accepted | B3 (startup and shutdown entries; `auth.logout` with B2, simulator entries with B5) |
 | [010](0010-v1-product-scope-clarifications.md) | Version 1 Product Scope Clarifications | Accepted | B0, B1, FE (demo hosting deferrals) |
 | [011](0011-frontend-stack.md) | Frontend Stack and Test Tooling | Proposed | FE |
-| [012](0012-demo-build-specifics.md) | Demo Build Specifics | Proposed | FE4.1 to FE4.5 |
+| [012](0012-demo-build-specifics.md) | Demo Build Specifics | Accepted | FE4.1 to FE4.5 |
 
 Blocks (B0-B7) are defined in [`../BACKEND-ROADMAP.md`](../BACKEND-ROADMAP.md).
 

@@ -9,19 +9,20 @@ specification (`16-analytics-spec.md`) and the architecture decision records in
 
 ## Status
 
-Work in progress; development is backend-first. The repository holds:
+Work in progress: the backend is done and the frontend stage is nearly done. The repository holds:
 
 - `packages/domain`: framework-agnostic domain logic.
 - `packages/database`: Prisma schema (16 models), repositories and the seed workflow.
+- `apps/web`: the React web app, in real mode (against the API) and in demo mode (no API).
 - `apps/api`: an Express REST API with 15 routers mounted (health, auth login and `me`,
   portfolios, positions, transactions, decisions, scenarios, assets, market, analytics,
   overview, watchlist, alerts, notifications, preferences).
 
 The backend is done (blocks B0 to B7): auth with refresh and logout, the application layer and
 shared contracts, analytics, background jobs, realtime, OpenAPI, CI, and a production image with
-a `full` Compose profile and a smoke test. The web app is started (`apps/web` is a Vite and React 19 workspace with
-an empty shell, FE0.1); its screens and the public demo are planned as the
-frontend stage; the order and the
+a `full` Compose profile and a smoke test. The web app (`apps/web`, Vite and React 19) has its
+screens, the realtime client and the static public demo (blocks FE0 to FE4); the accessibility
+and performance refinement (FE5) and the portfolio case study (FE6) are planned. The order and the
 phase-to-block mapping are in
 [`docs/15-implementation-plan.md`](./docs/15-implementation-plan.md) section 4.1.
 [`docs/PROGRESS.md`](./docs/PROGRESS.md) is a working log that is being updated.
@@ -139,7 +140,7 @@ pnpm --filter @trading/database db:studio
 
 ```text
 apps/
-  web/        # Frontend: Vite and React 19 shell (FE0.1); screens not started
+  web/        # Frontend: Vite and React 19 app, real and demo builds
   api/        # Node/Express REST API (foundation implemented)
 packages/
   domain/     # Framework-agnostic domain logic (entities, validation, calculations)

@@ -76,7 +76,7 @@ Code vs ADR:
 |---|---|---|
 | Local Development | Daily development | `Implemented`: PostgreSQL through Compose, API through `pnpm --filter @trading/api dev` (`apps/api/package.json`) |
 | Test / CI | Automated validation | Local test runs `Implemented` (`vitest`, `.env.test.local`); the GitHub Actions workflow `Implemented` (ADR-006 point 10) |
-| Demo | Public portfolio experience | `Planned (FE)`: static build of `apps/web` in demo mode under a subpath (ADR-006 points 1 and 7) |
+| Demo | Public portfolio experience | `Implemented` (FE4.5): static build of `apps/web` in demo mode (`build:demo`), published with `netlify.toml` on its own site at `/` (ADR-006 points 1 and 7, ADR-012 point 8); the Netlify site is not created yet |
 | Production-like | Deployment validation | `Implemented` (B7): the local full stack, `full` Compose profile with PostgreSQL, a one-shot `migrate` service and the API (ADR-006 points 1 and 4) |
 
 The same application artifacts should be reused whenever possible, with environment-specific configuration determining infrastructure.

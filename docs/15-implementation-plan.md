@@ -147,10 +147,10 @@ Code vs ADR:
 | 8 Tables, filters and analytics | allocation and attribution `Implemented`; performance and risk endpoints `Implemented` | `Planned (FE2)` |
 | 9 Realtime | server `Implemented` (B5) | client `Implemented` (FE3.1, FE3.2) |
 | 10 Background operations | jobs and idempotency `Implemented` (B4) | screens `Implemented` (FE3.5, FE3.6) |
-| 11 Demo Mode | `@trading/market-sim` `Implemented` (B5) | `Planned (FE4)` |
+| 11 Demo Mode | `@trading/market-sim` `Implemented` (B5) | `Implemented` (FE4.1 to FE4.5): in-process adapters, seed, market simulation and the "Demo data" menu; the scripted import failure `Deferred` (ADR-012) |
 | 12 Testing hardening | route tests `Planned (B0)`; tests per block | component, E2E and accessibility checks `Planned (FE5)` |
 | 13 Observability | logger and security events `Implemented` (B3); metrics `Deferred` (ADR-009 point 10) | browser-console `Logger` adapter `Implemented` (FE0.7); diagnostic modes `Deferred` |
-| 14 Deployment | local full stack `Implemented` (B7); CI `Implemented` | demo build and publication `Planned (FE4)`; hosting `Deferred` |
+| 14 Deployment | local full stack `Implemented` (B7); CI `Implemented` | demo build, bundle checks and smoke test `Implemented` (FE4.5); the Netlify site `Planned` (not created yet); hosting `Deferred` |
 | 15 UX, accessibility and performance refinement | B5 (server-side performance measurement after realtime exists, §32) | `Planned (FE5)` |
 | 16 Portfolio case study | none | `Planned (FE6)` |
 
