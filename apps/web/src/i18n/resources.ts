@@ -1361,6 +1361,13 @@ const en = {
     simulateConnectionIssue: "Simulate a connection problem",
     sendTestNotification: "Send a test notification",
     resetDemo: "Reset demo",
+    resetDemoDialog: {
+      title: "Reset the demo?",
+      description:
+        "Everything you changed in the demo is lost and the sample data comes back. Nothing leaves your browser.",
+      cancel: "Cancel",
+      confirm: "Reset demo",
+    },
     notifications: "Notifications",
     messages: "Messages",
     signOutFailed: {
@@ -2770,6 +2777,13 @@ const es: Messages<typeof en> = {
     simulateConnectionIssue: "Simular problema de conexión",
     sendTestNotification: "Enviar notificación de prueba",
     resetDemo: "Restablecer demo",
+    resetDemoDialog: {
+      title: "¿Restablecer la demo?",
+      description:
+        "Todo lo que cambiaste en la demo se pierde y vuelven los datos de ejemplo. Nada sale de tu navegador.",
+      cancel: "Cancelar",
+      confirm: "Restablecer demo",
+    },
     notifications: "Notificaciones",
     messages: "Mensajes",
     signOutFailed: {

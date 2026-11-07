@@ -41,6 +41,9 @@ export async function createDemoRuntime(): Promise<AppRuntime> {
       notificationRepository: composition.notificationRepository,
       realtimePublisher,
       userId: DEMO_USER.id,
+      reload: () => {
+        window.location.reload();
+      },
     }),
   };
 }

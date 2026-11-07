@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Outlet, useMatch, useNavigate } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
@@ -17,6 +18,7 @@ import { ActivityBar } from "./activity-bar";
 import { PROFILE_PATH } from "./destinations";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { ConnectedStatusBar } from "./connected-status-bar";
+import { ResetDemoDialog } from "./reset-demo-dialog";
 import { TopBar } from "./top-bar";
 
 /**
@@ -46,6 +48,7 @@ export function AppShell() {
   const signOut = useSignOut();
   // Only the demo build has controls, and without them the bar shows no demo menu.
   const demoControls = useDemoControls();
+  const [resetOpen, setResetOpen] = useState(false);
   const demo = demoControls
     ? {
         onSimulateConnectionIssue: () => {
@@ -55,7 +58,7 @@ export function AppShell() {
           void demoControls.sendTestNotification();
         },
         onResetDemo: () => {
-          void demoControls.reset();
+          setResetOpen(true);
         },
       }
     : undefined;
@@ -97,6 +100,15 @@ export function AppShell() {
           </main>
           <ConnectedStatusBar alertCount={notifications.alerts} calculationTime="14:32:07" />
           <BottomTabBar />
+          {demoControls ? (
+            <ResetDemoDialog
+              onConfirm={() => {
+                void demoControls.reset();
+              }}
+              onOpenChange={setResetOpen}
+              open={resetOpen}
+            />
+          ) : null}
         </div>
       </div>
     </TooltipProvider>

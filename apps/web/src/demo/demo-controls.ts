@@ -9,17 +9,20 @@ export interface DemoControlsDependencies {
   readonly notificationRepository: Pick<NotificationRepository, "create">;
   readonly realtimePublisher: Pick<RealtimePublisher, "notificationCreated">;
   readonly userId: string;
+  /** Loads the page again, which brings the in-memory demo back to its seed. */
+  readonly reload: () => void;
 }
 
 /**
  * The actions of the "Demo data" menu. Each one is armed by the user, never random (ADR-012
- * point 6). The actions not wired yet do nothing; FE4.4 wires them one by one.
+ * point 6).
  */
 export function createDemoControls({
   realtimeServer,
   notificationRepository,
   realtimePublisher,
   userId,
+  reload,
 }: DemoControlsDependencies): DemoControls {
   return {
     // The server closes every connection the way a lost one would, and the real client goes through
@@ -38,6 +41,9 @@ export function createDemoControls({
       });
       await realtimePublisher.notificationCreated(notification);
     },
-    reset: () => undefined,
+    // Everything the demo holds is in memory, so loading the page again is the reset.
+    reset: () => {
+      reload();
+    },
   };
 }
