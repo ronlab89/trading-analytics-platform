@@ -10,13 +10,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface DemoMenuProps {
+export interface DemoMenuProps {
   onSimulateConnectionIssue: () => void;
   onSendTestNotification: () => void;
   onResetDemo: () => void;
 }
 
-/** The "Demo data" button of the top bar and its menu of demo controls (FE4 wires them). */
+/** The "Demo data" button of the top bar and its menu of demo controls. */
 export function DemoMenu({
   onSimulateConnectionIssue,
   onSendTestNotification,

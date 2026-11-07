@@ -34,5 +34,11 @@ export async function createDemoRuntime(): Promise<AppRuntime> {
       createSocket: realtimeServer.createSocket,
       logger,
     }),
+    // The menu appears in the demo build; its actions are wired one by one (FE4.4).
+    demoControls: {
+      simulateConnectionIssue: () => undefined,
+      sendTestNotification: () => undefined,
+      reset: () => undefined,
+    },
   };
 }

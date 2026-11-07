@@ -5,6 +5,7 @@ import { useLocation } from "react-router";
 import { Logo } from "@/components/logo";
 import { Breadcrumb, BreadcrumbItem } from "@/components/breadcrumb";
 import { DemoMenu } from "./demo-menu";
+import type { DemoMenuProps } from "./demo-menu";
 import {
   activeDestinationPath,
   DESTINATIONS,
@@ -27,9 +28,8 @@ interface TopBarProps {
   userName: string;
   userInitials: string;
   onSelectPortfolio: (id: string) => void;
-  onSimulateConnectionIssue: () => void;
-  onSendTestNotification: () => void;
-  onResetDemo: () => void;
+  /** The demo controls; without them (the real build) the bar has no demo menu. */
+  demo?: DemoMenuProps | undefined;
   onViewProfile: () => void;
   onSignOut: () => void;
 }
@@ -49,9 +49,7 @@ export function TopBar({
   userName,
   userInitials,
   onSelectPortfolio,
-  onSimulateConnectionIssue,
-  onSendTestNotification,
-  onResetDemo,
+  demo,
   onViewProfile,
   onSignOut,
 }: TopBarProps) {
@@ -89,11 +87,7 @@ export function TopBar({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <DemoMenu
-          onResetDemo={onResetDemo}
-          onSendTestNotification={onSendTestNotification}
-          onSimulateConnectionIssue={onSimulateConnectionIssue}
-        />
+        {demo ? <DemoMenu {...demo} /> : null}
         {notifications}
         <div className="tablet:hidden">
           <UserMenu
