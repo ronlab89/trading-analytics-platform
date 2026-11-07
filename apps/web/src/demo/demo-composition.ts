@@ -22,7 +22,7 @@ import {
   createUserPreferenceService,
   createWatchlistService,
 } from "@trading/application";
-import type { Actor, Clock } from "@trading/application";
+import type { Actor, Clock, RealtimePublisher } from "@trading/application";
 import { UserRole } from "@trading/domain";
 import {
   InMemoryAlertRepository,
@@ -93,6 +93,8 @@ export interface DemoComposition {
 
 export interface DemoCompositionOptions {
   readonly clock?: Clock;
+  /** Where the services publish what changes; without one, nothing is published. */
+  readonly realtimePublisher?: RealtimePublisher;
 }
 
 const DEMO_USER: DemoUser = {
@@ -111,6 +113,7 @@ export async function createDemoComposition(
   options: DemoCompositionOptions = {},
 ): Promise<DemoComposition> {
   const clock = options.clock ?? { now: () => new Date() };
+  const { realtimePublisher } = options;
   const repositoryOptions = { now: () => clock.now() };
   const identity = { role: DEMO_USER.role };
   const actor: Actor = {
@@ -162,6 +165,7 @@ export async function createDemoComposition(
     unitOfWork,
     portfolioService,
     clock,
+    ...(realtimePublisher ? { realtimePublisher } : {}),
   });
   const [portfolio] = await seedPortfolios({
     portfolioRepository,
@@ -206,7 +210,11 @@ export async function createDemoComposition(
       }),
     },
     clock,
-    notifier: createJobNotifier({ notificationRepository }),
+    notifier: createJobNotifier({
+      notificationRepository,
+      ...(realtimePublisher ? { realtimePublisher } : {}),
+    }),
+    ...(realtimePublisher ? { realtimePublisher } : {}),
   });
 
   return {
