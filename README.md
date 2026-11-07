@@ -74,6 +74,30 @@ pnpm --filter @trading/database db:seed
 pnpm smoke
 ```
 
+## Public demo
+
+The web app also builds as a static demo that needs no API and no database
+([ADR-012](./docs/adr/0012-demo-build-specifics.md)). The browser runs the real application
+services over in-memory repositories, with seeded portfolios, transactions, alerts and a
+watchlist, and a simulated market that ticks prices and fires the seeded alerts. Nothing leaves
+the browser, and a reload brings it back to its seed.
+
+```bash
+pnpm --filter @trading/web dev:demo    # dev server in demo mode
+pnpm --filter @trading/web build:demo  # static build in apps/web/dist
+```
+
+In the demo, the login screen lets a visitor pick a role (viewer, trader or admin) and enter. The
+"Demo data" menu of the top bar can simulate a connection problem (the status bar goes through
+reconnecting and back to live), send a test notification, and reset the demo.
+
+- **Bundles.** `pnpm --filter @trading/web check:bundles` builds the app in both modes and checks
+  that the demo bundle has no HTTP adapter or API address and the real bundle has no demo code.
+- **Smoke.** `pnpm --filter @trading/web test:e2e:demo` builds the demo and runs a Playwright
+  smoke against it. CI runs both checks.
+- **Publishing.** [`netlify.toml`](./netlify.toml) builds the demo, publishes `apps/web/dist` and
+  rewrites every path to `index.html`.
+
 ## Local Database
 
 PostgreSQL runs via Docker Compose. Two levels of reset are available,
