@@ -20,16 +20,21 @@ beforeEach(async () => {
 });
 
 describe("watchlist handlers", () => {
-  it("starts empty, adds an asset and lists it", async () => {
-    await expect(client.call(op("listWatchlist"))).resolves.toMatchObject({ data: [] });
+  it("opens with the seeded assets, adds another one and lists it", async () => {
+    interface Listed {
+      data: { assetId: string }[];
+    }
+    const before = (await client.call(op("listWatchlist"))) as Listed;
+    expect(before.data).toHaveLength(3);
+    expect(before.data.map((item) => item.assetId)).not.toContain(assetId);
 
     await expect(client.call(op("addToWatchlist"), { body: { assetId } })).resolves.toMatchObject({
       data: { assetId },
     });
 
-    await expect(client.call(op("listWatchlist"))).resolves.toMatchObject({
-      data: [{ assetId }],
-    });
+    const after = (await client.call(op("listWatchlist"))) as Listed;
+    expect(after.data).toHaveLength(4);
+    expect(after.data.map((item) => item.assetId)).toContain(assetId);
   });
 
   it("refuses to add the same asset twice with 400, as the API does, and an unknown asset", async () => {
@@ -50,7 +55,8 @@ describe("watchlist handlers", () => {
     await expect(
       client.call(op("removeFromWatchlist"), { params: { assetId } }),
     ).resolves.toBeUndefined();
-    await expect(client.call(op("listWatchlist"))).resolves.toMatchObject({ data: [] });
+    const remaining = (await client.call(op("listWatchlist"))) as { data: { assetId: string }[] };
+    expect(remaining.data.map((item) => item.assetId)).not.toContain(assetId);
   });
 });
 
