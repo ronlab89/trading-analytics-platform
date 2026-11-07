@@ -30,6 +30,7 @@ Thumbs.db
 # Testing
 coverage/
 playwright-report/
+playwright-report-demo/
 test-results/
 
 # Docker volumes (local dev data)
