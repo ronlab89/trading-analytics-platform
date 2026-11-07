@@ -4,6 +4,7 @@ import type { AppRuntime } from "@/runtime/app-runtime";
 import { getAccessToken, watchAccessToken } from "@/stores/session-store";
 import { createDemoTradingClient } from "./create-demo-trading-client";
 import { createDemoComposition } from "./demo-composition";
+import { createDemoRealtimePublisher } from "./demo-realtime-publisher";
 import { createDemoRealtimeServer } from "./demo-realtime-server";
 import { createLatency, NO_LATENCY } from "./latency";
 
@@ -11,9 +12,13 @@ import { createLatency, NO_LATENCY } from "./latency";
 const latencyOff = import.meta.env.VITE_DEMO_LATENCY === "off";
 
 export async function createDemoRuntime(): Promise<AppRuntime> {
-  const composition = await createDemoComposition();
+  const clock = { now: () => new Date() };
+  const realtimeServer = createDemoRealtimeServer({ clock });
+  const composition = await createDemoComposition({
+    clock,
+    realtimePublisher: createDemoRealtimePublisher(realtimeServer),
+  });
   composition.jobRunner.start();
-  const realtimeServer = createDemoRealtimeServer({ clock: { now: () => new Date() } });
   return {
     tradingClient: createDemoTradingClient({
       composition,
