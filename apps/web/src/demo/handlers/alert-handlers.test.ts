@@ -53,9 +53,10 @@ describe("alert handlers", () => {
     const alert = await createAlert();
     const params = { alertId: alert.id };
 
-    await expect(client.call(op("listAlerts"))).resolves.toMatchObject({
-      data: [{ id: alert.id, assetId: aaplId, threshold: 200 }],
-    });
+    const listed = (await client.call(op("listAlerts"))) as { data: Alert[] };
+    expect(listed.data).toContainEqual(
+      expect.objectContaining({ id: alert.id, assetId: aaplId, threshold: 200 }),
+    );
     await expect(client.call(op("getAlert"), { params })).resolves.toMatchObject({
       data: { id: alert.id },
     });
@@ -63,7 +64,8 @@ describe("alert handlers", () => {
       client.call(op("updateAlert"), { params, body: { threshold: 250, enabled: false } }),
     ).resolves.toMatchObject({ data: { threshold: 250, enabled: false } });
     await expect(client.call(op("deleteAlert"), { params })).resolves.toBeUndefined();
-    await expect(client.call(op("listAlerts"))).resolves.toMatchObject({ data: [] });
+    const remaining = (await client.call(op("listAlerts"))) as { data: Alert[] };
+    expect(remaining.data.map((listedAlert) => listedAlert.id)).not.toContain(alert.id);
   });
 
   it("refuses an alert with no asset or portfolio, and an empty update", async () => {

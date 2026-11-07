@@ -43,6 +43,7 @@ import {
   InMemoryWatchlistItemRepository,
 } from "@trading/persistence-memory";
 import { tokenizeCsv } from "./csv-tokenizer";
+import { seedAlerts } from "./alert-seed";
 import { seedDecisions } from "./decision-seed";
 import { seedMarket } from "./market-seed";
 import { createDemoSimulationControl } from "./simulation-control";
@@ -166,6 +167,7 @@ export async function createDemoComposition(
     clock,
   });
   if (!portfolio) throw new Error("The demo seed produced no portfolio");
+  await seedAlerts({ alertRepository, assetRepository, userId: DEMO_USER.id, portfolio });
 
   await seedDecisions({
     decisionRepository,
