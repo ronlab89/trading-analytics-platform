@@ -4,6 +4,7 @@ import type { AppRuntime } from "@/runtime/app-runtime";
 import { getAccessToken, watchAccessToken } from "@/stores/session-store";
 import { createDemoTradingClient } from "./create-demo-trading-client";
 import { createDemoComposition } from "./demo-composition";
+import { createDemoControls } from "./demo-controls";
 import { createDemoRealtimePublisher } from "./demo-realtime-publisher";
 import { createDemoRealtimeServer } from "./demo-realtime-server";
 import { createLatency, NO_LATENCY } from "./latency";
@@ -34,11 +35,6 @@ export async function createDemoRuntime(): Promise<AppRuntime> {
       createSocket: realtimeServer.createSocket,
       logger,
     }),
-    // The menu appears in the demo build; its actions are wired one by one (FE4.4).
-    demoControls: {
-      simulateConnectionIssue: () => undefined,
-      sendTestNotification: () => undefined,
-      reset: () => undefined,
-    },
+    demoControls: createDemoControls({ realtimeServer }),
   };
 }
