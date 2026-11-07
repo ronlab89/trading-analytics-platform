@@ -1064,7 +1064,7 @@ test("on mobile tapping a transaction opens its detail as a bottom sheet as wide
   await waitForTransactions(page, 390);
 
   await page
-    .getByRole("button", { name: /View the .* transaction|Ver la transacción de/ })
+    .getByRole("button", { name: /View details|Ver detalle/ })
     .first()
     .click();
 
@@ -1428,7 +1428,7 @@ test("on mobile tapping a recent transaction opens its detail as a bottom sheet"
   await waitForDashboard(page);
 
   await page
-    .getByRole("button", { name: /View the .* transaction|Ver la transacción de/ })
+    .getByRole("button", { name: /View details|Ver detalle/ })
     .first()
     .click();
 

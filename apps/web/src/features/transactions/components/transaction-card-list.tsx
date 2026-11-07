@@ -29,9 +29,6 @@ export function TransactionCardList({
       {rows.map((row) => (
         <li className="border-b border-(--color-border-default) last:border-b-0" key={row.id}>
           <button
-            aria-label={t("transactions.viewDetails", {
-              name: row.name ?? t("transactions.unknownAsset"),
-            })}
             className="flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             onClick={() => {
               onView(row);
@@ -57,6 +54,8 @@ export function TransactionCardList({
               </span>
               <TransactionStatusBadge status={row.status} />
             </div>
+            {/* The button is named by what the card shows; this says what it does. */}
+            <span className="sr-only">{t("transactions.rowMenu.view")}</span>
           </button>
         </li>
       ))}

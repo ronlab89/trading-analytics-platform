@@ -15,10 +15,18 @@ describe("PortfolioSelector", () => {
     const onSelect = vi.fn();
     render(<PortfolioSelector onSelect={onSelect} portfolios={portfolios} selectedId="growth" />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Select portfolio" }));
+    await userEvent.click(screen.getByRole("button", { name: /Select portfolio/ }));
     await userEvent.click(screen.getByRole("menuitemradio", { name: "Conservador" }));
 
     expect(onSelect).toHaveBeenCalledWith("conservative");
+  });
+
+  it("names the button with the portfolio it shows, so its visible text is in its name", () => {
+    render(<PortfolioSelector onSelect={vi.fn()} portfolios={portfolios} selectedId="growth" />);
+
+    expect(
+      screen.getByRole("button", { name: /Crecimiento.*Select portfolio/ }),
+    ).toBeInTheDocument();
   });
 
   it("shows the Figma skeleton, announced as loading, while the portfolios load", async () => {

@@ -94,7 +94,7 @@ function signInAsAna() {
 
 // The activity bar and the mobile top bar each hold one; CSS shows one at a time.
 async function openUserMenu() {
-  const menu = screen.getAllByRole("button", { name: "User menu" }).at(0);
+  const menu = screen.getAllByRole("button", { name: /User menu/ }).at(0);
   if (!menu) throw new Error("The shell has no user menu");
   await userEvent.click(menu);
 }
@@ -229,7 +229,7 @@ describe("AppShell", () => {
       ]),
     );
 
-    const selector = await screen.findByRole("button", { name: "Select portfolio" });
+    const selector = await screen.findByRole("button", { name: /Select portfolio/ });
     expect(selector).toHaveTextContent("Renta fija");
 
     await userEvent.click(selector);
@@ -243,10 +243,10 @@ describe("AppShell", () => {
       clientListing([portfolio("p1", "Renta fija"), portfolio("p2", "Crecimiento")]),
     );
 
-    await userEvent.click(await screen.findByRole("button", { name: "Select portfolio" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Select portfolio/ }));
     await userEvent.click(screen.getByRole("menuitemradio", { name: "Crecimiento" }));
 
-    expect(screen.getByRole("button", { name: "Select portfolio" })).toHaveTextContent(
+    expect(screen.getByRole("button", { name: /Select portfolio/ })).toHaveTextContent(
       "Crecimiento",
     );
   });
@@ -268,7 +268,7 @@ describe("AppShell", () => {
       await screen.findByRole("button", { name: "Couldn't load portfolios. Retry" }),
     );
 
-    expect(await screen.findByRole("button", { name: "Select portfolio" })).toHaveTextContent(
+    expect(await screen.findByRole("button", { name: /Select portfolio/ })).toHaveTextContent(
       "Crecimiento",
     );
   });

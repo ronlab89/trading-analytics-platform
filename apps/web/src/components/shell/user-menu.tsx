@@ -33,7 +33,7 @@ export function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          aria-label={t("shell.userMenu")}
+          aria-label={t("shell.userMenu", { initials })}
           className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
           type="button"
         >

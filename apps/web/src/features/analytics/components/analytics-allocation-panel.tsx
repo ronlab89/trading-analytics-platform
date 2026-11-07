@@ -61,7 +61,8 @@ export function AnalyticsAllocationPanel({ portfolioId }: AnalyticsAllocationPan
         >
           <TabsList aria-label={t("analytics.allocation.groupBy")}>
             {GROUPINGS.map((grouping) => (
-              <TabsTrigger key={grouping} value={grouping}>
+              // The panel these switch is the chart beside them, not a tab panel, so nothing to control.
+              <TabsTrigger aria-controls={undefined} key={grouping} value={grouping}>
                 {t(`analytics.allocation.tabs.${grouping}`)}
               </TabsTrigger>
             ))}

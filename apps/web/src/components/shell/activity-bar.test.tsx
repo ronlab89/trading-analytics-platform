@@ -58,7 +58,7 @@ describe("ActivityBar", () => {
     renderBar("/", handlers);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "User menu" }));
+    await user.click(screen.getByRole("button", { name: /User menu/ }));
 
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
 

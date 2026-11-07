@@ -40,7 +40,7 @@ describe("TopBar", () => {
   it("shows the selected portfolio with its currency", () => {
     renderTopBar();
 
-    expect(screen.getByRole("button", { name: "Select portfolio" })).toHaveTextContent(
+    expect(screen.getByRole("button", { name: /Select portfolio/ })).toHaveTextContent(
       "Crecimiento",
     );
     expect(screen.getByText("USD")).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe("TopBar", () => {
     const user = userEvent.setup();
     const { props } = renderTopBar();
 
-    await user.click(screen.getByRole("button", { name: "Select portfolio" }));
+    await user.click(screen.getByRole("button", { name: /Select portfolio/ }));
     await user.click(screen.getByRole("menuitemradio", { name: "Conservador" }));
 
     expect(props.onSelectPortfolio).toHaveBeenCalledWith("conservative");
@@ -116,7 +116,7 @@ describe("TopBar", () => {
     const user = userEvent.setup();
     const { props } = renderTopBar();
 
-    await user.click(screen.getByRole("button", { name: "User menu" }));
+    await user.click(screen.getByRole("button", { name: /User menu/ }));
     await user.click(screen.getByRole("menuitem", { name: "Sign out" }));
 
     expect(props.onSignOut).toHaveBeenCalledOnce();

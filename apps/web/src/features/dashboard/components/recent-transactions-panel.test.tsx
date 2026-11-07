@@ -104,7 +104,7 @@ describe("RecentTransactionsPanel", () => {
     renderPanel([row()]);
 
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "View the Apple Inc. transaction" }));
+    await userEvent.click(screen.getByRole("button", { name: /Apple Inc\..*View details/ }));
 
     expect(await screen.findByRole("dialog", { name: "Transaction details" })).toBeInTheDocument();
   });
