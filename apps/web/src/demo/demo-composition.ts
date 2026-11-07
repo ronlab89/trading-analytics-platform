@@ -3,6 +3,7 @@ import {
   createAnalyticsService,
   createAssetService,
   createCsvImportHandler,
+  createDecisionService,
   createIdempotencyService,
   createJobNotifier,
   createJobRunner,
@@ -15,6 +16,7 @@ import {
   createPositionService,
   createRangeAttributionService,
   createRiskService,
+  createScenarioService,
   createSimulationService,
   createTransactionService,
   createUserPreferenceService,
@@ -25,6 +27,8 @@ import { UserRole } from "@trading/domain";
 import {
   InMemoryAlertRepository,
   InMemoryAssetRepository,
+  InMemoryDecisionEventRepository,
+  InMemoryDecisionRepository,
   InMemoryHistoricalPriceRepository,
   InMemoryIdempotencyKeyRepository,
   InMemoryJobRepository,
@@ -32,12 +36,14 @@ import {
   InMemoryNotificationRepository,
   InMemoryPortfolioRepository,
   InMemoryPositionRepository,
+  InMemoryScenarioRepository,
   InMemoryTransactionRepository,
   InMemoryUnitOfWork,
   InMemoryUserPreferenceRepository,
   InMemoryWatchlistItemRepository,
 } from "@trading/persistence-memory";
 import { tokenizeCsv } from "./csv-tokenizer";
+import { seedDecisions } from "./decision-seed";
 import { seedMarket } from "./market-seed";
 import { createDemoSimulationControl } from "./simulation-control";
 import type { DemoSimulationControl } from "./simulation-control";
@@ -66,6 +72,8 @@ export interface DemoComposition {
   readonly riskService: ReturnType<typeof createRiskService>;
   readonly performanceService: ReturnType<typeof createPerformanceService>;
   readonly rangeAttributionService: ReturnType<typeof createRangeAttributionService>;
+  readonly decisionService: ReturnType<typeof createDecisionService>;
+  readonly scenarioService: ReturnType<typeof createScenarioService>;
   readonly alertService: ReturnType<typeof createAlertService>;
   readonly notificationService: ReturnType<typeof createNotificationService>;
   readonly simulationService: ReturnType<typeof createSimulationService>;
@@ -108,6 +116,9 @@ export async function createDemoComposition(
   const jobRepository = new InMemoryJobRepository(repositoryOptions);
   const notificationRepository = new InMemoryNotificationRepository(repositoryOptions);
   const alertRepository = new InMemoryAlertRepository(repositoryOptions);
+  const decisionRepository = new InMemoryDecisionRepository(repositoryOptions);
+  const decisionEventRepository = new InMemoryDecisionEventRepository(repositoryOptions);
+  const scenarioRepository = new InMemoryScenarioRepository(repositoryOptions);
   const unitOfWork = new InMemoryUnitOfWork({
     transactions: transactionRepository,
     positions: positionRepository,
@@ -137,6 +148,14 @@ export async function createDemoComposition(
     clock,
   });
   await seedTransactions({ transactionService, assetRepository, actor, portfolio, clock });
+
+  await seedDecisions({
+    decisionRepository,
+    decisionEventRepository,
+    assetRepository,
+    portfolio,
+    clock,
+  });
 
   const seriesDependencies = {
     portfolioService,
@@ -202,6 +221,18 @@ export async function createDemoComposition(
     performanceService: createPerformanceService(seriesDependencies),
     rangeAttributionService: createRangeAttributionService({
       ...seriesDependencies,
+      assetService,
+    }),
+    decisionService: createDecisionService({
+      decisionRepository,
+      decisionEventRepository,
+      assetRepository,
+      portfolioService,
+    }),
+    scenarioService: createScenarioService({
+      scenarioRepository,
+      positionRepository,
+      portfolioService,
       assetService,
     }),
     alertService: createAlertService({

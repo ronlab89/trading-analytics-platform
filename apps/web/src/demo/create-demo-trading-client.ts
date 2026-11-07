@@ -5,6 +5,8 @@ import type { CallInput, TradingClient } from "@/api/trading-client";
 import { logger } from "@/lib/logging/logger";
 import type { DemoComposition } from "./demo-composition";
 import { createAlertHandlers } from "./handlers/alert-handlers";
+import { createDecisionHandlers } from "./handlers/decision-handlers";
+import { createScenarioHandlers } from "./handlers/scenario-handlers";
 import { createAnalyticsHandlers } from "./handlers/analytics-handlers";
 import { createAuthHandlers } from "./handlers/auth-handlers";
 import type { DemoSession, HandlerContext } from "./handlers/handler";
@@ -82,6 +84,8 @@ export function createDemoTradingClient(options: DemoTradingClientOptions): Trad
     ...createJobHandlers(context),
     ...createAnalyticsHandlers(context),
     ...createAlertHandlers(context),
+    ...createDecisionHandlers(context),
+    ...createScenarioHandlers(context),
   };
 
   logger.info(DEMO_ADAPTER_MARKER);
