@@ -78,12 +78,18 @@ jobs:
         timeout-minutes: 10
         run: pnpm --filter @trading/web test:e2e
 
-      - name: Upload the Playwright report
+      - name: Run the demo smoke
+        timeout-minutes: 10
+        run: pnpm --filter @trading/web test:e2e:demo
+
+      - name: Upload the Playwright reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: apps/web/playwright-report/
+          path: |
+            apps/web/playwright-report/
+            apps/web/playwright-report-demo/
           if-no-files-found: ignore
 
       # Proves the compiled output runs: plain `node` on `dist`, no tsx and no source
