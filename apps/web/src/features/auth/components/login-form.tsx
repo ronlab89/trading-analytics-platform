@@ -4,27 +4,42 @@ import { useTranslation } from "react-i18next";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useLogin } from "../hooks/use-login";
 import { classifyLoginFailure, type LoginFailure } from "../lib/classify-login-failure";
+import { demoEmailFor, readDemoRole, saveDemoRole, type DemoRole } from "../lib/demo-role";
 import { validateLogin, type LoginFieldErrors, type LoginValues } from "../lib/validate-login";
 import { LoginFormView, type LoginFormAlert } from "./login-form-view";
 
 interface LoginFormProps {
-  /** The demo entry; until it is connected the form shows the button and it does nothing. */
-  onEnterDemo?: (() => void) | undefined;
+  /** Whether the demo entry works; only the demo build turns it on. */
+  demo?: boolean;
 }
 
 /** Owns the form state and the sign in; `LoginFormView` draws it. */
-export function LoginForm({ onEnterDemo }: LoginFormProps) {
+export function LoginForm({ demo = __DEMO_BUILD__ }: LoginFormProps) {
   const { t } = useTranslation();
   const { online, recheck } = useOnlineStatus();
   const login = useLogin();
   const [values, setValues] = useState<LoginValues>({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
+  const [demoRole, setDemoRole] = useState<DemoRole>(readDemoRole);
+  const [enteringDemo, setEnteringDemo] = useState(false);
 
   function submit() {
     const invalid = validateLogin(values);
     setFieldErrors(invalid);
     if (Object.keys(invalid).length > 0) return;
     login.mutate(values);
+  }
+
+  function enterDemo() {
+    setEnteringDemo(true);
+    login.mutate(
+      { email: demoEmailFor(demoRole), password: "demo" },
+      {
+        onSettled: () => {
+          setEnteringDemo(false);
+        },
+      },
+    );
   }
 
   const failure = login.isError ? classifyLoginFailure(login.error) : undefined;
@@ -41,9 +56,20 @@ export function LoginForm({ onEnterDemo }: LoginFormProps) {
         setValues((current) => ({ ...current, [field]: value }));
         setFieldErrors((current) => omitField(current, field));
       }}
-      onEnterDemo={onEnterDemo}
+      demoRole={
+        demo
+          ? {
+              value: demoRole,
+              onChange: (role) => {
+                setDemoRole(role);
+                saveDemoRole(role);
+              },
+            }
+          : undefined
+      }
+      onEnterDemo={demo ? enterDemo : undefined}
       onSubmit={submit}
-      status={login.isPending ? "submitting" : "idle"}
+      status={login.isPending ? (enteringDemo ? "entering-demo" : "submitting") : "idle"}
       values={values}
     />
   );

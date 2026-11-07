@@ -34,6 +34,12 @@ const en = {
       enterDemo: "Enter the demo",
       enteringDemo: "Entering…",
       demoNote: "No credentials · uses fictional data",
+      demoRole: {
+        label: "Enter as",
+        VIEWER: "Viewer",
+        TRADER: "Trader",
+        ADMIN: "Admin",
+      },
       retry: "Try again",
       expired: {
         title: "Your session expired",
@@ -1413,6 +1419,12 @@ const es: Messages<typeof en> = {
       enterDemo: "Entrar a la demo",
       enteringDemo: "Entrando…",
       demoNote: "Sin credenciales · usa datos ficticios",
+      demoRole: {
+        label: "Entrar como",
+        VIEWER: "Lector",
+        TRADER: "Operador",
+        ADMIN: "Administrador",
+      },
       retry: "Reintentar",
       expired: {
         title: "Tu sesión expiró",

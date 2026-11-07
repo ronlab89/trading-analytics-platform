@@ -129,4 +129,34 @@ describe("LoginForm", () => {
     expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
     expect(login).not.toHaveBeenCalled();
   });
+
+  describe("demo entry", () => {
+    afterEach(() => {
+      localStorage.clear();
+    });
+
+    it("signs in as the trader by default, with the demo credentials", async () => {
+      const login = vi.fn<SessionService["login"]>(() => Promise.resolve());
+      render(<LoginForm demo />, { wrapper: sessionWrapper(fakeSessionService({ login })) });
+
+      await userEvent.click(screen.getByRole("button", { name: "Enter the demo" }));
+
+      await waitFor(() => {
+        expect(login).toHaveBeenCalledWith("trader@demo.example", "demo");
+      });
+    });
+
+    it("signs in as the chosen role and remembers it", async () => {
+      const login = vi.fn<SessionService["login"]>(() => Promise.resolve());
+      render(<LoginForm demo />, { wrapper: sessionWrapper(fakeSessionService({ login })) });
+
+      await userEvent.click(screen.getByRole("radio", { name: "Viewer" }));
+      await userEvent.click(screen.getByRole("button", { name: "Enter the demo" }));
+
+      await waitFor(() => {
+        expect(login).toHaveBeenCalledWith("viewer@demo.example", "demo");
+      });
+      expect(localStorage.getItem("trading-demo:role")).toBe("VIEWER");
+    });
+  });
 });
