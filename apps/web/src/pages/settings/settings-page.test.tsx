@@ -172,6 +172,15 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("region", { name: "Preferences" })).toBeInTheDocument();
   });
 
+  it("has tabs that do not point to a panel that does not exist", () => {
+    narrowScreen();
+    renderPage();
+
+    for (const tab of within(screen.getByRole("tablist")).getAllByRole("tab")) {
+      expect(tab).not.toHaveAttribute("aria-controls");
+    }
+  });
+
   describe("leaving with changes that are not saved", () => {
     async function editPreferences() {
       await userEvent.click(screen.getByRole("button", { name: "Preferences" }));

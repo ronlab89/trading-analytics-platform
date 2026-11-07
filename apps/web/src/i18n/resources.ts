@@ -1147,7 +1147,6 @@ const en = {
     status: { settled: "Settled", failed: "Failed", pending: "Pending" },
     rowMenu: { label: "Actions for the {{name}} transaction", view: "View details" },
     actions: "Actions",
-    viewDetails: "View the {{name}} transaction",
   },
   dashboard: {
     loading: "Loading the dashboard",
@@ -1311,7 +1310,7 @@ const en = {
     mainNavigation: "Main navigation",
     tabNavigation: "Main tabs",
     more: "More",
-    userMenu: "User menu",
+    userMenu: "User menu, {{initials}}",
     viewProfile: "View profile",
     signOut: "Sign out",
     statusBar: "Status",
@@ -2562,7 +2561,6 @@ const es: Messages<typeof en> = {
     status: { settled: "Liquidada", failed: "Fallida", pending: "Pendiente" },
     rowMenu: { label: "Acciones de la transacción de {{name}}", view: "Ver detalle" },
     actions: "Acciones",
-    viewDetails: "Ver la transacción de {{name}}",
   },
   dashboard: {
     loading: "Cargando el panel de inicio",
@@ -2728,7 +2726,7 @@ const es: Messages<typeof en> = {
     mainNavigation: "Navegación principal",
     tabNavigation: "Pestañas principales",
     more: "Más",
-    userMenu: "Menú de usuario",
+    userMenu: "Menú de usuario, {{initials}}",
     viewProfile: "Ver perfil",
     signOut: "Cerrar sesión",
     statusBar: "Estado",

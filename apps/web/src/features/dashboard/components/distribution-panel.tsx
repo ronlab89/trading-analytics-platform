@@ -76,6 +76,8 @@ export function DistributionPanel({ allocation, investedValue }: DistributionPan
           >
             <ResponsiveContainer height="100%" width="100%">
               <RadialBarChart
+                // The chart is hidden from assistive tech, so its svg must not be focusable either.
+                accessibilityLayer={false}
                 barSize={14}
                 data={rings}
                 endAngle={-270}

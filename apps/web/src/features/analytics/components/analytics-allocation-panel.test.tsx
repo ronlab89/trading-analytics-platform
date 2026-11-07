@@ -47,6 +47,15 @@ describe("AnalyticsAllocationPanel", () => {
     ]);
   });
 
+  it("has tabs that do not point to a panel that does not exist", async () => {
+    renderPanel();
+    await screen.findByRole("list");
+
+    for (const tab of screen.getAllByRole("tab")) {
+      expect(tab).not.toHaveAttribute("aria-controls");
+    }
+  });
+
   it("says how much the weights are over", async () => {
     renderPanel();
 

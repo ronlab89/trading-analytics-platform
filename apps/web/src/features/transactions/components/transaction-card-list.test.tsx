@@ -57,7 +57,7 @@ describe("TransactionCardList", () => {
     const bitcoin = row({ id: "b", name: "Bitcoin", symbol: "BTC" });
     render(<TransactionCardList onView={onView} rows={[row(), bitcoin]} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "View the Bitcoin transaction" }));
+    await userEvent.click(screen.getByRole("button", { name: /Bitcoin.*View details/ }));
 
     expect(onView).toHaveBeenCalledExactlyOnceWith(bitcoin);
   });

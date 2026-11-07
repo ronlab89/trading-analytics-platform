@@ -35,7 +35,8 @@ export function SettingsNav({ sections, section, onSelect, tabs }: SettingsNavPr
           {sections.map((entry) => {
             const Icon = ICONS[entry];
             return (
-              <TabsTrigger className="gap-2" key={entry} value={entry}>
+              // The section is rendered by the page, not by a tab panel, so nothing to control.
+              <TabsTrigger aria-controls={undefined} className="gap-2" key={entry} value={entry}>
                 <Icon aria-hidden="true" className="size-4 max-tablet:hidden" />
                 {t(`settings.sections.${entry}.title`)}
               </TabsTrigger>
