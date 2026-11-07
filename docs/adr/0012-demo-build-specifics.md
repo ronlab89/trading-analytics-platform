@@ -1,8 +1,8 @@
 # ADR-012: Demo Build Specifics
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-06
-**Implemented in:** frontend blocks FE4.1 to FE4.5 (not yet implemented)
+**Implemented in:** frontend blocks FE4.1 to FE4.5, with the gaps listed under Consequences
 
 ## Context
 
@@ -75,6 +75,10 @@ simplest option that keeps the demo honest.
 - FE4.1 to FE4.5 implement the points. The demo menu actions (reset,
   connection issue, test notification, fail the next import) become live in
   FE4.4.
+- Not built in FE4.1 to FE4.5: the scripted failure of the next CSV import (point 6;
+  the "Demo data" menu has three actions, with no "fail the next import") and the base path
+  as a build-time option (point 8; the build uses the Vite default `/`, which is what the
+  Netlify site needs).
 - A reload loses the data of the session, which is what a reviewer of the demo
   expects from a sandbox; the role and the language are not asked again.
 - The end-to-end smoke test of the demo needs the latency switch, otherwise

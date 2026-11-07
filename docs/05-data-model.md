@@ -859,9 +859,9 @@ Watchlist entries are not seeded.
 
 # 34. Demo Data Layers
 
-**Status:** `Deferred` — no ADR decides the demo data layers; behavior is
-owned by `12-demo-mode-spec.md`. The demo itself is `Planned (FE)` (ADR-006
-point 1).
+**Status:** `Implemented` (FE4.2, ADR-012): the seed and the session state
+live in memory, and a reload drops the session state. Behavior is owned by
+`12-demo-mode-spec.md`.
 
 ```text
 Seed data (immutable) ─► Session state (demo mutations) ─► Derived state
@@ -871,7 +871,7 @@ Seed data (immutable) ─► Session state (demo mutations) ─► Derived state
 
 # 35. Demo Reset Model
 
-**Status:** `Deferred` — same as §34.
+**Status:** `Implemented` (FE4.4, ADR-012): the reset loads the page again.
 
 Reset restores the seed and discards session mutations, without requiring
 manual storage deletion or developer tools.
