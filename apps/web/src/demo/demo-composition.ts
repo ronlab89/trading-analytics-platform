@@ -22,7 +22,7 @@ import {
   createUserPreferenceService,
   createWatchlistService,
 } from "@trading/application";
-import type { Actor, Clock, RealtimePublisher } from "@trading/application";
+import type { Actor, Clock, Logger, RealtimePublisher } from "@trading/application";
 import { UserRole } from "@trading/domain";
 import {
   InMemoryAlertRepository,
@@ -44,6 +44,8 @@ import {
 } from "@trading/persistence-memory";
 import { tokenizeCsv } from "./csv-tokenizer";
 import { seedAlerts } from "./alert-seed";
+import { createDemoMarketSimulator } from "./demo-market-simulator";
+import type { DemoMarketSimulator, Scheduler } from "./demo-market-simulator";
 import { seedNotifications } from "./notification-seed";
 import { seedScenarios } from "./scenario-seed";
 import { seedWatchlist } from "./watchlist-seed";
@@ -89,12 +91,20 @@ export interface DemoComposition {
   readonly jobService: ReturnType<typeof createJobService>;
   /** Created stopped; the runtime starts it, and tests start it when they need a job to run. */
   readonly jobRunner: ReturnType<typeof createJobRunner>;
+  /** Created stopped, like the job runner: the runtime starts it and tests do not. */
+  readonly marketSimulator: DemoMarketSimulator;
 }
 
 export interface DemoCompositionOptions {
   readonly clock?: Clock;
   /** Where the services publish what changes; without one, nothing is published. */
   readonly realtimePublisher?: RealtimePublisher;
+  /** What the market simulator needs from its surroundings; tests fire the scheduler by hand. */
+  readonly marketSimulation?: {
+    readonly scheduler?: Scheduler;
+    readonly isVisible?: () => boolean;
+    readonly logger?: Pick<Logger, "warn">;
+  };
 }
 
 const DEMO_USER: DemoUser = {
@@ -196,6 +206,16 @@ export async function createDemoComposition(
   };
 
   const simulationControl = createDemoSimulationControl();
+  const marketSimulator = createDemoMarketSimulator({
+    clock,
+    control: simulationControl,
+    assetRepository,
+    marketPriceRepository,
+    historicalPriceRepository,
+    positionRepository,
+    ...(realtimePublisher ? { publisher: realtimePublisher } : {}),
+    ...options.marketSimulation,
+  });
   const jobService = createJobService({ jobRepository, portfolioService, unitOfWork, clock });
   const jobRunner = createJobRunner({
     jobRepository,
@@ -284,5 +304,6 @@ export async function createDemoComposition(
     simulationControl,
     jobService,
     jobRunner,
+    marketSimulator,
   };
 }

@@ -257,6 +257,9 @@ importers:
       '@trading/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@trading/market-sim':
+        specifier: workspace:*
+        version: link:../../packages/market-sim
       '@trading/persistence-memory':
         specifier: workspace:*
         version: link:../../packages/persistence-memory
