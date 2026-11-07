@@ -68,6 +68,8 @@ jobs:
       - run: pnpm --filter @trading/database db:test:runtime-password
       - run: pnpm test
       - run: pnpm build
+      - run: pnpm --filter @trading/web build:demo
+      - run: pnpm --filter @trading/web check:bundles
 
       - name: Install the Playwright browser
         run: pnpm --filter @trading/web exec playwright install --with-deps chromium

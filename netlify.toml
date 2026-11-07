@@ -1,0 +1,10 @@
+# The portfolio demo: the static demo build of the web app, with no API behind it (ADR-012).
+[build]
+  command = "pnpm --filter @trading/web build:demo"
+  publish = "apps/web/dist"
+
+# The app is a single page: every path loads index.html and the router takes over.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
