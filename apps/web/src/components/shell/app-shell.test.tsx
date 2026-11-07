@@ -125,18 +125,60 @@ describe("AppShell", () => {
       controls,
     );
 
-    for (const name of [
-      "Simulate a connection problem",
-      "Send a test notification",
-      "Reset demo",
-    ]) {
+    for (const name of ["Simulate a connection problem", "Send a test notification"]) {
       await user.click(screen.getByRole("button", { name: "Demo data" }));
       await user.click(screen.getByRole("menuitem", { name }));
     }
 
     expect(simulateConnectionIssue).toHaveBeenCalledOnce();
     expect(sendTestNotification).toHaveBeenCalledOnce();
-    expect(reset).toHaveBeenCalledOnce();
+    expect(reset).not.toHaveBeenCalled();
+  });
+
+  describe("resetting the demo", () => {
+    async function openResetDialog() {
+      const reset = vi.fn();
+      const controls: DemoControls = {
+        simulateConnectionIssue: vi.fn(),
+        sendTestNotification: vi.fn(),
+        reset,
+      };
+      const user = userEvent.setup();
+      renderShell(
+        fakeSessionService(),
+        clientListing([portfolio("p1", "Crecimiento")]),
+        "/",
+        createFakeRealtimeClient("connected"),
+        controls,
+      );
+      await user.click(screen.getByRole("button", { name: "Demo data" }));
+      await user.click(screen.getByRole("menuitem", { name: "Reset demo" }));
+      return { user, reset };
+    }
+
+    it("asks first and does not reset yet", async () => {
+      const { reset } = await openResetDialog();
+
+      expect(screen.getByRole("dialog", { name: "Reset the demo?" })).toBeInTheDocument();
+      expect(reset).not.toHaveBeenCalled();
+    });
+
+    it("does not reset when the user cancels", async () => {
+      const { user, reset } = await openResetDialog();
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(reset).not.toHaveBeenCalled();
+    });
+
+    it("resets once when the user confirms", async () => {
+      const { user, reset } = await openResetDialog();
+
+      await user.click(screen.getByRole("button", { name: "Reset demo" }));
+
+      expect(reset).toHaveBeenCalledOnce();
+    });
   });
 
   it("renders the routed view inside the main landmark", () => {

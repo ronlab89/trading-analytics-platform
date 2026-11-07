@@ -16,6 +16,7 @@ function setup() {
     // No jitter: the first retry waits exactly one second.
     random: () => 0,
   });
+  const reload = vi.fn();
   const notificationRepository = new InMemoryNotificationRepository();
   const notificationCreated = vi.fn<RealtimePublisher["notificationCreated"]>(() =>
     Promise.resolve(),
@@ -25,8 +26,9 @@ function setup() {
     notificationRepository,
     realtimePublisher: { notificationCreated },
     userId: "demo-user",
+    reload,
   });
-  return { server, client, controls, notificationRepository, notificationCreated };
+  return { server, client, controls, notificationRepository, notificationCreated, reload };
 }
 
 beforeEach(() => {
@@ -85,6 +87,14 @@ describe("demo controls", () => {
       readAt: null,
     });
     expect(notificationCreated).toHaveBeenCalledWith(stored[0]);
+  });
+
+  it("resets the demo by loading the page again", async () => {
+    const { controls, reload } = setup();
+
+    await controls.reset();
+
+    expect(reload).toHaveBeenCalledOnce();
   });
 
   it("does nothing when nobody is connected", () => {
