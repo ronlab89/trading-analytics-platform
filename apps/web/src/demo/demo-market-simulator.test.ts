@@ -25,12 +25,26 @@ interface Published {
 
 async function setup(options: { isVisible?: () => boolean } = {}) {
   const published: Published[] = [];
-  const publisher = {
+  /** The alert and notification events, in the order they were published. */
+  const events: string[] = [];
+  const publisher: RealtimePublisher = {
     marketPriceUpdated: (tick) => {
       published.push({ assetId: tick.assetId, price: tick.price.toString() });
       return Promise.resolve();
     },
-  } as RealtimePublisher;
+    alertTriggered: () => {
+      events.push("ALERT_TRIGGERED");
+      return Promise.resolve();
+    },
+    notificationCreated: () => {
+      events.push("NOTIFICATION_CREATED");
+      return Promise.resolve();
+    },
+    portfolioUpdated: () => Promise.resolve(),
+    jobProgressUpdated: () => Promise.resolve(),
+    jobCompleted: () => Promise.resolve(),
+    jobFailed: () => Promise.resolve(),
+  };
 
   let task: (() => Promise<void>) | undefined;
   let interval: number | undefined;
@@ -62,6 +76,7 @@ async function setup(options: { isVisible?: () => boolean } = {}) {
     composition,
     client,
     published,
+    events,
     aaplId: assets.data[0]?.id ?? "",
     interval: () => interval,
     isStopped: () => stopped,
@@ -182,5 +197,90 @@ describe("demo market simulator", () => {
     await demo.marketSimulator.stop();
 
     expect(isStopped()).toBe(true);
+  });
+
+  describe("alert firing", () => {
+    /** The AAPL prices of the first ticks: the same clock and seed always give the same series. */
+    async function aaplSeries(ticks: number) {
+      const run = await setup();
+      await run.composition.marketSimulator.start();
+      const series: string[] = [];
+      for (let tick = 0; tick < ticks; tick += 1) {
+        const before = run.published.length;
+        await run.fire();
+        const published = run.published.slice(before).find((entry) => entry.assetId === run.aaplId);
+        series.push(published?.price ?? "");
+      }
+      await run.composition.marketSimulator.stop();
+      return series;
+    }
+
+    // The rule is edge-triggered (ADR-007 point 9): an alert fires when its price crosses the
+    // threshold, so the test creates it while its condition is false, just before the first move.
+    async function crossing() {
+      const series = await aaplSeries(40);
+      const first = series[0] ?? "";
+      const moved = series.findIndex((price) => price !== first);
+      expect(moved).toBeGreaterThan(0);
+      const direction = Number(series[moved]) > Number(first) ? "ABOVE" : "BELOW";
+      return { first, moved, direction };
+    }
+
+    it("fires when the price crosses the threshold, with its notification and both events", async () => {
+      const { first, moved, direction } = await crossing();
+      const { composition: demo, client, events, aaplId, fire } = await setup();
+      await demo.marketSimulator.start();
+      await fire();
+      await client.call(op("createAlert"), {
+        body: { assetId: aaplId, type: "PRICE", condition: direction, threshold: Number(first) },
+      });
+
+      for (let tick = 1; tick < moved; tick += 1) await fire();
+      expect(events).toEqual([]);
+      await fire();
+
+      expect([...events].sort()).toEqual(["ALERT_TRIGGERED", "NOTIFICATION_CREATED"]);
+      const notifications = (await client.call(op("listNotifications"))) as {
+        data: { type: string }[];
+      };
+      expect(notifications.data.filter((n) => n.type === "ALERT_TRIGGERED")).toHaveLength(1);
+    });
+
+    it("does not fire it again on the next tick", async () => {
+      const { first, moved, direction } = await crossing();
+      const { composition: demo, client, events, aaplId, fire } = await setup();
+      await demo.marketSimulator.start();
+      await fire();
+      await client.call(op("createAlert"), {
+        body: { assetId: aaplId, type: "PRICE", condition: direction, threshold: Number(first) },
+      });
+
+      for (let tick = 0; tick <= moved; tick += 1) await fire();
+      await fire();
+
+      expect(events.filter((event) => event === "ALERT_TRIGGERED")).toHaveLength(1);
+    });
+
+    it("does not fire an alert created when its condition is already true", async () => {
+      const { composition: demo, client, events, aaplId, fire } = await setup();
+      await demo.marketSimulator.start();
+      await client.call(op("createAlert"), {
+        body: { assetId: aaplId, type: "PRICE", condition: "ABOVE", threshold: 100 },
+      });
+
+      await fire();
+      await fire();
+
+      expect(events).toEqual([]);
+    });
+
+    it("does not fire the seeded alerts on the first tick: they are about 1% away", async () => {
+      const { composition: demo, events, fire } = await setup();
+      await demo.marketSimulator.start();
+
+      await fire();
+
+      expect(events).toEqual([]);
+    });
   });
 });
