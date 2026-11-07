@@ -45,9 +45,12 @@ describe("scenario handlers", () => {
     const scenario = await createScenario("Apple falls");
     const params = { portfolioId, scenarioId: scenario.id };
 
-    await expect(
-      client.call(op("listScenarios"), { params: { portfolioId } }),
-    ).resolves.toMatchObject({ data: [{ id: scenario.id, name: "Apple falls" }] });
+    const listed = (await client.call(op("listScenarios"), { params: { portfolioId } })) as {
+      data: Scenario[];
+    };
+    expect(listed.data).toContainEqual(
+      expect.objectContaining({ id: scenario.id, name: "Apple falls" }),
+    );
     await expect(client.call(op("getScenario"), { params })).resolves.toMatchObject({
       data: { id: scenario.id },
     });
@@ -55,9 +58,10 @@ describe("scenario handlers", () => {
       client.call(op("updateScenario"), { params, body: { name: "Apple drops" } }),
     ).resolves.toMatchObject({ data: { name: "Apple drops" } });
     await expect(client.call(op("deleteScenario"), { params })).resolves.toBeUndefined();
-    await expect(
-      client.call(op("listScenarios"), { params: { portfolioId } }),
-    ).resolves.toMatchObject({ data: [] });
+    const remaining = (await client.call(op("listScenarios"), { params: { portfolioId } })) as {
+      data: Scenario[];
+    };
+    expect(remaining.data.map((listedScenario) => listedScenario.id)).not.toContain(scenario.id);
   });
 
   it("refuses a change on an asset that does not exist", async () => {

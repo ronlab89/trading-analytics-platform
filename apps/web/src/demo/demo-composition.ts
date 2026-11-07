@@ -45,6 +45,7 @@ import {
 import { tokenizeCsv } from "./csv-tokenizer";
 import { seedAlerts } from "./alert-seed";
 import { seedNotifications } from "./notification-seed";
+import { seedScenarios } from "./scenario-seed";
 import { seedWatchlist } from "./watchlist-seed";
 import { seedDecisions } from "./decision-seed";
 import { seedMarket } from "./market-seed";
@@ -173,6 +174,7 @@ export async function createDemoComposition(
   await seedAlerts({ alertRepository, assetRepository, userId: DEMO_USER.id, portfolio });
   await seedWatchlist({ watchlistRepository, assetRepository, userId: DEMO_USER.id });
   await seedNotifications({ notificationRepository, userId: DEMO_USER.id, clock });
+  await seedScenarios({ scenarioRepository, assetRepository, portfolio });
 
   await seedDecisions({
     decisionRepository,
