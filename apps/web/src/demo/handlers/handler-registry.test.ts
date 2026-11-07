@@ -1,6 +1,7 @@
 import { API_OPERATIONS } from "@trading/contracts";
 import { describe, expect, it } from "vitest";
 import { createDemoComposition } from "../demo-composition";
+import { createAlertHandlers } from "./alert-handlers";
 import { createAnalyticsHandlers } from "./analytics-handlers";
 import { createAuthHandlers } from "./auth-handlers";
 import type { HandlerContext, HandlerRegistry } from "./handler";
@@ -18,6 +19,7 @@ const factories: Record<string, (context: HandlerContext) => HandlerRegistry> = 
   transactions: createTransactionHandlers,
   jobs: createJobHandlers,
   analytics: createAnalyticsHandlers,
+  alerts: createAlertHandlers,
 };
 
 describe("demo handler registry", () => {
