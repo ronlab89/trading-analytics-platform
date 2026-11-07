@@ -42,7 +42,11 @@ describe("createDemoTradingClient", () => {
     const answer = await client.call(listPortfolios);
 
     expect(answer).toMatchObject({
-      data: [{ name: "Long-term growth", baseCurrency: "USD", status: "ACTIVE" }],
+      data: [
+        { name: "Long-term growth", baseCurrency: "USD", status: "ACTIVE" },
+        { name: "Dividend income", baseCurrency: "USD", status: "ACTIVE" },
+        { name: "Crypto", baseCurrency: "USD", status: "ACTIVE" },
+      ],
     });
   });
 

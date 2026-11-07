@@ -32,12 +32,17 @@ async function createdId(name = "Income") {
 }
 
 describe("portfolio handlers", () => {
-  it("creates a portfolio and lists it with the seeded one", async () => {
+  it("creates a portfolio and lists it after the seeded ones", async () => {
     await createdId("Income");
 
     const listed = (await client.call(listPortfolios)) as Listed;
 
-    expect(listed.data.map((portfolio) => portfolio.name)).toEqual(["Long-term growth", "Income"]);
+    expect(listed.data.map((portfolio) => portfolio.name)).toEqual([
+      "Long-term growth",
+      "Dividend income",
+      "Crypto",
+      "Income",
+    ]);
   });
 
   it("refuses a creation with a missing name as 400 with one detail for the field", async () => {
