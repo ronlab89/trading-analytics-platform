@@ -12,6 +12,7 @@ import { usePortfolioUpdates } from "@/features/portfolios/hooks/use-portfolio-u
 import { useActivePortfolio } from "@/hooks/use-active-portfolio";
 import { useCurrentUser } from "@/hooks/use-session";
 import { portfolioInitials } from "@/lib/portfolio-initials";
+import { useDemoControls } from "@/runtime/demo-controls-provider";
 import { ActivityBar } from "./activity-bar";
 import { PROFILE_PATH } from "./destinations";
 import { BottomTabBar } from "./bottom-tab-bar";
@@ -43,6 +44,21 @@ export function AppShell() {
   const userName = useCurrentUser()?.displayName ?? "";
   const initials = userInitials(userName);
   const signOut = useSignOut();
+  // Only the demo build has controls, and without them the bar shows no demo menu.
+  const demoControls = useDemoControls();
+  const demo = demoControls
+    ? {
+        onSimulateConnectionIssue: () => {
+          demoControls.simulateConnectionIssue();
+        },
+        onSendTestNotification: () => {
+          void demoControls.sendTestNotification();
+        },
+        onResetDemo: () => {
+          void demoControls.reset();
+        },
+      }
+    : undefined;
   const navigate = useNavigate();
   const viewProfile = () => {
     void navigate(PROFILE_PATH);
@@ -62,12 +78,10 @@ export function AppShell() {
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col tablet:gap-2">
           <TopBar
-            onResetDemo={() => undefined}
+            demo={demo}
             onRetryPortfolios={portfolio.retry}
             onSelectPortfolio={portfolio.select}
-            onSendTestNotification={() => undefined}
             onSignOut={signOut}
-            onSimulateConnectionIssue={() => undefined}
             onViewProfile={viewProfile}
             pageTitle={detailName}
             portfolios={portfolioOptions}

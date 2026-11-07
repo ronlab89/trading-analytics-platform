@@ -25,6 +25,7 @@ import {
 } from "@trading/application";
 import type { Actor, Clock, Logger, RealtimePublisher } from "@trading/application";
 import { UserRole } from "@trading/domain";
+import type { NotificationRepository } from "@trading/domain";
 import {
   InMemoryAlertRepository,
   InMemoryAssetRepository,
@@ -94,6 +95,8 @@ export interface DemoComposition {
   readonly jobRunner: ReturnType<typeof createJobRunner>;
   /** Created stopped, like the job runner: the runtime starts it and tests do not. */
   readonly marketSimulator: DemoMarketSimulator;
+  /** Only to create notifications from outside a use case, as the demo menu does. */
+  readonly notificationRepository: Pick<NotificationRepository, "create">;
 }
 
 export interface DemoCompositionOptions {
@@ -108,7 +111,7 @@ export interface DemoCompositionOptions {
   };
 }
 
-const DEMO_USER: DemoUser = {
+export const DEMO_USER: DemoUser = {
   id: "demo-user",
   email: "demo@example.com",
   displayName: "Demo Trader",
@@ -315,5 +318,6 @@ export async function createDemoComposition(
     jobService,
     jobRunner,
     marketSimulator,
+    notificationRepository,
   };
 }

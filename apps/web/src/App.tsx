@@ -9,6 +9,7 @@ import { useRestoreSession } from "@/hooks/use-restore-session";
 import { createQueryClient } from "@/lib/query-client";
 import { RealtimeClientProvider } from "@/realtime/realtime-client-provider";
 import type { AppRuntime } from "@/runtime/app-runtime";
+import { DemoControlsProvider } from "@/runtime/demo-controls-provider";
 import { router } from "@/router";
 import { createAppServices } from "@/services/create-app-services";
 import { SessionServiceProvider } from "@/services/session/session-provider";
@@ -30,8 +31,10 @@ export function App({ runtime }: { runtime: AppRuntime }) {
       <TradingClientProvider client={services.client}>
         <SessionServiceProvider service={services.session}>
           <RealtimeClientProvider client={runtime.realtimeClient}>
-            <AppRouter />
-            <Toaster />
+            <DemoControlsProvider controls={runtime.demoControls}>
+              <AppRouter />
+              <Toaster />
+            </DemoControlsProvider>
           </RealtimeClientProvider>
         </SessionServiceProvider>
       </TradingClientProvider>

@@ -8,6 +8,8 @@ import { ApiError, type TradingClient } from "@/api/trading-client";
 import { Toaster } from "@/components/ui/sonner";
 import { createQueryClient } from "@/lib/query-client";
 import { RealtimeClientProvider } from "@/realtime/realtime-client-provider";
+import type { DemoControls } from "@/runtime/app-runtime";
+import { DemoControlsProvider } from "@/runtime/demo-controls-provider";
 import type { SessionService } from "@/services/session/session-service";
 import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
 import { useSessionStore } from "@/stores/session-store";
@@ -50,6 +52,7 @@ function renderShell(
   client: TradingClient = clientListing([portfolio("p1", "Crecimiento")]),
   path = "/",
   realtime = createFakeRealtimeClient("connected"),
+  demoControls?: DemoControls,
 ) {
   const router = createMemoryRouter(
     [
@@ -72,8 +75,10 @@ function renderShell(
     <SessionWrapper>
       <ClientWrapper>
         <RealtimeClientProvider client={realtime}>
-          <RouterProvider router={router} />
-          <Toaster />
+          <DemoControlsProvider controls={demoControls}>
+            <RouterProvider router={router} />
+            <Toaster />
+          </DemoControlsProvider>
         </RealtimeClientProvider>
       </ClientWrapper>
     </SessionWrapper>,
@@ -100,6 +105,40 @@ beforeEach(() => {
 });
 
 describe("AppShell", () => {
+  it("has no demo menu when the runtime has no demo controls, as in the real build", () => {
+    renderShell();
+
+    expect(screen.queryByRole("button", { name: "Demo data" })).not.toBeInTheDocument();
+  });
+
+  it("shows the demo menu with the demo controls and runs each action", async () => {
+    const simulateConnectionIssue = vi.fn();
+    const sendTestNotification = vi.fn();
+    const reset = vi.fn();
+    const controls: DemoControls = { simulateConnectionIssue, sendTestNotification, reset };
+    const user = userEvent.setup();
+    renderShell(
+      fakeSessionService(),
+      clientListing([portfolio("p1", "Crecimiento")]),
+      "/",
+      createFakeRealtimeClient("connected"),
+      controls,
+    );
+
+    for (const name of [
+      "Simulate a connection problem",
+      "Send a test notification",
+      "Reset demo",
+    ]) {
+      await user.click(screen.getByRole("button", { name: "Demo data" }));
+      await user.click(screen.getByRole("menuitem", { name }));
+    }
+
+    expect(simulateConnectionIssue).toHaveBeenCalledOnce();
+    expect(sendTestNotification).toHaveBeenCalledOnce();
+    expect(reset).toHaveBeenCalledOnce();
+  });
+
   it("renders the routed view inside the main landmark", () => {
     renderShell();
 

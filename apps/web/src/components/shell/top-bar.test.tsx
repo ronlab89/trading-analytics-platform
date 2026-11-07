@@ -20,13 +20,15 @@ function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}, pat
     userName: "Jane Doe",
     userInitials: "JD",
     onSelectPortfolio: vi.fn(),
-    onSimulateConnectionIssue: vi.fn(),
-    onSendTestNotification: vi.fn(),
-    onResetDemo: vi.fn(),
+    demo: {
+      onSimulateConnectionIssue: vi.fn(),
+      onSendTestNotification: vi.fn(),
+      onResetDemo: vi.fn(),
+    },
     onViewProfile: vi.fn(),
     onSignOut: vi.fn(),
     ...overrides,
-  } as const;
+  };
   const router = createMemoryRouter([{ path: "*", element: <TopBar {...props} /> }], {
     initialEntries: [path],
   });
@@ -94,7 +96,14 @@ describe("TopBar", () => {
     await user.click(screen.getByRole("button", { name: "Demo data" }));
     await user.click(screen.getByRole("menuitem", { name: "Reset demo" }));
 
-    expect(props.onResetDemo).toHaveBeenCalledOnce();
+    expect(props.demo?.onResetDemo).toHaveBeenCalledOnce();
+  });
+
+  it("has no demo menu without demo controls, as in the real build", () => {
+    renderTopBar({ demo: undefined });
+
+    expect(screen.queryByRole("button", { name: "Demo data" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bell stub" })).toBeInTheDocument();
   });
 
   it("shows the notifications the shell gives it, beside the demo controls", () => {
