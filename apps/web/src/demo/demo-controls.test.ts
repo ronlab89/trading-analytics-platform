@@ -1,4 +1,7 @@
 import { fixedClock } from "@trading/application";
+import type { RealtimePublisher } from "@trading/application";
+import { NotificationSeverity } from "@trading/domain";
+import { InMemoryNotificationRepository } from "@trading/persistence-memory";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createWebSocketRealtimeClient } from "@/realtime/websocket-realtime-client";
 import { createDemoControls } from "./demo-controls";
@@ -13,8 +16,17 @@ function setup() {
     // No jitter: the first retry waits exactly one second.
     random: () => 0,
   });
-  const controls = createDemoControls({ realtimeServer: server });
-  return { server, client, controls };
+  const notificationRepository = new InMemoryNotificationRepository();
+  const notificationCreated = vi.fn<RealtimePublisher["notificationCreated"]>(() =>
+    Promise.resolve(),
+  );
+  const controls = createDemoControls({
+    realtimeServer: server,
+    notificationRepository,
+    realtimePublisher: { notificationCreated },
+    userId: "demo-user",
+  });
+  return { server, client, controls, notificationRepository, notificationCreated };
 }
 
 beforeEach(() => {
@@ -57,6 +69,22 @@ describe("demo controls", () => {
 
     expect(resync).toHaveBeenCalledWith({ reason: "reconnect", channel: null });
     client.disconnect();
+  });
+
+  it("stores a test notification for the user and publishes it", async () => {
+    const { controls, notificationRepository, notificationCreated } = setup();
+
+    await controls.sendTestNotification();
+
+    const stored = await notificationRepository.listByUserId("demo-user");
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({
+      userId: "demo-user",
+      title: "Test notification",
+      severity: NotificationSeverity.INFO,
+      readAt: null,
+    });
+    expect(notificationCreated).toHaveBeenCalledWith(stored[0]);
   });
 
   it("does nothing when nobody is connected", () => {

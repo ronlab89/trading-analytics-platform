@@ -3,7 +3,7 @@ import { createWebSocketRealtimeClient } from "@/realtime/websocket-realtime-cli
 import type { AppRuntime } from "@/runtime/app-runtime";
 import { getAccessToken, watchAccessToken } from "@/stores/session-store";
 import { createDemoTradingClient } from "./create-demo-trading-client";
-import { createDemoComposition } from "./demo-composition";
+import { createDemoComposition, DEMO_USER } from "./demo-composition";
 import { createDemoControls } from "./demo-controls";
 import { createDemoRealtimePublisher } from "./demo-realtime-publisher";
 import { createDemoRealtimeServer } from "./demo-realtime-server";
@@ -15,9 +15,10 @@ const latencyOff = import.meta.env.VITE_DEMO_LATENCY === "off";
 export async function createDemoRuntime(): Promise<AppRuntime> {
   const clock = { now: () => new Date() };
   const realtimeServer = createDemoRealtimeServer({ clock });
+  const realtimePublisher = createDemoRealtimePublisher(realtimeServer);
   const composition = await createDemoComposition({
     clock,
-    realtimePublisher: createDemoRealtimePublisher(realtimeServer),
+    realtimePublisher,
     marketSimulation: { logger, isVisible: () => document.visibilityState === "visible" },
   });
   composition.jobRunner.start();
@@ -35,6 +36,11 @@ export async function createDemoRuntime(): Promise<AppRuntime> {
       createSocket: realtimeServer.createSocket,
       logger,
     }),
-    demoControls: createDemoControls({ realtimeServer }),
+    demoControls: createDemoControls({
+      realtimeServer,
+      notificationRepository: composition.notificationRepository,
+      realtimePublisher,
+      userId: DEMO_USER.id,
+    }),
   };
 }
