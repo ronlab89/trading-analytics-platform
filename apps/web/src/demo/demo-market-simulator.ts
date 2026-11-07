@@ -1,4 +1,4 @@
-import type { Clock, Logger, RealtimePublisher } from "@trading/application";
+import type { AlertEvaluator, Clock, Logger, RealtimePublisher } from "@trading/application";
 import { AssetStatus, MarketDataSource, validateNewMarketPrice } from "@trading/domain";
 import type {
   AssetRepository,
@@ -49,6 +49,11 @@ export interface DemoMarketSimulatorDependencies {
     "getLatestByAssetId" | "create"
   >;
   readonly positionRepository: Pick<PositionRepository, "updateCurrentPriceByAssetId">;
+  /**
+   * Evaluates the alerts of the assets that ticked, once per tick and after their prices are stored,
+   * so an alert never fires on a price the demo does not hold (ADR-007 point 9).
+   */
+  readonly alertEvaluator?: Pick<AlertEvaluator, "evaluate">;
   readonly logger?: Pick<Logger, "warn">;
   /** Defaults to a real timer. */
   readonly scheduler?: Scheduler;
@@ -86,6 +91,7 @@ export function createDemoMarketSimulator(
     marketPriceRepository,
     historicalPriceRepository,
     positionRepository,
+    alertEvaluator,
     logger,
     scheduler = intervalScheduler,
     isVisible = () => true,
@@ -152,7 +158,8 @@ export function createDemoMarketSimulator(
     }
   }
 
-  async function applyTick(tick: PriceTick): Promise<void> {
+  /** Stores and publishes one tick; false when it could not be stored. */
+  async function applyTick(tick: PriceTick): Promise<boolean> {
     try {
       const market = {
         assetId: tick.assetId,
@@ -171,7 +178,7 @@ export function createDemoMarketSimulator(
         assetId: tick.assetId,
         errorName: errorName(error),
       });
-      return;
+      return false;
     }
 
     try {
@@ -181,6 +188,17 @@ export function createDemoMarketSimulator(
         assetId: tick.assetId,
         errorName: errorName(error),
       });
+    }
+    return true;
+  }
+
+  // The evaluator never rejects, but a failing one must not stop the loop either.
+  async function evaluateAlerts(ticks: readonly PriceTick[]): Promise<void> {
+    if (alertEvaluator === undefined || ticks.length === 0) return;
+    try {
+      await alertEvaluator.evaluate(ticks);
+    } catch (error) {
+      logger?.warn("demo.simulation.alerts.failed", { errorName: errorName(error) });
     }
   }
 
@@ -196,7 +214,11 @@ export function createDemoMarketSimulator(
     const ticks = current.tick();
     pendingCandles.push(...current.takeClosedCandles());
     await storeClosedCandles();
-    for (const tick of ticks) await applyTick(tick);
+    const stored: PriceTick[] = [];
+    for (const tick of ticks) {
+      if (await applyTick(tick)) stored.push(tick);
+    }
+    await evaluateAlerts(stored);
   }
 
   // A tick that is still running makes the next call wait for it instead of starting another.

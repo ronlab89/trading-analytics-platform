@@ -10,10 +10,13 @@ interface SeedAlert {
   readonly enabled: boolean;
 }
 
-/** None of them has fired yet: the market simulation fires them (FE4.3). */
+/**
+ * None of them has fired yet. The enabled price alerts sit about 1% from the seed prices, so the
+ * simulation can fire one within minutes of a visit.
+ */
 const SEED_ALERTS: readonly SeedAlert[] = [
-  { type: AlertType.PRICE, symbol: "AAPL", condition: "ABOVE", threshold: 200, enabled: true },
-  { type: AlertType.PRICE, symbol: "BTC", condition: "BELOW", threshold: 60000, enabled: true },
+  { type: AlertType.PRICE, symbol: "AAPL", condition: "ABOVE", threshold: 191, enabled: true },
+  { type: AlertType.PRICE, symbol: "BTC", condition: "BELOW", threshold: 66800, enabled: true },
   { type: AlertType.PORTFOLIO_CHANGE, condition: "BELOW", threshold: -5, enabled: true },
   { type: AlertType.PRICE, symbol: "MSFT", condition: "ABOVE", threshold: 450, enabled: false },
 ];

@@ -1,4 +1,5 @@
 import {
+  createAlertEvaluator,
   createAlertService,
   createAnalyticsService,
   createAssetService,
@@ -103,7 +104,7 @@ export interface DemoCompositionOptions {
   readonly marketSimulation?: {
     readonly scheduler?: Scheduler;
     readonly isVisible?: () => boolean;
-    readonly logger?: Pick<Logger, "warn">;
+    readonly logger?: Logger;
   };
 }
 
@@ -206,9 +207,18 @@ export async function createDemoComposition(
   };
 
   const simulationControl = createDemoSimulationControl();
+  const alertEvaluator = createAlertEvaluator({
+    alertRepository,
+    assetRepository,
+    unitOfWork,
+    now: () => clock.now(),
+    ...(realtimePublisher ? { realtimePublisher } : {}),
+    ...(options.marketSimulation?.logger ? { logger: options.marketSimulation.logger } : {}),
+  });
   const marketSimulator = createDemoMarketSimulator({
     clock,
     control: simulationControl,
+    alertEvaluator,
     assetRepository,
     marketPriceRepository,
     historicalPriceRepository,

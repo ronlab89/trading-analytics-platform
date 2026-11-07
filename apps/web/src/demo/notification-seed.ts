@@ -43,7 +43,7 @@ const SEED_NOTIFICATIONS: readonly SeedNotification[] = [
   {
     type: "ALERT_NEAR",
     title: "AAPL is close to your alert",
-    message: "AAPL is within 5% of your 200.00 USD price alert.",
+    message: "AAPL is within 1% of your 191.00 USD price alert.",
     severity: NotificationSeverity.WARNING,
     read: false,
   },
