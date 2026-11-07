@@ -41,11 +41,15 @@ describe("demo alert seed", () => {
     const client = await openDemo();
 
     const listed = (await client.call(op("listAlerts"))) as { data: Alert[] };
-    const notifications = await client.call(op("listNotifications"));
+    const notifications = (await client.call(op("listNotifications"))) as {
+      data: { type: string }[];
+    };
 
     expect(listed.data).toHaveLength(4);
     expect(listed.data.filter((alert) => alert.enabled)).toHaveLength(3);
-    expect(notifications).toMatchObject({ data: [] });
+    expect(notifications.data.map((notification) => notification.type)).not.toContain(
+      "ALERT_TRIGGERED",
+    );
   });
 
   it("covers price alerts on assets and one change alert on the first portfolio", async () => {

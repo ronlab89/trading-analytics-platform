@@ -102,16 +102,19 @@ describe("notification handlers", () => {
     throw new Error("The import did not complete");
   }
 
-  it("starts with no notifications and receives one when an import completes", async () => {
-    await expect(client.call(op("listNotifications"))).resolves.toMatchObject({ data: [] });
+  it("opens with the seeded notifications and receives one more when an import completes", async () => {
+    interface Listed {
+      data: { readAt: string | null }[];
+    }
+    const before = (await client.call(op("listNotifications"))) as Listed;
+    expect(before.data).toHaveLength(5);
+    expect(before.data.filter((notification) => notification.readAt === null)).toHaveLength(2);
 
     await importCompleted();
 
-    const listed = (await client.call(op("listNotifications"))) as {
-      data: { readAt: string | null }[];
-    };
-    expect(listed.data).toHaveLength(1);
-    expect(listed.data[0]?.readAt).toBeNull();
+    const after = (await client.call(op("listNotifications"))) as Listed;
+    expect(after.data).toHaveLength(6);
+    expect(after.data.filter((notification) => notification.readAt === null)).toHaveLength(3);
   });
 
   it("marks one notification and then all as read, and filters the unread", async () => {

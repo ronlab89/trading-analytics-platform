@@ -44,6 +44,9 @@ import {
 } from "@trading/persistence-memory";
 import { tokenizeCsv } from "./csv-tokenizer";
 import { seedAlerts } from "./alert-seed";
+import { seedNotifications } from "./notification-seed";
+import { seedScenarios } from "./scenario-seed";
+import { seedWatchlist } from "./watchlist-seed";
 import { seedDecisions } from "./decision-seed";
 import { seedMarket } from "./market-seed";
 import { createDemoSimulationControl } from "./simulation-control";
@@ -133,6 +136,7 @@ export async function createDemoComposition(
   const jobRepository = new InMemoryJobRepository(repositoryOptions);
   const notificationRepository = new InMemoryNotificationRepository(repositoryOptions);
   const alertRepository = new InMemoryAlertRepository(repositoryOptions);
+  const watchlistRepository = new InMemoryWatchlistItemRepository(repositoryOptions);
   const decisionRepository = new InMemoryDecisionRepository(repositoryOptions);
   const decisionEventRepository = new InMemoryDecisionEventRepository(repositoryOptions);
   const scenarioRepository = new InMemoryScenarioRepository(repositoryOptions);
@@ -168,6 +172,9 @@ export async function createDemoComposition(
   });
   if (!portfolio) throw new Error("The demo seed produced no portfolio");
   await seedAlerts({ alertRepository, assetRepository, userId: DEMO_USER.id, portfolio });
+  await seedWatchlist({ watchlistRepository, assetRepository, userId: DEMO_USER.id });
+  await seedNotifications({ notificationRepository, userId: DEMO_USER.id, clock });
+  await seedScenarios({ scenarioRepository, assetRepository, portfolio });
 
   await seedDecisions({
     decisionRepository,
@@ -216,7 +223,7 @@ export async function createDemoComposition(
       historicalPriceRepository,
     }),
     watchlistService: createWatchlistService({
-      watchlistRepository: new InMemoryWatchlistItemRepository(repositoryOptions),
+      watchlistRepository,
       assetService,
     }),
     userPreferenceService: createUserPreferenceService({
