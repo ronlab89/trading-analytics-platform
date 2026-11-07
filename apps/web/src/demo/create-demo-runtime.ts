@@ -17,8 +17,10 @@ export async function createDemoRuntime(): Promise<AppRuntime> {
   const composition = await createDemoComposition({
     clock,
     realtimePublisher: createDemoRealtimePublisher(realtimeServer),
+    marketSimulation: { logger, isVisible: () => document.visibilityState === "visible" },
   });
   composition.jobRunner.start();
+  await composition.marketSimulator.start();
   return {
     tradingClient: createDemoTradingClient({
       composition,
