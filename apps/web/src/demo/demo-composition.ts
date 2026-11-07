@@ -57,8 +57,12 @@ export interface DemoUser {
 }
 
 export interface DemoComposition {
+  /** The signed-in demo user; the role follows `setRole`. */
   readonly user: DemoUser;
+  /** Reads the role at each use, so a role change reaches every service call. */
   readonly actor: Actor;
+  /** Switches the role of the demo user (the demo sign in picks it). */
+  setRole: (role: UserRole) => void;
   readonly portfolioService: ReturnType<typeof createPortfolioService>;
   readonly assetService: ReturnType<typeof createAssetService>;
   readonly marketService: ReturnType<typeof createMarketService>;
@@ -104,7 +108,19 @@ export async function createDemoComposition(
 ): Promise<DemoComposition> {
   const clock = options.clock ?? { now: () => new Date() };
   const repositoryOptions = { now: () => clock.now() };
-  const actor: Actor = { userId: DEMO_USER.id, role: DEMO_USER.role };
+  const identity = { role: DEMO_USER.role };
+  const actor: Actor = {
+    userId: DEMO_USER.id,
+    get role() {
+      return identity.role;
+    },
+  };
+  const user: DemoUser = {
+    ...DEMO_USER,
+    get role() {
+      return identity.role;
+    },
+  };
 
   const portfolioRepository = new InMemoryPortfolioRepository(repositoryOptions);
   const assetRepository = new InMemoryAssetRepository();
@@ -183,8 +199,11 @@ export async function createDemoComposition(
   });
 
   return {
-    user: DEMO_USER,
+    user,
     actor,
+    setRole: (role) => {
+      identity.role = role;
+    },
     portfolioService,
     assetService,
     marketService: createMarketService({

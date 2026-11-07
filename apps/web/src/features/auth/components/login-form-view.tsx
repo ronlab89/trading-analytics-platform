@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { DEMO_ROLES, type DemoRole } from "../lib/demo-role";
 import type { LoginValues } from "../lib/validate-login";
 
 export type LoginFormStatus = "idle" | "submitting" | "entering-demo";
@@ -29,6 +30,8 @@ export interface LoginFormViewProps {
   onSubmit: () => void;
   /** The demo entry; until it is connected the button shows and does nothing. */
   onEnterDemo?: (() => void) | undefined;
+  /** The role the demo signs in as; only the demo build passes it. */
+  demoRole?: { value: DemoRole; onChange: (role: DemoRole) => void } | undefined;
 }
 
 /** The login form as the Figma "Acceso" frames draw it: fields, alert, actions and demo. */
@@ -41,6 +44,7 @@ export function LoginFormView({
   onChange,
   onSubmit,
   onEnterDemo,
+  demoRole,
 }: LoginFormViewProps) {
   const { t } = useTranslation();
   const submitting = status === "submitting";
@@ -116,6 +120,36 @@ export function LoginFormView({
         {t("auth.login.or")}
         <span className="h-px flex-1 bg-(--color-border-default)" />
       </div>
+
+      {demoRole ? (
+        <div
+          aria-label={t("auth.login.demoRole.label")}
+          className="flex flex-col gap-2"
+          role="radiogroup"
+        >
+          <span className="text-xs text-(--color-text-secondary)">
+            {t("auth.login.demoRole.label")}
+          </span>
+          <div className="grid grid-cols-3 gap-2">
+            {DEMO_ROLES.map((role) => (
+              <Button
+                aria-checked={demoRole.value === role}
+                disabled={busy}
+                key={role}
+                onClick={() => {
+                  demoRole.onChange(role);
+                }}
+                role="radio"
+                size="sm"
+                type="button"
+                variant={demoRole.value === role ? "primary" : "outline"}
+              >
+                {t(`auth.login.demoRole.${role}`)}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <Button
         className="w-full"

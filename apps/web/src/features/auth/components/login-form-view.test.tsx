@@ -161,4 +161,22 @@ describe("LoginFormView", () => {
 
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it("offers the three demo roles when the demo passes them, and reports the choice", async () => {
+    const onChange = vi.fn();
+    setup({ demoRole: { value: "TRADER", onChange } });
+
+    expect(screen.getByRole("radio", { name: "Trader" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Viewer" })).not.toBeChecked();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Admin" }));
+
+    expect(onChange).toHaveBeenCalledWith("ADMIN");
+  });
+
+  it("shows no role choice outside the demo", () => {
+    setup();
+
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+  });
 });
