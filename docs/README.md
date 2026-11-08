@@ -62,7 +62,7 @@ Every spec section carries one status:
 | `Reference` | Guiding or structural content (purpose, principles, boundaries, policies, traceability tables); nothing is built from it directly. |
 
 Sections are annotated as each document is aligned with the ADRs (Phases 2-5
-of `odd/tasks/sdd-source-of-truth.md`). An unannotated section is not yet
+of the documentation alignment). An unannotated section is not yet
 reconciled. `11-ui-ux-spec.md` and `12-demo-mode-spec.md` are frontend documents:
 they are reconciled in the frontend stage, after the frontend-stage ADR, and are
 not part of the gate that lets B0 start.

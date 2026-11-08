@@ -2627,7 +2627,7 @@ Start from the `requestId` (§36, step 2) and read the lines that carry it.
 | A slow endpoint | `http.request.completed` at `warn`, then `analytics.series.built` | `durationMs` says how long; the series entry says whether the reconstruction was the cost |
 | A scenario shows fewer changes than were saved | `scenario.changes.skipped` | `scenarioId`, `reason` and `index` name the stored entry the read dropped |
 
-To reproduce a database failure, start the API with `DATABASE_URL` pointing at a closed port (for example `postgresql://nobody:nopass@127.0.0.1:1/none`) or stop the PostgreSQL container, and call a route that reads data. B3.5 did this and answered the questions of §75 from the log (`odd/tasks/b3/b3-5-close.md`).
+To reproduce a database failure, start the API with `DATABASE_URL` pointing at a closed port (for example `postgresql://nobody:nopass@127.0.0.1:1/none`) or stop the PostgreSQL container, and call a route that reads data. B3.5 did this and answered the questions of §75 from the log.
 
 A reproduced line, trimmed:
 
@@ -2973,7 +2973,7 @@ Code vs ADR:
 
 # 75. Acceptance Criteria
 
-**Status:** per question (table below); questions 1 to 5 and 8 to 10 are answered by the stdout log (reproduced in B3.5, `odd/tasks/b3/b3-5-close.md`); questions 6 and 7 wait for B4 and B5
+**Status:** per question (table below); questions 1 to 5 and 8 to 10 are answered by the stdout log (reproduced in B3.5); questions 6 and 7 wait for B4 and B5
 
 The specification is satisfied when a developer can reproduce a failure locally and answer:
 

@@ -38,7 +38,7 @@ Out of scope: scenario impact and comparison (`scenario-impact.ts`,
 `scenario-comparison.ts`) and decision replay (`decision-replay.ts`) are not
 governed by ADR-004. Decision replay has a known open issue: it reads
 `DecisionEvent.payload` prices as JavaScript numbers, against ADR-002's money
-rule; it is tracked as task T2.5 of `odd/tasks/sdd-source-of-truth.md` and is
+rule; it is tracked as task T2.5 and is
 not resolved here.
 
 ---

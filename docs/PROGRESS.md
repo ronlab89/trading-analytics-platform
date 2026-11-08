@@ -18,13 +18,13 @@
 > B2.4 (refresh and logout) and B2.5 (the auth security review and the close).
 > **B7 is done** (2026-10-25): the production build path, the API image, the
 > `full` Compose profile, the smoke test and the final security pass
-> (`odd/tasks/b7/`); the backend is done and the frontend stage is next.
+>; the backend is done and the frontend stage is next.
 
 **Last updated:** 2026-10-25 (B7.7); the reconciliation below dates from 2026-10-08. §1 and §2 are reconciled with the ADRs and the
 code; later sections are reconciled in following slices and still describe
 the work as it was done.
 **Branch:** `docs/sdd-operations`, the source-of-truth work (ADRs 001-010,
-phases 0-5 of `odd/tasks/sdd-source-of-truth.md`). It is documentation only,
+phases 0-5). It is documentation only,
 carried on `docs/sdd-*` branches that are merged into `develop` through pull
 requests; phases 0-4 are merged and phase 5 is not merged yet. `main` still
 holds only the two initial commits (`42839b1` and `d55fce2`, the first SDD set); all earlier feature branches
@@ -63,9 +63,8 @@ route tests, and `@trading/contracts` with request and response schemas,
 presenters, route-parameter validation and the final error contract.
 **B0.5 and B0.6 are done** (`Implemented`): `@trading/application` holds the
 use cases behind the import-boundary lint rule, and `@trading/persistence-memory`
-has the 16 in-memory repositories, each run against the shared contract suite
-(`odd/tasks/b0/b0-5-application-layer.md`). `packages/config` holds only a `.gitkeep`.
-**B0.7 is done** (`Implemented`, `odd/tasks/b0/b0-7-transaction-rules.md`):
+has the 16 in-memory repositories, each run against the shared contract suite. `packages/config` holds only a `.gitkeep`.
+**B0.7 is done** (`Implemented`):
 - A transaction is validated in date order (FR-018): the asset's history is
   replayed with the new transaction at its place (ties by `executedAt`, then
   creation order), so a backdated `SELL` that would oversell is rejected and the
@@ -87,7 +86,7 @@ has the 16 in-memory repositories, each run against the shared contract suite
   taking the lock).
 
 **SDD reconciliation:** the spec set is `docs/00` to `docs/16` plus ADRs
-001-010 (`docs/adr/`). Phases 0-4 of `odd/tasks/sdd-source-of-truth.md` are
+001-010 (`docs/adr/`). Phases 0-4 are
 merged into `develop`. Phase 5 (operations docs, roadmap and this file) is in
 progress on `docs/sdd-operations`: `docs/BACKEND-ROADMAP.md` and `docs/15`
 are reconciled, and this file is reconciled slice by slice.
@@ -921,7 +920,7 @@ the two initial commits (`42839b1` and `d55fce2`, the SDD set).
 work, merged into `develop` through pull requests: `docs/sdd-source-of-truth`
 (PR #9), `docs/sdd-governance` (PR #10), `docs/sdd-foundations` (PR #11),
 `docs/sdd-product` (PR #12) and `docs/sdd-contracts` (PR #13), which are
-phases 0-4 of `odd/tasks/sdd-source-of-truth.md`. Phase 5 (operations docs,
+phases 0-4. Phase 5 (operations docs,
 roadmap and this file) is on `docs/sdd-operations`, ahead of `develop` and
 not merged yet. Check `git log develop..docs/sdd-operations` for its commits.
 
@@ -938,8 +937,8 @@ idempotency, B5 realtime, B6 OpenAPI and contract, B7 deployment readiness.
 Done before it (history): the `feat/api-foundation`, `feat/decisions` and
 `feat/scenarios` branches are merged into `develop` (§5).
 
-**Next:** the frontend stage (FE0), after its ADR. **B7 (deployment readiness and hardening) is done**, in seven slices (`Implemented`, `odd/tasks/b7/`). **B7.1** fixes the production build path (`.js` extensions, `NodeNext`, `exports` with `dist`, the `@trading/source` condition) and validates `DATABASE_URL`. **B7.2** adds the multi-stage, non-root API image. **B7.3** adds the `full` Compose profile with the one-shot `migrate` service, loopback ports and `TZ=UTC`. **B7.4** adds `pnpm smoke`. **B7.5** escapes the wildcards of the assets search. **B7.6** is the final security pass (`odd/tasks/b7/b7-6-security-pass.md`) and its fixes: patched `zod`, `body-parser` and `proxy-addr`, a test that pins the security headers and `mem_limit: 512m` on the API; `deepmerge-ts` stays `Deferred` until Prisma 7. **B7.7** flips the remaining B7 marks to `Implemented` and closes the block. **B6 (API documentation and contract) is done**, in six slices (`Implemented`, `odd/tasks/b6/`). **B6.1** adds the `ApiOperation` type, the OpenAPI 3.1.0 builder over Zod's `toJSONSchema`, and the tag that `validate()` leaves on its middleware. **B6.2** and **B6.3** describe all 58 endpoints (the 55 routes and `/`, `/health`, `/health/ready`) as operations that reuse the schemas the routes validate with, and add the response schemas the service and `/auth/me` answers lacked. **B6.4** adds `openapi-drift.test.ts`, which walks the routing table of `createApp()` and fails when a route and its operation differ (no database needed). **B6.5** serves `GET /openapi.json` and the Scalar viewer at `GET /api/docs` behind `API_DOCS_ENABLED` (on outside production, off in production), with its own nonce-based CSP for that page only. **B6.6** flipped every `Planned (B6)` mark and recorded what B6 built in ADR-002. Carried to later blocks: generated examples are `Deferred`; the drift test does not compare headers, cookies, response schemas or status codes; the DB-backed suites were not run in the working sessions (the user runs them). **B5 (realtime and market simulation) is done**, in eight slices (`Implemented`, `odd/tasks/b5/`). **B5.1** adds the realtime contracts. **B5.2** adds the `ws` server behind a transport port on the API's own port at `/ws`: authentication by message, expiry, heartbeat and the connection limits. **B5.3** adds channel authorization, subscriptions, the hub with a per-channel `sequence` and a process `epoch`, and re-authentication revalidation. **B5.4** publishes the job, `PORTFOLIO_UPDATED` and `NOTIFICATION_CREATED` events after commit. **B5.5** adds the seeded `@trading/market-sim` engine. **B5.6** runs it in the server (one tick a second, `MarketPrice`, `MarketEvent` and candles, `HALTED` and the modes behind `simulation:control`). **B5.7** evaluates `PRICE` alerts (`ABOVE`, `BELOW`) edge-triggered with a 0.5% re-arm band. **B5.8** filled the test gaps (another user's job refused, reconnect, the HTTP app without the socket), took the server measurement (`08-realtime-spec.md` §63), flipped every `Planned (B5)` mark and recorded what B5 built in ADR-007. Carried to later blocks: the DB-backed suites and the B5.7 migration were not run (no `DATABASE_URL` in the working session; the user runs `pnpm --filter @trading/database db:test:migrate` and the database and API tests); the other alert types are stored but never evaluated (`Deferred`); the realtime client is FE. **B4 (background jobs and idempotency) is done**, in five slices
-(`Implemented`, `odd/tasks/b4/`). **B4.1** adds the `Job` and `IdempotencyKey` tables, their repositories and the
+**Next:** the frontend stage (FE0), after its ADR. **B7 (deployment readiness and hardening) is done**, in seven slices (`Implemented`). **B7.1** fixes the production build path (`.js` extensions, `NodeNext`, `exports` with `dist`, the `@trading/source` condition) and validates `DATABASE_URL`. **B7.2** adds the multi-stage, non-root API image. **B7.3** adds the `full` Compose profile with the one-shot `migrate` service, loopback ports and `TZ=UTC`. **B7.4** adds `pnpm smoke`. **B7.5** escapes the wildcards of the assets search. **B7.6** is the final security pass and its fixes: patched `zod`, `body-parser` and `proxy-addr`, a test that pins the security headers and `mem_limit: 512m` on the API; `deepmerge-ts` stays `Deferred` until Prisma 7. **B7.7** flips the remaining B7 marks to `Implemented` and closes the block. **B6 (API documentation and contract) is done**, in six slices (`Implemented`). **B6.1** adds the `ApiOperation` type, the OpenAPI 3.1.0 builder over Zod's `toJSONSchema`, and the tag that `validate()` leaves on its middleware. **B6.2** and **B6.3** describe all 58 endpoints (the 55 routes and `/`, `/health`, `/health/ready`) as operations that reuse the schemas the routes validate with, and add the response schemas the service and `/auth/me` answers lacked. **B6.4** adds `openapi-drift.test.ts`, which walks the routing table of `createApp()` and fails when a route and its operation differ (no database needed). **B6.5** serves `GET /openapi.json` and the Scalar viewer at `GET /api/docs` behind `API_DOCS_ENABLED` (on outside production, off in production), with its own nonce-based CSP for that page only. **B6.6** flipped every `Planned (B6)` mark and recorded what B6 built in ADR-002. Carried to later blocks: generated examples are `Deferred`; the drift test does not compare headers, cookies, response schemas or status codes; the DB-backed suites were not run in the working sessions (the user runs them). **B5 (realtime and market simulation) is done**, in eight slices (`Implemented`). **B5.1** adds the realtime contracts. **B5.2** adds the `ws` server behind a transport port on the API's own port at `/ws`: authentication by message, expiry, heartbeat and the connection limits. **B5.3** adds channel authorization, subscriptions, the hub with a per-channel `sequence` and a process `epoch`, and re-authentication revalidation. **B5.4** publishes the job, `PORTFOLIO_UPDATED` and `NOTIFICATION_CREATED` events after commit. **B5.5** adds the seeded `@trading/market-sim` engine. **B5.6** runs it in the server (one tick a second, `MarketPrice`, `MarketEvent` and candles, `HALTED` and the modes behind `simulation:control`). **B5.7** evaluates `PRICE` alerts (`ABOVE`, `BELOW`) edge-triggered with a 0.5% re-arm band. **B5.8** filled the test gaps (another user's job refused, reconnect, the HTTP app without the socket), took the server measurement (`08-realtime-spec.md` §63), flipped every `Planned (B5)` mark and recorded what B5 built in ADR-007. Carried to later blocks: the DB-backed suites and the B5.7 migration were not run (no `DATABASE_URL` in the working session; the user runs `pnpm --filter @trading/database db:test:migrate` and the database and API tests); the other alert types are stored but never evaluated (`Deferred`); the realtime client is FE. **B4 (background jobs and idempotency) is done**, in five slices
+(`Implemented`). **B4.1** adds the `Job` and `IdempotencyKey` tables, their repositories and the
 unit-of-work wiring. **B4.2** adds the job service, the in-process runner (one job at a time, every transition a
 compare-and-set, timeout per attempt, startup recovery of interrupted jobs, a graceful stop joined to the shutdown
 registry) and the `job.*` log events. **B4.3** adds the CSV import: a parser behind a tokenizer port, the validate and
@@ -950,7 +949,7 @@ mark, recorded what B4 built in ADR-008 and wrote how to follow an import in the
 (`13-observability-spec.md` §75). Carried to later blocks: the Prisma and DB-backed route tests of B4 need the test
 database and had not been run when the block closed (the user runs `pnpm --filter @trading/database db:test:migrate` and
 the database and API tests); and no single test drives a CSV import end to end through the runner against PostgreSQL. **B3 (observability foundation) is done**, in five slices
-(`Implemented`, `odd/tasks/b3/`). **B3.1** is a `Logger` port in `@trading/application` with a `pino`
+(`Implemented`). **B3.1** is a `Logger` port in `@trading/application` with a `pino`
 adapter in the API, a fixed redaction list, `LOG_LEVEL`, and one `http.request.failed` entry per failed
 request with a level per error code. **B3.2** carries the `requestId` on every log line through
 `AsyncLocalStorage`, writes one `http.request.completed` entry per request (a `warn` above
@@ -966,23 +965,22 @@ workflow, the log levels and the troubleshooting steps (`13-observability-spec.m
 later blocks: a guard around a logger that throws (advisory R3 of the B3.3 review), the driver
 message of an unexpected error, which names the database host and port, before any hosted log (B7),
 and the missing integration test of the `composition.ts` wiring for the scenario and series logs.
-B2 (auth and RBAC) is done, in five slices. **B2.1 is done** (`Implemented`,
-`odd/tasks/b2/b2-1-roles.md`): `UserRole` is `VIEWER`, `TRADER`, `ADMIN`; the
+B2 (auth and RBAC) is done, in five slices. **B2.1 is done** (`Implemented`): `UserRole` is `VIEWER`, `TRADER`, `ADMIN`; the
 hand-written migration renames `USER` to `TRADER` and was checked against a
 database with existing rows; `permissions.ts` holds the real matrix, tested per
 role and permission; a token with `role: "USER"` is rejected with 401.
-**B2.2 is done** (`Implemented`, `odd/tasks/b2/b2-2-actor-permissions.md`): the
+**B2.2 is done** (`Implemented`): the
 re-verification showed that all 16 application services already check a
 permission through the `Actor`, so the slice reduced to API tests of the
 `VIEWER` role (403 on every tested mutation, 200 on preferences and
 notifications, a forged token is 401) and the 403 passages of `07-api-spec.md`.
-**B2.3 is done** (`Implemented`, `odd/tasks/b2/b2-3-sessions.md`): a `Session`
+**B2.3 is done** (`Implemented`): a `Session`
 entity, port, in-memory and Prisma repositories and the `sessions` migration;
 an access token service that takes its time from the `Clock` and pins HS256;
 and a login that returns `{ user, session: { accessToken, expiresAt } }`,
 starts a session family whose refresh token is stored only as a SHA-256 hash
 and sets it as an `HttpOnly` cookie.
-**B2.4 is done** (`Implemented`, `odd/tasks/b2/b2-4-refresh-logout.md`):
+**B2.4 is done** (`Implemented`):
 `POST /auth/refresh` rotates the cookie token into a successor of the same
 family, with a 10-second grace window that returns the same successor (kept
 AES-256-GCM encrypted under an HKDF key from `JWT_SECRET`) and revokes nothing;
@@ -993,45 +991,41 @@ otherwise) and CORS now allows credentials for the `CORS_ORIGIN` list. The
 session repository gained an atomic `rotate`, `revokeFamily` and
 `clearExpiredSuccessors`, with a second additive migration. The `auth.refresh.reuse_detected`
 and `auth.logout` log lines landed in B3.3.
-**B2.5 is done** (`odd/tasks/b2/b2-5-close.md`): the auth-focused security review
+**B2.5 is done**: the auth-focused security review
 found no defect and is recorded in the task file (B7 owns the final pass), and
 every `Planned (B2)` mark in `docs/` is now `Implemented`. Carried to later
 blocks: a dedicated refresh rate limiter (open
 detail of `09-security-spec.md` §26) and the successor ciphertext that stays on
 the last rotated row of a family that never refreshes again.
 B0 and B1 are done; B1 was built in seven slices. **B1.1 is done**
-(`Implemented`, `odd/tasks/b1/b1-1-fees.md`): a `SELL` whose fees exceed its gross
+(`Implemented`): a `SELL` whose fees exceed its gross
 proceeds is rejected with 400, `averageEntryPrice` includes `BUY` fees in the
 date-order replay, and `replayRealizedPnL` computes realized P/L net of `SELL`
 fees (pure function, not yet exposed by the API). **B1.2 is done**
-(`Implemented`, `odd/tasks/b1/b1-2-value-series-and-returns.md`): the repositories
+(`Implemented`): the repositories
 read `COMPLETED` transactions and the candles of several assets in one call, and
 pure functions build the daily quantity timeline, the portfolio value series
 (last close carried forward, `INSUFFICIENT_DATA` per day), the daily flows and
 returns, the preset period windows, and the period `TWR` and P/L with the
-`effectiveFrom` clamp. **B1.3 is done** (`Implemented`, `odd/tasks/b1/b1-3-risk.md`):
+`effectiveFrom` clamp. **B1.3 is done** (`Implemented`):
 volatility (√365, at least 20 returns) and drawdown on the cumulative return index
 are pure functions over the daily returns, and `GET /portfolios/:id/analytics/risk`
 serves them with `null` plus `status` for unavailable values. The asset-level
-`calculateVolatility` now uses the same rule. **B1.4 is done** (`Implemented`,
-`odd/tasks/b1/b1-4-performance-api.md`): `GET /portfolios/:id/analytics/performance`
+`calculateVolatility` now uses the same rule. **B1.4 is done** (`Implemented`): `GET /portfolios/:id/analytics/performance`
 serves the period `TWR`, P/L and daily series, and the overview carries the same
 result for `1M` in its `performance` field. Risk and performance share one series
-pipeline (`buildPortfolioSeries`). **B1.5 is done** (`Implemented`,
-`odd/tasks/b1/b1-5-pulse-and-attribution.md`): the Pulse volatility and drawdown come from
+pipeline (`buildPortfolioSeries`). **B1.5 is done** (`Implemented`): the Pulse volatility and drawdown come from
 the portfolio series over `1Y` with the annualized thresholds 20 and 60, and
 `GET .../analytics/attribution` serves the money-only range attribution with
 `period`, `from`/`to` and `groupBy` (`asset` or `assetType`); without them it
-keeps its current-state shape. **B1.6 is done** (`Implemented`,
-`odd/tasks/b1/b1-6-what-changed.md`): the overview carries `whatChanged` for the
+keeps its current-state shape. **B1.6 is done** (`Implemented`): the overview carries `whatChanged` for the
 `1M` period, with the largest contributor and detractor of the range attribution
 (ties go to the first symbol) and the positions opened and closed, built from the
 same series as `performance`. Alerts triggered in the period wait for the alert
-evaluation. **B1.7 is done** (`Implemented`,
-`odd/tasks/b1/b1-7-realized-pnl-and-currency.md`): a transaction on an asset whose
+evaluation. **B1.7 is done** (`Implemented`): a transaction on an asset whose
 currency differs from the portfolio's is rejected with 400, and every transaction
 response carries the `realizedPnL` of a `SELL`, calculated when it is read. Phase 5 itself still has the reconciliation of
-`docs/12-demo-mode-spec.md` pending (`odd/tasks/sdd-source-of-truth.md`).
+`docs/12-demo-mode-spec.md` pending.
 B0 is defined in `docs/BACKEND-ROADMAP.md` (section B0) and
 `docs/15-implementation-plan.md` §4.1. The roadmap suggests five slices, in
 this order: CI and configuration safety, then the route tests, then the
@@ -1196,7 +1190,6 @@ unassigned.
 ## 8. How to Resume Work in a New Chat
 
 1. Read the header and §1 of this file, then
-   `odd/tasks/sdd-source-of-truth.md` (phase status and the "Next" line),
    `docs/BACKEND-ROADMAP.md` (the block and its status table) and
    `docs/15-implementation-plan.md` §4.1 (build order).
 2. Confirm the current branch (`develop`, `docs/sdd-operations` or the active

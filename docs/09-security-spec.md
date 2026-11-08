@@ -1625,7 +1625,7 @@ the UI, so a hidden control is never the protection under test (NFR-026).
 | Unexpected errors return the generic 500 without internals | `Implemented` (B3.1, `error-handler.test.ts`) |
 | Readiness with the database down exposes no driver error | `Implemented` (`health.unavailable.routes.test.ts`) (security checklist) |
 | Redaction of every field in §49 | `Implemented` (B3.1, ADR-009 point 13) |
-| `git ls-files` lists no `.env` file except examples | `Implemented` (manual check in B7.6, `odd/tasks/b7/b7-6-security-pass.md`) (NFR-023) |
+| `git ls-files` lists no `.env` file except examples | `Implemented` (manual check in B7.6) (NFR-023) |
 | Dependency audit | `Implemented` (manual run in B7.6) (NFR-024) |
 | No unsanitized HTML in `apps/web`; no token in browser storage | `Planned (FE)` (NFR-027, NFR-028) |
 
