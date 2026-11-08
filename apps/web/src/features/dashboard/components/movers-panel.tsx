@@ -69,7 +69,7 @@ export function MoversPanel({ movers }: MoversPanelProps) {
                 <span
                   className={cn(
                     "text-right text-xs font-medium",
-                    loss ? "text-(--color-chart-loss)" : "text-(--color-chart-gain)",
+                    loss ? "text-(--color-trading-loss)" : "text-(--color-trading-gain)",
                   )}
                 >
                   <DirectionMark percent={percent} /> {formatSignedPercent(percent)}

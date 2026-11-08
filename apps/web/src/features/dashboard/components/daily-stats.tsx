@@ -18,8 +18,8 @@ function Stat({ label, tone = "neutral", children }: StatProps) {
       <dd
         className={cn(
           "text-base leading-6 font-medium whitespace-nowrap",
-          tone === "gain" && "text-(--color-chart-gain)",
-          tone === "loss" && "text-(--color-chart-loss)",
+          tone === "gain" && "text-(--color-trading-gain)",
+          tone === "loss" && "text-(--color-trading-loss)",
           tone === "neutral" && "text-(--color-text-default)",
         )}
       >
