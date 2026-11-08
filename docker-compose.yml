@@ -65,6 +65,41 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # One-shot, on demand: `docker compose run --rm seed` wipes and reloads the demo user and
+  # sample data, so it is not part of `up`. Run it after the stack is up (the migrations are applied
+  # by then). It reuses the migrate image, which carries `tsx` and the seed sources.
+  seed:
+    profiles: ["seed"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    restart: "no"
+    command: ["sh", "-c", "tsx --conditions=@trading/source prisma/seed.ts"]
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://${DATABASE_USER:-trading_user}:${DATABASE_PASSWORD:-trading_dev_password}@postgres:5432/${DATABASE_NAME:-trading_analytics_dev}
+      DATABASE_URL: postgresql://trading_runtime:${RUNTIME_DB_PASSWORD:-trading_runtime_dev_password}@postgres:5432/${DATABASE_NAME:-trading_analytics_dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # The web app in real mode, served by Nginx. The API addresses are baked into the bundle at build
+  # time and are the ones the browser uses, so they point at the published port of the API.
+  web:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:${API_PORT:-7001}
+        VITE_WS_URL: ws://localhost:${API_PORT:-7001}/ws
+    image: trading-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:8080"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
     name: trading-analytics-postgres-data
