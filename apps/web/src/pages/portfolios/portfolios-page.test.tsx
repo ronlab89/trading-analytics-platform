@@ -1,0 +1,412 @@
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { axe } from "vitest-axe";
+import "@/i18n";
+import { ApiError, type TradingClient } from "@/api/trading-client";
+import { PortfoliosPage } from "@/pages/portfolios/portfolios-page";
+import { useActivePortfolioStore } from "@/stores/active-portfolio-store";
+import { tradingClientWrapper } from "@/test/trading-client-wrapper";
+
+function portfolio(
+  id: string,
+  name: string,
+  baseCurrency = "USD",
+  status: "ACTIVE" | "ARCHIVED" = "ACTIVE",
+) {
+  return {
+    id,
+    userId: "u1",
+    name,
+    description: null,
+    baseCurrency,
+    status,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  };
+}
+
+const listing: TradingClient = {
+  call: () =>
+    Promise.resolve({
+      data: [
+        portfolio("p1", "Conservador"),
+        portfolio("p2", "Crecimiento"),
+        portfolio("p3", "Experimental", "EUR", "ARCHIVED"),
+      ],
+    }),
+};
+
+function renderPage(client: TradingClient = listing) {
+  const Wrapper = tradingClientWrapper(client);
+  return render(
+    <Wrapper>
+      <MemoryRouter>
+        <PortfoliosPage />
+      </MemoryRouter>
+    </Wrapper>,
+  );
+}
+
+beforeEach(() => {
+  useActivePortfolioStore.setState(useActivePortfolioStore.getInitialState());
+});
+
+describe("PortfoliosPage", () => {
+  it("lists every portfolio, archived ones included, with its base currency and status", async () => {
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    const experimental = within(table).getByRole("row", { name: /Experimental/ });
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
+    expect(within(experimental).getByText("EUR")).toBeInTheDocument();
+    expect(within(experimental).getByText("Archived")).toBeInTheDocument();
+    expect(
+      within(within(table).getByRole("row", { name: /Conservador/ })).getByText("Active"),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the detail of a portfolio from its name, archived ones included", async () => {
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getByRole("link", { name: "Crecimiento" })).toHaveAttribute(
+      "href",
+      "/portfolios/p2",
+    );
+    expect(within(table).getByRole("link", { name: "Experimental" })).toHaveAttribute(
+      "href",
+      "/portfolios/p3",
+    );
+  });
+
+  it("does not underline the name on hover, because the Figma list only tints the row", async () => {
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getByRole("link", { name: "Crecimiento" }).className).not.toContain(
+      "underline",
+    );
+  });
+
+  it("keeps the in-use tag out of the name of the link", async () => {
+    useActivePortfolioStore.getState().select("p2");
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getByRole("link", { name: "Crecimiento" })).toBeInTheDocument();
+    expect(within(table).getByText("In use")).toBeInTheDocument();
+  });
+
+  it("hides the base currency column below desktop, as the Figma tablet list does", async () => {
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getByRole("columnheader", { name: "Base currency" })).toHaveClass(
+      "max-desktop:hidden",
+    );
+    expect(
+      within(within(table).getByRole("row", { name: /Experimental/ })).getByRole("cell", {
+        name: "EUR",
+      }),
+    ).toHaveClass("max-desktop:hidden");
+    expect(within(table).getByRole("columnheader", { name: "Status" })).not.toHaveClass(
+      "max-desktop:hidden",
+    );
+  });
+
+  it("states how many portfolios there are", async () => {
+    renderPage();
+
+    expect(await screen.findByText("Manage your portfolios · 3 in total")).toBeInTheDocument();
+  });
+
+  it("tags only the portfolio in use", async () => {
+    useActivePortfolioStore.getState().select("p2");
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(within(table).getAllByText("In use")).toHaveLength(1);
+    expect(
+      within(within(table).getByRole("row", { name: /Crecimiento/ })).getByText("In use"),
+    ).toBeInTheDocument();
+  });
+
+  it("narrows the list as the user searches by name, and the count and footer follow", async () => {
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Portfolios" });
+    expect(screen.getByText("3 portfolios")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–3 of 3")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search portfolio" }), "cre");
+
+    expect(within(table).getAllByRole("row")).toHaveLength(2);
+    expect(within(table).getByRole("row", { name: /Crecimiento/ })).toBeInTheDocument();
+    expect(screen.getByText("1 portfolio")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
+    expect(screen.getByText("Manage your portfolios · 3 in total")).toBeInTheDocument();
+  });
+
+  it("sorts by name and by base currency, but not by status", async () => {
+    renderPage();
+    await screen.findByRole("table", { name: "Portfolios" });
+    const names = () =>
+      screen
+        .getAllByRole("rowheader")
+        .map(
+          (cell) => within(cell).getByText(/^(Conservador|Crecimiento|Experimental)$/).textContent,
+        );
+    expect(screen.queryByRole("button", { name: "Status" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Name" }));
+    await userEvent.click(screen.getByRole("button", { name: "Name" }));
+    expect(names()).toEqual(["Experimental", "Crecimiento", "Conservador"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Base currency" }));
+    expect(names()).toEqual(["Experimental", "Conservador", "Crecimiento"]);
+    expect(screen.getByRole("columnheader", { name: "Base currency" })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+  });
+
+  it("holds the place of the list with a loading status and a disabled search while it loads", () => {
+    renderPage({ call: () => new Promise(() => undefined) });
+
+    expect(screen.getByRole("status", { name: "Loading portfolios" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search portfolio" })).toBeDisabled();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("invites the user to create the first portfolio when there are none", async () => {
+    renderPage({ call: () => Promise.resolve({ data: [] }) });
+
+    expect(await screen.findByText("You have no portfolios yet")).toBeInTheDocument();
+    expect(screen.getByText("Manage your portfolios · 0 in total")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("says nothing matches the search and clears it on request", async () => {
+    renderPage();
+    await screen.findByRole("table", { name: "Portfolios" });
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search portfolio" }), "Bonos");
+
+    expect(screen.getByText("No results")).toBeInTheDocument();
+    expect(screen.getByText(/No portfolio matches “Bonos”/)).toBeInTheDocument();
+    expect(screen.getByText("0 portfolios")).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(screen.getByRole("searchbox", { name: "Search portfolio" })).toHaveValue("");
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(4);
+  });
+
+  it("tells the user the list failed and loads it when they retry", async () => {
+    const call = vi
+      .fn<TradingClient["call"]>()
+      .mockRejectedValueOnce(new ApiError("NETWORK_ERROR", "down"))
+      .mockImplementation((operation, input) => listing.call(operation, input));
+    renderPage({ call });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load the portfolios");
+    expect(screen.queryByText(/in total/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByRole("table", { name: "Portfolios" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("opens the new portfolio dialog from the header button, which stays through every state", async () => {
+    renderPage();
+    await screen.findByRole("table", { name: "Portfolios" });
+
+    await userEvent.click(screen.getByRole("button", { name: "New portfolio" }));
+
+    expect(screen.getByRole("dialog", { name: "New portfolio" })).toBeInTheDocument();
+  });
+
+  it("offers the new portfolio button while the list loads and when it fails", async () => {
+    const { unmount } = renderPage({ call: () => new Promise(() => undefined) });
+    expect(screen.getByRole("button", { name: "New portfolio" })).toBeInTheDocument();
+    unmount();
+
+    renderPage({ call: () => Promise.reject(new ApiError("NETWORK_ERROR", "down")) });
+    await screen.findByRole("alert");
+    expect(screen.getByRole("button", { name: "New portfolio" })).toBeInTheDocument();
+  });
+
+  it("opens the same dialog from the empty state action", async () => {
+    renderPage({ call: () => Promise.resolve({ data: [] }) });
+    await screen.findByText("You have no portfolios yet");
+
+    await userEvent.click(screen.getByRole("button", { name: "Create portfolio" }));
+
+    expect(screen.getByRole("dialog", { name: "New portfolio" })).toBeInTheDocument();
+  });
+
+  describe("row menu", () => {
+    const openRowMenu = async (name: string) => {
+      await screen.findByRole("table", { name: "Portfolios" });
+      await userEvent.click(screen.getByRole("button", { name: `Actions for “${name}”` }));
+    };
+
+    it("gives every active portfolio a menu and an archived one none", async () => {
+      renderPage();
+      const table = await screen.findByRole("table", { name: "Portfolios" });
+
+      expect(within(table).getAllByRole("button", { name: /^Actions for/ })).toHaveLength(2);
+      expect(
+        within(within(table).getByRole("row", { name: /Experimental/ })).queryByRole("button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("makes a portfolio the one in use from “Use this portfolio”", async () => {
+      useActivePortfolioStore.getState().select("p1");
+      renderPage();
+      await openRowMenu("Crecimiento");
+
+      await userEvent.click(screen.getByText("Use this portfolio"));
+
+      expect(useActivePortfolioStore.getState().selectedId).toBe("p2");
+      const table = screen.getByRole("table", { name: "Portfolios" });
+      expect(
+        within(within(table).getByRole("row", { name: /Crecimiento/ })).getByText("In use"),
+      ).toBeInTheDocument();
+      expect(within(table).getAllByText("In use")).toHaveLength(1);
+    });
+
+    it("opens the edit dialog filled with that portfolio from “Edit”", async () => {
+      renderPage();
+      await openRowMenu("Crecimiento");
+
+      await userEvent.click(screen.getByText("Edit"));
+
+      expect(screen.getByRole("dialog", { name: "Edit portfolio" })).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: /Name/ })).toHaveValue("Crecimiento");
+    });
+
+    it("asks before archiving from “Archive”, then archives that portfolio", async () => {
+      const call = vi.fn<TradingClient["call"]>((operation, input) =>
+        operation.operationId === "archivePortfolio"
+          ? Promise.resolve({
+              data: { ...portfolio("p2", "Crecimiento"), status: "ARCHIVED" },
+              meta: { alreadyArchived: false },
+            })
+          : listing.call(operation, input),
+      );
+      renderPage({ call });
+      await openRowMenu("Crecimiento");
+
+      await userEvent.click(screen.getByText("Archive"));
+      expect(screen.getByRole("dialog", { name: "Archive portfolio?" })).toBeInTheDocument();
+      expect(call.mock.calls.some(([op]) => op.operationId === "archivePortfolio")).toBe(false);
+
+      await userEvent.click(screen.getByRole("button", { name: "Archive" }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      const archiveCall = call.mock.calls.find(([op]) => op.operationId === "archivePortfolio");
+      expect(archiveCall?.[1]).toEqual({ params: { portfolioId: "p2" } });
+    });
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = renderPage();
+    await screen.findByRole("table", { name: "Portfolios" });
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  describe("on mobile", () => {
+    beforeEach(() => {
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: query === "(max-width: 560px)",
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("shows a card per portfolio instead of the table, with the title and a short New button", async () => {
+      renderPage();
+
+      const list = await screen.findByRole("list", { name: "Portfolios" });
+      expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Portfolios" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "New" })).toBeInTheDocument();
+    });
+
+    it("opens the create form from the New button", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole("list", { name: "Portfolios" });
+
+      await user.click(screen.getByRole("button", { name: "New" }));
+
+      expect(await screen.findByRole("dialog", { name: "Create portfolio" })).toBeInTheDocument();
+    });
+
+    it("filters the cards with the search, ignoring case and accents", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole("list", { name: "Portfolios" });
+
+      await user.type(screen.getByRole("searchbox", { name: "Search portfolio" }), "  CRECIM");
+
+      const list = screen.getByRole("list", { name: "Portfolios" });
+      expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+      expect(within(list).getByRole("link", { name: /Crecimiento/ })).toBeInTheDocument();
+    });
+
+    it("offers to clear a search that finds nothing", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole("list", { name: "Portfolios" });
+
+      await user.type(screen.getByRole("searchbox", { name: "Search portfolio" }), "zzz");
+
+      expect(screen.queryByRole("list", { name: "Portfolios" })).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Clear search" }));
+      expect(screen.getByRole("list", { name: "Portfolios" })).toBeInTheDocument();
+    });
+
+    it("shows the loading card while the list loads", () => {
+      renderPage({ call: () => new Promise(() => undefined) });
+
+      expect(screen.getByRole("status", { name: "Loading portfolios" })).toBeInTheDocument();
+    });
+
+    it("shows the mobile empty copy and lets the user create the first portfolio", async () => {
+      renderPage({ call: () => Promise.resolve({ data: [] }) });
+
+      expect(await screen.findByText("There are no portfolios yet")).toBeInTheDocument();
+      expect(
+        screen.getByText("Create your first portfolio to start recording transactions."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the mobile error copy with a retry", async () => {
+      renderPage({ call: () => Promise.reject(new ApiError("NETWORK_ERROR", "down")) });
+
+      expect(await screen.findByText("We couldn't load the portfolios")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    });
+
+    it("has no accessibility violations", async () => {
+      const { container } = renderPage();
+      await screen.findByRole("list", { name: "Portfolios" });
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
+  });
+});

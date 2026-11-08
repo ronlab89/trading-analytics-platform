@@ -2,16 +2,45 @@
   "name": "trading-analytics-platform",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "description": "Trading Analytics Platform — portfolio project (full-stack app + public demo)",
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=24.0.0",
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@12.3.4",
   "scripts": {
-    "typecheck": "tsc --build --pretty"
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "tsc --build --pretty",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "docs:check": "node scripts/check-docs.mjs",
+    "test:scripts": "node --test scripts/check-docs.test.mjs scripts/smoke.test.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.0",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.69.0"
   }
 }

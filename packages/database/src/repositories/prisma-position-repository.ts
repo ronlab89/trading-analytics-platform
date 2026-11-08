@@ -1,0 +1,76 @@
+import type { CreatePositionInput, Money, Position, PositionRepository } from "@trading/domain";
+import { prisma, type DatabaseClient } from "../client.js";
+import {
+  toDomainPosition,
+  toPrismaUpsertCreateData,
+  toPrismaUpsertUpdateData,
+} from "../mappers/position-mapper.js";
+
+/**
+ * Prisma-backed implementation of `PositionRepository`.
+ * See prisma-portfolio-repository.ts for the shared rationale, and
+ * position-repository.ts (domain) for why this contract has `upsert()`
+ * and `updateCurrentPrice()` instead of a generic `update()`.
+ *
+ * Accepts an optional client so it can join a Unit of Work
+ * (see prisma-unit-of-work.ts); defaults to the shared client.
+ */
+export class PrismaPositionRepository implements PositionRepository {
+  private readonly db: DatabaseClient;
+
+  constructor(db: DatabaseClient = prisma) {
+    this.db = db;
+  }
+
+  async listByPortfolioId(portfolioId: string): Promise<Position[]> {
+    const rows = await this.db.position.findMany({ where: { portfolioId } });
+    return rows.map(toDomainPosition);
+  }
+
+  async getById(id: string): Promise<Position | null> {
+    const row = await this.db.position.findUnique({ where: { id } });
+    return row ? toDomainPosition(row) : null;
+  }
+
+  async getByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<Position | null> {
+    const row = await this.db.position.findUnique({
+      where: { portfolioId_assetId: { portfolioId, assetId } },
+    });
+    return row ? toDomainPosition(row) : null;
+  }
+
+  async upsert(input: CreatePositionInput): Promise<Position> {
+    const row = await this.db.position.upsert({
+      where: { portfolioId_assetId: { portfolioId: input.portfolioId, assetId: input.assetId } },
+      create: {
+        portfolioId: input.portfolioId,
+        assetId: input.assetId,
+        ...toPrismaUpsertCreateData(input),
+      },
+      update: toPrismaUpsertUpdateData(input),
+    });
+    return toDomainPosition(row);
+  }
+
+  async updateCurrentPrice(id: string, currentPrice: Money): Promise<Position> {
+    const row = await this.db.position.update({
+      where: { id },
+      data: { currentPrice: currentPrice.toString() },
+    });
+    return toDomainPosition(row);
+  }
+
+  async updateCurrentPriceByAssetId(assetId: string, currentPrice: Money): Promise<number> {
+    const result = await this.db.position.updateMany({
+      where: { assetId },
+      data: { currentPrice: currentPrice.toString() },
+    });
+    return result.count;
+  }
+
+  async deleteByPortfolioAndAsset(portfolioId: string, assetId: string): Promise<void> {
+    await this.db.position.delete({
+      where: { portfolioId_assetId: { portfolioId, assetId } },
+    });
+  }
+}

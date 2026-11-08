@@ -1,0 +1,110 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/dm-sans/wght.css";
+@import "./styles/tokens.css";
+@import "./styles/typography.css";
+@import "./styles/effects.css";
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: "DM Sans Variable", "DM Sans", system-ui, sans-serif;
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+}
+
+/*
+ * Radius and shadows come straight from the Figma tokens. With `inline`, each utility
+ * reads the :root variable defined in styles/tokens.css and styles/effects.css, so a
+ * Figma re-export updates the utilities as well. The `--space-*` scale is not mapped to
+ * `--spacing-*`: Tailwind also reads those keys for `max-w-xs`, `w-md` and the like.
+ */
+@theme inline {
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-3xl: var(--radius-3xl);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-popover: var(--shadow-popover);
+  --shadow-toast: var(--shadow-toast);
+  --shadow-dialog: var(--shadow-dialog);
+}
+
+/* The shadcn names point at the semantic tokens exported from Figma (styles/tokens.css). */
+:root {
+  --background: var(--color-surface-page);
+  --foreground: var(--color-text-default);
+  --card: var(--color-surface-card);
+  --card-foreground: var(--color-text-default);
+  --popover: var(--color-surface-card);
+  --popover-foreground: var(--color-text-default);
+  --primary: var(--color-action-primary);
+  --primary-foreground: var(--color-text-on-primary);
+  --secondary: var(--color-surface-secondary);
+  --secondary-foreground: var(--color-text-default);
+  --muted: var(--color-surface-secondary);
+  --muted-foreground: var(--color-text-secondary);
+  --accent: var(--color-surface-secondary);
+  --accent-foreground: var(--color-text-default);
+  --destructive: var(--color-action-destructive);
+  --border: var(--color-border-default);
+  --input: var(--color-border-input);
+  --ring: var(--color-border-ring);
+  --chart-1: var(--color-chart-series-1);
+  --chart-2: var(--color-chart-series-2);
+  --chart-3: var(--color-chart-series-3);
+  --chart-4: var(--color-chart-series-4);
+  --chart-5: var(--color-chart-series-5);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/*
+ * The layout modes of ADR-010 point 9: mobile 360-560 px, tablet 561-900 px, desktop above
+ * 900 px. They replace Tailwind's default `sm`..`2xl` so a `md:` or `lg:` cannot slip in at a
+ * width the design does not change at. The shell switches to the activity bar at `tablet`.
+ */
+/* Styles that apply only while the user navigates with the Tab key (lib/input-modality.ts). */
+@custom-variant keyboard (:where([data-input-modality="keyboard"]) &);
+/* The counterpart: styles that apply while the user works with a mouse, pen or finger. */
+@custom-variant pointer (:where([data-input-modality="pointer"]) &);
+
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-tablet: 561px;
+  --breakpoint-desktop: 901px;
+}

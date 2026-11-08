@@ -1,0 +1,50 @@
+{
+  "name": "@trading/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- tsx watch --conditions=@trading/source src/index.ts",
+    "build": "tsc --build",
+    "start": "dotenv -e ../../.env -- node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "dotenv -e ../../.env.test.local -- vitest run",
+    "test:watch": "dotenv -e ../../.env.test.local -- vitest"
+  },
+  "dependencies": {
+    "@scalar/express-api-reference": "0.10.31",
+    "@trading/application": "workspace:*",
+    "@trading/contracts": "workspace:*",
+    "@trading/database": "workspace:*",
+    "@trading/domain": "workspace:*",
+    "@trading/market-sim": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "csv-parse": "^7.0.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "pino": "^10.4.0",
+    "ws": "^8.22.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@trading/persistence-memory": "workspace:*",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24",
+    "@types/supertest": "^6.0.2",
+    "@types/ws": "^8.18.2",
+    "dotenv-cli": "^11.0.0",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.0.0",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.3",
+    "vitest": "^3.0.5"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules"],
+  "references": [
+    {
+      "path": "../../packages/application"
+    },
+    {
+      "path": "../../packages/contracts"
+    },
+    {
+      "path": "../../packages/domain"
+    },
+    {
+      "path": "../../packages/market-sim"
+    },
+    {
+      "path": "../../packages/database/tsconfig.build.json"
+    },
+    {
+      "path": "../../packages/persistence-memory"
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { AnalyticsAllocationPanel } from "@/features/analytics/components/analytics-allocation-panel";
+import { AnalyticsAttributionPanel } from "@/features/analytics/components/analytics-attribution-panel";
+import { AnalyticsDrawdownPanel } from "@/features/analytics/components/analytics-drawdown-panel";
+import { AnalyticsKpis } from "@/features/analytics/components/analytics-kpis";
+import { AnalyticsPeriodSelector } from "@/features/analytics/components/analytics-period-selector";
+import { AnalyticsValuePanel } from "@/features/analytics/components/analytics-value-panel";
+import {
+  DEFAULT_ANALYTICS_PERIOD,
+  type AnalyticsPeriod,
+} from "@/features/analytics/lib/analytics-period";
+import { PortfoliosEmptyState } from "@/features/portfolios/components/portfolios-empty-state";
+import { usePositions } from "@/features/portfolios/hooks/use-positions";
+import { NewTransactionPanel } from "@/features/transactions/components/new-transaction-panel";
+import { useAnnounceRecorded } from "@/features/transactions/hooks/use-announce-recorded";
+import { useActivePortfolio } from "@/hooks/use-active-portfolio";
+import { useIsMobile } from "@/hooks/use-media-query";
+
+/**
+ * The Analytics screen: the indicators of the active portfolio over a period the user chooses. The
+ * portfolio is the `key` of the content, so choosing another one starts from its own state and the
+ * period. Without a portfolio there is nothing to measure, so the page says so, as the dashboard does.
+ */
+export function AnalyticsPage() {
+  const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const { active, isPending, isError, retry } = useActivePortfolio();
+
+  return (
+    <div className="flex flex-col gap-4 desktop:gap-6">
+      <h1
+        className={
+          isMobile ? "text-2xl leading-8 font-semibold text-(--color-text-default)" : "sr-only"
+        }
+      >
+        {t("nav.analytics")}
+      </h1>
+      {active !== undefined ? (
+        <Analytics key={active.id} portfolioId={active.id} portfolioName={active.name} />
+      ) : isError ? (
+        <Alert
+          action={
+            <Button onClick={retry} size="sm" variant="outline">
+              {t("analytics.failed.retry")}
+            </Button>
+          }
+          description={t("analytics.failed.description")}
+          title={t("analytics.failed.title")}
+          tone="error"
+        />
+      ) : isPending ? null : (
+        <section className="rounded-xl bg-(--color-surface-card) p-6">
+          <PortfoliosEmptyState
+            description={t("portfolios.empty.description")}
+            title={t("portfolios.empty.title")}
+          />
+        </section>
+      )}
+    </div>
+  );
+}
+
+interface AnalyticsProps {
+  portfolioId: string;
+  portfolioName: string;
+}
+
+function Analytics({ portfolioId, portfolioName }: AnalyticsProps) {
+  const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const [period, setPeriod] = useState<AnalyticsPeriod>(DEFAULT_ANALYTICS_PERIOD);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const announceRecorded = useAnnounceRecorded();
+  const positions = usePositions(portfolioId);
+  const positionCount = positions.data?.length;
+  const emptyPortfolio = positionCount === 0;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {isMobile ? null : (
+          <p className="text-sm text-(--color-text-secondary)">
+            {positionCount === undefined
+              ? portfolioName
+              : t("analytics.header.summary", { portfolio: portfolioName, count: positionCount })}
+          </p>
+        )}
+        <AnalyticsPeriodSelector onChange={setPeriod} value={period} />
+      </div>
+      <AnalyticsKpis
+        emptyPortfolio={emptyPortfolio}
+        period={period}
+        portfolioId={portfolioId}
+        portfolioName={portfolioName}
+      />
+      <div className="grid gap-4 desktop:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] desktop:gap-6">
+        <AnalyticsValuePanel
+          emptyPortfolio={emptyPortfolio}
+          onNew={() => {
+            setPanelOpen(true);
+          }}
+          onShowLastMonth={() => {
+            setPeriod(DEFAULT_ANALYTICS_PERIOD);
+          }}
+          period={period}
+          portfolioId={portfolioId}
+        />
+        <AnalyticsAllocationPanel portfolioId={portfolioId} />
+      </div>
+      <div className="grid gap-4 desktop:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] desktop:gap-6">
+        <AnalyticsAttributionPanel
+          emptyPortfolio={emptyPortfolio}
+          period={period}
+          portfolioId={portfolioId}
+        />
+        <AnalyticsDrawdownPanel
+          emptyPortfolio={emptyPortfolio}
+          period={period}
+          portfolioId={portfolioId}
+        />
+      </div>
+      <NewTransactionPanel
+        onOpenChange={setPanelOpen}
+        onRecorded={announceRecorded}
+        open={panelOpen}
+        portfolioId={portfolioId}
+      />
+    </>
+  );
+}

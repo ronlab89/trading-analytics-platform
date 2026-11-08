@@ -1,45 +1,49 @@
-# Trading Analytics Platform
+# SDD 06 — Architecture
 
-## SDD — 06. Architecture
-
-**Status:** Draft  
-**Version:** 1.0  
-**Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`
+**Project:** Trading Analytics Platform  
+**Status:** Reconciled with the monorepo and ADR-001 to ADR-009 on 2026-10-05  
+**Version:** 2.0  
+**Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`  
+**Decisions:** ADR-001 (`adr/0001-application-layer.md`), ADR-002 (`adr/0002-shared-contracts.md`), ADR-005 (`adr/0005-roles-and-authentication.md`), ADR-006 (`adr/0006-deployment-model-and-ci.md`), ADR-007 (`adr/0007-realtime-and-market-simulation.md`), ADR-008 (`adr/0008-background-jobs-csv-import.md`), ADR-009 (`adr/0009-observability-scope.md`)
 
 ---
 
 # 1. Purpose
 
-This document defines the software architecture for Trading Analytics Platform.
+**Status:** `Implemented`
 
-The architecture must support two execution modes:
+This document describes the layers, packages, module boundaries and
+dependency rules of the repository as it exists, and the target structure
+decided by the ADRs. Anything not yet in code is marked `Planned (B#)` or
+`Planned (FE)` with its ADR, or `Deferred` (legend in `docs/README.md`).
 
-1. **Demo Mode** — fully functional public experience using mocked infrastructure.
-2. **Production Mode** — complete application using real backend infrastructure and persistence.
+Section numbers are stable because code comments cite them (§3.3, §10-13,
+§29, §30, §43, §53). Sections whose former content described structure that
+does not exist are kept as short stubs so numbering does not shift.
 
-Both modes must share the same core application contracts and domain behavior.
+Block `B0` is the application-layer refactor named by ADR-001, ADR-002 and
+ADR-003; it precedes B1-B7 of `BACKEND-ROADMAP.md`. Frontend and demo work
+that an ADR already fixes is `Planned (FE)`: it is built in the frontend
+stage, after the backend blocks. Frontend topics that no ADR decides are
+`Deferred`.
 
-The primary architectural goal is:
-
-> Build a system that is simple enough to maintain, structured enough to scale, and realistic enough to demonstrate production-oriented engineering.
+Each section ends with **Open detail** when an edge case is undecided. Open
+details do not change any ADR decision; each is assigned to a block.
 
 ---
 
 # 2. Architectural Goals
 
-The architecture must prioritize:
+**Status:** `Implemented` for domain-first layering; shared behavior across modes `Planned (B0)`.
 
-- clear domain boundaries;
-- maintainability;
-- testability;
-- predictable state management;
-- performance;
-- security;
-- real-time capability;
-- infrastructure substitution;
-- incremental scalability;
-- strong developer experience;
-- zero required operating cost for the public demo.
+1. Business rules live in one framework-free package (`@trading/domain`).
+2. Persistence sits behind domain repository contracts.
+3. The real application and the public demo share the same use cases and
+   replace only the repositories (ADR-001).
+4. One declared wire format shared by the API, the web app and the demo
+   (ADR-002).
+5. Infrastructure that matches the real deployment model: a local backend
+   and a static public demo (ADR-006).
 
 ---
 
@@ -47,144 +51,91 @@ The architecture must prioritize:
 
 ## 3.1 Domain First
 
-The architecture should reflect the product's domains rather than the visual structure of the UI.
+**Status:** `Implemented`
 
-Primary domains:
-
-```text
-Portfolio
-Position
-Transaction
-Asset
-Market Data
-Analytics
-Decision
-Scenario
-Notification
-```
-
----
+`@trading/domain` contains entities, the `Money` value object, pure
+calculations and repository contracts. Its only runtime dependency is
+`decimal.js`; it imports no framework, ORM, HTTP or browser API.
 
 ## 3.2 Explicit Boundaries
 
-Dependencies should flow through explicit boundaries.
+**Status:** `Implemented` as workspace package boundaries; lint enforcement `Planned (B0)`.
 
-The system should avoid unrestricted access between modules.
-
----
+Each package exposes a single barrel (`src/index.ts`). Cross-package access
+goes only through `@trading/*` workspace dependencies declared in
+`package.json`. Tooling enforcement is described in §43.
 
 ## 3.3 Dependency Inversion
 
-Application and domain logic should depend on contracts rather than infrastructure implementations.
+**Status:** `Implemented` for repositories; injection into services `Planned (B0)`.
 
-Conceptually:
+Repository and `UnitOfWork` contracts are declared in
+`packages/domain/src/repositories/` and implemented in
+`packages/database/src/`. The domain never imports the database package.
 
-```text id="6s9i5b"
-Application
-     ↓
-Interface / Contract
-     ↑
-     │
- ┌───┴──────────┐
- │              │
-Mock Adapter   Real Adapter
+```text
+@trading/domain   (contracts: PortfolioRepository, UnitOfWork, ...)
+       ^
+       | implements
+@trading/database (PrismaPortfolioRepository, PrismaUnitOfWork, ...)
 ```
 
----
+Current gap: 14 of the 15 modules in `apps/api/src/services/` instantiate
+Prisma repositories at module scope, so no other implementation can be
+supplied. ADR-001 points 2 and 4 replace this with factories that receive
+their dependencies from a composition root.
 
 ## 3.4 Infrastructure Is Replaceable
 
-The application should not fundamentally care whether data comes from:
+**Status:** `Implemented` for Prisma isolation; in-memory implementations `Planned (B0)`.
 
-- a mock repository;
-- an HTTP API;
-- a database;
-- a real-time server.
-
-Infrastructure is an implementation detail.
-
----
+Prisma is confined to `@trading/database`; `packages/database/src/client.ts`
+is the only module that imports the generated client. In-memory
+implementations of every contract (tests, then the demo) are required by
+ADR-001 (Consequences).
 
 ## 3.5 Avoid Premature Distribution
 
-The initial system will use a modular architecture rather than microservices.
+**Status:** `Implemented`
 
-Microservices are explicitly not required for the first version.
-
-The system should be designed so that domains are separable without forcing deployment separation prematurely.
+One API process and one PostgreSQL database. ADR-006 keeps the backend
+local-only, ADR-008 keeps jobs in process without an external queue, and
+ADR-009 defers metrics. Distribution requires a new ADR.
 
 ---
 
 # 4. High-Level Architecture
 
-The system follows a modular layered architecture.
+**Status:** `Implemented` (current packages); target packages `Planned (B0)` and `Implemented` (B5).
 
-```text id="o6n6fk"
-┌─────────────────────────────────────────────────────────┐
-│                    Presentation                         │
-│ React UI · Routes · Components · Charts · Interaction  │
-└───────────────────────────┬─────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────┐
-│                     Application                         │
-│ Use Cases · Commands · Queries · Orchestration         │
-└───────────────────────────┬─────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────┐
-│                       Domain                            │
-│ Entities · Rules · Value Objects · Calculations         │
-└───────────────────────────┬─────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────┐
-│                    Infrastructure                       │
-│ API · Database · Auth · Realtime · External Services   │
-└─────────────────────────────────────────────────────────┘
-```
+pnpm workspace (`pnpm-workspace.yaml`: `apps/*`, `packages/*`). No task
+runner; root scripts use `pnpm -r` and `tsc --build` with project
+references to `packages/domain`, `packages/database` and `apps/api`.
 
-The exact implementation may adapt this model where frontend-specific concerns require it.
+| Path | Package | State |
+| --- | --- | --- |
+| `packages/domain` | `@trading/domain` | `Implemented` |
+| `packages/database` | `@trading/database` | `Implemented` |
+| `apps/api` | `@trading/api` | `Implemented` |
+| `packages/application` | `@trading/application` | `Planned (B0)` — ADR-001 |
+| `packages/contracts` | `@trading/contracts` | `Planned (B0)` — ADR-002; folder exists with `.gitkeep` only |
+| `@trading/market-sim` | `@trading/market-sim` | `Implemented` (B5) — ADR-007 point 7; the package lives at `packages/market-sim` |
+| `apps/web` | none | `Planned (FE)` — ADR-002 point 5, ADR-006 point 1; wireframe files only, not a workspace package |
+| `packages/config` | none | `Deferred` — `.gitkeep` only; no decision gives it content |
 
 ---
 
 # 5. System Context
 
-```text id="5b5hxn"
-                    ┌───────────────────┐
-                    │   Portfolio User  │
-                    └─────────┬─────────┘
-                              │
-                              ▼
-                    ┌───────────────────┐
-                    │   Web Client      │
-                    │ React + TypeScript│
-                    └─────────┬─────────┘
-                              │
-                   ┌──────────┴──────────┐
-                   │                     │
-                   ▼                     ▼
-             Application API       Realtime Channel
-                   │                     │
-                   ▼                     ▼
-             Backend Services      Event Processing
-                   │
-          ┌────────┼─────────┐
-          ▼        ▼         ▼
-       Database  Cache   External APIs
+**Status:** `Implemented` (local backend); public demo `Planned (FE)` — ADR-006 points 1, 7.
+
+```text
+HTTP client (tests, curl) --HTTP--> @trading/api (Express, port 7001) --Prisma--> PostgreSQL 18 (docker-compose)
 ```
 
-In Demo Mode:
-
-```text id="p5f4q3"
-                    Web Client
-                        │
-                        ▼
-                Application Layer
-                        │
-                        ▼
-                 Mock Adapters
-                  │           │
-                  ▼           ▼
-             Seed Data   Simulation Engine
-```
+There is no web client yet. ADR-006 fixes exactly two targets: the local
+full stack and a static demo build of `apps/web` with no backend. No public
+backend exists or is planned.
 
 ---
 
@@ -192,1519 +143,897 @@ In Demo Mode:
 
 ## 6.1 Demo Mode
 
-The public demo must run without requiring:
+**Status:** `Planned (FE)` — ADR-001 point 4, ADR-002 point 5, ADR-006 point 7.
 
-- paid APIs;
-- external financial providers;
-- persistent backend infrastructure;
-- paid authentication;
-- paid realtime services.
-
-Architecture:
-
-```text id="p4c2dq"
-React Application
-       │
-       ▼
-Application Services
-       │
-       ▼
-Domain Logic
-       │
-       ├───────────────┐
-       ▼               ▼
-Mock Repositories   Simulation Engine
-       │               │
-       └───────┬───────┘
-               ▼
-          Session State
-```
-
----
+The demo runs the real `@trading/application` use cases in the browser,
+composed with in-memory repositories, behind the `TradingClient` in-process
+adapter. It calls no backend, holds no secrets, uses namespaced browser
+storage and runs under a configurable base path. There is no mock HTTP
+layer (ADR-001, Alternatives).
 
 ## 6.2 Production Mode
 
-The complete application uses real infrastructure.
+**Status:** `Implemented` (local only); `APP_MODE` `Planned (FE)` — ADR-006 point 8.
 
-```text id="n4k5ha"
-React Client
-     │
-     ▼
-HTTP API
-     │
-     ▼
-Backend Application
-     │
- ┌───┼───────────────┐
- ▼   ▼               ▼
-DB  Cache      External Services
-     │
-     ▼
-Realtime Infrastructure
-```
+ADR-006 calls this the real mode (`APP_MODE=real`; `VITE_APP_MODE` in the
+web build). It runs only on the author's machine. `APP_MODE` is not read by
+the API today.
 
 ---
 
 # 7. Frontend Architecture
 
-The frontend uses a feature-oriented modular architecture.
+**Status:** `Planned (FE)` — ADR-002 point 5, ADR-005 point 4, ADR-007 point 13; `apps/web` is a React and Vite app in progress (FE0 and FE1).
 
-Recommended structure:
+Already decided, to apply in the frontend stage:
 
-```text id="0knc7q"
-src/
-├── app/
-│   ├── router/
-│   ├── providers/
-│   ├── configuration/
-│   └── bootstrap/
-│
-├── features/
-│   ├── auth/
-│   ├── dashboard/
-│   ├── portfolios/
-│   ├── positions/
-│   ├── transactions/
-│   ├── assets/
-│   ├── watchlist/
-│   ├── analytics/
-│   ├── decisions/
-│   ├── scenarios/
-│   └── notifications/
-│
-├── entities/
-│   ├── portfolio/
-│   ├── asset/
-│   ├── position/
-│   ├── transaction/
-│   └── decision/
-│
-├── shared/
-│   ├── components/
-│   ├── hooks/
-│   ├── utilities/
-│   ├── validation/
-│   └── types/
-│
-├── infrastructure/
-│   ├── api/
-│   ├── repositories/
-│   ├── realtime/
-│   ├── mock/
-│   └── storage/
-│
-└── domain/
-    ├── portfolio/
-    ├── analytics/
-    ├── scenarios/
-    └── decisions/
-```
+- The UI consumes DTOs only through a `TradingClient` port with an HTTP
+  adapter and an in-process adapter (ADR-002 point 5).
+- The access token is kept in memory only (ADR-005 point 4); a 401 triggers
+  one refresh and retry (ADR-005, Consequences).
+- Realtime goes through a client-side port with a WebSocket adapter and an
+  in-process adapter fed by `@trading/market-sim` (ADR-007 point 13).
+- The stack is React 19 with Vite, Tailwind, shadcn/ui on Radix, TanStack
+  Query for server state, Zustand for client state, React Router, Recharts,
+  TanStack Table and React Hook Form with Zod (ADR-011 points 1-9, Proposed).
 
-The exact directory structure may evolve during implementation.
-
-The important constraint is ownership and dependency direction.
+The workspace is `apps/web`, package `@trading/web` (`Implemented`, FE0.1).
+The web app consumes the workspace packages through the `@trading/source`
+condition (Vite `resolve.conditions`), as the API does, and references
+`@trading/contracts` in its `tsconfig` (`Implemented`, FE0.5).
 
 ---
 
 # 8. Feature Modules
 
-Each feature should own its feature-specific:
-
-- UI;
-- hooks;
-- application interactions;
-- validation;
-- types;
-- queries;
-- mutations.
-
-Example:
-
-```text id="r48kqj"
-features/transactions/
-
-components/
-hooks/
-queries/
-mutations/
-schemas/
-types/
-```
-
-A feature should not directly manipulate another feature's internal implementation.
+**Status:** `Deferred` — frontend; no ADR decides it; see §7.
 
 ---
 
 # 9. Shared Layer
 
-The shared layer contains genuinely reusable infrastructure.
+**Status:** `Implemented` as workspace packages; frontend shared UI `Planned (FE)` — shadcn/ui components copied into `apps/web` (ADR-011 point 3, Proposed).
 
-Examples:
-
-- Button;
-- Dialog;
-- Input;
-- Table;
-- Tooltip;
-- Date utilities;
-- formatting;
-- generic hooks;
-- design primitives.
-
-Shared components must remain domain-agnostic.
-
-A portfolio-specific component should not be placed in `shared`.
+Code shared between runtimes lives in workspace packages, never in an app:
+`@trading/domain` today; `@trading/application`, `@trading/contracts` and
+`@trading/market-sim` when built (§4).
 
 ---
 
 # 10. Domain Layer
 
-The domain layer contains business rules that should remain independent from:
+**Status:** `Implemented`
 
-- React;
-- HTTP;
-- browser APIs;
-- database;
-- UI components.
+`packages/domain/src/`:
 
-Examples:
+| Folder | Contents |
+| --- | --- |
+| `entities/` | 16 entities plus `enums.ts`, with their validators and `Invalid*Error` classes |
+| `value-objects/` | `money.ts` (`Money`, `InvalidMoneyError`, `CurrencyMismatchError`) |
+| `calculations/` | `allocation`, `attribution`, `decision-replay`, `drawdown`, `portfolio-daily-change`, `portfolio-metrics`, `portfolio-pulse`, `position-metrics`, `position-recalculation`, `scenario-comparison`, `scenario-impact`, `volatility` |
+| `repositories/` | 16 repository contracts, `UnitOfWork`, `pagination.ts` (`Page`, `PageRequest`) |
 
-```text id="c6w5e4"
-calculatePositionMetrics()
-calculatePortfolioMetrics()
-calculateAllocation()
-calculateAttribution()
-calculateDrawdown()
-calculateVolatility()
-calculateScenarioImpact()
-calculatePortfolioPulse()
-```
+Rules:
 
-These functions should be deterministic where possible.
+- Calculations are pure and deterministic: no I/O, no clock reads, no
+  randomness. Callers pass in every input.
+- Domain errors are plain `Error` subclasses named `Invalid*Error` or
+  `Insufficient*Error`; they carry no transport concept (§29).
+- Money is `Money` over `Decimal`, never a JavaScript number
+  (`05-data-model.md`).
+- Repository contracts document ordering and behavior precisely enough to be
+  implemented in memory (ADR-001, Consequences).
+
+Portfolio-level performance and risk calculations are `Implemented`
+(ADR-004, `16-analytics-spec.md`).
 
 ---
 
 # 11. Application Layer
 
-The application layer coordinates domain operations.
+**Status:** `Implemented` inside `apps/api/src/services/`; `@trading/application` `Planned (B0)`.
 
-Examples:
+Today the use cases are the 15 modules in `apps/api/src/services/`, one per
+resource. They check ownership, call domain validators and calculations,
+compose read models (overview, scenario calculate and compare, decision
+replay, allocation, attribution) and throw `AppError` with HTTP status codes
+(11 modules).
 
-```text id="r0r4oh"
-CreatePortfolio
-RecordTransaction
-UpdateWatchlist
-CreateScenario
-CalculateScenario
-ReplayDecision
-GetPortfolioOverview
-GetPerformanceAnalytics
-```
+Target (ADR-001):
 
-Application services may coordinate:
+1. `@trading/application` depends only on `@trading/domain`; no Prisma,
+   Express, Zod transport schemas or browser APIs (enforced by lint, §43).
+2. One factory per resource returning the current functions, for example
+   `createPortfolioService({ portfolioRepository })`. No use-case classes or
+   command bus.
+3. Callers pass an `Actor { userId, role }` instead of a bare `userId`; every
+   use case checks permission and ownership (ADR-005 point 3).
+4. Transport-free errors defined in the application package (§29).
+5. Composite read models belong here (ADR-001 point 6).
+6. Unit tests use in-memory fake repositories (§60).
 
-- repositories;
-- domain calculations;
-- validation;
-- transactions;
-- event publication.
-
-They should not contain presentation logic.
+Later additions to the same package: the `Logger` port (ADR-009 point 1,
+`Implemented`, B3.1), the CSV import use case (ADR-008, `Implemented` (B4)) and
+realtime subscription authorization (ADR-007 point 3, `Implemented` (B5)).
 
 ---
 
 # 12. Repository Pattern
 
-Repositories provide an abstraction over data access.
+**Status:** `Implemented`; in-memory implementations `Planned (B0)`.
 
-Example:
+- Contracts: `packages/domain/src/repositories/*-repository.ts`, exported as
+  types from `@trading/domain`.
+- Implementations: `packages/database/src/repositories/prisma-*-repository.ts`,
+  exported from `@trading/database`. Each accepts an optional
+  `DatabaseClient` (the shared client or a transaction client) so it can
+  join a unit of work.
+- Mapping between Prisma rows and domain entities: `packages/database/src/mappers/`.
+- Paginated list methods take `PageRequest` and return `Page<T>`.
 
-```text id="xczp4w"
-interface PortfolioRepository {
-  getAll(): Promise<Portfolio[]>
-  getById(id: string): Promise<Portfolio | null>
-  create(input: CreatePortfolioInput): Promise<Portfolio>
-  update(id: string, input: UpdatePortfolioInput): Promise<Portfolio>
-  delete(id: string): Promise<void>
-}
-```
-
-The application layer depends on the interface.
-
-Implementations may include:
-
-```text id="pr6n0k"
-MockPortfolioRepository
-ApiPortfolioRepository
-```
+A contract method exists only when a use case needs it; contracts are not
+generic CRUD interfaces.
 
 ---
 
 # 13. Mock Infrastructure
 
-The demo uses mock implementations behind the same contracts.
+**Status:** `Planned (B0)` for in-memory repositories and `UnitOfWork`; demo wiring `Planned (FE)` — ADR-001 point 4.
 
-Example:
+In-memory implementations of every repository contract and of `UnitOfWork`
+(with rollback) are built for the application unit tests in B0 and become
+the demo's repositories (ADR-001). The Prisma adapter follows the same
+isolation rule (§3.4).
 
-```text id="w4g2o9"
-PortfolioRepository
-      │
-      ├── MockPortfolioRepository
-      │
-      └── ApiPortfolioRepository
-```
-
-This allows the UI and application logic to remain identical.
+Open detail (B0): the package that hosts the in-memory implementations so
+both the tests and the web build can import them.
 
 ---
 
 # 14. Mock Data Engine
 
-The mock infrastructure should contain separate responsibilities.
+**Status:** `Implemented` for the seed (`packages/database/src/seed`); demo data `Deferred`.
 
-```text id="y5x4gk"
-Seed Data
-    ↓
-Mock Store
-    ↓
-Repository
-    ↓
-Application
-```
-
-The seed data should not be mutated directly.
-
-The mock store owns session mutations.
+The seed is an explicit development command (`db:seed`), never run
+automatically (ADR-006 point 5). Demo data layers are specified in
+`05-data-model.md` §33-35 and `12-demo-mode-spec.md`.
 
 ---
 
 # 15. Mock API Simulation
 
-The mock adapter should simulate realistic asynchronous behavior.
+**Status:** `Deferred` — superseded by ADR-001 and ADR-002.
 
-Capabilities:
-
-- configurable latency;
-- successful responses;
-- validation errors;
-- server errors;
-- timeout;
-- retryable failures.
-
-Example:
-
-```text id="w19h8q"
-Repository call
-      ↓
-Simulated latency
-      ↓
-Scenario selection
-      ↓
-Success / Error
-      ↓
-Response
-```
-
-The UI must consume it exactly like an asynchronous real service.
+No mock HTTP layer is built. The demo calls the application layer in
+process (§6.1).
 
 ---
 
 # 16. Failure Injection
 
-The demo should provide controlled failure simulation.
-
-Possible mechanisms:
-
-```text id="cnc9w8"
-Demo Controls
-    │
-    ├── Force API Error
-    ├── Force Timeout
-    ├── Simulate Realtime Disconnect
-    └── Force Background Failure
-```
-
-Failure injection must remain isolated from normal production logic.
+**Status:** `Planned (FE)` for CSV import failure injection in the demo — ADR-008 point 13; other demo failure injection `Deferred`.
 
 ---
 
 # 17. State Management Strategy
 
-State should be classified before being stored.
+**Status:** `Planned (FE)` — ADR-011 points 4 and 5 (Proposed); see §7.
 
-## Server State
-
-Examples:
-
-- portfolios;
-- transactions;
-- positions;
-- assets;
-- historical data.
-
-Managed through a server-state strategy such as TanStack Query.
-
----
-
-## Client State
-
-Examples:
-
-- selected portfolio;
-- modal state;
-- filters;
-- UI preferences;
-- replay controls;
-- scenario editing state.
-
-Managed through lightweight client state such as Zustand where appropriate.
-
----
-
-## Derived State
-
-Examples:
-
-- portfolio performance;
-- allocation;
-- P/L;
-- pulse;
-- scenario results.
-
-Derived values should not automatically be persisted as independent client state.
+TanStack Query owns server data behind the `TradingClient` port. Zustand holds
+only state that is not server data (UI state, filters, session, simulator
+controls); server data is never copied into a store.
 
 ---
 
 # 18. State Ownership
 
-Every state value must have a clear owner.
+**Status:** `Implemented` on the server; client state `Planned (FE)` — ADR-002 point 5, ADR-005 point 4.
 
-Example:
-
-```text id="3yd7zj"
-Selected Portfolio
-      ↓
-Client State
-
-Portfolio Data
-      ↓
-Server State
-
-Portfolio Performance
-      ↓
-Derived Domain State
-```
-
-The architecture should avoid multiple competing sources of truth.
+PostgreSQL is the source of truth for persisted state; derived values
+(metrics, allocation, replay state) are computed on read and never stored
+(`05-data-model.md`). On the client, server state arrives only through
+`TradingClient` DTOs (ADR-002) and the access token lives in memory only
+(ADR-005).
 
 ---
 
 # 19. Server State Synchronization
 
-Mutations should invalidate or update relevant cached state.
+**Status:** `Planned (FE)` — ADR-007 points 5, 12; transport rules in §20-23.
 
-Example:
-
-```text id="y4m7b8"
-Create Transaction
-       ↓
-Transaction Cache
-       ↓
-Position Cache
-       ↓
-Portfolio Cache
-       ↓
-Analytics Cache
-```
-
-The final invalidation strategy should balance correctness and performance.
+On a sequence gap the client resynchronizes through HTTP; while the socket is
+down it shows a stale-data indicator and refetches periodically.
 
 ---
 
 # 20. Real-Time Architecture
 
-Real-time market events should be isolated from the UI.
+**Status:** `Implemented` (B5) — ADR-007.
 
-```text id="g3s0qf"
-Realtime Connection
-       ↓
-Event Adapter
-       ↓
-Event Normalization
-       ↓
-Application State
-       ↓
-Selective Updates
-       ↓
-UI
-```
+- Transport: WebSocket with the `ws` library, behind a transport port.
+- Channels: `market:{assetId}`, `portfolio:{portfolioId}`, `notifications`
+  (per user), and `jobs:{jobId}` (ADR-008 point 11). Job events are
+  `Implemented` (B5): the job lifecycle lands in B4, but the events need this
+  B5 transport.
+- Every subscription is authorized in the application layer by permission
+  and ownership.
+- Envelope `{ id, type, channel, sequence, timestamp, payload }` as Zod
+  schemas in `@trading/contracts`; money in the ADR-002 wire format.
+- Limits: subscriptions per connection, inbound rate limit, heartbeat every
+  30 seconds, bounded memory per connection.
 
-The UI must not directly parse raw realtime infrastructure events.
+The API serves the WebSocket on its own HTTP server through the `ws` transport adapter (B5).
 
 ---
 
 # 21. Event Model
 
-A normalized internal event structure should be used.
+**Status:** `Implemented` (B5), including job events (§20).
 
-Example:
+| Event | Emitted when |
+| --- | --- |
+| `MARKET_PRICE_UPDATED` | Each simulator tick |
+| `PORTFOLIO_UPDATED` | Holdings change, after the transaction commits |
+| `NOTIFICATION_CREATED` | A notification is created |
+| `ALERT_TRIGGERED` | An alert condition turns from false to true (on `notifications`) |
+| `JOB_PROGRESS_UPDATED`, `JOB_COMPLETED`, `JOB_FAILED` | Job progress, `COMPLETED` and `FAILED` (ADR-008); `CANCELLED` and `TIMED_OUT` emit none (ADR-007 point 15) |
 
-```text id="d1a8bh"
-{
-  type: "MARKET_PRICE_UPDATED",
-  assetId: "...",
-  price: 123.45,
-  timestamp: "...",
-  sequence: 1234
-}
-```
-
-Infrastructure-specific payload formats should be converted at the boundary.
+`TRANSACTION_CREATED`, `TRANSACTION_COMPLETED` and `POSITION_UPDATED` are
+removed (ADR-007 point 6).
 
 ---
 
 # 22. Real-Time State Updates
 
-When a market event arrives:
+**Status:** `Implemented` (B5) — ADR-007 points 6, 12, 14.
 
-```text id="5g0j3q"
-Market Event
-    ↓
-Validate
-    ↓
-Check ordering
-    ↓
-Update market state
-    ↓
-Recalculate affected position
-    ↓
-Recalculate affected portfolio metrics
-    ↓
-Update relevant analytics
-    ↓
-Notify UI subscribers
-```
-
-Unrelated portfolios or components should not be recalculated unnecessarily.
+The client recomputes valuations from price events; the server does not
+push per-portfolio valuations on ticks. `MarketPrice.change` and
+`changePercent` stay measured against the last closed daily candle; the
+tick-to-tick delta exists only in the event payload. While the socket is
+down, the UI shows stale data and refetches over HTTP.
 
 ---
 
 # 23. Real-Time Connection Lifecycle
 
-The realtime subsystem must expose connection state:
+**Status:** `Implemented` (B5) — ADR-007 points 2, 5, 11.
 
-```text id="9kz1w2"
-DISCONNECTED
-      ↓
-CONNECTING
-      ↓
-CONNECTED
-      ↓
-RECONNECTING
-      ↓
-CONNECTED
+```text
+connect -> first message carries access token (closed if absent after 5 s)
+        -> socket bound to that token's expiry
+        -> client re-authenticates after each refresh (role and ownership reloaded)
+        -> token expires without re-authentication: server closes the socket
+sequence gap on a channel -> client resynchronizes over HTTP (no replay buffer)
 ```
-
-Failure:
-
-```text id="5m0s9c"
-RECONNECTING
-      ↓
-FAILED
-```
-
-The UI consumes normalized connection state.
 
 ---
 
 # 24. Backend Architecture
 
-The backend should follow modular boundaries.
+**Status:** `Implemented`
 
-Conceptual structure:
+`apps/api` is an Express 5 application. `src/app.ts` builds the app without
+listening (used by supertest); `src/index.ts` listens on `env.PORT`.
 
-```text id="d2y2s5"
-backend/
-├── modules/
-│   ├── auth/
-│   ├── portfolios/
-│   ├── positions/
-│   ├── transactions/
-│   ├── assets/
-│   ├── market/
-│   ├── analytics/
-│   ├── decisions/
-│   ├── scenarios/
-│   └── notifications/
-│
-├── shared/
-│   ├── errors/
-│   ├── validation/
-│   ├── logging/
-│   └── utilities/
-│
-└── infrastructure/
-    ├── database/
-    ├── cache/
-    ├── realtime/
-    └── external/
+Middleware order in `createApp`:
+
+```text
+helmet -> cors(CORS_ORIGIN) -> requestId -> health routes -> general rate limiter
+       -> express.json(100kb) -> resource routers -> 404 (AppError) -> errorHandler
 ```
 
-The final backend framework can be selected based on the implementation trade-offs.
+Request path inside a router:
+
+```text
+route -> authenticate -> validate(schema, source) -> controller -> service -> repository / UnitOfWork
+```
 
 ---
 
 # 25. Backend Module Structure
 
-Each major module should separate responsibilities.
+**Status:** `Implemented`; relocation of services `Planned (B0)`.
 
-Conceptually:
+`apps/api/src/` is organized by technical layer, one file per resource:
 
-```text id="9uqxwi"
-module/
-├── domain/
-├── application/
-├── infrastructure/
-└── presentation/
-```
+| Folder | Contents |
+| --- | --- |
+| `config/` | `env.ts` (validated environment, §45) |
+| `routes/` | 15 routers (`health.ts`, `*.routes.ts`) |
+| `controllers/` | 15 controllers: read `req.auth`, params and validated input, call services, send JSON |
+| `services/` | 15 service modules (§11) |
+| `schemas/` | 13 Zod request schemas |
+| `middleware/` | `authenticate`, `error-handler`, `rate-limit`, `request-id`, `validate` |
+| `errors/` | `app-error.ts` |
+| `test-utils/` | `api-client`, `auth`, `fixtures` |
 
-Not every small feature requires all four directories.
+Resources: alerts, analytics, assets, auth, decisions, health, market,
+notifications, overview, portfolios, positions, preferences (user
+preferences), scenarios, transactions, watchlist.
 
-Architecture should scale with complexity.
+Target (ADR-001 point 4, ADR-002 point 2): services move to
+`@trading/application`, schemas to `@trading/contracts`, and
+`apps/api/src/composition.ts` becomes the only place that builds Prisma
+repositories and injects them; routes and controllers receive composed
+services.
 
 ---
 
 # 26. API Boundary
 
-The backend exposes purpose-specific APIs rather than exposing database structures directly.
+**Status:** `Implemented`; response contracts `Planned (B0)`.
 
-Example:
-
-```text id="l7lq6q"
-GET /portfolios
-GET /portfolios/:id
-POST /portfolios
-
-GET /portfolios/:id/positions
-GET /portfolios/:id/transactions
-
-GET /portfolios/:id/analytics
-GET /portfolios/:id/decisions
-GET /portfolios/:id/scenarios
-```
-
-Exact endpoint design will be defined in `07-api-spec.md`.
+- Every resource route is under `/api/v1`; `/health` and `/health/ready`
+  sit outside it and before the rate limiter.
+- Within `/api/v1` only additive changes are allowed; a breaking change
+  needs a new version (ADR-002 point 8).
+- Endpoint inventory: `07-api-spec.md`.
 
 ---
 
 # 27. DTO Boundary
 
-External API responses should use DTOs.
+**Status:** `Planned (B0)` — ADR-002; OpenAPI `Implemented` (B6).
 
-```text id="v9d3y1"
-Database Model
-      ↓
-Domain Model
-      ↓
-Application
-      ↓
-Response DTO
-      ↓
-API
-```
+Today controllers return domain objects and Express serializes them; the
+money shape `{ amount: "100", currency: "USD" }` emerges from `Decimal`'s
+`toJSON`. Target:
 
-Database implementation details must not leak into the client.
+- Response schemas, error envelope and pagination `meta` in
+  `@trading/contracts`.
+- Presenters (for example `toPortfolioDto`) in `@trading/contracts`;
+  controllers never serialize a domain object.
+- Wire format: money `{ amount: string, currency: string }` with a decimal
+  string, ISO-8601 UTC dates, ratios as numbers, identifiers as strings.
+- Responses validated in API contract tests and in the demo adapter during
+  development, not in production.
 
 ---
 
 # 28. Validation Architecture
 
-Validation should occur at multiple boundaries.
+**Status:** `Implemented`; schema relocation `Planned (B0)`.
 
-```text id="qv5h7d"
-User Input
-    ↓
-Frontend Schema
-    ↓
-API Validation
-    ↓
-Application Rules
-    ↓
-Domain Rules
-```
+| Layer | Mechanism |
+| --- | --- |
+| Boundary | Zod schemas in `apps/api/src/schemas/`, applied by `validate(schema, "body" \| "query")` |
+| Body parsing | Malformed or oversized JSON mapped to `VALIDATION_ERROR` |
+| Domain | Entity validators (`validateNewTransaction` and others) throw `Invalid*Error` |
+| Configuration | `env.ts` parses `process.env` with Zod and exits on failure |
 
-Each layer serves a different purpose.
+ADR-001 point 5: request schemas move to `@trading/contracts`; the
+application receives typed inputs; domain invariants stay in the domain.
 
 ---
 
 # 29. Error Architecture
 
-The backend should expose normalized application errors.
+**Status:** `Implemented`; transport-free application errors `Planned (B0)`; error logging `Implemented` (B3.1).
 
-Categories may include:
+Current behavior (`apps/api/src/middleware/error-handler.ts`):
 
-```text id="y1g7d2"
-VALIDATION_ERROR
-UNAUTHORIZED
-FORBIDDEN
-NOT_FOUND
-CONFLICT
-TIMEOUT
-DEPENDENCY_ERROR
-INTERNAL_ERROR
-```
+| Error | Response |
+| --- | --- |
+| `AppError` | its `statusCode` and `code` |
+| Body-parser error | 4xx `VALIDATION_ERROR` |
+| Domain `Invalid*Error` / `Insufficient*Error` | 400 `VALIDATION_ERROR` |
+| Anything else (including `CurrencyMismatchError`) | 500 `INTERNAL_ERROR`, no stack trace |
 
-The frontend should map these into appropriate UX states.
+`AppErrorCode`: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`,
+`CONFLICT`, `RATE_LIMITED`, `DEPENDENCY_ERROR`, `INTERNAL_ERROR`.
+Envelope: `{ error: { code, message, requestId, details? } }`.
 
-Internal stack traces must never be exposed to users.
+Target: the application throws `NotFoundError`, `ConflictError` and similar
+(ADR-001 point 3); the API error handler maps them to HTTP and the demo to UI
+states. The envelope becomes a schema in `@trading/contracts` (ADR-002). The
+handler logs by category (ADR-009 point 6).
 
 ---
 
 # 30. Transaction Boundaries
 
-Operations that modify multiple related records should use explicit transaction boundaries where persistence technology supports them.
+**Status:** `Implemented` for transaction creation; further boundaries `Planned` per block.
 
-Example:
+`UnitOfWork.run(work)` (domain contract) runs `work` atomically.
+`PrismaUnitOfWork` uses an interactive `prisma.$transaction` and hands `work`
+transaction-bound `transactions` and `positions` repositories; any error
+rolls back and is rethrown unchanged.
 
-```text id="z3j2xk"
-Create Transaction
-       │
-       ├── Transaction Record
-       ├── Position Update
-       └── Related State
-              │
-              ▼
-          Commit
-```
+`createTransaction` validates the input, then in one unit of work locks the
+portfolio and asset, reads the asset's transactions, rebuilds the position by
+replaying them in date order with `replayPosition`, and writes the transaction
+and the position together.
 
-Failure should result in rollback where required.
+| Boundary | Decision | Status |
+| --- | --- | --- |
+| Isolation for concurrent position updates | ADR-001 Deferred detail | `Implemented` (advisory lock, `lockPortfolioAsset`) |
+| In-memory `UnitOfWork` with rollback, serialized | ADR-001 Deferred detail | `Implemented` |
+| Chronological holding check inside the unit | ADR-003 point 6 | `Implemented` (`replayPosition`) |
+| CSV apply in one unit that also sets `COMPLETED` | ADR-008 points 2, 5 | `Implemented` (B4.3) |
+| Idempotency record written in the mutation's unit | ADR-008 Deferred detail | `Implemented` (B4.4) |
+| Alert state and notification in one transaction | ADR-007 Deferred detail | `Implemented` (B5) |
 
 ---
 
 # 31. Event-Driven Capabilities
 
-The architecture should support internal events where they provide real value.
+**Status:** `Implemented` (B5) for in-process realtime emission; a message broker is `Deferred`.
 
-Example:
+Events are emitted in process to the realtime transport after the
+originating write commits (ADR-007 point 6). There is no broker or outbox
+(ADR-008, Alternatives).
 
-```text id="1y2n8m"
-TransactionCompleted
-        ↓
- ┌──────┼──────────┐
- ↓      ↓          ↓
-Position Analytics Notification
-Update   Update      Check
-```
-
-Events should not be introduced merely for architectural appearance.
+Open detail (B5): an event lost between commit and emission (crash) is not
+recovered; clients converge on reconnect through the HTTP resynchronization
+of ADR-007 point 5.
 
 ---
 
 # 32. Background Processing
 
-Long-running tasks should not block synchronous API requests.
+**Status:** `Implemented` (B4) for jobs; simulator ticks, rollover and backfill `Implemented` (B5).
 
-Potential tasks:
-
-- large analytics calculations;
-- imports;
-- historical data processing;
-- report generation.
-
-Conceptually:
-
-```text id="z8q4sp"
-Request
-  ↓
-Create Job
-  ↓
-Queued
-  ↓
-Processing
-  ↓
-Completed / Failed
-```
-
-The public demo shall simulate this lifecycle.
+- Jobs (ADR-008): one use case, CSV transaction import; an in-process runner
+  backed by a `jobs` table; input stored in the row; states `QUEUED`,
+  `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`; validate
+  stage then apply stage. Transactions stay synchronous.
+- Simulator (ADR-007 point 8): runs in the API process; ticks update
+  `MarketPrice` and append `MarketEvent`; at each UTC rollover it closes a
+  daily candle; on startup it backfills candles for offline days.
 
 ---
 
 # 33. Caching Strategy
 
-Caching should be introduced where it solves a demonstrated performance problem.
-
-Potential candidates:
-
-- frequently requested portfolio summaries;
-- market state;
-- historical analytics;
-- static reference data.
-
-The cache must never become the only authoritative source for critical data.
+**Status:** `Deferred` — no cache exists and none is decided.
 
 ---
 
 # 34. Database Strategy
 
-The production application should use a relational or otherwise appropriate persistent datastore capable of maintaining transactional integrity.
+**Status:** `Implemented`; migrations in the `full` profile through the `migrate` service `Implemented` (B7.3).
 
-The exact database technology will be selected based on:
+- PostgreSQL 18 via `docker-compose.yml`; Prisma 6 schema and migrations in
+  `packages/database/prisma/`.
+- Separate development and test databases (`.env`, `.env.test.local`).
+- Migrations: `db:migrate` in development, `db:test:migrate`
+  (`migrate deploy`) for tests.
+- ADR-006 points 5-6: the one-shot `migrate` service applies `prisma migrate deploy` before
+  the API starts (the API entrypoint is plain `node dist/index.js`); the
+  seed never runs automatically; rollback is forward-fix only.
 
-- relational requirements;
-- query patterns;
-- free-tier availability;
-- operational simplicity;
-- developer experience.
-
-The demo does not require a production database.
+Data model: `05-data-model.md`.
 
 ---
 
 # 35. Persistence Abstraction
 
-Persistence access must remain behind infrastructure boundaries.
+**Status:** `Implemented`
 
-```text id="7e1x9r"
-Application
-     ↓
-Repository
-     ↓
-Persistence Adapter
-     ↓
-Database
-```
-
-This allows the domain/application layers to remain independent of the selected database technology.
+`client.ts` exports the shared `PrismaClient` singleton and the
+`DatabaseClient` type (`PrismaClient | Prisma.TransactionClient`).
+Repositories and `PrismaUnitOfWork` are the only consumers. Nothing outside
+`@trading/database` imports Prisma.
 
 ---
 
 # 36. Authentication Architecture
 
-Authentication should be isolated as a dedicated capability.
+**Status:** `Implemented` (login, `me`, refresh, logout, Bearer JWT); sessions `Implemented` (B2.3, B2.4).
 
-```text id="u2v0na"
-Authentication
-      ↓
-Identity
-      ↓
-Session
-      ↓
-Authorization
-```
-
-The application should not scatter authentication logic across individual features.
+- Passwords hashed with `bcryptjs`; login rate-limited to 5 attempts per 15
+  minutes.
+- Access token: JWT, 15 minutes (`JWT_EXPIRES_IN_SECONDS`, default 900),
+  Bearer header. `authenticate` verifies it and sets
+  `req.auth = { userId, role }`.
+- ADR-005 points 4-8: opaque refresh token stored hashed in a sessions
+  table, rotated on use, sent in an `HttpOnly`, `SameSite=Strict` cookie
+  scoped to `/api/v1/auth`; refresh and logout endpoints; login response
+  `{ user, session: { accessToken, expiresAt } }`.
 
 ---
 
 # 37. Authorization Architecture
 
-Authorization must be enforced at protected application boundaries.
+**Status:** `Implemented` (ownership); permissions `Implemented` (B0, B2.2) and roles `Implemented` (B2.1).
 
-Conceptually:
+Today services check ownership and return 404 for another user's resource,
+never 403. No route checks roles.
 
-```text id="6yqv95"
-Request
-  ↓
-Authenticate
-  ↓
-Identify User
-  ↓
-Check Permission
-  ↓
-Execute Use Case
-```
-
-The frontend may hide unavailable actions for UX purposes but must not be responsible for enforcement.
+ADR-005 points 1-3: roles `VIEWER`, `TRADER`, `ADMIN` built from an explicit
+permission matrix (`09-security-spec.md`). Code checks permissions, never
+role names. Enforcement lives in the application layer with an `Actor`, so
+the API and the demo apply identical rules; Express middleware only
+authenticates and builds the `Actor`.
 
 ---
 
 # 38. Security Boundary
 
-The security boundary exists primarily at the backend.
+**Status:** `Implemented`; cookie CSRF header `Implemented` (B2.4); hardening checklist `Implemented` (B7.6).
 
-```text id="4r4snb"
-Untrusted Client
-       ↓
-API Boundary
-       ↓
-Validation
-       ↓
-Authorization
-       ↓
-Application
-       ↓
-Domain
-       ↓
-Infrastructure
-```
-
-No client-provided value should be trusted simply because the frontend validated it.
+`x-powered-by` disabled, `helmet`, CORS restricted to `CORS_ORIGIN`, a
+general rate limit (300 requests per 15 minutes) after health routes, a
+100 kB JSON body limit, and fail-fast environment validation. Refresh and
+logout require a custom request header (ADR-005 point 7, B2.4). Full rules:
+`09-security-spec.md`.
 
 ---
 
 # 39. Observability Architecture
 
-The backend should provide:
+**Status:** `Implemented` (request IDs, health, readiness); logging `Implemented` (B3.1, B3.2); metrics `Deferred`.
 
-- structured logging;
-- request correlation;
-- error context;
-- health checks;
-- relevant domain events.
+Today: `request-id` middleware, `/health` and `/health/ready`, and
+`console.log` / `console.error` at startup.
 
-Example:
-
-```text id="x7t8kp"
-Request
-  ↓
-Correlation ID
-  ↓
-Application Service
-  ↓
-Repository
-  ↓
-Structured Logs
-```
-
-Sensitive information must be excluded.
+ADR-009: a `Logger` port in `@trading/application` with a pino adapter in
+the API and a console adapter in the demo; one JSON line per event with a
+stable dotted `event` name; fixed redaction list; `requestId` propagated
+through `AsyncLocalStorage`, `jobId` on jobs and `connectionId` on sockets;
+`LOG_LEVEL`; slow-request warning (default 500 ms). Metrics are `Deferred`
+(ADR-009 point 10).
 
 ---
 
 # 40. Frontend Error Boundaries
 
-The frontend should isolate unexpected rendering failures.
-
-A component failure should not necessarily destroy the entire application session.
-
-Appropriate boundaries should exist around major application surfaces.
+**Status:** `Deferred` — frontend; no ADR decides it; see §7.
 
 ---
 
 # 41. Routing Architecture
 
-Routes should be separated into:
+**Status:** `Planned (FE)` — ADR-011 point 6 (Proposed); API routing is in §24-26.
 
-```text id="q7e8ny"
-Public
-├── /
-├── /projects
-└── /demo
-
-Authenticated
-├── /dashboard
-├── /portfolios
-├── /transactions
-├── /analytics
-├── /decisions
-└── /scenarios
-```
-
-The exact public route structure may depend on portfolio integration.
+React Router, with role-protected routes (ADR-005) and the configurable base
+path (ADR-006 point 7).
 
 ---
 
 # 42. Feature Dependency Rules
 
-Feature modules should not create uncontrolled dependency graphs.
+**Status:** `Implemented` for the API; frontend `Deferred`.
 
-Preferred:
-
-```text id="d2u3v8"
-Feature
-   ↓
-Application Contract
-   ↓
-Domain
-```
-
-Avoid:
-
-```text id="n5v7y3"
-Feature A → Feature B → Feature C → Feature A
-```
-
-Circular dependencies are prohibited.
+Within `apps/api`: routes import controllers, middleware and schemas;
+controllers import services; services import `@trading/database`,
+`@trading/domain` and other services (for example `transaction.service`
+reuses `getPortfolioById` for ownership). Nothing imports routes or
+controllers except `app.ts`.
 
 ---
 
 # 43. Import Boundaries
 
-The implementation should enforce architectural boundaries through tooling where practical.
+**Status:** `Implemented` through workspace dependencies and TypeScript references; the `@trading/application` lint rule `Implemented` (B0.5), the others `Planned (B0)`.
 
-Possible mechanisms:
+Enforced today: a package can only import workspace packages listed in its
+`package.json`, and `tsconfig.json` references build `domain` before
+`database` before `api`. `eslint.config.js` enforces the `@trading/application`
+row below with `no-restricted-imports` (source files only; tests may import
+their runner). The other rows are not enforced yet.
 
-- ESLint import restrictions;
-- path aliases;
-- module conventions;
-- dependency rules.
+Rules to enforce with lint in B0 (ADR-001 point 1, ADR-002 point 1):
 
-Architecture should be enforced automatically where possible rather than relying solely on documentation.
+| Package | Must not import |
+| --- | --- |
+| `@trading/domain` | any other `@trading/*`, Prisma, Express, Zod, browser APIs |
+| `@trading/application` | anything except `@trading/domain` |
+| `@trading/contracts` | anything except `zod` and `@trading/domain` (types and enum values) |
+| `@trading/market-sim` | anything except `@trading/domain` (ADR-007 point 7, B5) |
 
 ---
 
 # 44. Dependency Direction
 
-Preferred dependency direction:
+**Status:** `Implemented` (current graph); target graph `Planned (B0)` and `Implemented` (B5); web edge `Planned (FE)`.
 
-```text id="0o9s8e"
-Presentation
-     ↓
-Application
-     ↓
-Domain
+Current:
 
-Infrastructure → Application/Domain Contracts
+```text
+@trading/api --> @trading/database --> @trading/domain
+@trading/api ----------------------------^
 ```
 
-The domain should not depend on:
+Target (ADR-001, ADR-002, ADR-007):
 
-- React;
-- database drivers;
-- HTTP clients;
-- browser APIs.
+```text
+@trading/api --> application, contracts, database, market-sim
+application  --> domain
+contracts    --> domain (types, enums), zod
+database     --> domain
+market-sim   --> domain
+web (demo)   --> application, contracts, market-sim, in-memory repositories   [Planned (FE)]
+```
+
+The domain depends on nothing internal.
 
 ---
 
 # 45. Configuration
 
-Configuration should be centralized.
+**Status:** `Implemented`; `LOG_LEVEL` `Implemented` (B3.1); `APP_MODE` `Planned (FE)` — ADR-006 point 8.
 
-Examples:
-
-```text id="p9x4m0"
-API URL
-Environment
-Feature Flags
-Demo Mode
-Realtime Configuration
-Logging Level
-```
-
-Configuration should not be scattered throughout feature modules.
+`apps/api/src/config/env.ts` validates `NODE_ENV` (`development`, `test`,
+`production`), `PORT` (default `7001`), `JWT_SECRET` (32+ characters),
+`JWT_EXPIRES_IN_SECONDS` (default `900`) and `CORS_ORIGIN` (comma-separated).
+`DATABASE_URL` is read by Prisma. Scripts load `.env` or `.env.test.local`
+with `dotenv-cli`. Canonical names are fixed by ADR-006 point 8.
 
 ---
 
 # 46. Feature Flags
 
-Feature flags may be used for:
-
-- experimental capabilities;
-- demo-only functionality;
-- gradual rollout.
-
-They should not become a substitute for proper architecture.
+**Status:** `Deferred` — none exist and none are decided.
 
 ---
 
 # 47. Demo Mode Boundary
 
-Demo-specific capabilities should live behind an explicit boundary.
+**Status:** `Planned (FE)` — ADR-001 point 4, ADR-005 point 11, ADR-006 point 7.
 
-Example:
-
-```text id="u8q1w7"
-DemoController
-    │
-    ├── Seed
-    ├── Reset
-    ├── Simulation
-    └── Failure Injection
-```
-
-Production application logic should not depend on this controller.
+The demo replaces only repositories and adapters. It runs the same
+permission checks with a demo identity and role selector, calls no backend
+and ships no secrets.
 
 ---
 
 # 48. Demo Simulation Engine
 
-The simulation engine is responsible for controlled artificial events.
+**Status:** `Implemented` (B5) — ADR-007 point 7.
 
-Potential responsibilities:
-
-- price generation;
-- event scheduling;
-- connection interruption;
-- background job simulation;
-- failure injection.
-
-It should expose events through the same normalized event contracts used by the real infrastructure.
+`@trading/market-sim` is one engine for the API and the demo, with the modes
+and scenarios of `12-demo-mode-spec.md` §37-40.
 
 ---
 
 # 49. Simulation Determinism
 
-The simulator should support deterministic behavior when required.
+**Status:** `Implemented` (B5) — ADR-007 points 7-8.
 
-Example:
-
-```text id="j7x2d4"
-Seed
- +
-Simulation Configuration
-      ↓
-Predictable Event Sequence
-```
-
-This allows reproducible demonstrations and tests.
+Seeded pseudo-random generator and injected clock. In real mode the engine
+initializes from persisted `MarketPrice` and the highest `MarketEvent`
+sequence per asset (ADR-007 Deferred detail).
 
 ---
 
 # 50. Data Flow Example — Transaction
 
-Complete flow:
+**Status:** `Implemented`, chronological check included; idempotency `Implemented` (B4.4); event `Implemented` (B5).
 
-```text id="5z8r4p"
-User
- ↓
-Transaction Form
- ↓
-Client Validation
- ↓
-Create Transaction Use Case
- ↓
-Transaction Repository
- ↓
-Mock API / Real API
- ↓
-Transaction Created
- ↓
-Domain Recalculation
- ↓
-Position Updated
- ↓
-Portfolio Metrics Updated
- ↓
-Analytics Updated
- ↓
-Cache / State Synchronization
- ↓
-UI Feedback
+```text
+POST /api/v1/portfolios/:portfolioId/transactions
+  -> authenticate -> validate(createTransactionRequestSchema)
+  -> createTransactionHandler -> createTransaction
+       ownership (getPortfolioById), asset lookup, validateNewTransaction
+       UnitOfWork: lock -> read asset transactions -> replayPosition -> write transaction + position
+  -> 201 with the created transaction
 ```
+
+Additions: `Idempotency-Key` (ADR-008 point 8), `PORTFOLIO_UPDATED` after
+commit (ADR-007 point 6).
 
 ---
 
 # 51. Data Flow Example — Real-Time Price
 
-```text id="r9m0k3"
-Market Event
- ↓
-Realtime Adapter
- ↓
-Normalize Event
- ↓
-Validate Sequence
- ↓
-Market State
- ↓
-Affected Positions
- ↓
-Portfolio Metrics
- ↓
-Relevant Analytics
- ↓
-UI Subscribers
+**Status:** `Implemented` (B5) — ADR-007.
+
+```text
+simulator tick -> update MarketPrice + append MarketEvent
+               -> emit MARKET_PRICE_UPDATED on market:{assetId}
+               -> evaluate alerts (edge-triggered) -> notification + ALERT_TRIGGERED + NOTIFICATION_CREATED
+client         -> recompute valuations from the new price
 ```
 
 ---
 
 # 52. Data Flow Example — Scenario
 
-```text id="y3v5n2"
-Baseline Portfolio
-       ↓
-Scenario Changes
-       ↓
-Scenario Calculation
-       ↓
-Domain Analytics
-       ↓
-Scenario Result
-       ↓
-Visualization
-```
+**Status:** `Implemented`
 
-The baseline must remain unchanged.
+`calculateScenario` and `compareScenarios` in
+`apps/api/src/services/scenario.service.ts` load holdings and the scenario,
+then call the pure `calculateScenarioImpact` and `compareScenarioImpacts`.
+Nothing is persisted by a calculation.
 
 ---
 
 # 53. Data Flow Example — Decision Replay
 
-```text id="e4w7s2"
-Decision
-   ↓
-Ordered Events
-   ↓
-Replay Controller
-   ↓
-Current Event Index
-   ↓
-Derived Replay State
-   ↓
-UI
+**Status:** `Implemented`
+
+`getDecisionReplay` (`apps/api/src/services/decision.service.ts`) resolves
+ownership through decision, portfolio and user, then returns the ordered
+events, the asset currency and `initialState`. The client folds events with
+the same pure `projectDecisionReplay` from `@trading/domain`, so the demo
+behaves identically.
+
+```text
+decision -> ordered DecisionEvents -> projectDecisionReplay(events, index) -> replay state -> UI
 ```
 
-Replay should be a projection of history, not a mutation of historical records.
+Replay is a projection of history; it never mutates stored records.
 
 ---
 
 # 54. Performance Architecture
 
-Performance optimization should occur at multiple levels.
+**Status:** `Implemented` (pagination); slow-request logging `Implemented` (B3.2); frontend `Deferred`.
 
-```text id="n6s7a2"
-Network
-  ↓
-API
-  ↓
-Data Fetching
-  ↓
-State
-  ↓
-Computation
-  ↓
-Rendering
-```
-
-Optimization should be evidence-driven.
+List endpoints paginate through `PageRequest` and `Page<T>`. ADR-009 point 8
+adds a slow-request warning and separate timing of the analytics series
+(ADR-004). Targets: `03-non-functional-requirements.md`.
 
 ---
 
 # 55. Rendering Strategy
 
-The frontend should minimize unnecessary rendering.
+**Status:** `Planned (FE)` — ADR-011 point 1 (Proposed).
 
-Techniques may include:
-
-- component boundaries;
-- selective subscriptions;
-- memoization where useful;
-- virtualization;
-- chart windowing;
-- derived selectors.
-
-Optimization must not make the code unnecessarily difficult to understand.
+React 19 rendered on the client, built with Vite as a static bundle
+(ADR-006).
 
 ---
 
 # 56. Chart Architecture
 
-Charts should consume prepared data rather than perform complex domain calculations directly inside rendering components.
+**Status:** `Planned (FE)` — ADR-011 point 7 (Proposed).
 
-Preferred:
-
-```text id="x6m5c3"
-Raw Data
-   ↓
-Domain Calculation
-   ↓
-Chart View Model
-   ↓
-Chart Component
-```
-
-This keeps visualization concerns separate from financial calculations.
+Recharts. Charts hold no financial calculation; values come from the API or
+the application layer (`04-tech-stack.md` §16).
 
 ---
 
 # 57. Scalability Path
 
-The architecture should allow gradual evolution.
+**Status:** `Deferred`
 
-### Stage 1
-
-```text id="t0y7q9"
-Single Frontend
-Single Backend
-Single Database
-```
-
-### Stage 2
-
-```text id="z5f3a1"
-Multiple Backend Instances
-Shared Cache
-Realtime Infrastructure
-```
-
-### Stage 3
-
-```text id="w8k4e2"
-Dedicated Workers
-Event Infrastructure
-Specialized Services
-```
-
-Stage 3 should only be introduced when justified by actual scale.
+A single local process is the decided model (ADR-006). Hosting the backend,
+horizontal scaling or separate workers require a new ADR.
 
 ---
 
 # 58. Deployment Architecture
 
-Initial production deployment should prioritize free-tier compatibility.
+**Status:** `Implemented` (local development); production build and containers `Implemented` (B7); demo hosting `Planned (FE)` — ADR-006 points 1, 7.
 
-Conceptual:
+Today: `docker-compose.yml` runs PostgreSQL only; the API runs with
+`tsx watch`. The production build does not run: `@trading/domain`,
+`@trading/database` and `@trading/api` point `main` at `./src/index.ts`.
 
-```text id="n1j6y3"
-Frontend Hosting
-      │
-      ▼
-Backend Hosting
-      │
- ┌────┴─────┐
- ▼          ▼
-Database   Realtime
-```
-
-Exact providers are intentionally deferred to the deployment specification.
+ADR-006 points 3-4: every package compiles to `dist` and exposes it through
+`exports`; the API runs `node dist/index.js`; a multi-stage, non-root API
+Dockerfile; a Compose `full` profile with PostgreSQL and the API. Details:
+`14-deployment-spec.md`.
 
 ---
 
 # 59. Cost-Aware Architecture
 
-The architecture must avoid infrastructure that creates unnecessary recurring costs.
+**Status:** `Implemented`
 
-The demo must be deployable using:
-
-- static/client hosting where possible;
-- mock infrastructure;
-- free-tier compatible services;
-- local simulation.
-
-No paid financial API is required.
+No hosted backend, database or paid market data. The public demo is a
+static build with no running cost (ADR-006).
 
 ---
 
 # 60. Testing Architecture
 
-The architecture should support multiple testing levels.
+**Status:** `Implemented`; application unit tests `Planned (B0)`; CI `Implemented`.
 
-```text id="a8w2e7"
-Domain
-  ↓
-Unit Tests
+| Package | Tests |
+| --- | --- |
+| `@trading/domain` | Vitest unit tests, no database |
+| `@trading/database` | Vitest against the test database |
+| `@trading/api` | Vitest + supertest on `createApp()` against the test database |
 
-Application
-  ↓
-Integration Tests
-
-API
-  ↓
-Contract / Integration Tests
-
-UI
-  ↓
-Component / Interaction Tests
-
-Complete Product
-  ↓
-End-to-End Tests
-```
-
-The detailed strategy is defined in `11-testing-strategy.md`.
+Planned: application services unit-tested with in-memory fakes (ADR-001
+point 7); response contract tests (ADR-002 point 6); one GitHub Actions
+workflow running install, typecheck, lint and the three suites with a
+PostgreSQL service, landing before B0 (ADR-006 point 10). Strategy:
+`10-testing-strategy.md`.
 
 ---
 
 # 61. Architectural Trade-Offs
 
-## Modular Monolith vs Microservices
+**Status:** `Implemented`
 
-### Decision
-
-Use a modular monolith.
-
-### Reason
-
-The product does not initially require independent deployment or scaling of individual domains.
-
-### Benefits
-
-- lower operational complexity;
-- easier local development;
-- lower cost;
-- easier debugging;
-- simpler deployment.
-
-### Future
-
-Domains remain sufficiently isolated to extract later if scale justifies it.
-
----
-
-## REST/HTTP vs Event-First Architecture
-
-### Decision
-
-Use HTTP APIs as the primary request/response boundary and realtime/events only where they provide clear value.
-
-### Reason
-
-Most application operations are naturally request/response.
-
-Real-time events are justified for:
-
-- market updates;
-- connection state;
-- asynchronous processing.
-
----
-
-## Client State vs Server State
-
-### Decision
-
-Separate server state from client state.
-
-### Reason
-
-This avoids turning global state into a generic storage mechanism.
+| Choice | Over | Source |
+| --- | --- | --- |
+| Modular monolith in one process | Microservices | §3.5, ADR-006 |
+| Shared application package injected per runtime | Mocking at the HTTP client | ADR-001 |
+| Factory functions per resource | Use-case classes or a command bus | ADR-001 |
+| Declared DTOs and presenters | Serializing domain objects | ADR-002 |
+| REST plus WebSocket with a small event catalog | Event-first or pushed valuations | ADR-007 |
+| In-process job runner on PostgreSQL | External queue and worker | ADR-008 |
+| Structured logs only | Metrics stack | ADR-009 |
 
 ---
 
 # 62. Architectural Anti-Patterns
 
-The implementation should avoid:
+**Status:** `Implemented` as rules; current violations listed with their fix block.
 
-### God Components
-
-Components responsible for:
-
-- data fetching;
-- business logic;
-- validation;
-- calculations;
-- rendering;
-- mutations.
-
-### God Stores
-
-One global store containing the entire application.
-
-### API Leakage
-
-UI components directly constructing infrastructure-specific requests.
-
-### Domain Leakage
-
-Financial calculations embedded inside visual components.
-
-### Mock Leakage
-
-Production logic depending on demo-only implementation details.
-
-### Premature Microservices
-
-Splitting domains into independently deployed services without an actual requirement.
+- Instantiating infrastructure inside use cases — present in
+  `apps/api/src/services/`, removed in B0.
+- Transport concepts in application logic (`AppError` status codes) —
+  removed in B0.
+- Serializing domain objects as API responses — removed in B0 (ADR-002).
+- Importing Prisma outside `@trading/database`.
+- Money as a JavaScript number anywhere on the wire or in calculations.
+- Checking role names instead of permissions (ADR-005).
 
 ---
 
 # 63. Architecture Decision Records
 
-Significant architectural decisions should be documented using ADRs.
+**Status:** `Implemented`
 
-Examples:
-
-```text id="c3k8w4"
-ADR-001 Modular Monolith
-ADR-002 Repository Abstraction
-ADR-003 Server vs Client State
-ADR-004 Realtime Strategy
-ADR-005 Authentication Strategy
-ADR-006 Persistence Technology
-ADR-007 Mock Infrastructure
-```
-
-The exact ADR list will evolve during implementation.
+Decisions live in `docs/adr/` (index: `docs/adr/README.md`) and take
+precedence over this document. This document reflects ADR-001, ADR-002,
+ADR-005, ADR-006, ADR-007, ADR-008 and ADR-009; ADR-003 and ADR-004 shape
+§30 and §10.
 
 ---
 
 # 64. Architecture Quality Gates
 
-The architecture is acceptable when:
+**Status:** `Implemented` locally; CI `Implemented`.
 
-- domain logic is independent from UI;
-- infrastructure is replaceable;
-- mock and real implementations share contracts;
-- server and client state have clear ownership;
-- realtime events are normalized;
-- derived state has a clear source;
-- cross-domain dependencies are controlled;
-- authentication and authorization boundaries are explicit;
-- production infrastructure can evolve independently;
-- demo infrastructure does not contaminate production logic;
-- no unnecessary distributed architecture exists.
+`pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm docs:check`, and a Husky
+pre-commit hook running `lint-staged` (ESLint and Prettier). Lint import
+boundaries are added in B0 (§43); CI runs the gates on every push and pull
+request (ADR-006 point 10).
 
 ---
 
 # 65. Architectural Success Definition
 
-The architecture should make the following scenario possible:
+**Status:** `Planned (B0)`
 
-```text id="j9n1w3"
-Today
-─────
-Public Demo
-+
-Mock Infrastructure
-+
-Free Hosting
-
-             ↓
-
-Tomorrow
-─────────
-Real API
-+
-Database
-+
-Realtime Infrastructure
-
-             ↓
-
-Future
-──────
-Higher Traffic
-+
-Workers
-+
-Caching
-+
-Additional Services
-```
-
-without requiring a complete rewrite of the application or domain logic.
+The architecture matches this document when `@trading/application` and
+`@trading/contracts` exist, `apps/api` only composes and transports, every
+service runs against in-memory repositories in tests, and the lint rules of
+§43 pass.
 
 ---
 
 # 66. Final Architectural Principle
 
-The architecture should communicate engineering maturity through **clarity and trade-offs**, not through technological complexity.
+**Status:** `Implemented`
 
-The ideal result is:
+Business behavior is written once, in packages that know nothing about how
+they are delivered; each runtime only composes and transports it.
 
-```text id="g2x5r8"
-                 PRODUCT
-                    │
-          ┌─────────┴─────────┐
-          ↓                   ↓
-         UX               ENGINEERING
-          │                   │
-          └─────────┬─────────┘
-                    ↓
-              DOMAIN MODEL
-                    ↓
-           EXPLICIT CONTRACTS
-                    ↓
-        ┌───────────┴───────────┐
-        ↓                       ↓
-   REAL INFRASTRUCTURE     MOCK INFRASTRUCTURE
-        │                       │
-        └───────────┬───────────┘
-                    ↓
-             SAME BEHAVIOR
-```
+---
 
-The public demo is not a simplified version of the product.
+# 67. Failure-Mode Review
 
-It is the same application behavior running against controlled infrastructure.
+**Status:** `Implemented` (review of the decided architecture, 2026-10-05)
 
-That distinction is fundamental to the architecture.
+Architecture-level application of the checklist in `docs/README.md`. Each
+row points to an existing decision; nothing here adds one.
+
+| Category | Architecture concern | Decision | Block |
+| --- | --- | --- | --- |
+| Concurrency | Two `SELL`s race on one position | `UnitOfWork` isolation (ADR-001 Deferred detail) | B0 |
+| Concurrency | Interleaved in-memory units | Serialized in-memory `UnitOfWork` (ADR-001 Deferred detail) | B0 |
+| Concurrency | Same `Idempotency-Key` in flight; racing job transitions | Key reservation; compare-and-set transitions (ADR-008 Deferred detail) | B4 |
+| Crash and restart | Job dies mid-run | Apply commits with `COMPLETED`; `PROCESSING` becomes `FAILED`/`INTERRUPTED`; `QUEUED` resumes (ADR-008 point 5) | B4 |
+| Crash and restart | Simulator and sequences after restart | Init from persisted state, candle backfill, per-process epoch (ADR-007 point 8, Deferred detail) | B5 |
+| Crash and restart | Alert state lost | Persisted with the notification (ADR-007 Deferred detail) | B5 |
+| Timeouts and expiry | Socket outlives token | Socket bound to token expiry, 5 s auth window (ADR-007 point 2) | B5 |
+| Timeouts and expiry | Job exceeds limit | Timeout per attempt, apply exempt (ADR-008 point 7) | B4 |
+| Timeouts and expiry | Session length | 15-minute access token, rotating refresh (ADR-005) | B2 |
+| Retries and duplicates | Retried `POST` | `Idempotency-Key`, 24 h, stored in the mutation's unit (ADR-008 point 8) | B4 |
+| Retries and duplicates | Missed realtime events | Sequence gap triggers HTTP resync (ADR-007 point 5) | B5 |
+| Retries and duplicates | Alert repeats every tick | Edge-triggered alerts (ADR-007 point 9) | B5 |
+| Boundary math and data edges | Decimal precision on the wire | Decimal strings in fixed notation (ADR-002, Deferred detail) | B0 |
+| Boundary math and data edges | Mixed currencies return 500 | Asset currency must match the portfolio base currency (ADR-004, ADR-008 point 10) | B1, B4 |
+| Boundary math and data edges | Daily boundaries | UTC rollover closes candles (ADR-007 point 8) | B5 |
+| Partial failure | Transaction plus position write | One `UnitOfWork` | Implemented |
+| Partial failure | CSV import | Validate all, then apply in one unit (ADR-008 point 2) | B4 |
+| Partial failure | Commit succeeds, event emission fails | Open detail in §31 | B5 |

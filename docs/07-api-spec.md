@@ -1,93 +1,87 @@
-# Trading Analytics Platform
+# SDD 07 — API Specification
 
-## SDD — 07. API Specification
-
-**Status:** Draft  
-**Version:** 1.0  
-**Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`
+**Project:** Trading Analytics Platform  
+**Status:** All sections reconciled with the code and ADRs on 2026-10-05  
+**Version:** 1.1  
+**Depends On:** `00-overview.md`, `01-product-spec.md`, `02-functional-requirements.md`, `03-non-functional-requirements.md`, `04-tech-stack.md`, `05-data-model.md`, `06-architecture.md`  
+**Decisions:** ADR-002 (`adr/0002-shared-contracts.md`), ADR-005 (`adr/0005-roles-and-authentication.md`), ADR-008 (`adr/0008-background-jobs-csv-import.md`), ADR-009 (`adr/0009-observability-scope.md`), ADR-010 (`adr/0010-v1-product-scope-clarifications.md`)
 
 ---
 
 # 1. Purpose
 
-This document defines the API contract for Trading Analytics Platform.
+**Status:** `Reference`
 
-The API must support:
+This document defines the HTTP API contract for Trading Analytics Platform:
+authentication, portfolios, positions, transactions, assets, market data,
+analytics, decisions, decision replay, scenarios, watchlists, alerts,
+notifications and background operations.
 
-- authentication;
-- portfolios;
-- positions;
-- transactions;
-- assets;
-- market data;
-- analytics;
-- decisions;
-- decision replay;
-- scenarios;
-- watchlists;
-- alerts;
-- notifications;
-- background operations.
-
-The API contract must be implementation-independent.
-
-The public demo will implement the same contracts through mock adapters.
+Request and response schemas in `@trading/contracts` (ADR-002) are the source
+of truth; this document describes them. The demo does not call a mock HTTP
+API: it consumes the same DTOs through an in-process adapter (ADR-002
+point 5), `Planned (FE)`.
 
 ---
 
 # 2. API Principles
 
-The API follows these principles:
+**Status:** `Reference`; per-principle status below.
 
-1. Resource-oriented HTTP APIs for standard operations.
-2. Explicit DTOs rather than exposing database models.
-3. Consistent response structures.
-4. Consistent error structures.
-5. Explicit validation.
-6. Pagination for potentially large collections.
-7. Filtering and sorting where required.
-8. Idempotency for operations where duplicate execution is dangerous.
-9. Versionable contracts.
-10. Realtime events are separate from standard HTTP responses.
+| # | Principle | Status |
+| --- | --- | --- |
+| 1 | Resource-oriented HTTP APIs. | `Implemented` |
+| 2 | Explicit DTOs built by presenters, never database or domain objects (ADR-002 point 4). | `Implemented` (B0.4) |
+| 3 | Consistent response structure (§4). | `Implemented` |
+| 4 | Consistent error structure (§5). | `Implemented` |
+| 5 | Explicit validation with Zod at the route boundary. | `Implemented`; request and response schemas live in `@trading/contracts` |
+| 6 | Pagination for large collections. | `Implemented` |
+| 7 | Filtering and sorting where required. | `Implemented` per endpoint |
+| 8 | `Idempotency-Key` where duplicates are dangerous (ADR-008 point 8). | `Implemented` on transaction creation and import creation (§13, §14, §39) |
+| 9 | Versioned contracts, additive changes only within a version (ADR-002 point 8); OpenAPI generated from the schemas (ADR-002 point 7). | `Implemented` for versioning; OpenAPI `Implemented` (B6) |
+| 10 | Realtime events are separate from HTTP responses (`08-realtime-spec.md`). | `Implemented` (B5) |
+
+Wire format (ADR-002 point 3), `Implemented`; enforced by the response schemas
+and presenters of `@trading/contracts`:
+
+- Money: `{ "amount": "<decimal string>", "currency": "USD" }`, never a number.
+- Dates: ISO-8601 strings in UTC.
+- Percentages and ratios: JSON numbers, display only.
+- Identifiers: strings.
 
 ---
 
 # 3. API Versioning
 
-Initial version:
+**Status:** `Implemented` (ADR-002 point 8)
+
+Every business endpoint is under:
 
 ```text
 /api/v1
 ```
 
-All production endpoints should be versioned.
-
-Example:
-
-```text
-GET /api/v1/portfolios
-```
-
-The mock API should expose the same logical version.
+Within `v1` only additive changes are allowed; a breaking change requires a
+new version. Unversioned routes are operational only: `GET /health` and
+`GET /health/ready` (not rate-limited), and `GET /`.
 
 ---
 
 # 4. Base Response Model
 
-Successful responses should use a consistent structure where appropriate.
+**Status:** `Implemented` (ADR-002 point 2)
 
-Example:
+Successful responses wrap the payload in `data`:
 
-```text id="4f0w8v"
+```json
 {
-  "data": {},
-  "meta": {}
+  "data": {}
 }
 ```
 
-For collections:
+Paginated collections add `meta`:
 
-```text id="y1n8m3"
+```json
 {
   "data": [],
   "meta": {
@@ -99,62 +93,79 @@ For collections:
 }
 ```
 
-Not every endpoint requires `meta`.
+Only paginated endpoints return `meta`.
 
 ---
 
 # 5. Error Response
 
-All application errors should use a normalized structure.
+**Status:** `Implemented` (`apps/api/src/middleware/error-handler.ts`, ADR-002 point 2)
 
-```text id="3s7d2k"
+Every error, including 404 for unknown routes and 429, uses one envelope:
+
+```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "The request contains invalid fields.",
-    "details": [],
-    "requestId": "..."
+    "requestId": "...",
+    "details": []
   }
 }
 ```
+
+- `requestId` is always present and equals the `X-Request-ID` header (§8).
+- `details` is optional. Errors raised as `AppError` include it (an empty
+  array when there are none); body-parser, domain, rate-limit and unexpected
+  errors omit it.
+- `message` is English and meant for logs. Clients map `code` to a localized
+  message (ADR-010 point 8).
+- Unexpected errors return 500 `INTERNAL_ERROR` with a generic message; stack
+  traces and internal details are never returned.
 
 ---
 
 # 6. Error Codes
 
-Initial error categories:
+**Status:** `Implemented` (`AppErrorCode` in `apps/api/src/errors/app-error.ts`)
 
-```text id="5m3x8q"
-VALIDATION_ERROR
-UNAUTHORIZED
-FORBIDDEN
-NOT_FOUND
-CONFLICT
-RATE_LIMITED
-TIMEOUT
-DEPENDENCY_ERROR
-INTERNAL_ERROR
-```
+Codes are stable within `v1`; adding a code is an additive change.
 
-Feature-specific error codes may be added when required.
+| Code | HTTP | Raised today |
+| --- | --- | --- |
+| `VALIDATION_ERROR` | 400 (413 for an oversized body) | Request validation (body, query and route parameters: a malformed ID is 400, a well-formed unknown or foreign ID is 404), malformed JSON, `Invalid*Error` and `Insufficient*Error` domain errors |
+| `UNAUTHORIZED` | 401 | Missing or invalid Bearer token, invalid credentials |
+| `FORBIDDEN` | 403 | The role lacks the permission the use case needs on an own resource, such as a `VIEWER` mutating domain data (`Implemented`, B2; ADR-005 point 2) |
+| `NOT_FOUND` | 404 | Unknown route; missing resource or another user's resource (never 403, ADR-005 point 12) |
+| `CONFLICT` | 409 | Conflicting state changes |
+| `RATE_LIMITED` | 429 | Rate limiters (§9) |
+| `DEPENDENCY_ERROR` | 503 | Database unreachable (Prisma `PrismaClientInitializationError`, P1001, P1002, P1008, P1017); fixed message, no connection details in the body (ADR-002 point 10) |
+| `INTERNAL_ERROR` | 500 | Unexpected errors |
+
+`FORBIDDEN` for a missing permission on an own resource is `Implemented`
+(B2; ADR-005 point 2). The permission check runs first, then ownership (404
+for another user's resource, never 403), then state conflicts (409). The
+matrix is in `09-security-spec.md` §13.
 
 ---
 
 # 7. Validation Error
 
-Validation errors should identify the affected fields.
+**Status:** `Implemented` (`apps/api/src/middleware/validate.ts`)
 
-Example:
+A validation failure returns 400 `VALIDATION_ERROR` with one `details` entry
+per issue. `field` is the dot-joined path:
 
-```text id="z7q1p4"
+```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Invalid transaction.",
+    "message": "The request contains invalid fields.",
+    "requestId": "...",
     "details": [
       {
         "field": "quantity",
-        "code": "MIN_VALUE",
+        "code": "too_small",
         "message": "Quantity must be greater than zero."
       }
     ]
@@ -162,106 +173,262 @@ Example:
 }
 ```
 
+Invalid query parameters use the message
+`The request contains invalid query parameters.`. Each entry is
+`{ field, code, message }`, where `code` is the Zod issue code (for example
+`too_small`; `custom` for a `refine` check) or a documented domain code, so
+the client can localize it (ADR-010 point 8). Implemented in B0.4
+(ADR-002 point 10, amended 2026-10-08). Domain codes:
+
+| Code | Raised when |
+| --- | --- |
+| `UNKNOWN_ASSET` | A scenario change names an asset that does not exist (§25); one detail per unknown asset |
+
 ---
 
 # 8. Request Correlation
 
-Every API request should receive a request identifier.
+**Status:** `Implemented` for the header; log propagation `Implemented` (B3.2) (ADR-009 point 5)
 
-Example:
+Every response carries:
 
-```text id="m4x7d2"
+```text
 X-Request-ID
 ```
 
-The identifier should appear in logs and relevant error responses.
+A client-supplied value matching `^[a-zA-Z0-9-]{1,64}$` is reused; otherwise
+the API generates a UUID. The same value is the `requestId` of every error
+envelope (§5). Propagation to every log line goes through `AsyncLocalStorage`
+(`Implemented`, B3.2), and the browser can read the header (`exposedHeaders`).
 
 ---
 
 # 9. Authentication
 
+**Status:** `Implemented` for login (with its session), current user, roles, refresh and logout (B2.4) (ADR-005)
+
+There is no self-registration; users come from the seed (ADR-005 point 10).
+Protected endpoints require `Authorization: Bearer <accessToken>`; every
+failure returns the same 401 `UNAUTHORIZED` `Authentication required.`.
+
+Rate limits (ADR-005 point 12), `Implemented`, in memory per process, with
+draft-7 `RateLimit` and `RateLimit-Policy` headers:
+
+- All routes except health: 300 requests per 15 minutes per IP.
+- `POST /api/v1/auth/login`: additionally 5 attempts per 15 minutes per IP.
+
+| Endpoint | Status |
+| --- | --- |
+| `POST /api/v1/auth/login` | `Implemented`; ADR-005 response shape `Implemented` (B2.3) |
+| `GET /api/v1/auth/me` | `Implemented` |
+| `POST /api/v1/auth/refresh` | `Implemented` (B2.4) |
+| `POST /api/v1/auth/logout` | `Implemented` (B2.4) |
+
 ## Login
 
-```text id="x8c1n7"
+**Status:** `Implemented`; ADR-005 response shape and refresh-token cookie `Implemented` (B2.3)
+
+```text
 POST /api/v1/auth/login
 ```
 
 Request:
 
-```text id="k3m9p2"
+```json
 {
   "email": "user@example.com",
   "password": "..."
 }
 ```
 
-Response:
+Response (200). `accessToken` is a JWT carrying `sub` and `role`, valid for
+`JWT_EXPIRES_IN_SECONDS` (default 900, 15 minutes), and `expiresAt` is that
+expiry as an ISO timestamp. `role` is `VIEWER`, `TRADER` or `ADMIN`:
 
-```text id="p2r8v5"
+```json
 {
   "data": {
-    "user": {},
-    "session": {}
+    "user": { "id": "...", "email": "...", "displayName": "...", "role": "TRADER" },
+    "session": { "accessToken": "...", "expiresAt": "2026-10-18T12:15:00.000Z" }
   }
 }
 ```
+
+The same response sets the refresh-token cookie:
+
+```text
+Set-Cookie: refresh_token=<opaque>; Max-Age=2592000; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Strict
+```
+
+The refresh token is 256 random bits and never appears in the body. The
+server stores only its SHA-256 hash in a new session family, which lives
+`SESSION_ABSOLUTE_SECONDS` (default 30 days; the cookie `Max-Age` is the same
+value). A failed login sets no cookie and creates no session. Refresh and
+logout read the cookie.
+
+Errors: 400 `VALIDATION_ERROR` (invalid email or empty password); 401
+`UNAUTHORIZED` `Invalid credentials.` for every credential failure, so
+accounts cannot be enumerated; 429 `RATE_LIMITED`.
+
+`Implemented` (B2; ADR-005 points 1, 4, 5 and 8): the response is
+`{ user, session: { accessToken, expiresAt } }`, login sets the refresh-token
+cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`), and
+roles are `VIEWER`, `TRADER`, `ADMIN`. The previous `session.token` field is
+gone; no client consumed it.
 
 ---
 
 ## Current User
 
-```text id="d4f7q9"
+**Status:** `Implemented`
+
+```text
 GET /api/v1/auth/me
 ```
 
-Returns the authenticated user.
+Requires a Bearer token. Reads the user from the database on every call and
+returns `{ "data": { "user": { id, email, displayName, role } } }`. Returns
+401 `UNAUTHORIZED` when the token is invalid or the user no longer exists.
+
+---
+
+## Refresh
+
+**Status:** `Implemented` (B2.4) (ADR-005 points 5-7)
+
+```text
+POST /api/v1/auth/refresh
+X-Requested-With: XMLHttpRequest
+Cookie: refresh_token=<opaque>
+```
+
+No body. The refresh token is read from the cookie, never from the body, and
+the custom header is required (see below). Response (200) has the login shape,
+for the user as stored now (so a role change shows up here, ADR-005 point 9),
+and sets the rotated cookie with the same attributes as login:
+
+```json
+{
+  "data": {
+    "user": { "id": "...", "email": "...", "displayName": "...", "role": "TRADER" },
+    "session": { "accessToken": "...", "expiresAt": "2026-10-18T12:30:00.000Z" }
+  }
+}
+```
+
+Every use of a live token rotates it: the old row is marked rotated and a
+successor in the same family is created, with the same absolute expiry. The
+successor's `lastUsedAt` is the rotation time, so the idle timeout
+(`SESSION_IDLE_SECONDS`, default 7 days) slides with use while the family still
+ends at its absolute lifetime (`SESSION_ABSOLUTE_SECONDS`, default 30 days).
+
+**Grace window.** For 10 seconds after a token is rotated, presenting it again
+returns the same successor refresh token (with a freshly signed access token)
+and revokes nothing. This covers two parallel refreshes and a response lost on
+the way. The successor is kept encrypted on the rotated row only for that
+window, and is dropped when the family rotates again after the window ends or
+is revoked. The last rotated row of a family that never refreshes again keeps
+it until logout or revocation, and the idle timeout leaves that token unusable
+(`09-security-spec.md` §7). After the window, a rotated token is **reuse**: the
+whole family is revoked and the request is rejected
+(`auth.refresh.reuse_detected` is logged once B3 exists).
+
+Errors: 401 `UNAUTHORIZED` `Invalid refresh token.` for every failure (missing
+cookie, unknown, revoked, idle, past its absolute lifetime, reused, or user no
+longer exists), so a caller cannot tell them apart; the response also clears
+the cookie. A failure on our side (500) leaves the cookie alone. 403
+`FORBIDDEN` when the custom header is missing; nothing is read or rotated.
 
 ---
 
 ## Logout
 
-```text id="r5w2m8"
+**Status:** `Implemented` (B2.4) (ADR-005 points 6-7; FR-003)
+
+```text
 POST /api/v1/auth/logout
+X-Requested-With: XMLHttpRequest
+Cookie: refresh_token=<opaque>
 ```
+
+No body. Revokes the whole token family of the cookie's session, so the token
+and every successor stop working, and clears the cookie. Response: 204.
+
+Logout never fails on the token: a missing, unknown or already revoked cookie
+also answers 204 with the cookie cleared, and repeating it changes nothing. An
+access token already issued stays valid until it expires (at most 15 minutes).
+403 `FORBIDDEN` when the custom header is missing; the session is not revoked.
+The `auth.logout` log line (`userId` only) is `Implemented` (B3.3); a request that ends no session logs nothing.
+
+### Custom request header and CORS
+
+Refresh and logout require `X-Requested-With: XMLHttpRequest` (exact value).
+With `SameSite=Strict` on the cookie, this is the CSRF defence of ADR-005 point
+7: a form or a navigation cannot add the header, and a script on another
+origin can only add it after a CORS preflight that the allowed origins refuse.
+
+CORS answers with `credentials: true` for the origins in `CORS_ORIGIN`, an
+explicit list (wildcards are rejected at startup), so the web origin can send
+the cookie. The `Secure` attribute is always set, also locally: Chrome and
+Firefox accept it on `localhost`; Safari does not, and needs HTTPS there.
 
 ---
 
 # 10. Portfolio API
 
+**Status:** `Implemented`; archived-portfolio guard `Implemented` (ADR-010 point 5)
+
+All endpoints require a Bearer token (§9) and are scoped to the caller: a
+portfolio of another user returns 404 `NOT_FOUND`, the same as a missing one.
+Payloads are built by presenters from the response schemas of
+`@trading/contracts` (ADR-002).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId` | `Implemented` |
+| `POST /api/v1/portfolios` | `Implemented` |
+| `PATCH /api/v1/portfolios/:portfolioId` | `Implemented`; 409 on archived |
+| `POST /api/v1/portfolios/:portfolioId/archive` | `Implemented` |
+
 ## List Portfolios
 
-```text id="k8d4s1"
+**Status:** `Implemented` (FR-008)
+
+```text
 GET /api/v1/portfolios
 ```
 
-Optional parameters:
-
-```text id="v2m9x5"
-status
-page
-pageSize
-sort
-```
+Returns 200 `{ "data": [portfolio] }` with all of the caller's portfolios,
+archived ones included (`status = ARCHIVED`). No query parameters, no
+pagination. The `status`, `page`, `pageSize` and `sort` parameters are
+`Deferred`.
 
 ---
 
 ## Get Portfolio
 
-```text id="c6n1r8"
+**Status:** `Implemented` (FR-008)
+
+```text
 GET /api/v1/portfolios/:portfolioId
 ```
+
+Returns 200 `{ "data": portfolio }`. Errors: 404 `NOT_FOUND`.
 
 ---
 
 ## Create Portfolio
 
-```text id="h7p3w2"
+**Status:** `Implemented` (FR-009)
+
+```text
 POST /api/v1/portfolios
 ```
 
-Request:
+Request (`description` optional; `baseCurrency` is a 3-letter code):
 
-```text id="q9x4m1"
+```json
 {
   "name": "Growth Portfolio",
   "description": "Long-term growth strategy.",
@@ -269,9 +436,9 @@ Request:
 }
 ```
 
-Response:
+Response (201):
 
-```text id="z5v8n3"
+```json
 {
   "data": {
     "id": "...",
@@ -283,255 +450,473 @@ Response:
 }
 ```
 
+Errors: 400 `VALIDATION_ERROR` (schema or domain invariants).
+
 ---
 
 ## Update Portfolio
 
-```text id="b3k7y9"
+**Status:** `Implemented` (FR-010); archived guard `Implemented`
+
+```text
 PATCH /api/v1/portfolios/:portfolioId
 ```
+
+Request: `name` and/or `description`; at least one is required.
+`baseCurrency` cannot change after creation. Returns 200 `{ "data": portfolio }`.
+
+Errors: 400 `VALIDATION_ERROR`; 404 `NOT_FOUND`; 409 `CONFLICT` when the
+portfolio is archived (ADR-010 point 5).
 
 ---
 
 ## Archive Portfolio
 
-```text id="n8q2c5"
+**Status:** `Implemented` (FR-011)
+
+```text
 POST /api/v1/portfolios/:portfolioId/archive
 ```
 
-Archiving is preferred over destructive deletion where historical integrity matters.
+Sets `status = ARCHIVED`; nothing is deleted. Idempotent: always 200, with
+`meta.alreadyArchived` telling whether this call changed anything:
+
+```json
+{
+  "data": { "id": "...", "status": "ARCHIVED" },
+  "meta": { "alreadyArchived": false }
+}
+```
+
+Errors: 404 `NOT_FOUND`. Hard deletion and unarchiving are `Deferred`.
+
+`Implemented` (ADR-010 point 5): an archived portfolio is read-only. Every
+mutation scoped to it (update, transactions, scenarios, alerts) returns 409
+`CONFLICT` and writes nothing; reads and the archive call are unchanged. The
+error order is permission, then 404 ownership, then 409. `Planned` (CSV
+import): the same 409 for imports.
 
 ---
 
 # 11. Portfolio Overview
 
-```text id="p5d7w1"
+**Status:** `Implemented` (FR-004, `performance` and `whatChanged` fields); alerts in `whatChanged` `Planned` (ADR-004, ADR-010 point 1, `16-analytics-spec.md` §11-§15)
+
+```text
 GET /api/v1/portfolios/:portfolioId/overview
 ```
 
-Returns a purpose-specific representation containing:
+Returns 200 with one purpose-specific payload, so the dashboard does not
+orchestrate many requests:
 
-```text id="h4m9x2"
+```text
 portfolio
-summary
-positions
-performance
+summary              total market value, cost basis, unrealized P/L and percent
+positions            [{ position, asset, metrics, allocationPercent, dailyChange }]
 allocation
-recentTransactions
+attribution          current-state attribution
+recentTransactions   [{ transaction, asset }]
+dailyChange          null when no held asset has a market price
+performance          the result of GET .../analytics/performance for the fixed period 1M (§20)
 pulse
+whatChanged          what changed over the same 1M period, below
 ```
 
-This endpoint exists to avoid requiring the dashboard to orchestrate many unrelated requests.
+An empty portfolio returns zeroed totals in `baseCurrency`, empty lists and a
+non-null `dailyChange` and a `performance` with a zero P/L, no `twrPercent` and an
+empty `series`. Errors: 404 `NOT_FOUND`.
+
+**What Changed** (FR-006), `Implemented`: carried as the `whatChanged` field of
+this overview response, not as its own endpoint (decided 2026-10-08). Its
+content is decided by ADR-010 point 1. It covers the same fixed period `1M`,
+the same `asOf` and the same boundaries as `performance`:
+
+```json
+{
+  "asOf": "2026-03-31",
+  "effectiveFrom": "2026-03-01",
+  "status": "OK",
+  "contributor": { "assetId": "asset_001", "symbol": "AAPL", "contribution": { "amount": "16", "currency": "USD" } },
+  "detractor": null,
+  "events": [
+    { "type": "POSITION_OPENED", "date": "2026-03-12", "assetId": "asset_002", "symbol": "BTC" }
+  ]
+}
+```
+
+- `contributor` and `detractor` are the largest positive and the largest
+  negative contribution of the range attribution (§22). With no contribution
+  above `0` there is no contributor, and with none below `0` there is no
+  detractor (`null`). A tie goes to the alphabetically first symbol.
+- `events` are `POSITION_OPENED` (the quantity at the end of the day goes from
+  `0` to above `0`) and `POSITION_CLOSED` (it reaches `0`), on the days after
+  the baseline. They are ordered by date and then by symbol; a position that
+  opens and closes in the period produces both. The quantity is measured at the
+  end of the day, so a purchase and a full sale on the same day produce no event.
+- An empty portfolio or a period with no events returns `null` and `[]`, not an
+  error. With `status` `INSUFFICIENT_DATA` (no price on `asOf`) the contributor,
+  the detractor and the events are `null`, `null` and `[]`: there is no baseline
+  to measure from, and no number is invented.
+- Alerts triggered in the period are `Planned`: `lastTriggeredAt` and the alert
+  evaluation do not exist yet (§27), so the field is added with them. Significant
+  value change, unusual volatility and allocation changes are `Deferred`.
 
 ---
 
 # 12. Position API
 
+**Status:** `Implemented`
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/positions` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/positions/:positionId` | `Implemented` |
+
+Positions are derived from transactions and are read-only (ADR-003).
+
 ## List Positions
 
-```text id="v7c2n5"
+**Status:** `Implemented` (FR-012)
+
+```text
 GET /api/v1/portfolios/:portfolioId/positions
 ```
 
-Optional parameters:
-
-```text id="q1x8m4"
-assetType
-sort
-direction
-page
-pageSize
-```
+Returns 200 `{ "data": [position] }`, unpaginated. A fully sold position no
+longer appears. The `assetType`, `sort`, `direction`, `page` and `pageSize`
+parameters are `Deferred`. Errors: 404 `NOT_FOUND`.
 
 ---
 
 ## Get Position
 
-```text id="m5r8d3"
+**Status:** `Implemented` (FR-013)
+
+```text
 GET /api/v1/portfolios/:portfolioId/positions/:positionId
 ```
 
-Response should include current derived metrics where useful.
+Returns the position with derived metrics:
 
-Example:
-
-```text id="x2v7p9"
+```json
 {
   "data": {
     "position": {},
     "metrics": {
-      "marketValue": 12000,
-      "costBasis": 10000,
-      "unrealizedPnL": 2000,
-      "unrealizedPnLPercent": 20,
-      "allocation": 18.4
+      "marketValue": { "amount": "12000", "currency": "USD" },
+      "costBasis": { "amount": "10000", "currency": "USD" },
+      "unrealizedPnL": { "amount": "2000", "currency": "USD" },
+      "unrealizedPnLPercent": 20
     }
   }
 }
 ```
+
+`allocation` is not returned here; it is in the overview
+(`positions[].allocationPercent`, §11). Errors: 404 `NOT_FOUND` when the
+position belongs to another portfolio or user. `averageEntryPrice` includes the
+`BUY` fees of the held units (`Implemented`, ADR-004 point 15).
 
 ---
 
 # 13. Transaction API
 
+**Status:** `Implemented`; `Idempotency-Key` `Implemented` on creation (ADR-008 point 8)
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/transactions` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/transactions/:transactionId` | `Implemented` |
+| `POST /api/v1/portfolios/:portfolioId/transactions` | `Implemented` |
+
+Only `BUY` and `SELL` exist; there is no cash balance and no cash validation
+(ADR-003). Transactions are immutable: no update or delete endpoint.
+
 ## List Transactions
 
-```text id="d9m4k7"
+**Status:** `Implemented` (FR-014, FR-016)
+
+```text
 GET /api/v1/portfolios/:portfolioId/transactions
 ```
 
-Filters:
+Filters, combined with AND:
 
-```text id="p8x2n6"
+```text
 assetId
-type
-dateFrom
-dateTo
-page
-pageSize
-sort
+type        BUY | SELL
+dateFrom    ISO-8601
+dateTo      ISO-8601
+page        default 1
+pageSize    default 20, max 100
 ```
+
+Ordered by `executedAt` descending, then `id` descending; `sort` is
+`Deferred`. Each transaction carries `realizedPnL` (see Create Transaction). Response (200):
+
+```json
+{
+  "data": [],
+  "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 }
+}
+```
+
+Errors: 400 `VALIDATION_ERROR` (invalid filter); 404 `NOT_FOUND`.
 
 ---
 
 ## Get Transaction
 
-```text id="f3w8q1"
+**Status:** `Implemented` (FR-014)
+
+```text
 GET /api/v1/portfolios/:portfolioId/transactions/:transactionId
 ```
+
+Returns 200 `{ "data": transaction }`, with its `realizedPnL`. Errors: 404 `NOT_FOUND` when the
+transaction belongs to another portfolio or user.
 
 ---
 
 ## Create Transaction
 
-```text id="c7v2m9"
+**Status:** `Implemented` (FR-017, FR-018); see Planned rules below
+
+```text
 POST /api/v1/portfolios/:portfolioId/transactions
 ```
 
-Request:
+Request (`fees` and `executedAt` optional; `amount` is a decimal string or a
+number):
 
-```text id="x4n8p2"
+```json
 {
   "assetId": "asset_001",
   "type": "BUY",
   "quantity": 10,
-  "price": 150,
-  "fees": 2.5,
-  "currency": "USD",
+  "price": { "amount": "150", "currency": "USD" },
+  "fees": { "amount": "2.5", "currency": "USD" },
   "executedAt": "2026-08-29T14:30:00Z"
 }
 ```
+
+Synchronous: the transaction is persisted and its position recalculated in
+one unit of work (ADR-008 point 12). Response (201); `position` is `null`
+when a `SELL` closes the position:
+
+```json
+{
+  "data": {
+    "transaction": {
+      "id": "...",
+      "status": "COMPLETED",
+      "realizedPnL": { "amount": "4.6", "currency": "USD" }
+    },
+    "position": {}
+  }
+}
+```
+
+`realizedPnL` is `Implemented` (FR-012, ADR-004 point 15) on every transaction
+response, in the list, the detail and the create result, and in the
+`recentTransactions` of the overview. A `SELL` carries the P/L it realized, after
+its fees, against the weighted-average cost at its place in date order; a `BUY`,
+and a transaction that is not `COMPLETED`, carry `null`. It is calculated when it
+is read, from the portfolio's history, and is not stored: a `BUY` dated in the past
+changes the average cost at every later `SELL`, so the value of an earlier `SELL`
+can change.
+
+Errors: 400 `VALIDATION_ERROR` (schema, domain invariants, `SELL` above the
+held quantity at any point in date order, backdated transactions included,
+ADR-003 point 6; a `SELL` whose `fees` exceed `quantity × price`, while fees
+equal to the gross proceeds are accepted, ADR-004 point 2; an asset whose currency
+differs from the portfolio `baseCurrency`, ADR-004 point 12, `Implemented`); 404
+`NOT_FOUND` (portfolio or `assetId`); 409 `CONFLICT` on an archived portfolio
+(ADR-010 point 5).
+
+Transactions of one portfolio and asset are created one at a time, so of two
+concurrent `SELL`s that together exceed the holding exactly one succeeds. The
+position is rebuilt by replaying the asset's transactions in date order
+(ties by `executedAt`, then creation order).
+
+The currency of `price` and `fees` is not compared with the portfolio's: only the
+asset's is (ADR-004 point 12).
+- `Idempotency-Key` header (optional): the same key and request returns the
+  stored response with `Idempotency-Replayed: true`; a different request, or
+  one sent while the first is still running, returns 409 `CONFLICT` (ADR-008
+  point 8). Rules in §39.
 
 ---
 
 # 14. Transaction Processing
 
-Transaction creation may be asynchronous.
+**Status:** asynchronous transaction creation removed (ADR-008 point 12); CSV import `Implemented` (FR-080)
 
-Response:
+Transaction creation is synchronous (§13); there is no job for a single
+transaction. Background jobs exist only for CSV transaction import:
 
-```text id="m7q5x3"
-{
-  "data": {
-    "transaction": {},
-    "processing": {
-      "status": "PROCESSING",
-      "jobId": "job_001"
-    }
-  }
-}
+```text
+POST /api/v1/portfolios/:portfolioId/imports
 ```
 
-The client should not assume immediate completion if the operation is configured as asynchronous.
+`Implemented` (ADR-008 points 1-2, 8-10): creates an import job and answers
+202 with the job in `QUEUED` and a `Location: /api/v1/jobs/:jobId` header. It
+needs `transaction:create` and an owned, non-archived portfolio.
+
+The CSV is the raw request body, sent with `Content-Type: text/csv` (a JSON or
+empty body is 400 `VALIDATION_ERROR`; a file over 1 MB is 413). The columns are
+`symbol,type,quantity,price,fees,executedAt`, with `fees` optional, and a file
+has at most 5000 rows. Every row is validated first; if any row fails, the job
+ends `FAILED` with reason `VALIDATION_FAILED` and a per-row report (`row` is the
+line in the file, the header being row 1) and nothing is written. Valid rows are
+applied in one unit of work. Rows follow the §13 rules (`BUY` and `SELL` only).
+The route has its own 1 MB body limit, apart from the global 100 kB JSON limit.
+Accepts `Idempotency-Key` (§39).
 
 ---
 
 # 15. Transaction Job Status
 
-```text id="v2k9d5"
+**Status:** `Implemented` (ADR-008 points 3 and 9, FR-081)
+
+```text
 GET /api/v1/jobs/:jobId
 ```
 
 Response:
 
-```text id="p4m7x1"
+```json
 {
   "data": {
     "id": "job_001",
+    "portfolioId": "portfolio_001",
+    "type": "CSV_IMPORT",
     "status": "PROCESSING",
-    "progress": 60,
-    "message": "Updating portfolio state."
+    "stage": "APPLYING",
+    "attempt": 1,
+    "progress": { "processed": 60, "total": 100 },
+    "failureReason": null,
+    "report": null,
+    "queuedAt": "2026-10-21T10:00:00.000Z",
+    "deadlineAt": "2026-10-21T10:05:00.000Z",
+    "createdAt": "2026-10-21T10:00:00.000Z",
+    "updatedAt": "2026-10-21T10:00:05.000Z",
+    "finishedAt": null
   }
 }
 ```
 
-Possible statuses:
+Statuses:
 
-```text id="w6n3q8"
+```text
 QUEUED
 PROCESSING
 COMPLETED
 FAILED
 CANCELLED
+TIMED_OUT
 ```
+
+Progress is a field, not a state. `FAILED` carries a reason:
+`VALIDATION_FAILED`, `INTERRUPTED`, `APPLY_ERROR`, `APPLY_REJECTED` or
+`PORTFOLIO_ARCHIVED` (the complete set, ADR-008 point 6).
+`report` is the per-row list (`{ "row": 2, "message": "..." }`) of a
+`VALIDATION_FAILED` job, otherwise `null`. The uploaded CSV is never returned.
+Ownership is checked; another user's job returns 404.
 
 ---
 
 # 16. Retry Failed Job
 
-```text id="x8r2m4"
+**Status:** `Implemented` (ADR-008 point 6, FR-081)
+
+```text
 POST /api/v1/jobs/:jobId/retry
+POST /api/v1/jobs/:jobId/cancel
 ```
 
-Only retryable jobs may be retried.
+Retry answers 202 with the job back in `QUEUED` and `attempt` incremented;
+cancel answers 200 with the `CANCELLED` job. Retry is allowed for
+`TIMED_OUT`, `CANCELLED`, and `FAILED` with reason `INTERRUPTED`,
+`APPLY_ERROR` or `APPLY_REJECTED`; `VALIDATION_FAILED` and
+`PORTFOLIO_ARCHIVED` are not retryable (the user fixes the file, or the
+portfolio stays archived, and a new import is created). Cancel is allowed while
+`QUEUED` or validating, never during the apply stage. Retry or cancel in a
+state that does not allow it returns 409 `CONFLICT` and changes nothing
+(ADR-008 point 6).
 
 ---
 
 # 17. Asset API
 
+**Status:** `Implemented` (FR-019 to FR-021); asset volatility, exposure and related positions in the detail `Deferred` (FR-021)
+
+Assets are shared reference data: every endpoint requires a Bearer token
+(§9) but has no ownership check. Prices are `Money`
+(`{ amount, currency }`, ADR-002); payloads are built by presenters
+(ADR-002).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/assets` | `Implemented` |
+| `GET /api/v1/assets/:assetId` | `Implemented` |
+| `GET /api/v1/assets/:assetId/price` | `Implemented` |
+| `GET /api/v1/assets/:assetId/history` | `Implemented` (§18) |
+
 ## List Assets
 
-```text id="k3p7v1"
+**Status:** `Implemented` (FR-019, FR-020)
+
+```text
 GET /api/v1/assets
 ```
 
-Filters:
+Query (all optional):
 
-```text id="m8q2x5"
-search
-assetType
-exchange
-currency
-status
-page
-pageSize
+```text
+search      1-100 characters
+assetType   STOCK | ETF | CRYPTO | FOREX
+exchange    1-50 characters
+currency    3-letter code, uppercased
+status      ACTIVE | INACTIVE
+page        integer ≥ 1, default 1
+pageSize    integer 1-100, default 20
 ```
+
+Returns 200 `{ "data": [asset], "meta": { page, pageSize, total, totalPages } }`.
+Errors: 400 `VALIDATION_ERROR`.
 
 ---
 
 ## Get Asset
 
-```text id="d5n9w2"
+**Status:** `Implemented` (FR-021)
+
+```text
 GET /api/v1/assets/:assetId
 ```
+
+Returns 200 `{ "data": asset }`. Errors: 404 `NOT_FOUND`.
 
 ---
 
 ## Asset Price
 
-```text id="r7x4c8"
+**Status:** `Implemented` (FR-021); change semantics against the last closed candle `Implemented` (B5) (ADR-007 point 14)
+
+```text
 GET /api/v1/assets/:assetId/price
 ```
 
-Response:
+Response (200):
 
-```text id="p1m6v9"
+```json
 {
   "data": {
     "assetId": "...",
-    "price": 184.22,
-    "previousPrice": 181.40,
-    "change": 2.82,
+    "price": { "amount": "184.22", "currency": "USD" },
+    "previousPrice": { "amount": "181.40", "currency": "USD" },
+    "change": { "amount": "2.82", "currency": "USD" },
     "changePercent": 1.55,
     "timestamp": "...",
     "source": "MOCK"
@@ -539,371 +924,660 @@ Response:
 }
 ```
 
+`source` is `MOCK` or `EXTERNAL`. Errors: 404 `NOT_FOUND` when the asset
+does not exist, and also when it exists but has no current price (different
+messages; assets have no ownership to protect).
+
 ---
 
 # 18. Historical Market Data
 
-```text id="q4x7n1"
+**Status:** `Implemented` (FR-021); daily candle closing by the simulator `Implemented` (B5) (ADR-007 point 8)
+
+```text
 GET /api/v1/assets/:assetId/history
 ```
 
-Parameters:
+Query:
 
-```text id="m8d2p5"
-from
-to
-interval
+```text
+from        date, required
+to          date, required, from ≤ to
+interval    1d (default); the only value accepted
 ```
 
-Example intervals:
-
-```text id="v1k9r3"
-1m
-5m
-15m
-1h
-1d
-```
+Returns 200 `{ "data": [candle] }`, daily candles in the range, each
+`{ assetId, timestamp, open, high, low, close, volume }` with
+`open`/`high`/`low`/`close` as `Money` and `volume` a number. An empty range
+returns `[]`. Errors: 400 `VALIDATION_ERROR` (missing dates, `from > to`,
+another `interval`); 404 `NOT_FOUND` (asset). Intraday intervals
+(`1m`, `5m`, `15m`, `1h`) are `Deferred`: only daily candles exist.
 
 ---
 
 # 19. Market Data Batch Endpoint
 
-For dashboards displaying multiple assets:
+**Status:** `Implemented`; realtime updates (FR-044) `Implemented` (B5) (§31-§33)
 
-```text id="w5c8m2"
-GET /api/v1/market/prices
+```text
+GET /api/v1/market/prices?assetIds=id1,id2
 ```
 
-Parameters:
-
-```text id="p7x1d4"
-assetIds
-```
-
-This avoids excessive individual requests.
+`assetIds` is a comma-separated list of 1 to 50 ids. Returns 200
+`{ "data": [marketPrice] }` with the §17 price shape. Unknown ids and assets
+without a current price are omitted, never 404. Errors: 400
+`VALIDATION_ERROR`.
 
 ---
 
 # 20. Analytics API
 
+**Status:** allocation, performance and risk `Implemented` (FR-025 to FR-029, FR-085; ADR-004); benchmark comparison `Deferred` (ADR-010 point 7)
+
+All endpoints require a Bearer token and portfolio ownership (another
+user's portfolio returns 404 `NOT_FOUND`). Money fields are `Money`;
+returns and percentages are unrounded numbers in percentage points
+(`16-analytics-spec.md` §2).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/analytics/allocation` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/analytics/performance` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/analytics/risk` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/analytics/attribution` | §22 |
+
 ## Portfolio Performance
 
-```text id="r3m8q5"
+**Status:** `Implemented` (FR-025, FR-026; `16-analytics-spec.md` §5, §7, §8); `1D` `Implemented` as `dailyChange` in §11
+
+```text
 GET /api/v1/portfolios/:portfolioId/analytics/performance
 ```
 
-Optional:
+Query: `period` (`1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`) or a
+custom `from` with an optional `to` (`YYYY-MM-DD`, UTC, inclusive; an omitted
+`to` is today). `1D` is not accepted here: the
+1D change comes from `MarketPrice` through the overview `dailyChange` (§11,
+ADR-004 point 5). They are mutually exclusive:
+sending both is 400 `VALIDATION_ERROR`, and so is `to` without `from`; the
+default is `1M` (ADR-002 point 10). Response fields (ADR-002 point 10; semantics in `16`):
 
-```text id="v6n2x9"
-from
-to
-interval
+```text
+asOf            effective end date (to clamped to the last closed UTC day, the day before today)
+effectiveFrom   first day on which every held asset has a price (§5 clamp); null without data
+status          OK | INSUFFICIENT_DATA (UNKNOWN is not produced)
+twrPercent      number, percentage points, unrounded; null when TWR has no value
+pnl             Money over the same days as TWR; null when unavailable; zero for a portfolio without transactions
+series          [{ date, value, returnPercent }] from effectiveFrom to asOf; date is YYYY-MM-DD, value is Money (FR-026, 16 §3), returnPercent is null on a day without a return
 ```
+
+Unavailable values are `null`, never `0` (ADR-002 point 10). Days before the
+first purchase are in the series with a value of `0` and no return.
+
+Errors: 400 `VALIDATION_ERROR` when `from > to`. A valid range with no
+closed day (`asOf < from`) returns 200 with `status: "INSUFFICIENT_DATA"` and `asOf`,
+not 400 (`16` §8). Benchmark comparison is `Deferred` (ADR-010 point 7).
+Money-weighted return is not reported.
 
 ---
 
 ## Allocation
 
-```text id="k7p4d1"
+**Status:** `Implemented` (FR-027; `16-analytics-spec.md` §13); sector `Deferred` (ADR-004 point 13)
+
+```text
 GET /api/v1/portfolios/:portfolioId/analytics/allocation
 ```
 
-Optional grouping:
+Query: `groupBy` = `asset` (default) | `assetType` | `currency`.
 
-```text id="m2x8q5"
-asset
-assetType
-currency
-sector
+Response (200):
+
+```json
+{
+  "data": {
+    "groupBy": "asset",
+    "groups": [
+      {
+        "key": "asset_001",
+        "label": "AAPL",
+        "marketValue": { "amount": "1842.20", "currency": "USD" },
+        "percentage": 61.4
+      }
+    ]
+  }
+}
 ```
+
+An empty portfolio returns `groups: []`. Errors: 400 `VALIDATION_ERROR`;
+404 `NOT_FOUND`. A transaction on an asset in another currency is rejected
+with 400, so a portfolio cannot reach mixed currencies (`16` §2).
 
 ---
 
 ## Risk
 
-```text id="c9v3n7"
+**Status:** `Implemented` (FR-028, FR-029; `16-analytics-spec.md` §9, §10)
+
+```text
 GET /api/v1/portfolios/:portfolioId/analytics/risk
 ```
 
-Potential response:
+Portfolio-level volatility and drawdown on the daily series over the
+requested period (same query, `asOf` and `effectiveFrom` as performance).
+Query: `period` (`1W`, `1M`, `3M`, `6M`, `1Y`, `YTD`, `ALL`; default `1M`) or a
+custom `from` with an optional `to` (`YYYY-MM-DD`, UTC, inclusive; an omitted
+`to` is today). `period` and `from`/`to` are mutually exclusive, and `to`
+without `from` is 400 `VALIDATION_ERROR`.
 
-```text id="p5x1m8"
-{
-  "data": {
-    "volatility": 14.2,
-    "maxDrawdown": -8.4,
-    "concentration": 0.32,
-    "riskLevel": "MODERATE"
-  }
-}
+```text
+asOf                    effective end date: to clamped to the last closed UTC day (the day before today)
+effectiveFrom           first day on which every held asset has a price; null without data
+status                  OK | INSUFFICIENT_DATA | UNKNOWN
+volatilityPercent       annualized (√365), percentage points; null when fewer than 20 returns
+maxDrawdownPercent      negative percentage, 0 without a decline; null when no day has a return
+currentDrawdownPercent  drawdown on the last day of the period; null when no day has a return
+peakDate, troughDate    UTC dates (YYYY-MM-DD) bounding maxDrawdownPercent; null without a decline
 ```
+
+`status` is `INSUFFICIENT_DATA` when `asOf` has no price for a held asset or
+`from` is after `asOf`; `UNKNOWN` when neither measure has a value (for example,
+no transactions); `OK` otherwise. A single field can be `null` under `OK`:
+with 1 to 19 returns the drawdown is known and `volatilityPercent` is `null`.
+
+Field names and `status` follow ADR-002 point 10; unavailable values are
+`null`, never `0`.
+
+Errors: 400 `VALIDATION_ERROR` for `from > to`, `period` with `from`/`to`, `to`
+without `from`, `1D` or a date that does not exist; 404 `NOT_FOUND`. A valid
+range with no closed day returns 200 with `status: "INSUFFICIENT_DATA"` (`16`
+§8). The risk endpoint returns no composite
+`riskLevel` or `concentration` score: classification belongs to the Pulse
+(ADR-004 point 11, §21), so a second scale is not added.
 
 ---
 
 # 21. Portfolio Pulse API
 
-```text id="d8q4v2"
-GET /api/v1/portfolios/:portfolioId/pulse
-```
+**Status:** `Implemented` inside the overview (§11, FR-007); standalone `GET /api/v1/portfolios/:portfolioId/pulse` `Deferred` (ADR-004 point 11; `16-analytics-spec.md` §15)
 
-Response:
+The Pulse is returned as `pulse` in `GET /api/v1/portfolios/:portfolioId/overview`.
+There is no standalone endpoint. Shape:
 
-```text id="m7x2p9"
+```json
 {
-  "data": {
-    "overall": "HEALTHY",
-    "dimensions": {
-      "performance": {},
-      "concentration": {},
-      "volatility": {},
-      "drawdown": {},
-      "exposure": {}
-    },
-    "explanations": []
-  }
+  "performance":   { "classification": "POSITIVE", "value": 7.2, "explanation": "..." },
+  "concentration": { "classification": "MODERATE", "value": 41.0, "explanation": "..." },
+  "volatility":    { "classification": "UNKNOWN", "value": null, "explanation": "..." },
+  "drawdown":      { "classification": "LOW", "value": -4.1, "explanation": "..." }
 }
 ```
 
-The pulse must remain explainable.
+Every dimension carries its value and explanation, so the Pulse stays
+explainable. `Implemented`: volatility and drawdown come from the portfolio
+series over a trailing `1Y` window ending on the last closed day, and are
+`UNKNOWN` with `value: null` when the series has too few returns. Volatility
+is the annualized value: `HIGH` above 60, `MODERATE` above 20. The operators
+are strict, so a value on a threshold stays in the lower class. Exposure, an
+`overall` classification and a separate `explanations` list are `Deferred`.
 
 ---
 
 # 22. Attribution API
 
-```text id="n5r8c2"
+**Status:** `Implemented` (FR-030): the current state, and the range attribution; the FR-031 factor breakdown `Deferred` (ADR-004 point 10; `16-analytics-spec.md` §14)
+
+```text
 GET /api/v1/portfolios/:portfolioId/analytics/attribution
 ```
 
-Optional parameters:
+Without `period`, `from`, `to` or `groupBy`, the current state: each
+position's contribution to the portfolio's unrealized P/L. Response (200):
 
-```text id="x7m3q1"
-from
-to
-groupBy
+```json
+{
+  "data": {
+    "totalUnrealizedPnL": { "amount": "120.00", "currency": "USD" },
+    "items": [
+      {
+        "assetId": "asset_001",
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "contribution": { "amount": "90.00", "currency": "USD" },
+        "percentageOfTotal": 75
+      }
+    ]
+  }
+}
 ```
 
-Possible grouping:
+`percentageOfTotal` is `0` when the total is `0`. Errors: 404 `NOT_FOUND`.
 
-```text id="p2d9v4"
-asset
-assetType
-sector
+With any of those parameters, the range attribution: `period` or `from` /
+`to` as in §20 (default `1M`), and `groupBy` = `asset` (default) | `assetType`.
+Each group reports its contribution in `Money` only, with no percentage, and
+the contributions sum exactly to the period P/L. Response (200):
+
+```json
+{
+  "data": {
+    "asOf": "2026-03-31",
+    "effectiveFrom": "2026-03-29",
+    "status": "OK",
+    "groupBy": "assetType",
+    "pnl": { "amount": "24", "currency": "USD" },
+    "groups": [
+      { "key": "CRYPTO", "label": "CRYPTO", "contribution": { "amount": "-6", "currency": "USD" } },
+      { "key": "STOCK", "label": "STOCK", "contribution": { "amount": "30", "currency": "USD" } }
+    ]
+  }
+}
 ```
+
+For `groupBy=asset` the `key` is the `assetId` and the `label` the symbol.
+Groups are ordered by `key`. With no price on `asOf`, `status` is
+`INSUFFICIENT_DATA`, `pnl` is `null` and `groups` is empty; an empty portfolio
+is `OK` with a zero `pnl`. Sector and the FR-031 factor breakdown are
+`Deferred`. Errors: 400 `VALIDATION_ERROR` when `from > to`, for `to` without
+`from`, `period` together with `from`/`to`, `1D`, or a `groupBy` other than
+`asset` and `assetType`; 404 `NOT_FOUND`.
 
 ---
 
 # 23. Decision API
 
+**Status:** read `Implemented` (FR-032, FR-033); create, update and close `Deferred`
+
+All endpoints require a Bearer token; a portfolio or decision of another
+user returns 404 `NOT_FOUND`. Prices are `Money`.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/decisions` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/decisions/:decisionId` | `Implemented` |
+| `POST /api/v1/portfolios/:portfolioId/decisions` | `Deferred` |
+| `PATCH /api/v1/portfolios/:portfolioId/decisions/:decisionId` | `Deferred` |
+| `POST /api/v1/portfolios/:portfolioId/decisions/:decisionId/close` | `Deferred` |
+
 ## List Decisions
 
-```text id="c8m4x7"
+**Status:** `Implemented` (FR-032)
+
+```text
 GET /api/v1/portfolios/:portfolioId/decisions
 ```
 
-Filters:
-
-```text id="v1p6n9"
-assetId
-direction
-outcome
-dateFrom
-dateTo
-page
-pageSize
-```
+Query (all optional): `assetId`, `direction` (a `DecisionDirection`
+value), `dateFrom`, `dateTo` (dates, both inclusive, compared with the
+decision's `createdAt`). Returns 200 `{ "data": [decision] }`,
+not paginated, with no `meta`. Errors: 400 `VALIDATION_ERROR`; 404
+`NOT_FOUND`. `outcome`, `page` and `pageSize` are `Deferred`: a portfolio
+holds few decisions and `outcome` is free-form.
 
 ---
 
 ## Get Decision
 
-```text id="q7d2m5"
+**Status:** `Implemented` (FR-033)
+
+```text
 GET /api/v1/portfolios/:portfolioId/decisions/:decisionId
 ```
 
----
-
-## Create Decision
-
-```text id="m9x4p1"
-POST /api/v1/portfolios/:portfolioId/decisions
-```
-
-Request:
-
-```text id="k5v8d3"
-{
-  "assetId": "asset_001",
-  "title": "Breakout setup",
-  "thesis": "Price structure suggests...",
-  "direction": "LONG",
-  "entryPrice": 180,
-  "targetPrice": 195,
-  "stopPrice": 174,
-  "riskLevel": "MODERATE"
-}
-```
+Returns 200 `{ "data": decision }`. Errors: 404 `NOT_FOUND` (missing
+decision, decision of another portfolio, or portfolio of another user).
 
 ---
 
-## Update Decision
+## Create, Update and Close Decision
 
-```text id="p3x7m2"
+**Status:** `Deferred`
+
+```text
+POST  /api/v1/portfolios/:portfolioId/decisions
 PATCH /api/v1/portfolios/:portfolioId/decisions/:decisionId
+POST  /api/v1/portfolios/:portfolioId/decisions/:decisionId/close
 ```
 
----
-
-## Close Decision
-
-```text id="v8q1d5"
-POST /api/v1/portfolios/:portfolioId/decisions/:decisionId/close
-```
+No FR asks for them (FR-032 to FR-034 are read and replay). Writing
+decisions needs decision events created atomically with the decision
+(FR-074) and a link to transactions that does not exist. Decisions come
+from seed and demo data. Expected vs actual (FR-035) is also `Deferred`.
 
 ---
 
 # 24. Decision Replay API
 
+**Status:** `Implemented` (FR-034); event payload prices and quantities as decimal strings `Implemented` (ADR-002 point 9)
+
 ## Get Replay Timeline
 
-```text id="m4n9x2"
+```text
 GET /api/v1/decisions/:decisionId/replay
 ```
 
-Response:
+Response (200):
 
-```text id="d7p3v8"
+```json
 {
   "data": {
     "decision": {},
     "events": [],
+    "currency": "USD",
     "initialState": {}
   }
 }
 ```
 
-The client controls playback.
+`events` are in chronological order. `currency` is the asset's currency;
+event payload `price` and `quantity` are decimal strings (`"150.25"`); a
+number or a malformed string is reported in `initialState.issues`, never
+coerced. `initialState.position.quantity` is a decimal string too.
+`initialState` is the projection before the first event
+(`currentIndex = -1`); the client advances by folding events with the same
+pure `projectDecisionReplay` from `@trading/domain` that the server uses.
+
+Ownership is resolved decision → portfolio → user. Errors: 404 `NOT_FOUND`
+(missing decision or another user's); 500 `INTERNAL_ERROR` if the
+decision's asset is missing (data integrity).
 
 ---
 
 # 25. Scenario API
 
+**Status:** `Implemented`; archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Implemented` (B2; ADR-005)
+
+All endpoints require a Bearer token (§9). The portfolio must be the
+caller's and the scenario must belong to it; otherwise 404 `NOT_FOUND`.
+Payloads are built by presenters from the response schemas of
+`@trading/contracts` (ADR-002). `Implemented` (ADR-005 point 1): `VIEWER` reads
+only; writes need `TRADER` or `ADMIN`, otherwise 403 `FORBIDDEN`.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/portfolios/:portfolioId/scenarios` | `Implemented` |
+| `GET /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented` |
+| `POST /api/v1/portfolios/:portfolioId/scenarios` | `Implemented`; 409 on archived portfolio |
+| `PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented`; 409 on archived portfolio |
+| `POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive` | `Implemented`; 409 on archived portfolio |
+| `DELETE /api/v1/portfolios/:portfolioId/scenarios/:scenarioId` | `Implemented`; 409 on archived portfolio |
+| `POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/calculate` | `Implemented` |
+| `POST /api/v1/portfolios/:portfolioId/scenarios/compare` | `Implemented` |
+
+Duplicate scenario (FR-041) is `Deferred`.
+
 ## List Scenarios
 
-```text id="x5q8m1"
+**Status:** `Implemented`
+
+```text
 GET /api/v1/portfolios/:portfolioId/scenarios
 ```
+
+Optional query `status` (`DRAFT`, `SAVED`, `ARCHIVED`). Returns 200
+`{ "data": [scenario] }`, each with its `changes`, newest first. Not
+paginated. Errors: 400 `VALIDATION_ERROR` (invalid `status`); 404
+`NOT_FOUND`.
+
+`GET .../scenarios/:scenarioId` returns 200 `{ "data": scenario }`. Errors:
+404 `NOT_FOUND`.
 
 ---
 
 ## Create Scenario
 
-```text id="k9d2p4"
+**Status:** `Implemented` (FR-037)
+
+```text
 POST /api/v1/portfolios/:portfolioId/scenarios
 ```
 
-Request:
+Request (`description` and `changes` optional; `changes` defaults to none):
 
-```text id="v3m7x1"
+```json
 {
   "name": "Increase technology exposure",
-  "description": "Evaluate higher technology allocation."
+  "description": "Evaluate higher technology allocation.",
+  "changes": [{ "assetId": "asset_001", "percentChange": 10 }]
 }
 ```
+
+A change is a percentage change to the asset's price: never below -100%,
+one entry per asset. The portfolio does not have to hold the asset.
+Converting `percentChange` to `Decimal` before money arithmetic is
+`Planned (B0)` (ADR-002 point 9).
+
+Returns 201 `{ "data": scenario }` with `status = DRAFT`.
+
+Errors: 400 `VALIDATION_ERROR` (blank `name`, invalid or repeated changes;
+unknown assets are listed together, one `UNKNOWN_ASSET` detail each, a domain code listed in §7); 404
+`NOT_FOUND`.
 
 ---
 
 ## Calculate Scenario
 
-```text id="p8n4q6"
+**Status:** `Implemented` (FR-038); allocation, risk and exposure `Deferred`
+
+```text
 POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/calculate
 ```
 
-Response:
+Response (200):
 
-```text id="m2x7d9"
+```json
 {
   "data": {
     "scenarioId": "...",
     "baseline": {},
-    "result": {}
+    "result": {},
+    "difference": {},
+    "unmatchedAssetIds": []
   }
 }
 ```
+
+Stateless: it applies the stored `changes` to the portfolio's current
+positions and writes nothing, so the baseline never changes (FR-036,
+`05-data-model.md` §16). `baseline` and `result` hold `totalValue`,
+`investedValue`, `unrealizedPnL` and `unrealizedPnLPercent`; `difference`
+holds `totalValue` and `unrealizedPnL`. `unmatchedAssetIds` lists changed
+assets the portfolio no longer holds, which are ignored. Any status,
+`ARCHIVED` included, can be calculated. Errors: 404 `NOT_FOUND`.
 
 ---
 
 ## Update Scenario
 
-```text id="c5v1q8"
+**Status:** `Implemented` (FR-037, FR-039, FR-040)
+
+```text
 PATCH /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
 ```
+
+Request: any of `name`, `description`, `status` (`DRAFT` or `SAVED`),
+`changes`; at least one is required. `changes` replaces the whole list, so
+`changes: []` is reset (FR-039) and `status: "SAVED"` is save (FR-040). A
+single write: a partly invalid request changes nothing. Returns 200
+`{ "data": scenario }`.
+
+Errors: 400 `VALIDATION_ERROR` (empty body, invalid changes, unknown
+assets); 404 `NOT_FOUND`; 409 `CONFLICT` when the scenario is `ARCHIVED`.
 
 ---
 
 ## Archive Scenario
 
-```text id="r7m4x2"
+**Status:** `Implemented`
+
+```text
 POST /api/v1/portfolios/:portfolioId/scenarios/:scenarioId/archive
 ```
+
+Idempotent: always 200 `{ "data": scenario, "meta": { "alreadyArchived": false } }`,
+`meta.alreadyArchived` telling whether this call changed anything. An
+archived scenario is read-only; there is no unarchive. Errors: 404
+`NOT_FOUND`.
+
+---
+
+## Delete Scenario
+
+**Status:** `Implemented` (FR-043)
+
+```text
+DELETE /api/v1/portfolios/:portfolioId/scenarios/:scenarioId
+```
+
+Returns 204 for any status. Errors: 404 `NOT_FOUND` (including a repeated
+delete); 409 `CONFLICT` when the portfolio is archived (ADR-010 point 5).
+
+---
+
+## Compare Scenarios
+
+**Status:** `Implemented` (FR-042)
+
+```text
+POST /api/v1/portfolios/:portfolioId/scenarios/compare
+```
+
+Request: `{ "scenarioIds": [...] }`, 1 to 5 distinct ids of the portfolio.
+Read-only: returns 200 and writes nothing.
+
+Response: `baseline` (`metrics`, plus one asset row with `value` and
+`allocationPercent`, largest first) and `scenarios` in request order, each
+with `scenarioId`, `name`, `status`, `metrics`, `difference`
+(`totalValue`, `totalValuePercent` (`null` when the baseline is zero),
+`unrealizedPnL`), `unmatchedAssetIds` and `assets` rows (`value`,
+`valueDifference`, `allocationPercent`, `allocationShift` in percentage
+points), ordered by the size of the difference. Asset rows carry `symbol`
+and `name`. Allocation is per asset only. Computed by the domain function
+`compareScenarioImpacts`, shared with the demo.
+
+Errors: 400 `VALIDATION_ERROR` (empty, more than 5 or repeated ids); 404
+`NOT_FOUND` when any id is missing or foreign (no column is dropped
+silently).
 
 ---
 
 # 26. Watchlist API
 
+**Status:** `Implemented`; role checks `Implemented` (B2; ADR-005)
+
+All endpoints require a Bearer token (§9) and act on the caller's watchlist.
+Uniqueness is per user. `Implemented`: `VIEWER` cannot add or remove (403
+`FORBIDDEN`).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/watchlist` | `Implemented` |
+| `POST /api/v1/watchlist` | `Implemented` |
+| `DELETE /api/v1/watchlist/:assetId` | `Implemented` |
+
 ## Get Watchlist
 
-```text id="d8p2n5"
+**Status:** `Implemented`
+
+```text
 GET /api/v1/watchlist
 ```
+
+Returns 200 `{ "data": [watchlistItem] }`. No parameters, no pagination.
 
 ---
 
 ## Add Asset
 
-```text id="m6x9q3"
+**Status:** `Implemented`
+
+```text
 POST /api/v1/watchlist
 ```
 
 Request:
 
-```text id="v1c7p4"
+```json
 {
   "assetId": "asset_001"
 }
 ```
 
+Returns 201 `{ "data": watchlistItem }`.
+
+Errors: 400 `VALIDATION_ERROR` (missing `assetId`, or the asset is already
+on the watchlist: duplicates are 400, not 409); 404 `NOT_FOUND` (unknown
+asset).
+
 ---
 
 ## Remove Asset
 
-```text id="k4n8m2"
+**Status:** `Implemented`
+
+```text
 DELETE /api/v1/watchlist/:assetId
 ```
 
-Duplicate additions should return a conflict or equivalent idempotent response.
+Returns 204. Errors: 404 `NOT_FOUND` when the asset is not on the caller's
+watchlist (including a repeated removal).
 
 ---
 
 # 27. Alerts API
 
+**Status:** `Implemented` (configuration, FR-053); evaluation `Implemented` (B5) (ADR-007 point 9); archived-portfolio guard `Implemented` (ADR-010 point 5); role checks `Implemented` (B2; ADR-005)
+
+All endpoints require a Bearer token (§9) and are scoped to the caller:
+another user's alert is 404 `NOT_FOUND`. Alerts are managed in the Alerts
+tab under Markets (ADR-010 point 9). `Implemented`: `VIEWER` reads only (403
+`FORBIDDEN` on writes).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/alerts` | `Implemented` |
+| `GET /api/v1/alerts/:alertId` | `Implemented` |
+| `POST /api/v1/alerts` | `Implemented`; 409 on archived portfolio |
+| `PATCH /api/v1/alerts/:alertId` | `Implemented`; 409 on archived portfolio |
+| `DELETE /api/v1/alerts/:alertId` | `Implemented`; 409 on archived portfolio |
+
+`Implemented` (ADR-007 point 9): the server evaluates `PRICE` alerts with the
+condition `ABOVE` or `BELOW` on every tick; an alert fires when its condition
+changes from false to true and re-arms when the price moves back past the
+threshold by 0.5%. Each trigger creates a `WARNING` notification (§28) of
+type `ALERT_TRIGGERED` and, after the commit, emits `ALERT_TRIGGERED` and
+`NOTIFICATION_CREATED` to its owner. An alert whose condition is already true
+when it is created or edited does not fire until it re-arms. `armed` and
+`lastTriggeredAt` are persisted with the notification and are not part of the
+alert response. Other alert types are stored but not evaluated.
+
 ## List Alerts
 
-```text id="p9x3d6"
+**Status:** `Implemented`
+
+```text
 GET /api/v1/alerts
 ```
+
+Returns 200 `{ "data": [alert] }`. No parameters, no pagination.
+
+`GET /api/v1/alerts/:alertId` returns 200 `{ "data": alert }`. Errors: 404
+`NOT_FOUND`.
 
 ---
 
 ## Create Alert
 
-```text id="m5q7v1"
+**Status:** `Implemented` (FR-053)
+
+```text
 POST /api/v1/alerts
 ```
 
-Request:
+Request (`assetId`, `portfolioId` and `enabled` optional, but at least one
+of `assetId` or `portfolioId` is required):
 
-```text id="x8d2n4"
+```json
 {
   "assetId": "asset_001",
   "type": "PRICE",
@@ -913,78 +1587,144 @@ Request:
 }
 ```
 
+`type` is `PRICE`, `PORTFOLIO_CHANGE`, `ALLOCATION` or `VOLATILITY`;
+`condition` is a non-empty string. Returns 201 `{ "data": alert }`.
+
+Errors: 400 `VALIDATION_ERROR` (no target, unknown `type`, schema or domain
+rules); 404 `NOT_FOUND` (unknown asset, or a portfolio that is not the
+caller's).
+
 ---
 
 ## Update Alert
 
-```text id="c3v9m7"
+**Status:** `Implemented` (FR-053)
+
+```text
 PATCH /api/v1/alerts/:alertId
 ```
+
+Request: any of `condition`, `threshold`, `enabled`; at least one is
+required. The target (`assetId`, `portfolioId`, `type`) cannot change; a
+new target is a new alert. Returns 200 `{ "data": alert }`.
+
+Errors: 400 `VALIDATION_ERROR`; 404 `NOT_FOUND`.
 
 ---
 
 ## Delete Alert
 
-```text id="r6p1x8"
+**Status:** `Implemented`
+
+```text
 DELETE /api/v1/alerts/:alertId
 ```
+
+Returns 204. Errors: 404 `NOT_FOUND`.
 
 ---
 
 # 28. Notifications API
 
+**Status:** `Implemented` (FR-051, FR-052); notification creation `Implemented` (B5) (ADR-007, ADR-010 point 9)
+
+All endpoints require a Bearer token (§9) and are scoped to the caller:
+another user's notification is 404 `NOT_FOUND`. A notification is `unread`
+or `read` only; there is no `dismissed` state or dismiss action (ADR-010
+point 3).
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/notifications` | `Implemented` |
+| `POST /api/v1/notifications/:notificationId/read` | `Implemented` |
+| `POST /api/v1/notifications/read-all` | `Implemented` |
+
+There is no `POST /api/v1/notifications`: notifications come from system
+events only. `Implemented` (B4.3, B5) (ADR-010 point
+9, ADR-008 point 6): sources are triggered alerts (`WARNING`) and CSV import
+jobs reaching `COMPLETED` (`SUCCESS`), `FAILED` or `TIMED_OUT` (`ERROR`);
+`CANCELLED` jobs and connection changes create none. Creation emits `NOTIFICATION_CREATED` (§31).
+
 ## List Notifications
 
-```text id="m7q2d4"
+**Status:** `Implemented` (FR-051)
+
+```text
 GET /api/v1/notifications
 ```
 
-Parameters:
+Optional query `unreadOnly` (`true` or `false`). Returns 200
+`{ "data": [notification] }`, newest first. Filters by `read` or `type`,
+and pagination, are `Deferred`.
 
-```text id="v8x5p1"
-read
-type
-page
-pageSize
-```
+Errors: 400 `VALIDATION_ERROR` (invalid `unreadOnly`).
 
 ---
 
 ## Mark Notification Read
 
-```text id="c9n3m7"
+**Status:** `Implemented` (FR-052)
+
+```text
 POST /api/v1/notifications/:notificationId/read
 ```
+
+Sets `readAt` and returns 200 `{ "data": notification }`. Errors: 404
+`NOT_FOUND`.
 
 ---
 
 ## Mark All Read
 
-```text id="p4x8d2"
+**Status:** `Implemented` (FR-052)
+
+```text
 POST /api/v1/notifications/read-all
 ```
+
+Marks every unread notification of the caller as read. Returns 204.
 
 ---
 
 # 29. User Preferences API
 
+**Status:** `Implemented` (FR-087); `theme` limited to `light`/`dark`/`system` and `language` to `en`/`es` (ADR-010 point 8)
+
+Both endpoints require a Bearer token (§9) and act on the caller's
+preferences; there is no user id in the route. Preferences are a per-user
+singleton row.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /api/v1/preferences` | `Implemented` |
+| `PATCH /api/v1/preferences` | `Implemented`; `theme` and `language` validated |
+
 ## Get Preferences
 
-```text id="m2v7q5"
+**Status:** `Implemented` (FR-087)
+
+```text
 GET /api/v1/preferences
 ```
+
+Returns 200 `{ "data": preferences }`, or 200 `{ "data": null }` when the
+user has never saved preferences (not 404; a read creates nothing). The
+client then applies the application defaults.
 
 ---
 
 ## Update Preferences
 
-```text id="d8x1n4"
+**Status:** `Implemented` (FR-087)
+
+```text
 PATCH /api/v1/preferences
 ```
 
-Example:
+Request: any of `theme`, `language`, `defaultPortfolioId`,
+`reducedMotion`, `notificationPreferences`; at least one is required.
 
-```text id="k5p9m3"
+```json
 {
   "theme": "dark",
   "language": "en",
@@ -992,552 +1732,544 @@ Example:
 }
 ```
 
+The first `PATCH` creates the row (atomic upsert); omitted fields take the
+column defaults of `05-data-model.md` §23 (`theme = "system"`,
+`language = "en"`, `reducedMotion = false`, `notificationPreferences = {}`).
+`defaultPortfolioId: null` clears it. Returns 200 `{ "data": preferences }`.
+
+Errors: 400 `VALIDATION_ERROR` (no field, `theme` other than `light`, `dark` or
+`system`, `language` other than `en` or `es`; nothing is changed); 404
+`NOT_FOUND` (`defaultPortfolioId` missing or another user's).
+
 ---
 
 # 30. Health API
 
-```text id="r4x7m2"
-GET /api/v1/health
+**Status:** `Implemented` (NFR-051)
+
+Health routes sit outside `/api/v1`, need no token and are never
+rate-limited. Their bodies do not use the `data` envelope. There is no
+"degraded" state in version 1: the only dependency is the database.
+
+| Endpoint | Status |
+| --- | --- |
+| `GET /health` | `Implemented` |
+| `GET /health/ready` | `Implemented` |
+
+## Liveness
+
+**Status:** `Implemented`
+
+```text
+GET /health
 ```
 
-Response:
+Answers whether the process runs; checks no dependency. Always 200:
 
-```text id="p8n3q5"
+```json
 {
-  "data": {
-    "status": "healthy",
-    "timestamp": "...",
-    "dependencies": {
-      "database": "healthy",
-      "cache": "healthy",
-      "realtime": "healthy"
-    }
-  }
+  "status": "ok",
+  "service": "trading-api",
+  "timestamp": "..."
 }
 ```
+
+---
+
+## Readiness
+
+**Status:** `Implemented`
+
+```text
+GET /health/ready
+```
+
+Runs `SELECT 1` against the database. Returns 200 with
+`"status": "ok"` and `"checks": { "database": "ok" }`, or 503:
+
+```json
+{
+  "status": "unavailable",
+  "service": "trading-api",
+  "timestamp": "...",
+  "checks": { "database": "unavailable" }
+}
+```
+
+The body never exposes connection strings or driver errors; details go to
+the server log (`health.database.unavailable`).
+
+While the process shuts down (`SIGTERM` or `SIGINT`, ADR-006 point 12), it
+answers 503 at once, runs no query, and the body has no `checks`:
+
+```json
+{
+  "status": "unavailable",
+  "service": "trading-api",
+  "timestamp": "..."
+}
+```
+
+`GET /health` stays 200 until the process ends.
 
 ---
 
 # 31. Realtime API
 
-Realtime communication is separate from the HTTP API.
+**Status:** `Implemented` (B5) (ADR-007)
 
-The production implementation may use:
+Realtime is separate from the HTTP API. The full protocol lives in
+`08-realtime-spec.md`; §31-§38 only summarize it.
 
-- WebSockets;
-- Server-Sent Events;
-- another appropriate realtime transport.
-
-The client must consume a normalized internal event contract.
+- Transport: WebSocket (`ws`) behind a transport port. It is served by the
+  same HTTP server and port as the API (7001) on a fixed path, proposed
+  `/ws` and confirmed in B5; there is no `WEBSOCKET_PATH` variable (ADR-007
+  point 1, amended 2026-10-07).
+- Authentication: the access token goes in the first message, never in the
+  URL; a socket not authenticated within 5 seconds is closed.
+- Channels: `market:{assetId}`, `portfolio:{portfolioId}`, `notifications`
+  and `jobs:{jobId}` (ADR-008), each authorized by permission and ownership.
+- Heartbeat: ping/pong every 30 seconds.
+- The demo uses an in-process realtime adapter behind the same client port
+  (`Planned (FE)`).
 
 ---
 
 # 32. Realtime Event Envelope
 
-```text id="x5m8q1"
+**Status:** `Implemented` (B5) (ADR-007 point 4)
+
+Defined as Zod schemas in `@trading/contracts`; money follows ADR-002.
+
+```json
 {
-  "id": "event_001",
+  "id": "...",
   "type": "MARKET_PRICE_UPDATED",
-  "timestamp": "...",
+  "channel": "market:...",
   "sequence": 1001,
+  "timestamp": "2026-08-29T14:30:00Z",
   "payload": {}
 }
 ```
+
+Event catalog, version 1: `MARKET_PRICE_UPDATED`, `PORTFOLIO_UPDATED`,
+`NOTIFICATION_CREATED`, `ALERT_TRIGGERED`, plus the job events of ADR-008.
+Payloads are specified in `08-realtime-spec.md`.
 
 ---
 
 # 33. Market Price Event
 
-```text id="d7p2v9"
-{
-  "type": "MARKET_PRICE_UPDATED",
-  "payload": {
-    "assetId": "asset_001",
-    "price": 184.22,
-    "previousPrice": 183.90
-  }
-}
-```
+**Status:** `Implemented` (B5) (ADR-007 point 6)
+
+`MARKET_PRICE_UPDATED` on `market:{assetId}`. Prices and price changes are
+money in the ADR-002 wire format (`{ "amount": "<decimal string>",
+"currency": "USD" }`), never numbers; `changePercent` is a JSON number.
+Payload: `08-realtime-spec.md`.
 
 ---
 
 # 34. Portfolio Event
 
-Example:
+**Status:** `Implemented` (B5) (ADR-007 point 6)
 
-```text id="m8q4x2"
-{
-  "type": "PORTFOLIO_UPDATED",
-  "payload": {
-    "portfolioId": "portfolio_001",
-    "reason": "TRANSACTION_COMPLETED"
-  }
-}
-```
-
-The event does not need to contain the complete portfolio.
-
-The client can fetch or derive the affected state.
+`PORTFOLIO_UPDATED` on `portfolio:{portfolioId}`, emitted only when holdings
+change (after a transaction commits). It does not carry the full portfolio;
+the client refetches through HTTP. `TRANSACTION_CREATED`,
+`TRANSACTION_COMPLETED` and `POSITION_UPDATED` are removed.
 
 ---
 
 # 35. Job Progress Event
 
-```text id="p5x9d1"
-{
-  "type": "JOB_PROGRESS_UPDATED",
-  "payload": {
-    "jobId": "job_001",
-    "status": "PROCESSING",
-    "progress": 75
-  }
-}
-```
+**Status:** `Implemented` (B5) (ADR-008 point 11)
+
+`JOB_PROGRESS_UPDATED` and the other job events on `jobs:{jobId}`, for CSV
+import jobs. Job states are those of ADR-008 point 3.
 
 ---
 
 # 36. Notification Event
 
-```text id="v3m7q8"
-{
-  "type": "NOTIFICATION_CREATED",
-  "payload": {
-    "notificationId": "notification_001"
-  }
-}
-```
+**Status:** `Implemented` (B5) (ADR-007 point 6)
+
+`NOTIFICATION_CREATED` on `notifications`, scoped to the authenticated user.
+The client fetches the notification through §28.
 
 ---
 
 # 37. Realtime Connection Events
 
-The client should receive normalized connection state:
+**Status:** `Implemented` (B5) (ADR-007 point 12)
 
-```text id="x8n4p2"
-CONNECTED
-DISCONNECTED
-RECONNECTING
-RECONNECTED
-FAILED
-```
-
-These are transport/application events and should not be treated as domain entities.
+The client port exposes a normalized connection state (connected,
+reconnecting, disconnected). These are transport states, not domain
+entities. While disconnected, the UI shows a stale-data indicator and
+refetches through HTTP until it reconnects. State names are defined in
+`08-realtime-spec.md`.
 
 ---
 
 # 38. Event Ordering
 
-The client must reject or ignore stale events where:
+**Status:** `Implemented` (B5) (ADR-007 point 5)
 
-```text id="m7q3v9"
+`sequence` is monotonic per channel. The client ignores events where:
+
+```text
 incomingSequence <= lastProcessedSequence
 ```
 
-when sequence ordering is available.
-
-This prevents older market events from overwriting newer state.
+On a gap, the client resynchronizes through HTTP. There is no server-side
+replay buffer in version 1.
 
 ---
 
 # 39. Idempotency
 
-Mutations with potentially duplicate execution should support idempotency.
+**Status:** `Implemented` (ADR-008 point 8)
 
-Example:
-
-```text id="d2p8x4"
+```text
 Idempotency-Key: <unique-key>
 ```
 
-Potential candidates:
+Supported only on `POST /api/v1/portfolios/:portfolioId/transactions` and on
+CSV import creation. Keys are stored per user with a hash of the request and
+the resulting response, for 24 hours, in the same unit of work as the
+mutation. Same key and request returns the stored response; same key with a
+different request returns 409 `CONFLICT`. Deposits and withdrawals do not
+exist in version 1 (ADR-003).
 
-- transaction creation;
-- deposits;
-- withdrawals;
-- long-running jobs.
-
-The demo should simulate duplicate requests where useful.
+The header is optional; without it the request runs as before. A key is 1 to
+255 printable ASCII characters with no spaces, otherwise 400
+`VALIDATION_ERROR`. The request hash covers the method, the route, the path
+parameters and the body, so the same key and body against another portfolio is
+a different request. A first request holds its key for a 60-second lease: a
+second request with the same key inside it returns 409 `CONFLICT`, and after
+it a crashed request no longer blocks the key. A repeat is answered with the
+stored status and body and `Idempotency-Replayed: true` (the `Location`
+header of an import is not replayed). A 4xx is stored; a 5xx is never stored
+and frees the key. The key is scoped to the user.
 
 ---
 
 # 40. Pagination
 
-Collection endpoints should support:
+**Status:** `Implemented` (`apps/api/src/schemas/pagination.schema.ts`)
 
-```text id="v6m1q9"
-page
-pageSize
+Paginated lists accept:
+
+```text
+page      integer >= 1, default 1
+pageSize  integer 1-100, default 20
 ```
 
-Default:
+Out-of-range values return 400 `VALIDATION_ERROR`. Responses carry `meta`
+(§4):
 
-```text id="k3x7p2"
-page = 1
-pageSize = 20
+```json
+{
+  "data": [],
+  "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 }
+}
 ```
 
-Maximum page size should be bounded.
+Only `GET /api/v1/assets` and `GET /api/v1/portfolios/:portfolioId/transactions`
+are paginated. Other lists return all items without `meta`; each section
+states its own behavior.
 
 ---
 
 # 41. Filtering
 
-Filtering parameters should use predictable naming.
+**Status:** `Implemented` (per endpoint)
 
-Examples:
-
-```text id="n8q4m1"
-status
-type
-assetId
-dateFrom
-dateTo
-```
-
-Complex filters should not be encoded into arbitrary query strings.
+Filters are flat, named query parameters validated with Zod, for example
+`assetId`, `type`, `direction`, `status`, `dateFrom` and `dateTo`. Each
+endpoint section lists the filters it really accepts; unknown filters are
+not part of the contract. Complex filter expressions are not supported.
 
 ---
 
 # 42. Sorting
 
-Sorting may use:
+**Status:** `Reference` (ADR-010 point 4)
 
-```text id="p7d2x5"
-sort=createdAt
-sort=-createdAt
-```
-
-Multiple sort fields may be supported later.
+No endpoint accepts a `sort` parameter; server-side sorting is `Deferred`.
+Paginated lists keep the API order documented for each endpoint (FR-014).
+The client sorts only lists loaded in full (`Planned (FE)`).
 
 ---
 
 # 43. Date Handling
 
-API timestamps should use ISO 8601.
+**Status:** `Implemented` (ADR-002 point 3)
 
-Example:
+Timestamps are ISO-8601 strings in UTC:
 
-```text id="m4v8q2"
+```text
 2026-08-29T14:30:00Z
 ```
 
-Timezone conversion belongs to the presentation layer unless business rules explicitly require timezone-aware calculations.
+Analytics days are UTC calendar dates (ADR-004). Time zone conversion
+belongs to the presentation layer.
 
 ---
 
 # 44. Monetary Values
 
-Monetary API fields must have predictable precision.
+**Status:** `Implemented` (ADR-002 point 3)
 
-The API should avoid ambiguous representations.
-
-Possible implementation:
-
-```text id="x7n2p5"
+```json
 {
   "amount": "12345.67",
   "currency": "USD"
 }
 ```
 
-The final representation will be standardized before implementation.
+`amount` is a decimal string, never a JavaScript number; prices and
+quantities are decimal strings too. Requests accept a decimal string or a
+number today. Display rounding happens only in the client (ADR-010 point 9).
 
 ---
 
 # 45. API Security
 
-The API must enforce:
+**Status:** `Implemented`; permission checks in the application layer `Implemented` (B0 mechanism, B2 matrix; ADR-001, ADR-005)
 
-- authentication;
-- authorization;
-- input validation;
-- ownership checks;
-- rate limiting where applicable;
-- safe error responses.
-
-Client-side authorization is not sufficient.
+- Bearer authentication on every `/api/v1` route except auth and health (§9).
+- Role and ownership authorization on the server; client checks are UX only.
+- Zod validation of query, body and route params (ADR-002 point 10). JSON
+  bodies capped at 100 kB.
+- `helmet` headers and CORS restricted to `CORS_ORIGIN`.
+- Normalized error bodies that never expose stack traces or driver errors.
 
 ---
 
 # 46. Resource Ownership
 
-A user must only access resources they own or are authorized to access.
+**Status:** `Implemented`
 
-Example:
+Every portfolio-scoped resource is resolved through its owner. A resource
+of another user returns 404 `NOT_FOUND`, the same as a missing one, so its
+existence is never revealed:
 
-```text id="q8m3d1"
-GET /api/v1/portfolios/:portfolioId
-```
-
-must verify:
-
-```text id="v2p7x5"
+```text
 authenticatedUser
         ↓
-portfolio.owner
+portfolio.userId === authenticatedUser.id
+        ↓
+resource
 ```
-
-before returning the resource.
 
 ---
 
 # 47. API Rate Limiting
 
-Production APIs should implement reasonable rate limits.
+**Status:** `Implemented` (`apps/api/src/middleware/rate-limit.ts`)
 
-The exact thresholds will be defined during deployment.
+| Limiter | Scope | Limit |
+| --- | --- | --- |
+| General | all `/api/v1` routes | 300 requests per 15 minutes |
+| Login | `POST /api/v1/auth/login` | 5 attempts per 15 minutes |
 
-The demo should not depend on external rate-limiting infrastructure.
-
-A local simulation may reproduce rate-limit responses for demonstration and testing.
+Exceeding a limit returns 429 `RATE_LIMITED` with the normalized error body. Health
+routes are not rate-limited. Realtime inbound limits are `Implemented` (B5)
+(ADR-007 point 11).
 
 ---
 
 # 48. API Timeout Behavior
 
-Requests should have defined timeout behavior.
+**Status:** Job timeouts `Implemented` (B4) (ADR-008 point 7); no HTTP request timeout in v1 (ADR-002 point 10)
 
-When a dependency times out:
-
-```text id="m8x2q4"
-Dependency Timeout
-      ↓
-Normalize Error
-      ↓
-TIMEOUT / DEPENDENCY_ERROR
-      ↓
-Client Recovery UX
-```
-
-The demo should be capable of simulating this condition.
+The API sets no request timeout, and none is planned for v1: it runs locally
+for one user, and the 15 s client timeout (NFR-017) covers the user
+experience. CSV import jobs move to `TIMED_OUT`
+when they exceed their type's timeout while `QUEUED` or validating; the
+apply stage is exempt.
 
 ---
 
 # 49. Mock API Contract
 
-The mock implementation must expose the same application operations as the production API.
+**Status:** `Planned (FE)` (ADR-001, ADR-002)
 
-Example:
-
-```text id="p4n7x1"
-PortfolioService
-     │
-     ├── MockPortfolioService
-     └── ApiPortfolioService
-```
-
-Both must satisfy the same contract.
+There is no mock API. The demo runs the real application layer
+(`@trading/application`) in the browser through an in-process demo adapter
+that implements the same client-side ports as the HTTP adapter and returns
+the same DTOs (ADR-002 point 5).
 
 ---
 
 # 50. Mock API Behavior
 
-The mock API should simulate:
+**Status:** `Planned (FE)` (ADR-001); simulated latency `Deferred` (ADR-010 point 6)
 
-- asynchronous requests;
-- latency;
-- validation;
-- successful mutations;
-- failed mutations;
-- timeouts;
-- retries;
-- realtime events;
-- background processing.
-
-Example:
-
-```text id="x9m3d7"
-UI
- ↓
-Mock API
- ↓
-Simulated Network Delay
- ↓
-Application Logic
- ↓
-Mock Repository
- ↓
-Domain Calculation
- ↓
-Response
-```
+The demo adapter executes the same use cases, validation and domain
+calculations as the API. Realtime comes from the in-process realtime adapter
+(§31) and CSV import from the in-process job runner (ADR-008 point 13).
+Simulated latency is decided in a frontend-stage ADR.
 
 ---
 
 # 51. Mock API and Real API Parity
 
-The following must remain equivalent:
+**Status:** `Planned (FE)` (ADR-002 point 6)
 
-```text id="v5q8m2"
-Request shape
-Response shape
-Error shape
-Validation behavior
-State transitions
-Domain calculations
-```
-
-Only the infrastructure implementation changes.
+Both adapters share request, response and error shapes, validation, state
+transitions and domain calculations through `@trading/contracts` and
+`@trading/application`. Only infrastructure differs.
 
 ---
 
 # 52. Demo-Only Endpoints
 
-Demo-specific controls should not be part of the production API contract.
+**Status:** `Deferred` (ADR-010 point 6)
 
-Examples may include:
-
-```text id="d2x7p4"
-POST /demo/reset
-POST /demo/simulation/start
-POST /demo/simulation/stop
-POST /demo/failures
-```
-
-These belong to a separate demo controller.
+The demo runs in the browser, so it needs no `/demo/*` HTTP endpoints, and
+none are part of the production contract. Demo controls are decided in the
+frontend-stage ADR.
 
 ---
 
 # 53. Demo Reset
 
-Conceptually:
+**Status:** `Deferred` (ADR-010 point 6)
 
-```text id="m9q3v6"
-POST /demo/reset
-```
-
-Result:
-
-```text id="p5x8d1"
-Seed Data
-    ↓
-Fresh Session
-```
-
-The endpoint is unavailable in production mode.
+Decided in the frontend-stage ADR, with the demo data layers.
 
 ---
 
 # 54. Demo Simulation Controls
 
-Potential operations:
+**Status:** `Deferred` for the demo (ADR-010 point 6); real-mode control `Implemented` (B5.6) (ADR-007 point 10)
 
-```text id="x4n7m2"
-POST /demo/simulation/start
-POST /demo/simulation/pause
-POST /demo/simulation/resume
-POST /demo/simulation/stop
+In real mode, starting, pausing and changing the simulation mode require the
+`simulation:control` permission (`ADMIN`, ADR-005). Endpoints, all
+`Implemented` (B5.6) (ADR-007 point 15):
+
+| Endpoint | Status |
+| --- | --- |
+| `POST /api/v1/simulation/start` | `Implemented` (B5.6) |
+| `POST /api/v1/simulation/pause` | `Implemented` (B5.6) |
+| `PUT /api/v1/simulation/mode` | `Implemented` (B5.6) |
+
+Request for `PUT /api/v1/simulation/mode`: `{ "mode": "<wire id>" }`, one
+of `PAUSED`, `NORMAL`, `VOLATILE`, `BULLISH`, `BEARISH`. The lifecycle is
+only `RUNNING <-> HALTED` (ADR-007 point 16); there is no stop and no
+seed reset.
+
+Responses: every endpoint answers `200` with the status after the call:
+
+```json
+{ "data": { "state": "RUNNING", "mode": "NORMAL" } }
 ```
 
-The exact controls may be exposed through a developer/demo panel rather than the primary product UI.
+`state` is `RUNNING` or `HALTED`; `mode` is a mode wire id. Repeating a call
+that changes nothing (`start` while `RUNNING`, `pause` while `HALTED`, the
+same mode) is not an error: it answers `200` with the unchanged status.
+
+Behavior (decisions of B5.6):
+
+- `pause` moves `RUNNING` to `HALTED`: nothing ticks and no daily candle
+  closes until `start`, which closes the days missed.
+- The `PAUSED` mode keeps the simulator `RUNNING` but emits no tick; daily
+  candles still close at midnight.
+- `start` resumes into the mode in effect when it was paused. A mode set while
+  `HALTED` takes effect on `start`.
+- The state and the mode are not persisted: a restart is `RUNNING` in `NORMAL`.
+
+Errors: 400 `VALIDATION_ERROR` for an unknown mode (`details[0].field` is
+`mode`); 401 `UNAUTHORIZED` without a valid access token; 403 `FORBIDDEN`
+without `simulation:control` (ADR-002 point 10).
 
 ---
 
 # 55. Demo Failure Simulation
 
-Potential categories:
+**Status:** `Deferred` (ADR-010 point 6); CSV import failure injection `Planned (FE)` (ADR-008 point 13)
 
-```text id="q8d2v5"
-API_ERROR
-TIMEOUT
-NETWORK_ERROR
-REALTIME_DISCONNECT
-JOB_FAILURE
-VALIDATION_ERROR
-```
-
-The simulation must never corrupt the seed dataset.
+Scripted failures (API errors, latency, disconnects) wait for the
+frontend-stage ADR. The demo CSV import supports injectable failures
+(FR-069, FR-071). Simulation never corrupts the seed dataset.
 
 ---
 
 # 56. API Contract Testing
 
-The mock implementation should be tested against the same schemas used to validate the production implementation.
+**Status:** `Implemented` for the API integration tests (B0.4) (ADR-002 point 6)
 
-Conceptually:
-
-```text id="m7x4p1"
-Shared Contract
-      │
- ┌────┴────┐
- ↓         ↓
-Mock      Real
-API       API
- ↓         ↓
-Contract Tests
-```
-
-This prevents the demo from drifting away from the real application.
+Responses are validated against their `@trading/contracts` schemas in the
+API integration tests (`response-contract.routes.test.ts`) and in the demo adapter during development. They are
+not validated at runtime in production.
 
 ---
 
 # 57. API Documentation
 
-The production API should expose machine-readable documentation.
+**Status:** `Implemented` (B6) (ADR-002 point 7)
 
-OpenAPI is the preferred candidate.
+OpenAPI is generated from the Zod schemas with the `toJSONSchema` function
+of Zod v4. There is no hand-maintained API document; this file stays the
+design spec.
 
-The specification should define:
+## Open the viewer
 
-- endpoints;
-- parameters;
-- request schemas;
-- response schemas;
-- error schemas;
-- authentication;
-- examples.
+Run the API (outside production, or with `API_DOCS_ENABLED=true`) and open
+`http://localhost:7001/api/docs`. The raw document is at
+`http://localhost:7001/openapi.json`. To call a protected endpoint, log in
+with `POST /api/v1/auth/login`, choose **bearerAuth** in the viewer and paste
+the access token; the page stores no credential. In production both paths
+answer 404 unless `API_DOCS_ENABLED=true`.
 
-The final implementation will determine the exact tooling.
+## Add or change an endpoint
+
+1. Add the route in `apps/api/src/routes/` with `validate()` for each
+   `params`, `query` and `body` schema, as every route does.
+2. Add its `ApiOperation` in `packages/contracts/src/operations/`, using
+   the same schema objects, the response schema and the error statuses, and
+   join it in `API_OPERATIONS`.
+3. Run the contracts and API tests. `apps/api/src/openapi-drift.test.ts`
+   fails with the route and what differs when a route has no operation, an
+   operation has no route, or the method, path, authentication or validated
+   schemas differ.
+
+The WebSocket is not an HTTP operation and is not in the document
+(`08-realtime-spec.md`).
 
 ---
 
 # 58. API Evolution
 
-Breaking changes must require a versioning strategy.
+**Status:** `Reference` (ADR-002 point 8)
 
-Examples:
-
-```text id="c5n8q2"
-v1 → v2
-```
-
-Non-breaking additions should be preferred when possible.
+All routes stay under `/api/v1`. Within a version only additive changes are
+allowed; a breaking change requires a new version.
 
 ---
 
 # 59. API Quality Gates
 
-The API specification is considered acceptable when:
+**Status:** CI `Implemented` (ADR-006 point 10)
 
-- every core product operation has a defined contract;
-- request and response structures are explicit;
-- errors are normalized;
-- validation behavior is predictable;
-- resource ownership is enforced;
-- realtime events have normalized envelopes;
-- mock and production implementations share contracts;
-- asynchronous operations expose lifecycle state;
-- pagination/filtering conventions are consistent;
-- monetary and timestamp handling are explicit;
-- demo-only infrastructure remains isolated.
+One GitHub Actions workflow on pushes and pull requests to `develop` and
+`main`: install with the lockfile, typecheck, lint, and the domain, database
+and API test suites. The contract is acceptable when every endpoint states
+its status, errors are normalized, ownership is enforced, and money and
+timestamps follow ADR-002.
 
 ---
 
 # 60. Final API Principle
 
-The API should represent **application capabilities**, not database tables.
+**Status:** `Reference`
 
-The important question is not:
+The API represents application capabilities, not database tables. The
+question is "what operation does the product need?", not "how do we expose
+this table?":
 
-> “How do we expose this table?”
-
-but:
-
-> “What operation does the product need to perform?”
-
-Therefore the API should remain centered around meaningful capabilities such as:
-
-```text id="j6p4x8"
+```text
 Create Transaction
 Calculate Scenario
 Replay Decision
@@ -1546,33 +2278,29 @@ Analyze Performance
 Track Market Updates
 ```
 
-rather than becoming a thin CRUD mirror of the database.
-
 ---
 
 # 61. Contract Strategy Summary
 
-The final architecture is:
+**Status:** `Reference` (ADR-001, ADR-002)
 
-```text id="w3n8q5"
-                     Application
-                         │
-                    API Contract
-                         │
-              ┌──────────┴──────────┐
-              │                     │
-         Mock Adapter          Real Adapter
-              │                     │
-        Mock Repository          HTTP API
-              │                     │
-        Simulation Engine       Backend
-              │                     │
-          Seed/Session          Database
-              │
-              └──────────┬──────────┘
-                         ↓
-                   Same Domain
-                    Behavior
+```text
+                     Web app
+                        │
+                Client-side ports
+                        │
+              ┌─────────┴─────────┐
+              │                   │
+        Demo adapter         HTTP adapter
+       (in process)               │
+              │               HTTP API
+              │                   │
+              └────────┬──────────┘
+                       ↓
+     @trading/application + @trading/contracts
+                       ↓
+              Same domain behavior
 ```
 
-This guarantees that the public demo remains a legitimate implementation of the product rather than a static prototype.
+The public demo is a real implementation of the product, not a static
+prototype.

@@ -1,0 +1,102 @@
+/*
+ * The Figma text styles as Tailwind utilities (for example `text-heading-page`).
+ * Size, line height and weight come from the exported tokens (tokens.css);
+ * letter spacing is the Figma percentage written in em.
+ */
+
+@utility text-display-hero {
+  font-size: var(--font-size-5xl);
+  line-height: var(--font-line-height-5xl);
+  font-weight: var(--font-weight-light);
+  letter-spacing: -0.03em;
+}
+
+@utility text-display-large {
+  font-size: var(--font-size-4xl);
+  line-height: var(--font-line-height-4xl);
+  font-weight: var(--font-weight-light);
+  letter-spacing: -0.02em;
+}
+
+@utility text-heading-page {
+  font-size: var(--font-size-3xl);
+  line-height: var(--font-line-height-3xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+@utility text-heading-section {
+  font-size: var(--font-size-2xl);
+  line-height: var(--font-line-height-2xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+@utility text-heading-card {
+  font-size: var(--font-size-lg);
+  line-height: var(--font-line-height-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+@utility text-body-default {
+  font-size: var(--font-size-base);
+  line-height: var(--font-line-height-base);
+  font-weight: var(--font-weight-regular);
+}
+
+@utility text-body-small {
+  font-size: var(--font-size-sm);
+  line-height: var(--font-line-height-sm);
+  font-weight: var(--font-weight-regular);
+}
+
+@utility text-label {
+  font-size: var(--font-size-sm);
+  line-height: var(--font-line-height-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+@utility text-label-compact {
+  font-size: var(--font-size-sm);
+  line-height: var(--font-line-height-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+@utility text-label-large {
+  font-size: var(--font-size-base);
+  line-height: var(--font-line-height-base);
+  font-weight: var(--font-weight-medium);
+}
+
+@utility text-caption {
+  font-size: var(--font-size-xs);
+  line-height: var(--font-line-height-xs);
+  font-weight: var(--font-weight-regular);
+}
+
+@utility text-caption-strong {
+  font-size: var(--font-size-xs);
+  line-height: var(--font-line-height-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+@utility text-overline {
+  font-size: var(--font-size-xs);
+  line-height: var(--font-line-height-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@utility text-numeric-table {
+  font-size: var(--font-size-sm);
+  line-height: var(--font-line-height-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+@utility text-numeric-kpi {
+  font-size: var(--font-size-2xl);
+  line-height: var(--font-line-height-2xl);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: -0.02em;
+}

@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+packages/database/generated/
 
 # Env
 .env
@@ -29,7 +30,17 @@ Thumbs.db
 # Testing
 coverage/
 playwright-report/
+playwright-report-demo/
 test-results/
 
 # Docker volumes (local dev data)
 docker/**/data/
+
+# Docs
+pr-body.md
+# Local AI runtime state
+.atl/
+.gga
+
+# Local design wireframe (superseded by the Figma design system)
+apps/web/wireframe.html

@@ -1,70 +1,58 @@
-# Trading Analytics Platform
-## SDD — 04. Technology Stack
+# SDD 04 — Technology Stack
 
-**Status:** Draft  
-**Version:** 1.0  
-**Purpose:** Define the approved technology stack and technology-selection rules for the project.
+**Project:** Trading Analytics Platform  
+**Status:** Reconciled with the package manifests, `pnpm-lock.yaml` and ADR-001 to ADR-009 on 2026-10-05  
+**Version:** 2.0  
+**Purpose:** Record the technologies the repository uses, the ones an ADR has decided, and the rules for adding new ones.  
+**Decisions:** ADR-001 (`adr/0001-application-layer.md`), ADR-002 (`adr/0002-shared-contracts.md`), ADR-005 (`adr/0005-roles-and-authentication.md`), ADR-006 (`adr/0006-deployment-model-and-ci.md`), ADR-007 (`adr/0007-realtime-and-market-simulation.md`), ADR-008 (`adr/0008-background-jobs-csv-import.md`), ADR-009 (`adr/0009-observability-scope.md`)
 
 ---
 
 # 1. Technology Strategy
 
-Trading Analytics Platform must use a modern, production-oriented technology stack.
+**Status:** `Implemented`
 
-Technology choices should prioritize:
+Every technology has one identifiable responsibility. Choices favor strong
+TypeScript support, testability, low operational complexity and zero
+recurring cost. No technology is added to make the architecture look more
+complex.
 
-- maintainability;
-- performance;
-- developer experience;
-- ecosystem maturity;
-- strong TypeScript support;
-- accessibility;
-- testability;
-- scalability;
-- low operational complexity;
-- free-tier compatibility.
+Statuses follow `docs/README.md`: `Implemented` (in code on `develop`),
+`Planned (B#)` or `Planned (FE)` (decided by an ADR, not yet in code),
+`Deferred` (no decision). Versions are the ones resolved in
+`pnpm-lock.yaml`; planned items carry no version until they are installed.
 
-The project must avoid technologies added solely to make the architecture appear more complex.
+Section numbers are stable because code and other documents cite them
+(§21, §24, §28.1, §41, §47-48). The full inventory is in §53.
 
 ---
 
 # 2. Version Policy
 
-The project must use the **latest stable production-ready version available at implementation time** for approved technologies.
+**Status:** `Implemented`
 
-The implementation agent must:
+- `package.json` files declare caret ranges; `pnpm-lock.yaml`
+  (`lockfileVersion: '9.0'`) pins the exact resolved versions. Installs use
+  the lockfile.
+- A dependency is installed at its latest stable version when it is added,
+  and upgraded deliberately, with the tests passing.
+- A version that cannot be the latest because of compatibility is recorded
+  here with its reason.
 
-1. verify the current stable version before installation;
-2. avoid deprecated releases;
-3. use compatible versions across the stack;
-4. record exact installed versions in `package.json`;
-5. document relevant version decisions when compatibility requires a non-latest version.
-
-The project must not blindly upgrade dependencies after implementation if an upgrade introduces breaking changes.
-
-Dependency updates should be deliberate and tested.
+Versions are aligned (ADR-006 point 13, `Implemented`): `typescript` is
+`^6.0.3` in every package, `.nvmrc` (`24`, the current LTS) is the source of
+truth for Node, and `engines.node` (`>=24.0.0`) and `@types/node` (`^24` in the
+root, `apps/api` and `packages/database`) follow it.
 
 ---
 
 # 3. Language Strategy
 
-TypeScript is the primary programming language.
+**Status:** `Implemented` for the backend and packages; frontend `Planned (FE)` — ADR-002 point 5.
 
-It must be used across:
-
-```text
-Frontend
-Backend
-Shared Contracts
-Domain Logic
-Mock Infrastructure
-Testing
-Tooling where practical
-```
-
-JavaScript should only appear where required by external tooling or configuration.
-
-The project should use strict TypeScript configuration.
+TypeScript is the only application language. JavaScript appears only in
+tooling configuration (`eslint.config.js`) and repository scripts
+(`scripts/check-docs.mjs`). All workspaces are ES modules (`"type": "module"`).
 
 ---
 
@@ -72,1141 +60,764 @@ The project should use strict TypeScript configuration.
 
 ## 4.1 React
 
-React is the primary frontend framework/library.
+**Status:** React `Implemented` (FE0.1, `react` `19.3.1`) — ADR-011 point 1 (Proposed); routing `Planned (FE)` — ADR-011 point 6.
 
-Responsibilities:
+React 19, built with Vite (§5). Routing is React Router, including
+role-protected routes (ADR-005) and the configurable base path (ADR-006
+point 7). Strings are in `en` and `es` through react-i18next (ADR-011
+point 16, ADR-010 point 8).
 
-- component rendering;
-- UI composition;
-- application interaction;
-- feature presentation;
-- accessibility-oriented interfaces.
-
-React should not contain domain logic that can exist independently from presentation.
+`apps/web` is the `@trading/web` workspace with an empty Vite shell
+(`Implemented`, FE0.1).
 
 ---
 
 # 5. Frontend Build Tool
 
-## Vite
+**Status:** `Implemented` (FE0.1, `vite` `8.3.5`) — ADR-006 points 1, 7 and 8; base path and demo build `Planned (FE)`.
 
-Vite is the frontend build and development tool.
-
-Responsibilities:
-
-- development server;
-- bundling;
-- environment handling;
-- production builds;
-- optimized asset delivery.
-
-The project should use Vite rather than introducing a heavier full-stack framework unless a concrete requirement appears.
+The public demo is a static build of `apps/web`, served under a configurable
+base path, and the web build reads `VITE_APP_MODE` (ADR-006 point 8). Vite is
+therefore the build tool.
 
 ---
 
 # 6. TypeScript
 
-TypeScript is mandatory for frontend development.
+**Status:** `Implemented`
 
-Configuration should use strict type checking.
-
-Important goals:
-
-- no implicit `any`;
-- explicit API contracts;
-- strongly typed domain models;
-- typed hooks;
-- typed repositories;
-- typed events;
-- typed forms.
+`tsconfig.base.json` sets `strict`, `noUncheckedIndexedAccess`,
+`exactOptionalPropertyTypes`, `noImplicitOverride`, `isolatedModules`,
+`target`/`lib` `ES2022` and `moduleResolution: "Bundler"`. The root
+`tsconfig.json` builds `packages/domain`, `packages/database` and `apps/api`
+as project references (`pnpm typecheck` runs `tsc --build`). ESLint forbids
+explicit `any` (§34). Resolved versions: see §2.
 
 ---
 
 # 7. Styling
 
-## Tailwind CSS
+**Status:** `Implemented` (FE0.2, `tailwindcss` `4.3.3` with `@tailwindcss/vite`) — ADR-011 point 2 (Proposed).
 
-Tailwind CSS is the primary styling system.
-
-Responsibilities:
-
-- layout;
-- responsive design;
-- spacing;
-- typography;
-- visual states;
-- design tokens;
-- component styling.
-
-The project should avoid uncontrolled global CSS.
+Tailwind CSS is the only styling layer. Hand-written CSS is allowed only
+where Tailwind cannot express the rule. `src/index.css` holds the neutral
+shadcn color tokens as placeholders; the real tokens and typography wait for
+the new wireframe (the font is the system stack until then).
 
 ---
 
 # 8. UI Components
 
-## shadcn/ui
+**Status:** `Implemented` (FE0.2, `radix-ui` `1.8.1`, `shadcn` `4.22.1`) — ADR-011 point 3 (Proposed).
 
-shadcn/ui will provide accessible, composable UI primitives.
-
-Examples:
-
-- Dialog;
-- Dropdown;
-- Select;
-- Tabs;
-- Tooltip;
-- Popover;
-- Toast;
-- Button;
-- Input;
-- Table primitives.
-
-Components should be customized to match the product's visual identity.
-
-The product must not look like an unmodified shadcn/ui template.
+shadcn/ui on Radix UI primitives (style `radix-vega`), copied into the
+repository and styled with Tailwind. `components.json` fixes the style and the
+`@/` alias; `Button` is the first component.
 
 ---
 
 # 9. Animation
 
-## Framer Motion
+**Status:** `Planned (FE)` — ADR-011 point 10 (Proposed).
 
-Framer Motion will handle UI motion and interaction animation.
-
-Use cases:
-
-- page transitions;
-- modal transitions;
-- panel transitions;
-- state changes;
-- micro-interactions;
-- loading transitions;
-- realtime visual feedback.
-
-Animations must respect:
-
-```text
-prefers-reduced-motion
-```
-
-Animation should improve comprehension rather than add decoration.
+CSS and Tailwind transitions and keyframes only; no animation library.
+Respecting `prefers-reduced-motion` is an accessibility requirement
+(`03-non-functional-requirements.md`).
 
 ---
 
 # 10. Server State
 
-## TanStack Query
+**Status:** TanStack Query and the HTTP client policy `Implemented` (FE0.3, FE0.5) — ADR-011 points 4 and 15 (Proposed).
 
-TanStack Query is the standard server-state management solution.
+TanStack Query. The HTTP client times out after 15 seconds; reads are retried
+up to 2 times with exponential backoff after a network error, a timeout, or a
+502, 503 or 504 response; 4xx responses and writes are not retried, except a
+creation with an `Idempotency-Key` (ADR-008 point 8).
 
-Responsibilities:
-
-- API requests;
-- caching;
-- query invalidation;
-- retries;
-- mutations;
-- loading states;
-- error states;
-- background synchronization.
-
-Server data should not be duplicated into Zustand unless there is a specific architectural reason.
+Decided constraint: the UI reads DTOs only through the `TradingClient` port
+(ADR-002 point 5), whatever caching library is chosen.
 
 ---
 
 # 11. Client State
 
-## Zustand
+**Status:** `Planned (FE)` — ADR-011 point 5 (Proposed).
 
-Zustand is the primary client-state management solution.
+Zustand, for state that is not server data. Server data is never copied into
+a store.
 
-Use cases:
-
-- UI state;
-- selected portfolio;
-- filters;
-- simulation controls;
-- realtime connection state;
-- replay controls;
-- temporary interaction state.
-
-Zustand should not become a generic replacement for server-state management.
+Decided constraint: the access token lives in memory only (ADR-005 point 4).
 
 ---
 
 # 12. Tables
 
-## TanStack Table
+**Status:** `Implemented` (FE1.2) — ADR-011 point 8 (Proposed).
 
-TanStack Table must be used for complex data tables.
-
-Expected use cases:
-
-- transactions;
-- positions;
-- portfolios;
-- assets;
-- decisions;
-- scenarios;
-- analytics datasets.
-
-Required capabilities may include:
-
-- sorting;
-- filtering;
-- column visibility;
-- pagination;
-- row selection;
-- column definitions;
-- responsive behavior;
-- virtualization when necessary.
-
-The table library must remain separated from domain logic.
+TanStack Table v9 (`@tanstack/react-table`) with the shadcn Table component for markup. The shared `DataTable` registers the table features once (sorting, global filter, pagination) and the views opt in; the column definitions of each view use `createColumnHelper` over those features.
 
 ---
 
 # 13. Forms
 
-## React Hook Form
+**Status:** `Planned (FE)` — ADR-011 point 9 (Proposed).
 
-React Hook Form will manage complex interactive forms.
-
-Use cases:
-
-- portfolio creation;
-- transaction creation;
-- decision creation;
-- scenario configuration;
-- alerts;
-- user preferences.
-
-Forms should remain controlled through explicit schemas.
+React Hook Form with Zod, reusing `@trading/contracts` schemas where one
+exists. The backend stays authoritative (ADR-005 point 3).
 
 ---
 
 # 14. Validation
 
-## Zod
+**Status:** `Implemented` in `apps/api`; shared schemas `Planned (B0)` — ADR-002.
 
-Zod will be used for runtime validation and schema definition.
-
-Responsibilities:
-
-- form validation;
-- API response validation where appropriate;
-- API request validation;
-- realtime event validation;
-- environment configuration validation;
-- shared contracts.
-
-Schemas should become a source of truth where practical.
+- `zod` `4.6.5` validates request bodies, params and queries
+  (`apps/api/src/schemas/`) and the environment at startup
+  (`apps/api/src/config/env.ts`, §42).
+- Request and response schemas move to `@trading/contracts` in B0
+  (ADR-002 points 1-2).
+- The realtime envelope is a Zod schema in `@trading/contracts`
+  (`Implemented` (B5), ADR-007 point 4).
+- Responses are validated in contract tests, not at runtime in production
+  (ADR-002 point 6).
 
 ---
 
 # 15. API Contract Types
 
-API contracts should be strongly typed.
+**Status:** `Planned (B0)` — ADR-002.
 
-The preferred strategy is to avoid manually maintaining unrelated frontend/backend types.
-
-Where practical:
-
-```text
-Shared Schema
-      ↓
-Frontend Types
-      +
-Backend Types
-```
-
-The exact code-sharing strategy will be determined during implementation.
+DTO types are inferred from the Zod schemas in `@trading/contracts`;
+presenters map domain objects to DTOs. Today only request types exist, in
+`apps/api`.
 
 ---
 
 # 16. Charts and Data Visualization
 
-The application requires performant financial visualization.
+**Status:** `Planned (FE)` — ADR-011 point 7 (Proposed).
 
-The charting solution must support:
-
-- candlestick charts;
-- line charts;
-- area charts;
-- performance curves;
-- allocation visualization;
-- interactive tooltips;
-- large datasets;
-- realtime updates.
-
-The implementation should prefer a **Canvas-based rendering approach** for high-frequency and large-volume visualizations.
-
-The final chart library must be selected based on:
-
-- current maintenance;
-- TypeScript support;
-- rendering performance;
-- interaction quality;
-- bundle impact;
-- license;
-- free usage;
-- ability to operate without paid services.
-
-The chart library must not require a paid API.
+Recharts. The charts hold no financial calculation. It is free to use and
+needs no paid API (§49).
 
 ---
 
 # 17. Backend Runtime
 
-## Node.js
+**Status:** `Implemented`
 
-Node.js is the backend runtime.
+Node.js, `engines.node >=24.0.0`. The API runs in development with `tsx`
+`4.23.13` (`tsx watch`) and is started with `node dist/index.js`. Background
+jobs run in the API process (`Implemented` (B4), ADR-008 point 4); the realtime
+server runs in it too (`Implemented` (B5), ADR-007).
 
-The project must use the latest stable LTS-compatible release available at implementation time.
-
-Node.js will run:
-
-- API server;
-- application services;
-- realtime server;
-- background processing;
-- development tooling where applicable.
+The production build path was fixed in B7.1 (ADR-006 point 3).
+The pinned Node major (`24`, LTS) lives in `.nvmrc` and is reused by CI
+(`Implemented`); the Dockerfile reuses it too (`Implemented`, B7.2, ADR-006
+point 13).
 
 ---
 
 # 18. Backend Language
 
-## TypeScript
+**Status:** `Implemented`
 
-The backend must be written entirely in TypeScript.
-
-This includes:
-
-```text
-Controllers
-Services
-Repositories
-Domain Logic
-DTOs
-Validation
-Realtime Events
-Jobs
-Tests
-Configuration
-```
-
-The backend must use strict TypeScript settings.
+The backend and every package are TypeScript under the strict settings of §6.
 
 ---
 
 # 19. Backend Framework
 
-## Express
+**Status:** `Implemented`; business logic leaves the services for `@trading/application` in `Planned (B0)` — ADR-001.
 
-Express will provide the HTTP application layer.
-
-Responsibilities:
-
-- routing;
-- middleware;
-- request handling;
-- authentication middleware;
-- authorization middleware;
-- validation;
-- error handling.
-
-Business logic must remain outside Express controllers.
+| Package | Version | Role |
+| --- | --- | --- |
+| `express` | 5.2.1 | HTTP routing and middleware |
+| `helmet` | 8.3.0 | Security headers |
+| `cors` | 2.8.6 | CORS, origins from `CORS_ORIGIN` |
+| `express-rate-limit` | 7.5.1 | General and login rate limits |
 
 ---
 
 # 20. API Architecture
 
-The backend will expose REST APIs.
+**Status:** `Implemented` (routes → controllers → services → repositories); application package `Planned (B0)` — ADR-001.
 
-Architecture:
-
-```text
-HTTP
- ↓
-Controller
- ↓
-Application Service
- ↓
-Domain
- ↓
-Repository
- ↓
-Infrastructure
-```
-
-Controllers should remain thin.
+REST under `/api/v1`; health endpoints at `/health` and `/health/ready`.
+Layers and dependency rules are specified in `06-architecture.md` §24-29;
+endpoints in `07-api-spec.md`.
 
 ---
 
 # 21. API Documentation
 
+**Status:** `Implemented` (B6) — ADR-002 point 7.
+
 ## OpenAPI
 
-The API must have an OpenAPI specification.
+The OpenAPI 3.1.0 document is generated from the `@trading/contracts`
+operations (`API_OPERATIONS`) and their Zod schemas with Zod v4's
+`toJSONSchema`. There is no hand-maintained API document. It covers
+endpoints, parameters, bodies, responses, the error envelope and the bearer
+authentication; it has no generated examples (`Deferred`).
 
-The specification should describe:
+## Serving and viewing
 
-- endpoints;
-- parameters;
-- request bodies;
-- responses;
-- errors;
-- authentication;
-- schemas;
-- examples.
-
-The implementation may use a compatible OpenAPI tooling library.
+The API serves the document at `GET /openapi.json` and the Scalar viewer
+(`@scalar/express-api-reference`, MIT, free, no endpoint limit and no hosted
+service) at `GET /api/docs`. Both sit behind `API_DOCS_ENABLED`: on by
+default outside production, off in production, and a 404 when off (§42). The
+viewer script loads from Scalar's CDN unless `API_DOCS_CDN_URL` points to a
+copy you serve, which is what working offline needs.
 
 ---
 
 # 22. Realtime
 
+**Status:** `Implemented` (B5) — ADR-007 point 1.
+
 ## WebSockets
 
-WebSockets are the production realtime transport.
-
-Use cases:
-
-- market updates;
-- portfolio updates;
-- job progress;
-- notifications;
-- alerts;
-- connection state.
-
-The application must not directly depend on a WebSocket library.
-
-A transport abstraction must exist.
+WebSocket transport with the `ws` library, behind a transport port so no
+other code imports it. Authentication, channels, envelope and limits are in
+ADR-007 and `08-realtime-spec.md`.
 
 ---
 
 # 23. Authentication
 
-Authentication will use JWT-based sessions.
+**Status:** `Implemented` (login, `GET /auth/me`, Bearer JWT, refresh, logout); sessions and refresh `Implemented` (B2.3, B2.4) — ADR-005 points 4-8.
 
-Architecture:
-
-```text
-Credentials
-    ↓
-Authentication
-    ↓
-JWT
-    ↓
-Authenticated Request
-    ↓
-Identity
-```
-
-The implementation should use short-lived access tokens and an appropriate refresh strategy where required.
-
-Secrets must never be committed to source control.
+- `jsonwebtoken` `9.0.3` signs access tokens with `JWT_SECRET` (32+
+  characters); lifetime `JWT_EXPIRES_IN_SECONDS`, default `900` (15 minutes).
+- B2 adds an opaque, hashed, rotating refresh token in an `HttpOnly`,
+  `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`.
+- Secrets are never committed (§43).
 
 ---
 
 # 24. Authorization
 
-Authorization will use RBAC.
+**Status:** `Implemented` (ownership checks; another user's resource returns 404); permission checks `Implemented` (B0, B2.2); roles `Implemented` (B2.1) — ADR-005.
 
-Initial conceptual roles:
-
-```text
-TRADER
-ANALYST
-ADMIN
-```
-
-The exact role model will be defined by the authorization requirements.
-
-Authorization checks must occur server-side.
-
-Frontend role checks exist only to improve UX.
+- Roles are `VIEWER`, `TRADER` and `ADMIN`. The schema's current `USER` role
+  migrates to `TRADER`; `ANALYST` is dropped (ADR-005 point 1).
+- Code checks permissions, never role names. The matrix lives in
+  `09-security-spec.md` (ADR-005 point 2).
+- Checks run server-side in the application layer, on an `Actor`
+  (ADR-005 point 3). Frontend checks only shape the UI.
 
 ---
 
 # 25. Authentication Library Policy
 
-A dedicated authentication framework such as Auth.js is **not required for the initial architecture**.
+**Status:** `Implemented`
 
-Reason:
-
-- authentication requirements are relatively focused;
-- backend API authorization is central to the product;
-- JWT + RBAC provides sufficient architectural depth;
-- introducing a large authentication abstraction would add complexity without solving a current requirement.
-
-A dedicated authentication provider may be introduced in the future if requirements expand to include:
-
-- OAuth providers;
-- enterprise SSO;
-- social login;
-- advanced identity management;
-- external identity federation.
-
-Such a change must be documented as an ADR.
+No authentication framework or external identity provider is used. ADR-005
+defines the session model directly. Adding OAuth, SSO or social login needs
+a new ADR.
 
 ---
 
 # 26. Password Security
 
-If local credentials are implemented, passwords must never be stored directly.
+**Status:** `Implemented` — ADR-005 point 12.
 
-The implementation must use a modern password hashing algorithm appropriate for authentication systems.
-
-The exact library and parameters will be selected during implementation based on current security recommendations.
+`bcryptjs` `3.0.3` (pure JavaScript, no native build). Seed and test hashes
+use 10 rounds. Registration is out of scope (ADR-005 point 10).
 
 ---
 
 # 27. Database
 
+**Status:** `Implemented`
+
 ## PostgreSQL
 
-PostgreSQL is the preferred production database.
-
-Reasons:
-
-- relational integrity;
-- transactional support;
-- mature ecosystem;
-- strong analytical capabilities;
-- excellent TypeScript ecosystem;
-- free-tier hosting options;
-- suitable for portfolio/transaction relationships.
+PostgreSQL 18 (`postgres:18` image in `docker-compose.yml`). It runs only
+locally: there is no hosted database (ADR-006 point 2).
 
 ---
 
 # 28. ORM / Database Access
 
+**Status:** `Implemented`
+
 ## Prisma
 
-Prisma will be used as the initial database access layer.
+`prisma` and `@prisma/client` `6.19.3` in `packages/database`. The schema is
+`packages/database/prisma/schema.prisma` (`prisma-client-js` generator,
+output `packages/database/generated/client`). Migrations use
+`prisma migrate dev` in development and `prisma migrate deploy` for tests;
+the `full` profile applies them in the one-shot `migrate` service (`Implemented`, B7.3, ADR-006 point 5). The seed runs only
+on demand (`pnpm --filter @trading/database db:seed`).
 
-Responsibilities:
+Domain code never imports Prisma; repositories isolate it (§29).
 
-- schema definition;
-- migrations;
-- type-safe queries;
-- relationship handling;
-- database client generation.
+---
 
-Domain logic must not depend directly on Prisma.
+# 28.1 Decimal Precision
 
-Repositories isolate Prisma from the application layer.
+**Status:** `Implemented` for money in the domain; analytics in `Decimal` end to end `Implemented` — ADR-004; JSON payload parsing `Planned (B0)` — ADR-002 point 9.
+
+## decimal.js
+
+`decimal.js` `10.6.0` (in `packages/domain`) is the library for
+arbitrary-precision decimal arithmetic across the monorepo.
+
+### Reason
+
+- `05-data-model.md` §39 requires money to avoid floating-point arithmetic.
+- Prisma's `Decimal` is built on `decimal.js`, so domain and persistence use
+  one representation.
+- Free, maintained, ships its own types.
+
+### Usage
+
+- Money is a `Money` value object (amount plus currency) backed by
+  `decimal.js`. Persisted money and quantities are `Decimal(18, 8)`.
+- On the wire, money is `{ amount: string, currency: string }` (ADR-002
+  point 3). Money and quantities inside JSON columns are decimal strings
+  parsed with `Decimal` (ADR-002 point 9).
+- Analytics returns are computed in `Decimal`; numbers appear only in the
+  presenter (ADR-004, `16-analytics-spec.md`).
+- It is not used for identifiers, counts or display-only values.
+
+Open detail (B1): domain entities hold `quantity` as a JavaScript `number`
+(see the comments in `packages/domain/src/entities/`), while ADR-004 computes
+`quantity × close` in `Decimal`. B1 fixes where quantities convert to
+`Decimal`.
 
 ---
 
 # 29. Database Architecture
 
+**Status:** `Implemented`
+
 ```text
-Application
-     ↓
-Repository Interface
-     ↓
-Prisma Adapter
-     ↓
-PostgreSQL
+Service → Repository interface (@trading/domain) → Prisma repository (@trading/database) → PostgreSQL
 ```
 
-This preserves database replaceability at the architectural level.
+Multi-step writes go through a `UnitOfWork` (`06-architecture.md` §30).
 
 ---
 
 # 30. Mock Infrastructure
 
-The public demo must not require PostgreSQL.
+**Status:** in-memory repositories `Planned (B0)` — ADR-001 points 4 and 7; demo composition `Planned (FE)` — ADR-001 point 4.
 
-Demo data will use:
-
-```text
-Mock Repository
-+
-In-memory/session store
-+
-Simulation Engine
-```
-
-The mock implementation must satisfy the same application contracts as the production repositories.
+The demo needs no PostgreSQL. It composes `@trading/application` with
+in-memory implementations of the same repository and `UnitOfWork`
+contracts. Demo data layers and reset are `Deferred` (`06-architecture.md`
+§14).
 
 ---
 
 # 31. Mock API / Network Simulation
 
-The project may use **Mock Service Worker (MSW)** where network-level API interception is useful.
+**Status:** `Deferred` — superseded by ADR-001 and ADR-002 (`06-architecture.md` §15).
 
-MSW can simulate:
-
-- latency;
-- HTTP errors;
-- validation errors;
-- timeouts;
-- response payloads;
-- API behavior.
-
-However, MSW must complement rather than replace the application's repository/adapter architecture.
+The demo calls the application layer in process through the `TradingClient`
+in-process adapter (ADR-002 point 5). No network-level mock (such as Mock
+Service Worker) is part of the design.
 
 ---
 
 # 32. Simulation Engine
 
-A custom TypeScript simulation engine will generate:
+**Status:** `Implemented` (B5) — ADR-007 point 7.
 
-- market movements;
-- realtime events;
-- background job progress;
-- alert triggers;
-- connection failures;
-- controlled event ordering scenarios.
+`@trading/market-sim`: a pure, deterministic engine with a seeded
+pseudo-random generator and an injected clock, depending only on
+`@trading/domain`. The API and the demo use the same engine.
 
-The engine must remain deterministic when provided with a seed.
+Open detail (B5): the package path (`06-architecture.md` §48).
 
 ---
 
 # 33. Testing Stack
 
-Testing will use:
+**Status:** `Implemented` for unit and API integration tests; component, end-to-end and accessibility tooling `Planned (FE)` — ADR-011 points 11-13 (Proposed).
 
 ## Vitest
 
-For:
+`vitest` `3.2.7` in `packages/domain`, `packages/database` and `apps/api`.
+Database and API suites run against a test PostgreSQL database loaded from
+`.env.test.local` (`dotenv-cli` `11.0.0`).
 
-- domain tests;
-- application tests;
-- utility tests;
-- repository tests;
-- simulation tests.
+## Supertest
 
----
+`supertest` `7.2.2` drives the Express app in `apps/api` integration tests.
 
-## Testing Library
+## Component and end-to-end tests
 
-Testing Library will be used for:
-
-- React component tests;
-- user interaction;
-- accessibility-oriented assertions;
-- state transitions.
-
----
-
-## Playwright
-
-Playwright will provide end-to-end testing.
-
-Critical flows should include:
-
-- authentication;
-- portfolio creation;
-- transaction creation;
-- filtering;
-- analytics;
-- scenario calculation;
-- decision replay;
-- realtime updates;
-- failure recovery.
+Components are tested with Vitest and React Testing Library, end-to-end flows
+with Playwright, and accessibility with axe-core through `vitest-axe` and
+`@axe-core/playwright` (ADR-011 points 11-13). Test levels and scope are in
+`10-testing-strategy.md`.
 
 ---
 
 # 34. Code Quality
 
+**Status:** `Implemented`; architectural import rules `Planned (B0)` — ADR-001 point 1.
+
 ## ESLint
 
-ESLint will enforce:
-
-- code quality;
-- TypeScript rules;
-- React rules;
-- import boundaries;
-- architectural restrictions.
+`eslint` `10.10.0` with a flat config (`eslint.config.js`): `@eslint/js`
+`10.0.1` recommended, `typescript-eslint` `8.69.0` `strictTypeChecked` and
+`stylisticTypeChecked` with the project service, `no-explicit-any`,
+`consistent-type-imports`, and `eslint-config-prettier` `10.1.8` last.
+Config files and `scripts/*.mjs` run without type-aware rules.
 
 ---
 
 # 35. Formatting
 
-## Prettier
+**Status:** `Implemented`
 
-Prettier will provide consistent formatting.
-
-Formatting should not be manually debated during feature development.
+`prettier` `3.9.6` (`.prettierrc.json`: double quotes, semicolons,
+trailing commas, width 100, LF). `husky` `9.1.7` runs `lint-staged`
+`17.5.0` on pre-commit: ESLint `--fix` and Prettier on staged
+TypeScript/JavaScript, Prettier on JSON, Markdown and YAML.
 
 ---
 
 # 36. Architecture Enforcement
 
-The project should use linting rules to enforce architectural boundaries.
+**Status:** workspace dependencies and TypeScript project references `Implemented`; lint rules `Planned (B0)` — ADR-001 point 1.
 
-Examples:
-
-```text
-domain
-  X→ React
-
-domain
-  X→ Prisma
-
-feature
-  X→ infrastructure internals
-
-presentation
-  X→ database
-```
-
-The exact implementation may use ESLint import restrictions or an equivalent mechanism.
+`@trading/domain` and `@trading/application` must not import Prisma,
+Express, transport Zod schemas or browser APIs. The rules are listed in
+`06-architecture.md` §43.
 
 ---
 
 # 37. Package Manager
 
-## pnpm
+**Status:** `Implemented`
 
-pnpm will be used as the package manager.
-
-Reasons:
-
-- efficient dependency management;
-- workspace support;
-- disk efficiency;
-- good monorepo support;
-- reproducible installations.
+pnpm workspaces (`apps/*`, `packages/*`). `packageManager` is
+`pnpm@12.3.4`; `engines.pnpm` is `>=9.0.0`. `pnpm-workspace.yaml`
+`allowBuilds` permits install scripts only for Prisma and `esbuild`.
 
 ---
 
 # 38. Repository Structure
 
-The preferred project structure is:
+**Status:** `Implemented` for the current tree; new packages `Planned (B0)` and `Implemented` (B5).
 
 ```text
-trading-analytics/
-├── apps/
-│   ├── web/
-│   └── api/
-│
-├── packages/
-│   ├── contracts/
-│   ├── domain/
-│   ├── config/
-│   └── ui/
-│
-├── docs/
-│
-├── tests/
-│
-├── docker/
-│
-├── package.json
-├── pnpm-workspace.yaml
-└── README.md
+apps/
+  api/            Express API (@trading/api)
+  web/            wireframe only; web app Planned (FE)
+packages/
+  domain/         @trading/domain
+  database/       @trading/database (Prisma)
+  contracts/      empty; @trading/contracts Planned (B0), ADR-002
+  config/         empty; no decision
+docker/           empty (.gitkeep)
+docs/             SDD, ADRs, roadmap
+scripts/          check-docs.mjs
 ```
 
-The final structure may change if implementation evidence justifies it.
+`@trading/application` (ADR-001) and `@trading/market-sim` (ADR-007) are
+added in B0 and B5. The authoritative package map is `06-architecture.md` §4.
 
 ---
 
 # 39. Monorepo Strategy
 
-The project should use a monorepo if shared contracts and domain packages justify it.
+**Status:** `Implemented`; `@trading/config` `Deferred` — no ADR decides it.
 
-Potential shared packages:
-
-```text
-@trading/contracts
-@trading/domain
-@trading/config
-```
-
-The frontend and backend should not share implementation details simply because they exist in the same repository.
-
-Only genuinely shared code should be extracted.
+Only genuinely shared code becomes a package. Workspace packages are linked
+with `workspace:*`.
 
 ---
 
 # 40. Docker
 
-Docker will be used for local infrastructure and reproducible development environments.
+**Status:** PostgreSQL service `Implemented`; API image and `full` profile `Implemented` (B7.2, B7.3) — ADR-006 point 4.
 
-Potential services:
-
-```text
-postgres
-api
-```
-
-The frontend may run outside Docker during development for faster feedback.
-
-The final deployment strategy may use containers where appropriate.
+`docker-compose.yml` runs PostgreSQL 18 with a named volume and a
+`pg_isready` health check; credentials and port come from `DATABASE_*`
+variables with development defaults. B7 added a multi-stage, non-root API
+Dockerfile (`apps/api/Dockerfile`, built with the workspace root as context)
+and a `full` profile (PostgreSQL, a one-shot `migrate` service and the API);
+the default profile keeps only PostgreSQL. The API container starts with
+`node dist/index.js` directly, its healthcheck probes `GET /health/ready`, and
+the API and PostgreSQL containers run with `TZ=UTC` (ADR-006 point 4). The
+frontend is not containerized.
 
 ---
 
 # 41. CI/CD
 
+**Status:** `Implemented` — ADR-006 point 10. No continuous deployment.
+
 ## GitHub Actions
 
-CI should validate:
+One workflow on pushes and pull requests to `develop` and `main`:
 
 ```text
-Install
- ↓
-Typecheck
- ↓
-Lint
- ↓
-Unit Tests
- ↓
-Integration Tests
- ↓
-Build
+Install (frozen lockfile) → Typecheck → Lint → Domain, database and API tests
 ```
 
-End-to-end tests may run in a separate pipeline stage.
+The database and API suites run against a PostgreSQL service container
+(`.github/workflows/ci.yml`, one `verify` job). The CI test database uses the
+container superuser; the ADR-005 point 13 runtime and migration roles are
+`Planned (B0)`.
+
+The workflow also runs `pnpm format:check`, `pnpm build`, `pnpm docs:check` and
+`pnpm test:scripts` (`docs/` is in `.prettierignore`, so `format:check` does not
+cover it); test variables come from the job `env`, not a generated
+`.env.test.local` (ADR-006 point 11).
 
 ---
 
 # 42. Environment Configuration
 
-Environment variables must be validated at startup.
+**Status:** `Implemented`; `LOG_LEVEL` `Implemented` (B3.1) — ADR-009 point 7; `SLOW_REQUEST_THRESHOLD_MS` `Implemented` (B3.2) — ADR-009 point 8; `APP_MODE` `Planned (FE)` — ADR-006 point 8.
 
-Examples:
+| Variable | Read by | Rule |
+| --- | --- | --- |
+| `NODE_ENV` | API | `development`, `test` or `production`; default `development` |
+| `PORT` | API | positive integer; default `7001` |
+| `JWT_SECRET` | API | required, at least 32 characters |
+| `JWT_EXPIRES_IN_SECONDS` | API | positive integer; default `900` |
+| `CORS_ORIGIN` | API | comma-separated origins; default `http://localhost:5173` |
+| `DATABASE_URL` | Prisma | PostgreSQL connection string |
+| `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_PORT` | Docker Compose | development defaults |
+| `LOG_LEVEL` | API | `debug`, `info`, `warn`, `error` or `silent`; default follows `NODE_ENV`: `debug` in development, `silent` in test, `info` in production |
+| `SLOW_REQUEST_THRESHOLD_MS` | API (B3) | milliseconds; default `500`; HTTP requests only |
+| `API_DOCS_ENABLED` | API (B6) | `true` or `false`; unset means on outside production and off in production; serves `/openapi.json` and the Scalar viewer at `/api/docs`; when off both answer 404 |
+| `API_DOCS_CDN_URL` | API (B6) | optional http(s) URL of the viewer script; default Scalar's jsDelivr bundle. The viewer needs the network to load it; set this to a host you serve to work offline |
+| `APP_MODE` | web build (FE0.3) | `real` or `demo`, exposed as `VITE_APP_MODE`; default `real` |
+| `VITE_API_BASE_URL` | web build (FE0.3) | http(s) origin of the API, without a path (the contract operations carry `/api/v1`); default `http://localhost:7001` |
 
-```text
-DATABASE_URL
-JWT_SECRET
-API_URL
-WEBSOCKET_URL
-NODE_ENV
-```
+The API validates its variables with Zod at startup and exits with code 1
+on any invalid value, naming the keys but never their values. Scripts load
+`.env` or `.env.test.local` through `dotenv-cli`.
 
-Demo mode should have an explicit configuration flag.
-
-Example:
-
-```text
-APP_MODE=demo
-```
-
-The final naming will be standardized during implementation.
+Open detail (FE): the web build's API and WebSocket base URLs.
 
 ---
 
 # 43. Secrets
 
-Secrets must:
+**Status:** `Implemented` for the API; log redaction `Implemented` (B3.1) — ADR-009 point 4; demo build `Planned (FE)` — ADR-006 point 7.
 
-- remain outside source control;
-- use environment variables;
-- be excluded from logs;
-- never be embedded in frontend bundles;
-- never be included in mock data.
-
-The frontend must only receive public configuration.
+- Secrets live only in environment variables; `.env`, `.env.local` and
+  `.env.*.local` are git-ignored.
+- The API logger redacts, by field name, passwords, the `Authorization`
+  header, cookies, the response `Set-Cookie` header, access and refresh
+  tokens, a `token` field (the WebSocket authentication message, re-checked
+  in B5) and a job `input` field (the stored CSV).
+- The demo build contains no secrets and calls no backend.
 
 ---
 
 # 44. Logging
 
-The backend should use structured logging.
+**Status:** the `Logger` port, the `pino` adapter and error logging `Implemented` (B3.1); request logs, the `requestId` on every line and the slow-request `warn` `Implemented` (B3.2) — ADR-009.
 
-Logs should contain useful context such as:
-
-```text
-timestamp
-level
-requestId
-module
-event
-duration
-```
-
-Sensitive information must not be logged.
+`pino` for one JSON line per event on stdout and `pino-pretty` in
+development only, behind a `Logger` port in `@trading/application`. Request
+logs come from a small middleware through that port; `pino-http` is not a
+dependency (ADR-009 point 2, amended 2026-10-19). The format follows the environment (JSON on stdout;
+`pino-pretty` only in development), and `LOG_LEVEL` is the only logging
+variable. Fields: `timestamp`, `level`, `service`, `environment`, `event`,
+`message`, `requestId`, `userId`, `durationMs`, `errorCategory` (the
+`AppErrorCode` value). No log files. The error handler and the rate limiter
+log through the port; only the startup line and the invalid-configuration
+keys still use `console`, and the startup line moves to the logger in B3.4.
 
 ---
 
 # 45. Observability
 
-The initial implementation should prioritize lightweight observability.
+**Status:** request IDs and health endpoints `Implemented`; logging `Implemented` (B3.1, B3.2) — ADR-009; metrics `Deferred` — ADR-009 point 10.
 
-Required:
-
-- structured logs;
-- request IDs;
-- health endpoint;
-- error context;
-- basic performance metrics.
-
-External paid observability platforms are not required.
+Request IDs come from `request-id` middleware; `/health` is liveness and
+`/health/ready` checks the database, and from B3 it answers 503 while the
+API shuts down (ADR-006 point 12). No paid observability platform is used.
+Details are in `13-observability-spec.md`.
 
 ---
 
 # 46. Hosting Requirements
 
-The public demo must be deployable using free infrastructure.
+**Status:** local full stack `Implemented`; public demo hosting `Planned (FE)` — ADR-006 points 1 and 7; public backend `Deferred` — ADR-006 point 2.
 
-The architecture must not require:
-
-- paid API providers;
-- paid financial market data;
-- paid realtime infrastructure;
-- paid databases;
-- paid authentication;
-- paid observability.
-
-Production-like infrastructure may be demonstrated locally.
+Exactly two targets: the local production-like full stack and a static
+public demo. Nothing requires a paid service.
 
 ---
 
 # 47. External Financial APIs
 
-The application must not depend on paid financial APIs.
+**Status:** `Implemented` (none used); simulator price source `Implemented` (B5) — ADR-007; external provider `Deferred`.
 
-For the public demo:
-
-```text
-Market Data
-    ↓
-Simulation Engine
-```
-
-For production architecture:
-
-```text
-Market Data Provider
-    ↓
-External Adapter
-    ↓
-Application
-```
-
-The external provider must remain replaceable.
+The application depends on no financial data API. In both real and demo
+mode prices come from the simulator; seed data is `MOCK`.
 
 ---
 
 # 48. External Service Abstraction
 
-Any future external provider must be isolated behind an adapter.
+**Status:** `Implemented` as a rule; no external service exists.
 
-Example:
-
-```text
-MarketDataProvider
-       │
-       ├── MockMarketDataProvider
-       └── ExternalMarketDataProvider
-```
-
-The application must not import a vendor SDK directly into domain logic.
+Any future external provider sits behind a port with an adapter, and no
+vendor SDK is imported into domain or application code. The realtime
+transport follows the same rule (ADR-007 point 1).
 
 ---
 
 # 49. Free-Tier Constraint
 
-Cost is an architectural constraint.
-
-The project must be able to run:
-
-### Public Demo
+**Status:** `Implemented` for the local full stack; public demo `Planned (FE)`.
 
 ```text
-Static/client hosting
-+
-Mock infrastructure
-+
-Browser simulation
-=
-$0 operating cost
+Public demo: static hosting + in-process application + browser simulation = $0
+Local full stack: Node API + PostgreSQL (Docker) = $0
 ```
 
-### Local Full Application
-
-```text
-Frontend
-+
-Node API
-+
-PostgreSQL
-+
-WebSockets
-+
-Docker
-=
-$0 operating cost
-```
-
-### Optional Cloud Deployment
-
-Only free-tier-compatible services may be considered.
-
-No architecture decision should assume a paid plan.
+No decision may assume a paid plan.
 
 ---
 
 # 50. Browser-Only Demo
 
-The public demo should preferably operate without a backend dependency.
+**Status:** `Planned (FE)` — ADR-001 point 4, ADR-002 point 5, ADR-006 point 7, ADR-007 point 13.
 
-This provides:
-
-- zero server cost;
-- high availability;
-- no database consumption;
-- no API rate limits;
-- unlimited conceptual demo sessions;
-- resilience against backend outages.
-
-The browser executes:
-
-```text
-Mock API
-+
-Mock Repository
-+
-Simulation Engine
-```
+The demo runs entirely in the browser: `@trading/application` with
+in-memory repositories, the `TradingClient` in-process adapter, and
+`@trading/market-sim` feeding an in-process realtime adapter. It calls no
+backend.
 
 ---
 
 # 51. Technology Selection Rules
 
-A new dependency should only be introduced when it provides meaningful value.
+**Status:** `Implemented`
 
-Before adding a dependency, evaluate:
-
-1. Is the problem already solved by the current stack?
-2. Does it reduce complexity?
-3. Does it improve maintainability?
-4. Does it have an active ecosystem?
-5. Is it TypeScript-friendly?
-6. Is it compatible with the free-tier requirement?
-7. Does it create vendor lock-in?
-8. Is it necessary for the product?
+Before adding a dependency, check that the current stack does not already
+solve the problem, that it reduces complexity, is maintained,
+TypeScript-friendly and free, and creates no lock-in. A dependency that
+settles an open architectural question needs an ADR first; a dependency an
+ADR already names is added in that ADR's block.
 
 ---
 
 # 52. Prohibited Architectural Shortcuts
 
-The implementation should not:
+**Status:** `Implemented` as rules
 
-- put business logic directly into React components;
-- access Prisma from frontend code;
-- access databases from controllers;
-- store all state in Zustand;
-- bypass API contracts;
-- hardcode financial calculations inside charts;
-- make the demo a static collection of screenshots;
-- use paid APIs for required functionality;
-- introduce microservices without a concrete requirement;
-- introduce authentication frameworks without a demonstrated need.
+- Business logic in UI components or Express controllers.
+- Prisma imported outside `@trading/database`.
+- Bypassing the API contracts or serializing domain objects directly
+  (ADR-002 point 4).
+- Financial calculations inside charts or presenters.
+- Paid APIs for required functionality.
+- Microservices, external queues or brokers without a concrete requirement
+  (ADR-008 point 4).
+- An authentication framework without a demonstrated need (§25).
 
 ---
 
 # 53. Approved Core Stack
 
-The initial approved stack is:
+**Status:** inventory of the stack; each row carries its own status.
 
-```text
-Frontend
-├── React
-├── TypeScript
-├── Vite
-├── Tailwind CSS
-├── shadcn/ui
-├── Framer Motion
-├── TanStack Query
-├── TanStack Table
-├── Zustand
-├── React Hook Form
-└── Zod
+| Area | Technology | Version | Status | Source |
+| --- | --- | --- | --- | --- |
+| Language | TypeScript | 6.0.3 | `Implemented` | §2, §6 |
+| Runtime | Node.js | `>=24.0.0` | `Implemented` | §17 |
+| Dev runner | tsx | 4.23.13 | `Implemented` | §17 |
+| HTTP | Express | 5.2.1 | `Implemented` | §19 |
+| HTTP | helmet, cors, express-rate-limit | 8.3.0, 2.8.6, 7.5.1 | `Implemented` | §19 |
+| Validation | Zod | 4.6.5 | `Implemented` | §14 |
+| Auth | jsonwebtoken | 9.0.3 | `Implemented` | §23 |
+| Auth | bcryptjs | 3.0.3 | `Implemented` | §26 |
+| Data | PostgreSQL | 18 | `Implemented` | §27 |
+| Data | Prisma | 6.19.3 | `Implemented` | §28 |
+| Precision | decimal.js | 10.6.0 | `Implemented` | §28.1 |
+| Testing | Vitest | 3.2.7 | `Implemented` | §33 |
+| Testing | Supertest | 7.2.2 | `Implemented` | §33 |
+| Quality | ESLint, typescript-eslint | 10.10.0, 8.69.0 | `Implemented` | §34 |
+| Quality | Prettier | 3.9.6 | `Implemented` | §35 |
+| Quality | husky, lint-staged | 9.1.7, 17.5.0 | `Implemented` | §35 |
+| Tooling | pnpm | 12.3.4 | `Implemented` | §37 |
+| Tooling | dotenv-cli | 11.0.0 | `Implemented` | §42 |
+| Infrastructure | Docker Compose (PostgreSQL) | — | `Implemented` | §40 |
+| Contracts | `@trading/contracts` (Zod) | — | `Planned (B0)` | ADR-002 |
+| CI | GitHub Actions | — | `Implemented` | ADR-006 point 10 |
+| Logging | pino, pino-pretty | 10.4.0, 13.2.0 | `Implemented` (B3.1) | ADR-009 point 2 |
+| Request logging | In-repo middleware over the `Logger` port; `pino-http` not adopted | — | `Implemented` (B3.2) | ADR-009 point 2 |
+| Realtime | ws | — | `Implemented` (B5) | ADR-007 point 1 |
+| Simulation | `@trading/market-sim` | — | `Implemented` (B5) | ADR-007 point 7 |
+| API docs | OpenAPI from Zod `toJSONSchema` | — | `Implemented` (B6) | ADR-002 point 7 |
+| Infrastructure | API Dockerfile, `full` profile | — | `Implemented` (B7) | ADR-006 point 4 |
+| Frontend build | Vite, `@vitejs/plugin-react` | 8.3.5, 6.1.2 | `Implemented` (FE0.1) | ADR-006 point 8 |
+| Frontend | React | 19.3.1 | `Implemented` (FE0.1) | ADR-011 point 1 |
+| Frontend | React Router | 8.5.0 | `Implemented` (FE0.3) | ADR-011 point 6 |
+| Frontend | Tailwind CSS, `@tailwindcss/vite` | 4.3.3 | `Implemented` (FE0.2) | ADR-011 point 2 |
+| Frontend | shadcn/ui on Radix UI (`radix-ui`, `shadcn`, `class-variance-authority`, `cn`, `lucide-react`, `tw-animate-css`) | 1.8.1, 4.22.1, 0.7.1, 0.5.0, 1.61.0, 1.4.0 | `Implemented` (FE0.2) | ADR-011 point 3 |
+| Frontend | TanStack Query | 5.104.5 | `Implemented` (FE0.3) | ADR-011 point 4 |
+| Frontend | Zustand | 5.0.16 | `Implemented` (FE0.4) | ADR-011 point 5 |
+| Frontend | TanStack Table, React Hook Form, Recharts | — | `Planned (FE)` | ADR-011 points 7-9 |
+| Frontend | react-i18next, i18next | 17.1.9, 26.5.11 | `Implemented` (FE0.4) | ADR-011 point 16 |
+| Testing | Vitest with React Testing Library, Playwright, axe-core | — | `Planned (FE)` | ADR-011 points 11-13 |
+| Observability | Metrics | — | `Deferred` | ADR-009 point 10 |
 
-Backend
-├── Node.js
-├── TypeScript
-├── Express
-├── REST
-├── OpenAPI
-├── JWT
-└── RBAC
-
-Data
-├── PostgreSQL
-└── Prisma
-
-Realtime
-└── WebSockets
-
-Mock / Demo
-├── Mock Repositories
-├── MSW
-└── Simulation Engine
-
-Testing
-├── Vitest
-├── Testing Library
-└── Playwright
-
-Quality
-├── ESLint
-└── Prettier
-
-Infrastructure
-├── Docker
-├── pnpm
-└── GitHub Actions
-```
+Type-only packages (`@types/*`) follow their runtime packages and are not
+listed.
 
 ---
 
 # 54. Technology Decision Principle
 
-The project should demonstrate:
+**Status:** `Implemented`
 
-> **Modern engineering through deliberate technology choices, not technology quantity.**
-
-Every technology must have an identifiable responsibility.
-
-The preferred architecture is therefore:
-
-```text
-React
-   ↓
-Application Contracts
-   ↓
-Domain
-   ↓
-Repository Interfaces
-   ↓
-Infrastructure
-```
-
-with:
-
-```text
-Real Infrastructure
-        OR
-Mock Infrastructure
-```
-
-being interchangeable without changing the core product behavior.
+Deliberate choices, not quantity. Real and demo infrastructure are
+interchangeable behind the same application contracts (ADR-001), so the
+technology under a port can change without changing product behavior.
 
 ---
 
 # 55. Stack Acceptance Criteria
 
-The stack is considered approved when:
+**Status:** criteria for the backend foundation `Implemented`; the rest follow the blocks named.
 
-- frontend and backend use TypeScript;
-- React/Vite provide the frontend foundation;
-- Express/Node provide the backend foundation;
-- TanStack Query manages server state;
-- Zustand manages client state;
-- TanStack Table manages complex tables;
-- Zod provides validation;
-- PostgreSQL provides persistence;
-- Prisma isolates database access;
-- WebSockets provide realtime transport;
-- JWT + RBAC provide authentication/authorization;
-- Vitest, Testing Library and Playwright cover testing needs;
-- Docker supports local infrastructure;
-- CI can run without paid services;
-- the public demo can run entirely on mock infrastructure;
-- no required external paid API exists.
+- Backend and packages use strict TypeScript. `Implemented`
+- Express on Node provides the API; Zod validates its inputs. `Implemented`
+- PostgreSQL with Prisma behind repositories provides persistence. `Implemented`
+- Money uses `decimal.js`. `Implemented`
+- Vitest covers domain, database and API. `Implemented`
+- Shared contracts and lint-enforced boundaries. `Planned (B0)`
+- CI runs without paid services (free for public repositories). `Implemented`
+- Sessions with refresh tokens and permission-based roles. `Implemented` (B0, B2)
+- Structured logging. `Implemented` (B3)
+- WebSocket realtime with the shared simulator. `Implemented` (B5)
+- Generated OpenAPI. `Implemented` (B6)
+- Containerized production-like local run. `Implemented` (B7)
+- The public demo runs entirely on in-process infrastructure. `Planned (FE)`
+- No required paid API exists. `Implemented`
+
+---
+
+# 56. Failure-Mode Review
+
+**Status:** `Implemented` (review of this document, 2026-10-05)
+
+Only the categories that apply to tooling, runtime versions and
+configuration are listed.
+
+| Category | Finding | Resolution |
+| --- | --- | --- |
+| Boundary math and data edges | Two TypeScript and two `@types/node` lines resolved in one workspace. | Aligned to one line each (§2). `Implemented` |
+| Boundary math and data edges | Domain quantities are `number` while analytics need `Decimal`. | Open detail (B1), §28.1. |
+| Partial failure | Invalid or missing configuration. | API exits at startup with the invalid keys (§42). `Implemented` |
+| Crash and restart | API starting before PostgreSQL accepts connections in the `full` profile. | `depends_on` with `service_healthy` (`Implemented`, B7.3; ADR-006 Deferred detail). |
+| Retries and duplicates | Non-reproducible installs. | Lockfile installs locally and in CI (§2, §41). |

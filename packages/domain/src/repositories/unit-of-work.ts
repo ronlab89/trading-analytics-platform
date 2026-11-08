@@ -1,0 +1,38 @@
+import type { AlertRepository } from "./alert-repository.js";
+import type { IdempotencyKeyRepository } from "./idempotency-key-repository.js";
+import type { JobRepository } from "./job-repository.js";
+import type { NotificationRepository } from "./notification-repository.js";
+import type { PositionRepository } from "./position-repository.js";
+import type { TransactionRepository } from "./transaction-repository.js";
+
+/**
+ * Repositories that participate in a single atomic unit of work.
+ * Every repository here shares the same underlying transaction.
+ * `jobs` lets an import set its job `COMPLETED` in the unit that writes its
+ * rows; `idempotencyKeys` lets a mutation store its response in the unit that
+ * commits it (ADR-008 points 5 and 8); `alerts` and `notifications` let a fired
+ * alert persist its state in the unit that creates its notification (ADR-007
+ * point 9).
+ */
+export interface TransactionalRepositories {
+  transactions: TransactionRepository;
+  positions: PositionRepository;
+  jobs: JobRepository;
+  idempotencyKeys: IdempotencyKeyRepository;
+  alerts: AlertRepository;
+  notifications: NotificationRepository;
+}
+
+/**
+ * Unit of Work contract.
+ * Source: FR-074 (Atomic Business Operations), NFR-015 (Operation
+ * Consistency), 06-architecture.md §30 (Transaction Boundaries).
+ *
+ * Runs `work` atomically: if it throws, every write made through the
+ * provided repositories is rolled back; if it resolves, all writes are
+ * committed together. Keeps persistence technology (Prisma, in-memory
+ * mock for the demo) behind the domain boundary (NFR-057).
+ */
+export interface UnitOfWork {
+  run<T>(work: (repositories: TransactionalRepositories) => Promise<T>): Promise<T>;
+}

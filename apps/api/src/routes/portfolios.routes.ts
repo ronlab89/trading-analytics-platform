@@ -1,0 +1,52 @@
+import { Router } from "express";
+import type { Router as ExpressRouter } from "express";
+import { authenticate } from "../middleware/authenticate.js";
+import { validate } from "../middleware/validate.js";
+import {
+  createPortfolioRequestSchema,
+  portfolioIdParamsSchema,
+  updatePortfolioRequestSchema,
+} from "@trading/contracts";
+import { makePortfoliosController } from "../controllers/portfolios.controller.js";
+import { composition } from "../composition.js";
+
+const {
+  archivePortfolioHandler,
+  createPortfolioHandler,
+  getPortfolioByIdHandler,
+  listPortfoliosHandler,
+  updatePortfolioHandler,
+} = makePortfoliosController(composition.portfolioService);
+
+export const portfoliosRouter: ExpressRouter = Router();
+
+portfoliosRouter.get("/api/v1/portfolios", authenticate, listPortfoliosHandler);
+
+portfoliosRouter.post(
+  "/api/v1/portfolios",
+  authenticate,
+  validate(createPortfolioRequestSchema, "body"),
+  createPortfolioHandler,
+);
+
+portfoliosRouter.get(
+  "/api/v1/portfolios/:portfolioId",
+  authenticate,
+  validate(portfolioIdParamsSchema, "params"),
+  getPortfolioByIdHandler,
+);
+
+portfoliosRouter.patch(
+  "/api/v1/portfolios/:portfolioId",
+  authenticate,
+  validate(portfolioIdParamsSchema, "params"),
+  validate(updatePortfolioRequestSchema, "body"),
+  updatePortfolioHandler,
+);
+
+portfoliosRouter.post(
+  "/api/v1/portfolios/:portfolioId/archive",
+  authenticate,
+  validate(portfolioIdParamsSchema, "params"),
+  archivePortfolioHandler,
+);
