@@ -40,8 +40,8 @@ export function AnalyticsKpiCard({
           <p
             className={cn(
               "flex items-center gap-1 text-xl leading-7 font-medium",
-              tone === "gain" && "text-(--color-chart-gain)",
-              tone === "loss" && "text-(--color-chart-loss)",
+              tone === "gain" && "text-(--color-trading-gain)",
+              tone === "loss" && "text-(--color-trading-loss)",
             )}
           >
             {value}

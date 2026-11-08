@@ -133,11 +133,11 @@
   --color-badge-loss-solid-background: var(--color-trading-loss);
   --color-badge-loss-solid-foreground: var(--color-text-on-primary);
   --color-badge-success-subtle-background: var(--color-status-success-muted);
-  --color-badge-success-subtle-foreground: var(--color-status-success);
+  --color-badge-success-subtle-foreground: var(--color-green-800);
   --color-badge-success-solid-background: var(--color-status-success);
   --color-badge-success-solid-foreground: var(--color-text-on-primary);
   --color-badge-warning-subtle-background: var(--color-status-warning-muted);
-  --color-badge-warning-subtle-foreground: var(--color-status-warning);
+  --color-badge-warning-subtle-foreground: var(--color-amber-800);
   --color-badge-warning-solid-background: var(--color-status-warning-solid);
   --color-badge-warning-solid-foreground: var(--color-text-on-warning);
   --color-badge-error-subtle-background: var(--color-status-error-muted);

@@ -140,7 +140,7 @@ describe("DecisionIndicators", () => {
       />,
     );
 
-    expect(region("Current return").getByText("-7.64%")).toHaveClass("text-(--color-chart-loss)");
+    expect(region("Current return").getByText("-7.64%")).toHaveClass("text-(--color-trading-loss)");
   });
 
   it("shows what a closed position made and where it closed", () => {
@@ -161,7 +161,7 @@ describe("DecisionIndicators", () => {
     );
 
     expect(region("Current return").getByText("+$6,514.00")).toHaveClass(
-      "text-(--color-chart-gain)",
+      "text-(--color-trading-gain)",
     );
     expect(region("Current return").getByText("Closed at $190.00")).toBeVisible();
   });

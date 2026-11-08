@@ -37,7 +37,7 @@ function MonthlyBars({ months }: { months: readonly MonthReturn[] }) {
               className={cn(
                 "text-xs",
                 negative
-                  ? "text-(--color-chart-loss)"
+                  ? "text-(--color-trading-loss)"
                   : current
                     ? "font-medium text-(--color-text-default)"
                     : "text-(--color-text-secondary)",
