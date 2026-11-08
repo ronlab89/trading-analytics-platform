@@ -266,7 +266,7 @@ decided, except where a line below says otherwise.
   with `NODE_ENV` set to `development`. This was recorded in B7.7 from what
   B7.3 and B7.4 built; it is not a new decision.
 - **Hardening (B7.5, B7.6).** The assets search escapes `%`, `_` and `\`. The
-  final security pass is `odd/tasks/b7/b7-6-security-pass.md`: three advisories
+  final security pass: three advisories
   fixed, `mem_limit: 512m` on the `api` service (NFR-054) and a test that pins
   the security headers. `deepmerge-ts` (GHSA-ggr8-5vv4-36mx) stays `Deferred`:
   it is reached only through the Prisma CLI config and its fix needs Prisma 7.

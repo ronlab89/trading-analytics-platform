@@ -582,7 +582,7 @@ automated update bot is configured; the audit is a manual checklist step.
 
 ### Measurement
 
-Audit output attached to the B7 checklist (`odd/tasks/b7/b7-6-security-pass.md`).
+Audit output attached to the B7 checklist.
 
 ---
 
