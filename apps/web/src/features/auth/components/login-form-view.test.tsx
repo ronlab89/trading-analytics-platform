@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
@@ -172,6 +172,26 @@ describe("LoginFormView", () => {
     await userEvent.click(screen.getByRole("radio", { name: "Admin" }));
 
     expect(onChange).toHaveBeenCalledWith("ADMIN");
+  });
+
+  it("keeps the real form in the demo but locks the credentials and the sign in", () => {
+    setup({ demoRole: { value: "TRADER", onChange: vi.fn() } });
+
+    expect(screen.getByLabelText("Email")).toBeDisabled();
+    expect(screen.getByLabelText("Password")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Viewer" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Enter the demo" })).toBeEnabled();
+  });
+
+  it("does not submit the credentials in the demo even if the form is submitted", () => {
+    const { container, props } = setup({ demoRole: { value: "TRADER", onChange: vi.fn() } });
+
+    const form = container.querySelector("form");
+    expect(form).toBeInTheDocument();
+    if (form) fireEvent.submit(form);
+
+    expect(props.onSubmit).not.toHaveBeenCalled();
   });
 
   it("shows no role choice outside the demo", () => {

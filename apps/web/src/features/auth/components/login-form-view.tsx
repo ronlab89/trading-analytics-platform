@@ -50,6 +50,8 @@ export function LoginFormView({
   const submitting = status === "submitting";
   const enteringDemo = status === "entering-demo";
   const busy = submitting || enteringDemo;
+  // The demo build shows the real form but has no accounts: only the role and the demo entry work.
+  const credentialsLocked = demoRole !== undefined;
 
   return (
     <form
@@ -57,11 +59,16 @@ export function LoginFormView({
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
+        if (credentialsLocked) return;
         onSubmit();
       }}
     >
       <div className="flex flex-col gap-4">
-        <Field disabled={busy} error={errors.email} label={t("auth.login.email")}>
+        <Field
+          disabled={busy || credentialsLocked}
+          error={errors.email}
+          label={t("auth.login.email")}
+        >
           <Input
             autoComplete="email"
             inputMode="email"
@@ -73,7 +80,11 @@ export function LoginFormView({
             value={values.email}
           />
         </Field>
-        <Field disabled={busy} error={errors.password} label={t("auth.login.password")}>
+        <Field
+          disabled={busy || credentialsLocked}
+          error={errors.password}
+          label={t("auth.login.password")}
+        >
           <PasswordInput
             autoComplete="current-password"
             hideLabel={t("auth.login.hidePassword")}
@@ -104,7 +115,7 @@ export function LoginFormView({
 
       <Button
         className="w-full"
-        disabled={offline || enteringDemo}
+        disabled={offline || enteringDemo || credentialsLocked}
         loading={submitting}
         size="lg"
         type="submit"
