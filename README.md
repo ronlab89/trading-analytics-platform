@@ -75,6 +75,18 @@ pnpm --filter @trading/database db:seed
 pnpm smoke
 ```
 
+## Run the web app
+
+With the API running (see above):
+
+```bash
+pnpm --filter @trading/web dev        # http://localhost:5173
+```
+
+It talks to the API at `VITE_API_BASE_URL` and to its WebSocket at `VITE_WS_URL`; both have local
+defaults. See [`apps/web/README.md`](./apps/web/README.md) for its scripts and structure and
+[`apps/api/README.md`](./apps/api/README.md) for the API's.
+
 ## Public demo
 
 The web app also builds as a static demo that needs no API and no database
@@ -88,7 +100,8 @@ pnpm --filter @trading/web dev:demo    # dev server in demo mode
 pnpm --filter @trading/web build:demo  # static build in apps/web/dist
 ```
 
-In the demo, the login screen lets a visitor pick a role (viewer, trader or admin) and enter. The
+In the demo, the login screen is drawn in full but its email, password and "Sign in" are disabled:
+a visitor picks a role (viewer, trader or admin) and presses "Enter the demo". The
 "Demo data" menu of the top bar can simulate a connection problem (the status bar goes through
 reconnecting and back to live), send a test notification, and reset the demo.
 
@@ -140,15 +153,18 @@ pnpm --filter @trading/database db:studio
 
 ```text
 apps/
-  web/        # Frontend: Vite and React 19 app, real and demo builds
-  api/        # Node/Express REST API (foundation implemented)
+  web/                  # Frontend: Vite and React 19 app, real and demo builds
+  api/                  # Node/Express REST API
 packages/
-  domain/     # Framework-agnostic domain logic (entities, validation, calculations)
-  database/   # Prisma schema, repositories, seed workflow
-  contracts/  # Placeholder (.gitkeep); planned for B0
-  config/     # Placeholder (.gitkeep)
-docs/         # SDD specification, ADRs and working documents
-docker/       # Placeholder (.gitkeep); PostgreSQL runs from docker-compose.yml
+  domain/               # Framework-agnostic domain logic (entities, validation, calculations)
+  application/          # Use cases and ports (repositories, clock, logger, jobs)
+  contracts/            # Shared request/response contracts and OpenAPI source
+  database/             # Prisma schema, repositories, seed workflow
+  persistence-memory/   # In-memory repositories, used by the demo and by the contract tests
+  market-sim/           # Simulated market (prices and ticks) for the demo
+  config/               # Placeholder (.gitkeep)
+docs/                   # SDD specification, ADRs and working documents
+docker/                 # Placeholder (.gitkeep); PostgreSQL runs from docker-compose.yml
 ```
 
 ## Documentation
