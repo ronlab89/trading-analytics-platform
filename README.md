@@ -60,11 +60,17 @@ when PostgreSQL is not reachable). Environment notes and troubleshooting are in
 
 Container image of the API: `docker build -f apps/api/Dockerfile -t trading-api .` (workspace root as context).
 
-The whole stack in containers (PostgreSQL, migrations, API), with `JWT_SECRET` set in `.env`:
+The whole stack in containers (PostgreSQL, migrations, API and the web app), with `JWT_SECRET` set in
+`.env` or in the shell (at least 32 characters):
 
 ```bash
-docker compose --profile full up --build
+docker compose --profile full up -d --build   # web on http://localhost:5173, API on :7001
+docker compose run --rm seed                  # demo data; wipes and reloads, run it once
 ```
+
+Sign in with `demo@trading-analytics.dev` / `demo1234` (the seeded user). The web image bakes the API
+addresses in at build time; if you change `API_PORT`, rebuild with `--build`. Stop it with
+`docker compose --profile full down` (add `-v` to drop the database).
 
 The default `docker compose up -d` still starts PostgreSQL alone. The seed is never run for you.
 

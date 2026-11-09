@@ -13,6 +13,7 @@ function setup(overrides: Partial<LoginFormViewProps> = {}) {
     offline: false,
     onChange: vi.fn(),
     onSubmit: vi.fn(),
+    onEnterDemo: vi.fn(),
     ...overrides,
   };
   const view = render(<LoginFormView {...props} />);
@@ -138,6 +139,15 @@ describe("LoginFormView", () => {
     setup({ alert: { tone: "error", title: "Wrong email or password", description: "Check." } });
 
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
+
+  it("hides the demo entry and its note when the app runs against the API", () => {
+    setup({ onEnterDemo: undefined });
+
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Enter the demo" })).not.toBeInTheDocument();
+    expect(screen.queryByText("No credentials · uses fictional data")).not.toBeInTheDocument();
+    expect(screen.queryByText("or")).not.toBeInTheDocument();
   });
 
   it("disables both actions while offline", () => {

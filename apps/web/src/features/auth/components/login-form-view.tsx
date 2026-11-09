@@ -123,14 +123,16 @@ export function LoginFormView({
         {submitting ? t("auth.login.submitting") : t("auth.login.submit")}
       </Button>
 
-      <div
-        aria-hidden="true"
-        className="flex items-center gap-3 text-xs text-(--color-text-secondary)"
-      >
-        <span className="h-px flex-1 bg-(--color-border-default)" />
-        {t("auth.login.or")}
-        <span className="h-px flex-1 bg-(--color-border-default)" />
-      </div>
+      {onEnterDemo ? (
+        <div
+          aria-hidden="true"
+          className="flex items-center gap-3 text-xs text-(--color-text-secondary)"
+        >
+          <span className="h-px flex-1 bg-(--color-border-default)" />
+          {t("auth.login.or")}
+          <span className="h-px flex-1 bg-(--color-border-default)" />
+        </div>
+      ) : null}
 
       {demoRole ? (
         <div
@@ -162,20 +164,24 @@ export function LoginFormView({
         </div>
       ) : null}
 
-      <Button
-        className="w-full"
-        disabled={offline || submitting}
-        loading={enteringDemo}
-        onClick={onEnterDemo}
-        size="lg"
-        type="button"
-        variant="outline"
-      >
-        {enteringDemo ? t("auth.login.enteringDemo") : t("auth.login.enterDemo")}
-      </Button>
-      <p className="text-center text-xs leading-4 text-(--color-text-secondary)">
-        {t("auth.login.demoNote")}
-      </p>
+      {onEnterDemo ? (
+        <>
+          <Button
+            className="w-full"
+            disabled={offline || submitting}
+            loading={enteringDemo}
+            onClick={onEnterDemo}
+            size="lg"
+            type="button"
+            variant="outline"
+          >
+            {enteringDemo ? t("auth.login.enteringDemo") : t("auth.login.enterDemo")}
+          </Button>
+          <p className="text-center text-xs leading-4 text-(--color-text-secondary)">
+            {t("auth.login.demoNote")}
+          </p>
+        </>
+      ) : null}
     </form>
   );
 }
